@@ -1,0 +1,15 @@
+[package]
+name = "hvf-hello"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Spike: prove Hypervisor.framework works on this Mac with hand-written Rust FFI"
+
+# Standalone crate: NOT a member of the macvmm workspace.
+[workspace]
+
+[dependencies]
+# Intentionally none. std only; FFI is hand-written in src/ffi.rs.
+
+[profile.release]
+debug = true

@@ -1,0 +1,27 @@
+# Forbidding phrases for the AS9 audit (PLAN M20, threat model AS9; checked by
+# `cargo xtask audit`, crates/xtask/src/vz_audit.rs).
+#
+# The words csrutil, amfi_get_out_of_my_way and sudo may appear in course/, docs/macos/ and
+# tools/ only inside one of the phrases below (matched case-insensitively, on ASCII word
+# boundaries, on one line). Each phrase must have the fixed shape
+#   NEGATION [FILLER ...] FORBIDDEN-WORD
+# where NEGATION is no / never / not / without (or a word ending in n't), at most four FILLERs
+# from ask(s) / need(s) / use(s) / using / run(s) / you / to / for, then exactly one of
+# csrutil / amfi_get_out_of_my_way / sudo as the LAST word; only letters, digits, _, ', spaces
+# and backticks. The audit rejects any other phrase, so a clause such as "if it does not boot,
+# run sudo" cannot be added. Add a phrase only for text that tells the reader NOT to do the
+# thing.
+no sudo
+never sudo
+never asks for sudo
+never ask for sudo
+never needs sudo
+without sudo
+no `sudo`
+never `sudo`
+not use sudo
+never run csrutil
+never asks you to run csrutil
+no csrutil
+never amfi_get_out_of_my_way
+no amfi_get_out_of_my_way

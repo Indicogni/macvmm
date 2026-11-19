@@ -1,0 +1,5 @@
+/target
+/.cache
+/learner
+*.part
+.DS_Store

@@ -1,0 +1,37 @@
+# macvmm artifact manifest: every file scripts/fetch.sh may download, pinned by sha256.
+#
+# Format (PLAN §0.4, threat model SC-2):
+#   <set> <name> <sha256|TOFU> <source> [<mirror-url>...]
+# - <set>     ^[a-z0-9-]+$ ; `scripts/fetch.sh <set>` fetches every entry of that set, in order.
+# - <name>    ^[A-Za-z0-9._-]+$, not `.` or `..`: the file name in the cache directory.
+# - <sha256>  exactly 64 lowercase hex characters, or TOFU (trust on first use: refused until a
+#             maintainer runs `scripts/fetch.sh --pin <name>` and pastes the printed hash, SC-10).
+# - <source>  an https:// URL (mirrors may follow, tried in order), or
+#             derive:<kind>:<input-name>[:<arg>] for a file built by `cargo xtask derive <kind>`
+#             from an earlier, already-verified entry (verify before parse, SC-5).
+# No third-party mirrors (decision D2): only versioned upstream URLs.
+
+# ANCHOR: manifest_linux
+# Alpine 3.24.4 netboot (guest-boot.md §2, [V] 2026-11-18). vmlinuz-virt is an EFI zboot PE;
+# Image-virt is its unwrapped raw arm64 Image (M9 implements `unzboot`).
+linux vmlinuz-virt cd05fed9e617b5df93dc62ece9b78c422fd94e9b432a2f7c092714b139d5eef4 https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/netboot-3.24.4/vmlinuz-virt
+linux initramfs-virt 189402937646965374ef2df5d37f76467135179ae168c88175df2fe3e264a0b0 https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/netboot-3.24.4/initramfs-virt
+linux config-6.18.60-0-virt b7643cddcd3ba109183a2aaafa3c911d91e7d89485fd7b2caf5ede9396bf78ca https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/netboot-3.24.4/config-6.18.60-0-virt
+linux Image-virt a2cecb9b6fdbd83e87bd43c8040de67300d5b8dde1fc50c34714faa272888f17 derive:unzboot:vmlinuz-virt
+# ANCHOR_END: manifest_linux
+
+# Alpine minirootfs for the ext4 root (M15). modloop-virt carries ext4.ko (architecture §19
+# item 11); its hash is TOFU until M15 pins it and records the cross-check against Alpine's
+# signed latest-releases.yaml here, with the date and method (SC-10).
+rootfs alpine-minirootfs-3.24.4-aarch64.tar.gz 4b14c18f7e90a063b61462ea1462a5732c154bf6adad594974fe6487cd98a8de https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/alpine-minirootfs-3.24.4-aarch64.tar.gz
+rootfs modloop-virt TOFU https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/netboot-3.24.4/modloop-virt
+
+# U-Boot qemu_arm64 from Alpine (M18). Apk churn (risk R7): append a mirror URL to this line
+# if the lead designates one.
+uboot u-boot-qemu-2026.04-r1.apk b87f1d7ab06549d123a0776f65ddd82a81ae91d9cc4b0aebf2ae811a17e1ccb0 https://dl-cdn.alpinelinux.org/alpine/v3.24/main/aarch64/u-boot-qemu-2026.04-r1.apk
+uboot u-boot.bin e0155e525781e6f781eb90a8dbd680c9ecb53b21081fffdc636c8a7da63f7f12 derive:extract-apk:u-boot-qemu-2026.04-r1.apk:usr/share/u-boot/qemu_arm64/u-boot.bin
+
+# FreeBSD 15.1 (M19). The derived sparse raw is TOFU: a regression check of a deterministic
+# transform of a pinned input, not a trust root (SC-10).
+freebsd FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.raw.xz 36028829cbd5a74a050d9964cd5fd391c9d12edca1c3d520cbcce257e1d999c8 https://download.freebsd.org/releases/VM-IMAGES/15.1-RELEASE/aarch64/Latest/FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.raw.xz
+freebsd freebsd-15.1-ufs.raw TOFU derive:write-sparse:FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.raw.xz

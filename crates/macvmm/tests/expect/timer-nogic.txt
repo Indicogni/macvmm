@@ -1,0 +1,11 @@
+timer-nogic: cntfrq=24000000
+timer-nogic: pfr0.gic=0
+timer-nogic: interval 0 = * ms ok
+timer-nogic: interval 9 = * ms ok
+timer-nogic: irqs=10 stale=*
+timer-nogic: 10/10 intervals within 95..150 ms
+[stderr] stats: vcpu0 exits: vtimer *, wfx *, total *
+[stderr] stats: host cpu * wall (*%)
+!OUT OF RANGE
+!guest panic
+!guest exception

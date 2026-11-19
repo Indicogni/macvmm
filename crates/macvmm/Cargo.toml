@@ -1,0 +1,26 @@
+[package]
+name = "macvmm"
+version = "0.1.0"
+description = "macvmm command-line interface: doctor, first-exit, run"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+hvf = { path = "../hvf" }
+vmm = { path = "../vmm" }
+
+# The e2e suite reads `--dtb-out` files back with `vmm::fdt::reader`, which exists only under
+# `test-util` (threat model FDT-1: the shipped binary has no DTB parser).
+[dev-dependencies]
+vmm = { path = "../vmm", features = ["test-util"] }
+
+[features]
+# End-to-end tests that boot guests on this Mac (`scripts/test-e2e.sh`).
+hvf-tests = ["vmm/hvf-tests"]
+# The M21 vmapple machine profile (experimental, ADR-0008).
+experimental-vmapple = ["vmm/experimental-vmapple"]
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

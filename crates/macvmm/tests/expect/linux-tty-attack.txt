@@ -1,0 +1,4 @@
+macvmm-tty: begin
+macvmm-tty: end
+reboot: Power down
+!Kernel panic

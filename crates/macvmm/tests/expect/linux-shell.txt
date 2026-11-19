@@ -1,0 +1,7 @@
+macvmm-initramfs: ready 6.18.60-0-virt
+/ #
+macvmm-shell: 42
+reboot: Power down
+!Kernel panic
+![stderr] unhandled MMIO
+![stderr] unknown SMCCC

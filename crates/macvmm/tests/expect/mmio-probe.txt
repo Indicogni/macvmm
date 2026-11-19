@@ -1,0 +1,8 @@
+mmio-probe: strb/ldrb ok
+mmio-probe: str xzr stores 0 ok
+mmio-probe: ldr xzr discarded (sp kept) ok
+mmio-probe: ldrsh x sign-extends to 64 ok
+mmio-probe: 10/10 ok
+!FAILED
+!guest fatal
+!unhandled MMIO

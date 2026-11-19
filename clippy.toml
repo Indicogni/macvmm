@@ -1,0 +1,3 @@
+# `unwrap`/`expect` are denied in hvf, vmm and macvmm (architecture §4); tests are exempt.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true

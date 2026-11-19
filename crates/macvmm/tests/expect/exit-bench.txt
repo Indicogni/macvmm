@@ -1,0 +1,2 @@
+exit-bench: 100000 hvc in * ticks, * ns/exit
+!did not return NOT_SUPPORTED

@@ -1,0 +1,146 @@
+# Bare-metal test guests (architecture §3, PLAN M3).
+#
+# One package, its own workspace: these build for `aarch64-unknown-none` (guests/.cargo/config.toml),
+# which the host workspace must never try to build, so the root Cargo.toml excludes `guests/`.
+# `scripts/build-guests.sh` runs cargo from *inside* this directory because cargo reads
+# `.cargo/config.toml` relative to the current directory.
+#
+# No dependencies (CLAUDE.md "Minimal dependencies"): everything a guest needs is in `common/`.
+[workspace]
+
+[package]
+name = "macvmm-guests"
+version = "0.1.0"
+edition = "2024"
+publish = false
+build = "build.rs"
+
+# The shared guest library: entry, stacks, vectors, hypercalls, console, panic handler.
+[lib]
+name = "guest"
+path = "common/lib.rs"
+test = false
+bench = false
+doctest = false
+
+[[bin]]
+name = "hello"
+path = "hello/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "memtest"
+path = "memtest/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "mmio-poke"
+path = "mmio-poke/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "exit-bench"
+path = "exit-bench/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "regcheck"
+path = "regcheck/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "self-fault"
+path = "self-fault/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "mmio-probe"
+path = "mmio-probe/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "sysreg-probe"
+path = "sysreg-probe/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "psci-probe"
+path = "psci-probe/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "dtb-reader"
+path = "dtb-reader/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "uart-echo"
+path = "uart-echo/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "flood"
+path = "flood/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "tty-hygiene"
+path = "tty-hygiene/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "isv0-probe"
+path = "isv0-probe/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "hostile-isv0"
+path = "hostile-isv0/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "irq"
+path = "irq/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "timer"
+path = "timer/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "timer-nogic"
+path = "timer-nogic/main.rs"
+test = false
+bench = false
+
+# A guest has nowhere to unwind to: a panic prints and calls DEBUG_EXIT(1) (common/lib.rs).
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+# Symbols and line tables stay in the ELF so `llvm-objdump -d -l` and the fatal dump's PC can be
+# mapped back to source. The flat `.bin` produced by objcopy carries none of it.
+debug = true
+# One codegen unit keeps `_start`, the vector table and the code they call in one object, so
+# the linker script's section placement is easy to reason about.
+codegen-units = 1

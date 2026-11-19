@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# The single quality gate (PLAN §0.1 item 1). Prints `CHECK OK` last, or fails.
+#
+#   scripts/check.sh            host checks (no HVF needed; what hosted CI runs)
+#   scripts/check.sh --hvf      also the HVF tests and end-to-end suites on this Mac
+#   scripts/check.sh --strict   every SKIP is a failure (the M23 fresh-clone gate)
+#
+# Order: fmt, clippy, tests, unsafe/security audit, FFI oracle, anchors, guest build; then the
+# dependency allowlist (SC-11), `bash -n` and the SC-1 preamble on every script, shellcheck
+# (TEST-2), and the offline fetch tests. Every cargo call uses --locked (SC-11).
+set -euo pipefail
+IFS=$'\n\t'
+umask 077
+# shellcheck source=scripts/lib/common.sh
+. "$(dirname -- "${BASH_SOURCE[0]}")/lib/common.sh"
+
+hvf=0
+strict=0
+for arg in "$@"; do
+  case "$arg" in
+    --hvf) hvf=1 ;;
+    --strict) strict=1 ;;
+    -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
+    *) die "unknown option $arg" ;;
+  esac
+done
+
+cd -- "$REPO_ROOT"
+skips=0
+step() { printf '\n== %s\n' "$*"; }
+skip() {
+  printf 'SKIP %s\n' "$*"
+  skips=$((skips + 1))
+  if (( strict )); then die "--strict: SKIP is a failure ($*)"; fi
+}
+# Run a milestone script if it exists yet; otherwise SKIP (checks for future files pass vacuously).
+maybe() {
+  local script="$1" milestone="$2"
+  shift 2
+  if [[ -x "$script" ]]; then
+    "$script" "$@"
+  else
+    skip "$script (not yet created, $milestone)"
+  fi
+}
+
+# ANCHOR: check_gate
+step "cargo fmt";     cargo fmt --all --check
+step "cargo clippy";  cargo clippy --locked --workspace --all-targets -- -D warnings
+step "cargo test";    cargo test --locked --workspace
+step "check-unsafe";  scripts/check-unsafe
+step "check-ffi";     maybe scripts/check-ffi.sh M1
+step "check-anchors"; scripts/check-anchors
+step "build-guests";  maybe scripts/build-guests.sh M3
+# ANCHOR_END: check_gate
+
+step "check-insn-corpus"; scripts/check-insn-corpus.sh
+
+step "dependency allowlist"
+cargo run --locked --quiet -p xtask -- audit --deps
+
+step "scripts: syntax and SC-1 preamble"
+shell_scripts=()
+while IFS= read -r f; do
+  first="$(head -n 1 -- "$f")"
+  case "$first" in
+    '#!/usr/bin/env bash'|'#!/bin/bash')
+      bash -n -- "$f" || die "bash -n failed: $f"
+      for need in 'set -euo pipefail' "IFS=\$'\\n\\t'" 'umask 077'; do
+        grep -qF -- "$need" "$f" || die "$f lacks '$need' (SC-1)"
+      done
+      shell_scripts+=("$f") ;;
+    '#!/bin/sh'*)
+      sh -n -- "$f" || die "sh -n failed: $f"
+      shell_scripts+=("$f") ;;
+    *)
+      if [[ "$f" == *.sh ]]; then
+        grep -q '^# shellcheck shell=bash' -- "$f" || die "$f: no shebang (SC-1)"
+        bash -n -- "$f" || die "bash -n failed: $f"
+        shell_scripts+=("$f")
+      fi ;;
+  esac
+done < <(find scripts -type f ! -name '*.c' ! -name '*.txt' | sort)
+printf 'scripts OK: %s files\n' "${#shell_scripts[@]}"
+
+step "shellcheck"
+if command -v shellcheck >/dev/null 2>&1; then
+  shellcheck -S warning -x -- "${shell_scripts[@]}"
+  printf 'shellcheck OK\n'
+else
+  skip "shellcheck (not installed)"
+fi
+
+step "test-fetch"
+scripts/test-fetch.sh
+
+if (( hvf )); then
+  step "HVF availability"
+  # Skip-and-pass only when the probe ran and hv_vm_create answered "no hypervisor here"
+  # (HV_UNSUPPORTED 0xfae9400f, HV_NO_DEVICE 0xfae94006: a VM without nested virtualization).
+  # Anything else fails the gate: a clang or codesign failure, a sign.sh refusal, failed
+  # capability queries or hv_vm_destroy, and HV_DENIED (0xfae94007), which means our signing
+  # is broken, not that the host lacks a hypervisor.
+  probe_rc=0
+  probe_out="$(scripts/doctor.sh 2>&1)" || probe_rc=$?
+  if (( probe_rc != 0 )); then
+    hv_code="$(printf '%s\n' "$probe_out" \
+      | sed -n 's/^doctor: hv_vm_create: FAILED (\(0x[0-9a-f]\{8\}\))$/\1/p' | head -n 1)"
+    case "$hv_code" in
+      0xfae9400f|0xfae94006)
+        if (( strict )); then die "--strict: HVF unavailable: hv_vm_create: FAILED ($hv_code)"; fi
+        printf '%s\n' "$probe_out"
+        printf '\nCHECK OK (HVF unavailable: hv_vm_create: FAILED (%s); HVF checks skipped)\n' "$hv_code"
+        exit 0 ;;
+      *)
+        printf '%s\n' "$probe_out" >&2
+        die "scripts/doctor.sh failed (exit $probe_rc${hv_code:+, hv_vm_create $hv_code}); not a host without HVF, so this is a failure" ;;
+    esac
+  fi
+  printf '%s\n' "$probe_out"
+  step "macvmm doctor"
+  cargo run --locked --quiet -p macvmm -- doctor
+  step "signing tests"
+  scripts/test-signing.sh
+  step "HVF tests"
+  cargo test --locked -p hvf -p vmm --features hvf/hvf-tests,vmm/hvf-tests -- --test-threads=1
+  step "end-to-end"
+  maybe scripts/test-e2e.sh M3 all
+fi
+
+printf '\n'
+if (( skips > 0 )); then
+  printf '%s check(s) skipped (see SKIP lines above; --strict makes them failures)\n' "$skips"
+fi
+printf 'CHECK OK\n'

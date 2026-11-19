@@ -1,0 +1,6 @@
+uart-echo: ready
+pong
+uart-echo: rtc seconds=*
+uart-echo: rtc year=20*
+!guest panic
+![stderr] guest fatal

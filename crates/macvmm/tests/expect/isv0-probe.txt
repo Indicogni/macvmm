@@ -1,0 +1,10 @@
+isv0-probe: mmu on
+isv0-probe: stp x ok
+isv0-probe: ldp x via stage-1 alias ok
+isv0-probe: stp x [sp]! at EL1t ok
+isv0-probe: 14/14 ok
+isv0-probe: simd store -> sync external abort ok
+!FAILED
+!guest fatal
+!guest exception
+!unhandled MMIO

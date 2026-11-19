@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# The architecture §4 audit: unsafe quarantine, SAFETY comments, layout literals, print!/Command/
+# std::net/File::open locations, dependency allowlist, entitlements.plist key set.
+set -euo pipefail
+IFS=$'\n\t'
+umask 077
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+exec cargo run --locked --quiet -p xtask -- audit "$@"

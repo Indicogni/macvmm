@@ -1,0 +1,6 @@
+# Pinned toolchain: every learner and CI job builds with exactly this compiler (SC-11).
+[toolchain]
+channel = "1.99.0"
+components = ["rustfmt", "clippy", "llvm-tools"]
+targets = ["aarch64-unknown-none"]
+profile = "minimal"

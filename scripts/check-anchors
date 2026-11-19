@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# ADR-0006: every `:::code anchor=` in a lesson resolves, and every marker is well-formed.
+set -euo pipefail
+IFS=$'\n\t'
+umask 077
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+exec cargo run --locked --quiet -p xtask -- check-anchors "$@"

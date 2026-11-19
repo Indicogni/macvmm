@@ -1,0 +1,20 @@
+# ANCHOR: workspace_manifest
+[workspace]
+resolver = "3"
+members = ["crates/hvf", "crates/vmm", "crates/macvmm", "crates/xtask"]
+# Separate build worlds: bare-metal guests (own workspace, aarch64-unknown-none), throwaway spikes,
+# and the Swift companion tool.
+exclude = ["guests", "spikes", "tools"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+publish = false
+# `license` is deliberately unset until the lead confirms decision D1 (architecture §19 item 10).
+
+# RUST-2 (threat model §7.0): an arithmetic overflow we missed must become a clean stop, not a
+# silently wrong guest address. `panic = "unwind"` lets the VMM restore the terminal on a panic.
+[profile.release]
+overflow-checks = true
+panic = "unwind"
+# ANCHOR_END: workspace_manifest

@@ -1,0 +1,4 @@
+macvmm-initramfs: ready 6.18.60-0-virt
+macvmm-timer: 100x usleep(10ms) took * s
+reboot: Power down
+!Kernel panic

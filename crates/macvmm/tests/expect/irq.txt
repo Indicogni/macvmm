@@ -1,0 +1,6 @@
+irq: pfr0.gic=1
+irq: ready
+irq: 3 irqs intid=33 spurious=0 other=0 bytes=3
+!guest panic
+!guest exception
+![stderr] guest fatal

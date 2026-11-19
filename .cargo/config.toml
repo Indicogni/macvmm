@@ -1,0 +1,9 @@
+# ANCHOR: cargo_runner
+# Every binary cargo runs on this host goes through the signing runner first. It signs with the
+# hypervisor entitlement only the binaries that need HVF (SIGN-4), then execs the binary.
+[target.aarch64-apple-darwin]
+runner = ["scripts/sign-and-run.sh"]
+# ANCHOR_END: cargo_runner
+
+[alias]
+xtask = "run --quiet -p xtask --"

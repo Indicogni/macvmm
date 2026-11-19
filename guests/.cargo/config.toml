@@ -1,0 +1,12 @@
+# Read by cargo only when it runs from inside guests/ (scripts/build-guests.sh does `cd guests`).
+[build]
+target = "aarch64-unknown-none"
+
+[target.aarch64-unknown-none]
+# Alignment with the MMU off (PLAN M3 design notes): at entry SCTLR_EL1.M = 0, so every data
+# access is Device-nGnRnE and any unaligned access takes an alignment fault (ARM ARM, "The
+# effects of disabling an address translation stage" in the VMSAv8-64 chapter), unless the
+# hypervisor sets HCR_EL2.DC. `+strict-align` makes the compiler never emit an unaligned access
+# in *our* code. The precompiled `core`/`compiler_builtins` are not built with it; a guest that
+# faults inside memcpy/memset must switch on the identity-mapped MMU instead of weakening this.
+rustflags = ["-C", "target-feature=+strict-align"]

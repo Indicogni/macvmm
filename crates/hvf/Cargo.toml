@@ -1,0 +1,35 @@
+[package]
+name = "hvf"
+version = "0.1.0"
+description = "Hand-written FFI to Apple's Hypervisor.framework (arm64) plus thin safe wrappers"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# The Hypervisor.framework FFI is hand-written from the SDK headers (ADR-0002). `libc` is used
+# only by the libSystem shims in `host.rs` (umask, rlimits, open flags; docs/dependencies.md).
+[dependencies]
+libc = "0.2"
+
+# `tests/teardown.rs` (MEM-11) drives `vmm`'s fail-closed teardown through this crate's
+# fault injection. A dev-dependency cycle is allowed by Cargo; integration tests link one copy of
+# `hvf`, so the injection flags and counters are shared with `vmm`.
+[dev-dependencies]
+vmm = { path = "../vmm" }
+
+[features]
+# Integration tests that create real VMs. Run with `--test-threads=1` (one VM per process).
+hvf-tests = []
+# Test-only: `hvf::testing::fail_next` makes the next unmap/destroy report HV_ERROR (threat model
+# MEM-11). Implies `hvf-tests`; refused in release builds (lib.rs). `cargo xtask audit` rule
+# `fault-injection-scope`: no other feature here may list it, and other manifests may name it
+# only in `dev-dependencies` (`crates/macvmm/Cargo.toml` never).
+fault-injection = ["hvf-tests"]
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+undocumented_unsafe_blocks = "deny"
+unwrap_used = "deny"
+expect_used = "deny"

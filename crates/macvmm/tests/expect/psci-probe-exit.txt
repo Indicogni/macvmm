@@ -1,0 +1,6 @@
+psci-probe: version=0x10001 ok
+psci-probe: cpu_on(1)=-2 ok
+psci-probe: boot 0
+[stderr] guest requested a reset
+!psci-probe: boot 1
+!FAILED

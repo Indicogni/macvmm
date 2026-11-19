@@ -1,0 +1,130 @@
+#!/bin/sh
+# /init of the macvmm test initramfs (PLAN M9; course ch13/ch14). It runs INSIDE the guest as
+# PID 1, under Alpine's busybox; it is never executed on the host (SC-4).
+#
+# `cargo xtask mkinitramfs` appends it, as `/init`, in an uncompressed cpio overlay after
+# Alpine's stock initramfs-virt; the kernel unpacks both and the later /init wins
+# (Documentation/driver-api/early-userspace/buffer-format.rst).
+#
+# 1. mount proc, sys and devtmpfs;
+# 2. print `macvmm-initramfs: ready $(uname -r)` (the marker e2e tests wait for);
+# 3. read `macvmm.test=<case>` from /proc/cmdline and dispatch;
+# 4. with no test set, run `shell`.
+# Later milestones add `case` arms (PLAN §2.1: additive edits only). Every case ends in a
+# power-off or a reboot, because PID 1 exiting would panic the kernel.
+# Markers follow PLAN §0.3: `macvmm-<area>: <message>`.
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+/bin/busybox mkdir -p /proc /sys /dev /tmp
+/bin/busybox mount -t proc proc /proc
+/bin/busybox mount -t sysfs sysfs /sys
+/bin/busybox mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+/bin/busybox --install -s 2>/dev/null || true
+
+echo "macvmm-initramfs: ready $(uname -r)"
+
+# The test case named on the kernel command line (one word of [A-Za-z0-9_-]; anything else
+# falls back to `shell`).
+test_case=shell
+for word in $(cat /proc/cmdline); do
+  case "$word" in
+    macvmm.test=*) test_case="${word#macvmm.test=}" ;;
+  esac
+done
+case "$test_case" in
+  *[!A-Za-z0-9_-]*|'') test_case=shell ;;
+esac
+
+off() {
+  sync
+  poweroff -f
+  # poweroff -f should not return; if it does, stop here rather than exit PID 1.
+  while :; do sleep 1; done
+}
+
+# An interactive shell on the console with a controlling TTY (job control, Ctrl-C), so the
+# e2e harness and a learner can type at it.
+#
+# Why not just `setsid sh </dev/console`: Linux never makes /dev/console (5:1) a controlling
+# terminal. tty_open() in drivers/tty/tty_io.c sets `noctty` for that device number, so a
+# session that opens it still has no ctty, and ash prints "can't access tty; job control
+# turned off". busybox `cttyhack` exists for exactly this: it finds the real tty behind the
+# console and opens that. Alpine's busybox lacks cttyhack, so the fallback does the same by
+# hand: the last word of /sys/class/tty/console/active is the device /dev/console writes to
+# (`ttyAMA0` for our PL011). A session leader without a ctty that opens a tty without
+# O_NOCTTY acquires it as its controlling terminal (tty_open_proc_set_tty), so after `setsid`
+# the inner `exec sh -i <>/dev/ttyAMA0` gets job control.
+console_shell() {
+  cd / || true
+  # The kernel starts PID 1 with HOME=/ (init/main.c envp_init), and busybox ash shows a PWD
+  # equal to $HOME as `~`, so the prompt would be `~ # `. Alpine's root home is /root; with
+  # it the prompt is the `/ # ` the e2e tests and the course wait for (PLAN M10).
+  HOME=/root
+  export HOME
+  if busybox --list 2>/dev/null | grep -qx cttyhack; then
+    setsid cttyhack sh
+    return
+  fi
+  tty=
+  if [ -r /sys/class/tty/console/active ]; then
+    for word in $(cat /sys/class/tty/console/active); do
+      tty="$word"
+    done
+  fi
+  case "$tty" in
+    ''|*[!A-Za-z0-9]*) tty= ;;
+  esac
+  if [ -n "$tty" ] && [ -c "/dev/$tty" ]; then
+    setsid sh -c "exec sh -i <>/dev/$tty >&0 2>&1"
+  else
+    echo "macvmm-initramfs: no console tty found; shell without job control"
+    setsid sh -c 'exec sh -i <>/dev/console >&0 2>&1'
+  fi
+}
+
+# ANCHOR: initramfs_dispatch
+case "$test_case" in
+  boot)
+    off ;;
+  shell)
+    console_shell
+    off ;;
+  panic)
+    echo "macvmm-initramfs: triggering a kernel panic"
+    echo c > /proc/sysrq-trigger
+    off ;;
+  timer-latency)
+    # 100 x usleep(10 ms), timed with /proc/uptime (10 ms resolution).
+    t0="$(cut -d' ' -f1 /proc/uptime)"
+    i=0
+    while [ "$i" -lt 100 ]; do
+      usleep 10000
+      i=$((i + 1))
+    done
+    t1="$(cut -d' ' -f1 /proc/uptime)"
+    echo "macvmm-timer: 100x usleep(10ms) took $(echo "$t0 $t1" | awk '{printf "%.2f", $2 - $1}') s"
+    off ;;
+  tty-attack)
+    # PLAN M10 security test `linux_tty_attack` (threat model TTY-3, TEST-7 phase 6): the full
+    # TTY-3 forbidden list, written by Linux's own tty layer to the PL011. macvmm's `safe`
+    # filter must drop every one: OSC 52 (clipboard write), DSR 6n and DA c (terminal reports
+    # that would be typed back as input), DCS DECRQSS, APC (kitty graphics), and CSI as a C1
+    # control, both UTF-8-encoded (\302\233) and raw 8-bit (\233). The e2e test checks the
+    # bytes macvmm wrote to stdout.
+    echo "macvmm-tty: begin"
+    printf '\033]52;c;bWFjdm1tLXBvd25lZA==\007'
+    printf '\033[6n'
+    printf '\033[c'
+    printf '\033P$qm\033\\'
+    printf '\033_Ga=d;AAAA\033\\'
+    printf '\302\2336n'
+    printf '\2336n'
+    printf '\n'
+    echo "macvmm-tty: end"
+    off ;;
+  *)
+    echo "macvmm-initramfs: unknown test case $test_case"
+    off ;;
+esac
+# ANCHOR_END: initramfs_dispatch

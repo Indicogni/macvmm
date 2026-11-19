@@ -1,0 +1,6 @@
+"ipa":"0xb000000","wnr":true,"size":8,"reg":*,"value":"0x1111222233334444","action":"mmio","isv":false
+"ipa":"0xb000010","wnr":false,"size":8,"reg":*,"value":"0xa1","action":"mmio","isv":false
+"ipa":"0xb0000a0","wnr":false,"size":8,"reg":*,"value":"0xf1","action":"mmio","isv":false
+"ipa":"0xb000100","wnr":true,*"action":"inject_abort","isv":false
+!trace_truncated
+!"action":"stop"

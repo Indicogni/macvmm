@@ -1,0 +1,8 @@
+hostile-isv0: 12/12 external aborts
+hostile-isv0: device state intact
+hostile-isv0: phase 2 ok
+[stderr] ISV=0 write at *not emulated*injecting a synchronous external abort
+!FAILED
+!guest fatal
+!guest exception
+!unhandled MMIO

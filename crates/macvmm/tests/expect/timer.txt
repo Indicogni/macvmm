@@ -1,0 +1,10 @@
+timer: cntfrq=24000000
+timer: interval 0 = * ms ok
+timer: interval 9 = * ms ok
+timer: irqs=10 spurious=0
+timer: 10/10 intervals within 95..150 ms
+[stderr] stats: vcpu0 exits: vtimer 0, wfx 0, total *
+[stderr] stats: host cpu * wall (*%)
+!OUT OF RANGE
+!guest panic
+!guest exception

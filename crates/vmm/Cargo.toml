@@ -1,0 +1,27 @@
+[package]
+name = "vmm"
+version = "0.1.0"
+description = "The macvmm VMM library: guest memory, vCPUs, devices, virtio, loaders, FDT, arch"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+hvf = { path = "../hvf" }
+
+# The crate's own test doubles (`memory::VecMemory`, feature `test-util`) for its integration
+# tests in `tests/`, which link the library without `cfg(test)`.
+[dev-dependencies]
+vmm = { path = ".", features = ["test-util"] }
+
+[features]
+# Integration tests that create real VMs (`--test-threads=1`).
+hvf-tests = ["hvf/hvf-tests"]
+# The M21 vmapple machine profile (experimental, ADR-0008).
+experimental-vmapple = []
+# Test doubles (`memory::VecMemory`) for integration tests and crates/fuzz.
+test-util = []
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

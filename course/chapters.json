@@ -1,0 +1,1525 @@
+{
+  "$comment": "GENERATED from course/CURRICULUM.md (§2.1, §5, §8) by course/site/gen-chapters.mjs. Do not edit by hand: edit CURRICULUM.md and regenerate.",
+  "course": {
+    "title": "Build a VMM from scratch on Apple Silicon",
+    "short_title": "Build a VMM",
+    "base": "/build-your-own/vmm/",
+    "origin": "https://indicogni.com",
+    "email": "feedback@indicogni.com"
+  },
+  "parts": [
+    {
+      "id": "0",
+      "title": "What a virtual machine is, and where ours sits",
+      "slug": "start",
+      "chapters": [
+        "00",
+        "01"
+      ]
+    },
+    {
+      "id": "I",
+      "title": "The bare machine, first VM exit",
+      "slug": "bare-machine",
+      "chapters": [
+        "02",
+        "03"
+      ]
+    },
+    {
+      "id": "II",
+      "title": "Memory",
+      "slug": "memory",
+      "chapters": [
+        "04",
+        "05"
+      ]
+    },
+    {
+      "id": "III",
+      "title": "A CPU that runs: registers, exits, sysregs",
+      "slug": "cpu",
+      "chapters": [
+        "06",
+        "07",
+        "08"
+      ]
+    },
+    {
+      "id": "IV",
+      "title": "Devices: MMIO, PL011, DTB",
+      "slug": "devices",
+      "chapters": [
+        "09",
+        "10"
+      ]
+    },
+    {
+      "id": "V",
+      "title": "Interrupts and time",
+      "slug": "interrupts",
+      "chapters": [
+        "11",
+        "12"
+      ]
+    },
+    {
+      "id": "VI",
+      "title": "Booting Linux",
+      "slug": "linux",
+      "chapters": [
+        "13",
+        "14"
+      ]
+    },
+    {
+      "id": "VII",
+      "title": "Virtio",
+      "slug": "virtio",
+      "chapters": [
+        "15",
+        "16",
+        "17",
+        "18",
+        "19"
+      ]
+    },
+    {
+      "id": "VIII",
+      "title": "SMP",
+      "slug": "smp",
+      "chapters": [
+        "20"
+      ]
+    },
+    {
+      "id": "IX",
+      "title": "Firmware and FreeBSD",
+      "slug": "firmware",
+      "chapters": [
+        "21",
+        "22"
+      ]
+    },
+    {
+      "id": "X",
+      "title": "macOS guests",
+      "slug": "macos",
+      "chapters": [
+        "23",
+        "24"
+      ]
+    },
+    {
+      "id": "XI",
+      "title": "Productization",
+      "slug": "production",
+      "chapters": [
+        "25",
+        "26",
+        "27"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "id": "00",
+      "part": "0",
+      "number": "0.1",
+      "slug": "orientation",
+      "title": "Two kernels, one Mac: what a virtual machine is",
+      "status": "core",
+      "stage": "Worked",
+      "plan": "M0",
+      "minutes": 210,
+      "runs": "mac+browser",
+      "labs": [
+        "toy-vmm",
+        "syscall-stepper"
+      ],
+      "primers": [
+        "os-basics",
+        "codesign-entitlements"
+      ],
+      "prereqs": [],
+      "file": "course/chapters/0/00-orientation.md",
+      "url": "start/orientation/"
+    },
+    {
+      "id": "01",
+      "part": "0",
+      "number": "0.2",
+      "slug": "ffi",
+      "title": "Where our VMM sits: Hypervisor.framework and a hand-written FFI",
+      "status": "core",
+      "stage": "Worked",
+      "plan": "M0, M1",
+      "minutes": 240,
+      "runs": "mac+browser",
+      "labs": [
+        "trap-or-not",
+        "repr-c-layout"
+      ],
+      "primers": [
+        "codesign-entitlements",
+        "os-basics"
+      ],
+      "prereqs": [
+        "00"
+      ],
+      "file": "course/chapters/0/01-ffi.md",
+      "url": "start/ffi/"
+    },
+    {
+      "id": "02",
+      "part": "I",
+      "number": "I.1",
+      "slug": "first-exit",
+      "title": "An exception, one level up: your first VM exit",
+      "status": "core",
+      "stage": "Worked",
+      "plan": "M1",
+      "minutes": 330,
+      "runs": "mac+browser",
+      "labs": [
+        "exception-stepper",
+        "a64-encoder"
+      ],
+      "primers": [
+        "aarch64-reading",
+        "os-basics",
+        "page-granules",
+        "host-concurrency"
+      ],
+      "prereqs": [
+        "01"
+      ],
+      "file": "course/chapters/I/02-first-exit.md",
+      "url": "bare-machine/first-exit/"
+    },
+    {
+      "id": "03",
+      "part": "I",
+      "number": "I.2",
+      "slug": "test-guests",
+      "title": "A guest of your own, and what an exit costs",
+      "status": "core",
+      "stage": "Worked",
+      "plan": "M3 (+M4 trace)",
+      "minutes": 210,
+      "runs": "mac+browser",
+      "labs": [
+        "linker-map"
+      ],
+      "primers": [
+        "os-basics",
+        "bare-metal-rust",
+        "smccc",
+        "aarch64-reading",
+        "elf"
+      ],
+      "prereqs": [
+        "02"
+      ],
+      "file": "course/chapters/I/03-test-guests.md",
+      "url": "bare-machine/test-guests/"
+    },
+    {
+      "id": "04",
+      "part": "II",
+      "number": "II.1",
+      "slug": "guest-memory",
+      "title": "Guest memory: the only safe access is a copy",
+      "status": "core",
+      "stage": "Worked",
+      "plan": "M2, M3",
+      "minutes": 210,
+      "runs": "mac+browser",
+      "labs": [
+        "gpa-translator"
+      ],
+      "primers": [
+        "aarch64-reading",
+        "page-granules",
+        "memory-ordering",
+        "caches"
+      ],
+      "prereqs": [
+        "03"
+      ],
+      "file": "course/chapters/II/04-guest-memory.md",
+      "url": "memory/guest-memory/"
+    },
+    {
+      "id": "05",
+      "part": "II",
+      "number": "II.2",
+      "slug": "address-space",
+      "title": "Two stages, one map: holes in stage 2 on purpose",
+      "status": "core",
+      "stage": "Worked",
+      "plan": "M2, M3",
+      "minutes": 210,
+      "runs": "mac+browser",
+      "labs": [
+        "two-stage-walker"
+      ],
+      "primers": [
+        "page-tables",
+        "page-granules",
+        "os-basics"
+      ],
+      "prereqs": [
+        "04"
+      ],
+      "file": "course/chapters/II/05-address-space.md",
+      "url": "memory/address-space/"
+    },
+    {
+      "id": "06",
+      "part": "III",
+      "number": "III.1",
+      "slug": "vcpu-state",
+      "title": "vCPU state: registers, PSTATE and reset",
+      "status": "core",
+      "stage": "Completion",
+      "plan": "M4",
+      "minutes": 120,
+      "runs": "mac+browser",
+      "labs": [
+        "pstate-builder"
+      ],
+      "primers": [
+        "arm64-boot-protocol",
+        "page-tables"
+      ],
+      "prereqs": [
+        "05"
+      ],
+      "file": "course/chapters/III/06-vcpu-state.md",
+      "url": "cpu/vcpu-state/"
+    },
+    {
+      "id": "07",
+      "part": "III",
+      "number": "III.2",
+      "slug": "exit-loop",
+      "title": "The exit loop: decoding syndromes and emulating MMIO",
+      "status": "core",
+      "stage": "Completion",
+      "plan": "M4",
+      "minutes": 240,
+      "runs": "mac+browser",
+      "labs": [
+        "esr-decoder",
+        "mmio-trap"
+      ],
+      "primers": [
+        "reading-arm-specs",
+        "aarch64-reading"
+      ],
+      "prereqs": [
+        "06"
+      ],
+      "file": "course/chapters/III/07-exit-loop.md",
+      "url": "cpu/exit-loop/"
+    },
+    {
+      "id": "08",
+      "part": "III",
+      "number": "III.3",
+      "slug": "traps-psci",
+      "title": "System registers, injection, hypercalls and PSCI",
+      "status": "core",
+      "stage": "Completion",
+      "plan": "M5",
+      "minutes": 270,
+      "runs": "mac+browser",
+      "labs": [
+        "sysreg-smccc"
+      ],
+      "primers": [
+        "smccc",
+        "reading-arm-specs",
+        "os-basics",
+        "aarch64-reading"
+      ],
+      "prereqs": [
+        "07"
+      ],
+      "file": "course/chapters/III/08-traps-psci.md",
+      "url": "cpu/traps-psci/"
+    },
+    {
+      "id": "09",
+      "part": "IV",
+      "number": "IV.1",
+      "slug": "mmio-pl011",
+      "title": "A device is a state machine: the bus, PL011 and PL031",
+      "status": "core",
+      "stage": "Completion",
+      "plan": "M6",
+      "minutes": 240,
+      "runs": "mac+browser",
+      "labs": [
+        "pl011-poke",
+        "lock-order",
+        "ansi-filter"
+      ],
+      "primers": [
+        "primecell-ids",
+        "host-concurrency",
+        "unix-signals",
+        "tty-termios",
+        "os-basics",
+        "reading-arm-specs"
+      ],
+      "prereqs": [
+        "08"
+      ],
+      "file": "course/chapters/IV/09-mmio-pl011.md",
+      "url": "devices/mmio-pl011/"
+    },
+    {
+      "id": "10",
+      "part": "IV",
+      "number": "IV.2",
+      "slug": "device-tree",
+      "title": "The Device Tree: the VMM's promise to the guest",
+      "status": "core",
+      "stage": "Completion",
+      "plan": "M7",
+      "minutes": 270,
+      "runs": "mac+browser",
+      "labs": [
+        "dtb-explorer"
+      ],
+      "primers": [
+        "aarch64-reading",
+        "arm64-boot-protocol",
+        "reading-arm-specs",
+        "linux-boot-sequence"
+      ],
+      "prereqs": [
+        "09"
+      ],
+      "file": "course/chapters/IV/10-device-tree.md",
+      "url": "devices/device-tree/"
+    },
+    {
+      "id": "11",
+      "part": "V",
+      "number": "V.1",
+      "slug": "timer-irq",
+      "title": "Getting the CPU back: the timer and a bare interrupt",
+      "status": "core",
+      "stage": "Completion",
+      "plan": "M8 (Part A, `--irqchip none`)",
+      "minutes": 270,
+      "runs": "mac+browser",
+      "labs": [
+        "timer-timeline",
+        "irq-lifecycle"
+      ],
+      "primers": [
+        "os-basics",
+        "host-concurrency"
+      ],
+      "prereqs": [
+        "10"
+      ],
+      "file": "course/chapters/V/11-timer-irq.md",
+      "url": "interrupts/timer-irq/"
+    },
+    {
+      "id": "12",
+      "part": "V",
+      "number": "V.2",
+      "slug": "gicv3",
+      "title": "Why an interrupt controller, and why in the kernel",
+      "status": "core",
+      "stage": "Completion",
+      "plan": "M8",
+      "minutes": 270,
+      "runs": "mac+browser",
+      "labs": [
+        "irq-lifecycle"
+      ],
+      "primers": [
+        "reading-arm-specs"
+      ],
+      "prereqs": [
+        "11"
+      ],
+      "file": "course/chapters/V/12-gicv3.md",
+      "url": "interrupts/gicv3/"
+    },
+    {
+      "id": "13",
+      "part": "VI",
+      "number": "VI.1",
+      "slug": "loaders",
+      "title": "Loading kernels: arm64 Image, initramfs and ELF",
+      "status": "core",
+      "stage": "Spec",
+      "plan": "M3 (ELF), M9",
+      "minutes": 270,
+      "runs": "mac+browser",
+      "labs": [
+        "image-inspector",
+        "elf-inspector",
+        "cpio-inspector",
+        "cache-views"
+      ],
+      "primers": [
+        "arm64-boot-protocol",
+        "elf",
+        "cpio-initramfs",
+        "efi-zboot",
+        "caches",
+        "bare-metal-rust",
+        "uefi"
+      ],
+      "prereqs": [
+        "12"
+      ],
+      "file": "course/chapters/VI/13-loaders.md",
+      "url": "linux/loaders/"
+    },
+    {
+      "id": "14",
+      "part": "VI",
+      "number": "VI.2",
+      "slug": "linux-boot",
+      "title": "Booting Linux to a shell",
+      "status": "core",
+      "stage": "Spec",
+      "plan": "M10 (Gate G1)",
+      "minutes": 300,
+      "runs": "mac+browser",
+      "labs": [
+        "boot-log-annotator",
+        "boot-timeline"
+      ],
+      "primers": [
+        "linux-boot-sequence",
+        "primecell-ids",
+        "unix-signals",
+        "tty-termios",
+        "cpio-initramfs"
+      ],
+      "prereqs": [
+        "13"
+      ],
+      "file": "course/chapters/VI/14-linux-boot.md",
+      "url": "linux/linux-boot/"
+    },
+    {
+      "id": "15",
+      "part": "VII",
+      "number": "VII.1",
+      "slug": "virtio-mmio",
+      "title": "Rings and a doorbell: the virtio-mmio transport",
+      "status": "core",
+      "stage": "Spec",
+      "plan": "M11",
+      "minutes": 270,
+      "runs": "mac+browser",
+      "labs": [
+        "virtio-status",
+        "virtqueue-visualizer"
+      ],
+      "primers": [
+        "reading-arm-specs"
+      ],
+      "prereqs": [
+        "14"
+      ],
+      "file": "course/chapters/VII/15-virtio-mmio.md",
+      "url": "virtio/virtio-mmio/"
+    },
+    {
+      "id": "16",
+      "part": "VII",
+      "number": "VII.2",
+      "slug": "virtqueues",
+      "title": "Split virtqueues: shared memory with an adversary",
+      "status": "core",
+      "stage": "Spec",
+      "plan": "M11",
+      "minutes": 390,
+      "runs": "mac+browser",
+      "labs": [
+        "virtqueue-visualizer",
+        "litmus"
+      ],
+      "primers": [
+        "memory-ordering"
+      ],
+      "prereqs": [
+        "15"
+      ],
+      "file": "course/chapters/VII/16-virtqueues.md",
+      "url": "virtio/virtqueues/"
+    },
+    {
+      "id": "17",
+      "part": "VII",
+      "number": "VII.3",
+      "slug": "virtio-rng-console",
+      "title": "virtio-rng (worked) and virtio-console (faded)",
+      "status": "core",
+      "stage": "Spec",
+      "plan": "M12, M13",
+      "minutes": 270,
+      "runs": "mac",
+      "labs": [],
+      "primers": [
+        "memory-ordering",
+        "host-concurrency"
+      ],
+      "prereqs": [
+        "16"
+      ],
+      "file": "course/chapters/VII/17-virtio-rng-console.md",
+      "url": "virtio/virtio-rng-console/"
+    },
+    {
+      "id": "18",
+      "part": "VII",
+      "number": "VII.4",
+      "slug": "virtio-blk",
+      "title": "virtio-blk: a root filesystem that persists",
+      "status": "core",
+      "stage": "Spec",
+      "plan": "M14, M15",
+      "minutes": 330,
+      "runs": "mac+browser",
+      "labs": [
+        "blk-request",
+        "durability-ladder"
+      ],
+      "primers": [
+        "block-storage",
+        "linux-boot-sequence"
+      ],
+      "prereqs": [
+        "17"
+      ],
+      "file": "course/chapters/VII/18-virtio-blk.md",
+      "url": "virtio/virtio-blk/"
+    },
+    {
+      "id": "19",
+      "part": "VII",
+      "number": "VII.5",
+      "slug": "virtio-net",
+      "title": "virtio-net without a networking entitlement",
+      "status": "core",
+      "stage": "Spec",
+      "plan": "M24",
+      "minutes": 360,
+      "runs": "mac+browser",
+      "labs": [
+        "frame-dissector"
+      ],
+      "primers": [
+        "unix-sockets",
+        "codesign-entitlements"
+      ],
+      "prereqs": [
+        "18"
+      ],
+      "file": "course/chapters/VII/19-virtio-net.md",
+      "url": "virtio/virtio-net/"
+    },
+    {
+      "id": "20",
+      "part": "VIII",
+      "number": "VIII.1",
+      "slug": "smp",
+      "title": "SMP: many vCPUs, many threads",
+      "status": "core",
+      "stage": "Spec",
+      "plan": "M16",
+      "minutes": 360,
+      "runs": "mac+browser",
+      "labs": [
+        "smp-boot-timeline"
+      ],
+      "primers": [
+        "memory-ordering",
+        "host-concurrency",
+        "smccc"
+      ],
+      "prereqs": [
+        "18",
+        "12"
+      ],
+      "file": "course/chapters/VIII/20-smp.md",
+      "url": "smp/smp/"
+    },
+    {
+      "id": "21",
+      "part": "IX",
+      "number": "IX.1",
+      "slug": "firmware",
+      "title": "Firmware: a stricter guest (U-Boot, flash, ISV=0)",
+      "status": "core",
+      "stage": "Open",
+      "plan": "M17, M18",
+      "minutes": 480,
+      "runs": "mac+browser",
+      "labs": [
+        "boot-chain"
+      ],
+      "primers": [
+        "uefi",
+        "u-boot",
+        "page-tables",
+        "aarch64-reading",
+        "efi-zboot"
+      ],
+      "prereqs": [
+        "18",
+        "20"
+      ],
+      "file": "course/chapters/IX/21-firmware.md",
+      "url": "firmware/firmware/"
+    },
+    {
+      "id": "22",
+      "part": "IX",
+      "number": "IX.2",
+      "slug": "freebsd",
+      "title": "FreeBSD through U-Boot EFI (SHOULD)",
+      "status": "should",
+      "stage": "Open",
+      "plan": "M19",
+      "minutes": 360,
+      "runs": "mac",
+      "labs": [],
+      "primers": [
+        "uefi",
+        "u-boot",
+        "block-storage",
+        "primecell-ids",
+        "linux-boot-sequence"
+      ],
+      "prereqs": [
+        "21",
+        "20"
+      ],
+      "file": "course/chapters/IX/22-freebsd.md",
+      "url": "firmware/freebsd/"
+    },
+    {
+      "id": "23",
+      "part": "X",
+      "number": "X.1",
+      "slug": "vz-macos",
+      "title": "macOS guests, the high road: Virtualization.framework",
+      "status": "core",
+      "stage": "Open",
+      "plan": "M20",
+      "minutes": 180,
+      "runs": "mac",
+      "labs": [],
+      "primers": [
+        "codesign-entitlements"
+      ],
+      "prereqs": [
+        "14"
+      ],
+      "file": "course/chapters/X/23-vz-macos.md",
+      "url": "macos/vz-macos/"
+    },
+    {
+      "id": "24",
+      "part": "X",
+      "number": "X.2",
+      "slug": "vmapple",
+      "title": "macOS guests, the low road: vmapple and AVPBooter (capstone, STRETCH)",
+      "status": "stretch",
+      "stage": "Open",
+      "plan": "M21",
+      "minutes": 600,
+      "runs": "mac+browser",
+      "labs": [
+        "vmapple-map"
+      ],
+      "primers": [],
+      "prereqs": [
+        "21",
+        "23"
+      ],
+      "file": "course/chapters/X/24-vmapple.md",
+      "url": "macos/vmapple/"
+    },
+    {
+      "id": "25",
+      "part": "XI",
+      "number": "XI.1",
+      "slug": "security",
+      "title": "Hardening: threat model, fuzzing and sandboxing",
+      "status": "core",
+      "stage": "Open",
+      "plan": "M22",
+      "minutes": 360,
+      "runs": "mac+browser",
+      "labs": [
+        "hostile-guest"
+      ],
+      "primers": [
+        "macos-sandbox",
+        "tty-termios",
+        "codesign-entitlements"
+      ],
+      "prereqs": [
+        "16"
+      ],
+      "file": "course/chapters/XI/25-security.md",
+      "url": "production/security/"
+    },
+    {
+      "id": "26",
+      "part": "XI",
+      "number": "XI.2",
+      "slug": "snapshots",
+      "title": "Snapshots: save, restore, resume (post-v1)",
+      "status": "post-v1",
+      "stage": "Open",
+      "plan": "M25",
+      "minutes": 360,
+      "runs": "mac+browser",
+      "labs": [
+        "snapshot-diff"
+      ],
+      "primers": [
+        "unix-signals",
+        "host-concurrency",
+        "page-granules",
+        "macos-sandbox"
+      ],
+      "prereqs": [
+        "20",
+        "12"
+      ],
+      "file": "course/chapters/XI/26-snapshots.md",
+      "url": "production/snapshots/"
+    },
+    {
+      "id": "27",
+      "part": "XI",
+      "number": "XI.3",
+      "slug": "debug-perf",
+      "title": "Debugging and performance: gdbstub, exit profiling (post-v1)",
+      "status": "post-v1",
+      "stage": "Open",
+      "plan": "M17, M26",
+      "minutes": 420,
+      "runs": "mac+browser",
+      "labs": [
+        "rsp-decoder"
+      ],
+      "primers": [
+        "caches",
+        "unix-sockets",
+        "page-tables",
+        "elf"
+      ],
+      "prereqs": [
+        "08",
+        "18",
+        "21"
+      ],
+      "file": "course/chapters/XI/27-debug-perf.md",
+      "url": "production/debug-perf/"
+    }
+  ],
+  "primers": [
+    {
+      "slug": "os-basics",
+      "title": "OS basics: processes, memory, syscalls, interrupts",
+      "covers": "process and exit status; privilege (user versus kernel); virtual memory and page faults (a page table as a lookup from virtual to physical page, with a worked two-level example, not only one picture); the syscall **at the hardware level**: the mode switch, the PC jumping to a kernel entry address taken from a table of handler addresses (the **exception vector table**), and the return address saved in a *register*, not on a stack, on Arm (a surprise for x86-trained readers); interrupts; what firmware and a kernel do at boot (\"firmware is the program the CPU runs first; it sets up the hardware, then loads and starts the kernel, and stays behind to answer a few requests such as power-off\").",
+      "first_required_by": "00",
+      "also_used_by": [
+        "01",
+        "02",
+        "05",
+        "08",
+        "09",
+        "11"
+      ],
+      "minutes": 30,
+      "labs": [
+        "syscall-stepper"
+      ],
+      "file": "course/primers/os-basics.md",
+      "url": "primers/os-basics/"
+    },
+    {
+      "slug": "codesign-entitlements",
+      "title": "Code signing and entitlements",
+      "covers": "**Need to know** (10 minutes): \"macOS will not let an unsigned program use the virtualization hardware; we sign ours ad hoc with one permission, `com.apple.security.hypervisor`, and the kernel checks it when we call\", plus how to read `codesign -d --entitlements :-`. **Going deeper** (optional until ch19 and ch25): ad-hoc signing, entitlements, why `com.apple.security.hypervisor` is checked at run time (AMFI and the kernel, each claim `[V]` or cited), the hardened runtime and why `DYLD_*` injection matters, restricted entitlements and provisioning profiles (`com.apple.vm.networking`), and a plain statement that macvmm needs no SIP change and no sudo, with the reason",
+      "first_required_by": "01",
+      "also_used_by": [
+        "00",
+        "19",
+        "23",
+        "25"
+      ],
+      "minutes": 20,
+      "labs": [],
+      "file": "course/primers/codesign-entitlements.md",
+      "url": "primers/codesign-entitlements/"
+    },
+    {
+      "slug": "aarch64-reading",
+      "title": "Reading AArch64: registers, instructions, byte order",
+      "covers": "(v2's Appendix B, now required) general registers, `xN`/`wN`, register 31 as `xzr` or `sp`, `pc`, `lr`; the AAPCS64 argument and result registers (`x0` to `x7`, `x0`); system-register naming (`MRS`/`MSR`, `_ELn`); fixed 32-bit instruction words and their fields; the dozen instructions in our traces; reading a disassembly; byte order",
+      "first_required_by": "02",
+      "also_used_by": [
+        "03",
+        "07",
+        "08",
+        "21"
+      ],
+      "minutes": 30,
+      "labs": [],
+      "file": "course/primers/aarch64-reading.md",
+      "url": "primers/aarch64-reading/"
+    },
+    {
+      "slug": "smccc",
+      "title": "The SMC Calling Convention",
+      "covers": "SMC Calling Convention: function-ID fields, conduits, registers as the API (builds on AAPCS64 from `aarch64-reading`)",
+      "first_required_by": "03",
+      "also_used_by": [
+        "08",
+        "20"
+      ],
+      "minutes": 20,
+      "labs": [],
+      "file": "course/primers/smccc.md",
+      "url": "primers/smccc/"
+    },
+    {
+      "slug": "bare-metal-rust",
+      "title": "Bare-metal Rust: no_std, linker scripts, flat binaries",
+      "covers": "(new) what `no_std` and `no_main` remove; target triples and `rustup target add`; the sections a linker produces (`.text`, `.rodata`, `.data`, `.bss`); a linker script that puts `_start` at `0x4008_0000`; load versus run address; BSS and stack; ELF to flat binary with `objcopy`",
+      "first_required_by": "03",
+      "also_used_by": [
+        "13"
+      ],
+      "minutes": 25,
+      "labs": [
+        "linker-map"
+      ],
+      "file": "course/primers/bare-metal-rust.md",
+      "url": "primers/bare-metal-rust/"
+    },
+    {
+      "slug": "page-granules",
+      "title": "Page granules: 4 KiB and 16 KiB",
+      "covers": "4 KiB and 16 KiB granules; stage 1 belongs to the guest, stage 2 to HVF, and they are independent",
+      "first_required_by": "04",
+      "also_used_by": [
+        "02",
+        "05",
+        "26"
+      ],
+      "minutes": 15,
+      "labs": [],
+      "file": "course/primers/page-granules.md",
+      "url": "primers/page-granules/"
+    },
+    {
+      "slug": "page-tables",
+      "title": "Page tables: stage-1 translation",
+      "covers": "stage-1 translation: VA split, `TTBR0/1`, `TCR`, levels, descriptors, MMU on and off; **memory attributes** (Normal versus Device memory, `MAIR_EL1`, cacheability) in one section",
+      "first_required_by": "05",
+      "also_used_by": [
+        "06",
+        "21",
+        "27"
+      ],
+      "minutes": 30,
+      "labs": [],
+      "file": "course/primers/page-tables.md",
+      "url": "primers/page-tables/"
+    },
+    {
+      "slug": "caches",
+      "title": "Caches and coherency",
+      "covers": "(new) cache lines, data versus instruction caches, Point of Coherency and Point of Unification, clean and invalidate, `CTR_EL0.DIC/IDC`, cacheable versus Device memory, what `booting.rst` means by \"cleaned to PoC\"; ends with the two evidence experiments (MMU-off `memtest`, the `BRK` I-cache test) and says which result was observed",
+      "first_required_by": "13",
+      "also_used_by": [
+        "04",
+        "27"
+      ],
+      "minutes": 20,
+      "labs": [
+        "cache-views"
+      ],
+      "file": "course/primers/caches.md",
+      "url": "primers/caches/"
+    },
+    {
+      "slug": "arm64-boot-protocol",
+      "title": "The arm64 boot protocol",
+      "covers": "`Documentation/arch/arm64/booting.rst`: registers, MMU and cache state, placement; marks which part ch06 (MMU and caches), ch10 (`x0`) and ch13 (everything) need",
+      "first_required_by": "06",
+      "also_used_by": [
+        "10",
+        "13"
+      ],
+      "minutes": 25,
+      "labs": [],
+      "file": "course/primers/arm64-boot-protocol.md",
+      "url": "primers/arm64-boot-protocol/"
+    },
+    {
+      "slug": "reading-arm-specs",
+      "title": "Reading the ARM ARM and other primary specs",
+      "covers": "(new) how the ARM ARM (DDI 0487) is organised, a register page and its field tables, the ESR ISS tables, pseudocode conventions, and the vocabulary RAZ/WI, RES0/RES1, UNDEFINED, UNKNOWN, IMPLEMENTATION DEFINED; a short section on virtio's MUST/SHOULD and the DT spec's chapter 5",
+      "first_required_by": "07",
+      "also_used_by": [
+        "08",
+        "09",
+        "10",
+        "12",
+        "15"
+      ],
+      "minutes": 25,
+      "labs": [],
+      "file": "course/primers/reading-arm-specs.md",
+      "url": "primers/reading-arm-specs/"
+    },
+    {
+      "slug": "host-concurrency",
+      "title": "Host concurrency: threads, locks, atomics",
+      "covers": "(new) threads and per-thread state, timer-driven preemption and file descriptors; threads in Rust, `Arc`, `Mutex`, `Condvar` (spurious wake-ups and the predicate loop), `thread::scope`, channels, atomics as flags with `SeqCst`, deadlock and a fixed lock order; what the borrow checker proves about data races and what it leaves to you",
+      "first_required_by": "09",
+      "also_used_by": [
+        "02",
+        "11",
+        "17",
+        "20",
+        "26"
+      ],
+      "minutes": 30,
+      "labs": [
+        "lock-order"
+      ],
+      "file": "course/primers/host-concurrency.md",
+      "url": "primers/host-concurrency/"
+    },
+    {
+      "slug": "unix-signals",
+      "title": "Unix signals and exit codes",
+      "covers": "(new) what a signal is, default actions, exit status `128 + n`, async-signal safety, the self-pipe trick; SIGINT, SIGTERM and SIGUSR1 as macvmm uses them",
+      "first_required_by": "09",
+      "also_used_by": [
+        "14",
+        "26"
+      ],
+      "minutes": 15,
+      "labs": [],
+      "file": "course/primers/unix-signals.md",
+      "url": "primers/unix-signals/"
+    },
+    {
+      "slug": "tty-termios",
+      "title": "TTYs, raw mode and escape sequences",
+      "covers": "(new) TTY, pty and `script`; canonical versus raw mode, echo, how the line discipline turns Ctrl-C into SIGINT, `stty -g`; escape sequences (CSI, OSC, DCS) and why bytes from a guest can change, query or spoof the host terminal",
+      "first_required_by": "09",
+      "also_used_by": [
+        "14",
+        "25"
+      ],
+      "minutes": 20,
+      "labs": [
+        "ansi-filter"
+      ],
+      "file": "course/primers/tty-termios.md",
+      "url": "primers/tty-termios/"
+    },
+    {
+      "slug": "primecell-ids",
+      "title": "PrimeCell peripheral IDs",
+      "covers": "AMBA PrimeCell and Peripheral ID registers at `0xFE0`, how Linux matches on them",
+      "first_required_by": "09",
+      "also_used_by": [
+        "14",
+        "22"
+      ],
+      "minutes": 15,
+      "labs": [],
+      "file": "course/primers/primecell-ids.md",
+      "url": "primers/primecell-ids/"
+    },
+    {
+      "slug": "elf",
+      "title": "ELF64 in 20 minutes",
+      "covers": "ELF64 headers and program headers, `filesz` versus `memsz`",
+      "first_required_by": "13",
+      "also_used_by": [
+        "03",
+        "27"
+      ],
+      "minutes": 20,
+      "labs": [
+        "elf-inspector"
+      ],
+      "file": "course/primers/elf.md",
+      "url": "primers/elf/"
+    },
+    {
+      "slug": "cpio-initramfs",
+      "title": "cpio and the initramfs",
+      "covers": "newc cpio, how the kernel unpacks an initramfs",
+      "first_required_by": "13",
+      "also_used_by": [
+        "14"
+      ],
+      "minutes": 15,
+      "labs": [
+        "cpio-inspector"
+      ],
+      "file": "course/primers/cpio-initramfs.md",
+      "url": "primers/cpio-initramfs/"
+    },
+    {
+      "slug": "efi-zboot",
+      "title": "EFI zboot kernels",
+      "covers": "why Alpine's `vmlinuz-virt` is an EFI zboot wrapper, and how `cargo xtask unzboot` gets the Image; gzip (RFC 1952) as a container; **one page on UEFI applications and the PE/COFF header**, pointing at `uefi` for the rest",
+      "first_required_by": "13",
+      "also_used_by": [
+        "21"
+      ],
+      "minutes": 20,
+      "labs": [],
+      "file": "course/primers/efi-zboot.md",
+      "url": "primers/efi-zboot/"
+    },
+    {
+      "slug": "linux-boot-sequence",
+      "title": "What Linux does from entry to /init",
+      "covers": "(new) from the first instruction at the Image entry to `/init`: early console, MMU on, DT unflattening, driver binding by `compatible`, clocksource and delay calibration, initcalls, initramfs unpacking, `/init` and BusyBox, `dmesg`; kernel modules and Alpine's `modloop`; each stage mapped to the boot-log lines learners will see",
+      "first_required_by": "14",
+      "also_used_by": [
+        "10",
+        "18",
+        "22"
+      ],
+      "minutes": 30,
+      "labs": [],
+      "file": "course/primers/linux-boot-sequence.md",
+      "url": "primers/linux-boot-sequence/"
+    },
+    {
+      "slug": "memory-ordering",
+      "title": "Memory ordering and barriers",
+      "covers": "weak memory on arm64, acquire and release, fences, paired barriers, the lost-wakeup race, the doorbell as a synchronisation point; starts from the atomics of `host-concurrency`",
+      "first_required_by": "16",
+      "also_used_by": [
+        "04",
+        "17",
+        "20"
+      ],
+      "minutes": 30,
+      "labs": [
+        "litmus"
+      ],
+      "file": "course/primers/memory-ordering.md",
+      "url": "primers/memory-ordering/"
+    },
+    {
+      "slug": "block-storage",
+      "title": "Block storage: disk images, ext4, durability",
+      "covers": "(new) sectors and raw images (versus qcow2), a filesystem on a whole disk, ext4 in one picture (superblock, journal), `mkfs` and `e2fsck`, mounting and `root=`, the page cache, `fsync` versus `F_FULLFSYNC` on macOS, `pread`/`pwrite`, advisory file locks (`flock`, `fcntl`), APFS clones (`cp -c`)",
+      "first_required_by": "18",
+      "also_used_by": [
+        "22"
+      ],
+      "minutes": 30,
+      "labs": [
+        "durability-ladder"
+      ],
+      "file": "course/primers/block-storage.md",
+      "url": "primers/block-storage/"
+    },
+    {
+      "slug": "unix-sockets",
+      "title": "Unix domain sockets",
+      "covers": "(new) Unix domain sockets, stream versus datagram (message boundaries), the filesystem path and its permissions (0600, a 0700 directory), stale socket files and why macvmm replaces only a socket it owns, why no entitlement is needed",
+      "first_required_by": "19",
+      "also_used_by": [
+        "27"
+      ],
+      "minutes": 15,
+      "labs": [],
+      "file": "course/primers/unix-sockets.md",
+      "url": "primers/unix-sockets/"
+    },
+    {
+      "slug": "uefi",
+      "title": "UEFI in 25 minutes",
+      "covers": "(new) UEFI as an interface, not a program: boot services versus runtime services, EFI applications as PE/COFF images, the EFI system partition, configuration tables (how a DTB or ACPI reaches the OS), where U-Boot's `bootefi` and EDK2 fit",
+      "first_required_by": "21",
+      "also_used_by": [
+        "13",
+        "22"
+      ],
+      "minutes": 25,
+      "labs": [],
+      "file": "course/primers/uefi.md",
+      "url": "primers/uefi/"
+    },
+    {
+      "slug": "u-boot",
+      "title": "U-Boot",
+      "covers": "what U-Boot does, its prompt, `bootefi`, `virtio scan`, its environment; assumes `uefi`",
+      "first_required_by": "21",
+      "also_used_by": [
+        "22"
+      ],
+      "minutes": 20,
+      "labs": [],
+      "file": "course/primers/u-boot.md",
+      "url": "primers/u-boot/"
+    },
+    {
+      "slug": "macos-sandbox",
+      "title": "The macOS sandbox and resource limits",
+      "covers": "(new) Seatbelt and SBPL in brief, `sandbox-exec` versus `sandbox_init`, `(deny default)` and the operation classes macvmm denies (file, network, `process-exec`, `mach-lookup`, `iokit-open`); resource limits (`RLIMIT_CORE`, `RLIMIT_NOFILE`) and core dumps; `umask`, `O_CLOEXEC`, and why the run path never uses `fork`/`exec`; which parts are undocumented (`[H]`) and what was observed",
+      "first_required_by": "25",
+      "also_used_by": [
+        "26"
+      ],
+      "minutes": 25,
+      "labs": [],
+      "file": "course/primers/macos-sandbox.md",
+      "url": "primers/macos-sandbox/"
+    }
+  ],
+  "labs": [
+    {
+      "name": "esr-decoder",
+      "priority": "v1-core",
+      "chapters": [
+        "07"
+      ],
+      "primers": []
+    },
+    {
+      "name": "two-stage-walker",
+      "priority": "v1-core",
+      "chapters": [
+        "05"
+      ],
+      "primers": []
+    },
+    {
+      "name": "mmio-trap",
+      "priority": "v1-core",
+      "chapters": [
+        "07"
+      ],
+      "primers": []
+    },
+    {
+      "name": "virtqueue-visualizer",
+      "priority": "v1-core",
+      "chapters": [
+        "15",
+        "16"
+      ],
+      "primers": []
+    },
+    {
+      "name": "dtb-explorer",
+      "priority": "v1-core",
+      "chapters": [
+        "10"
+      ],
+      "primers": []
+    },
+    {
+      "name": "boot-timeline",
+      "priority": "v1-core",
+      "chapters": [
+        "14"
+      ],
+      "primers": []
+    },
+    {
+      "name": "toy-vmm",
+      "priority": "v1-core",
+      "chapters": [
+        "00"
+      ],
+      "primers": []
+    },
+    {
+      "name": "trap-or-not",
+      "priority": "v1-core",
+      "chapters": [
+        "01"
+      ],
+      "primers": []
+    },
+    {
+      "name": "exception-stepper",
+      "priority": "v1-core",
+      "chapters": [
+        "02"
+      ],
+      "primers": []
+    },
+    {
+      "name": "pstate-builder",
+      "priority": "v1-core",
+      "chapters": [
+        "06"
+      ],
+      "primers": []
+    },
+    {
+      "name": "litmus",
+      "priority": "v1-core",
+      "chapters": [
+        "16"
+      ],
+      "primers": [
+        "memory-ordering"
+      ]
+    },
+    {
+      "name": "repr-c-layout",
+      "priority": "v1-optional",
+      "chapters": [
+        "01"
+      ],
+      "primers": []
+    },
+    {
+      "name": "a64-encoder",
+      "priority": "v1-optional",
+      "chapters": [
+        "02"
+      ],
+      "primers": []
+    },
+    {
+      "name": "gpa-translator",
+      "priority": "v1-optional",
+      "chapters": [
+        "04"
+      ],
+      "primers": []
+    },
+    {
+      "name": "sysreg-smccc",
+      "priority": "v1-optional",
+      "chapters": [
+        "08"
+      ],
+      "primers": []
+    },
+    {
+      "name": "pl011-poke",
+      "priority": "v1-optional",
+      "chapters": [
+        "09"
+      ],
+      "primers": []
+    },
+    {
+      "name": "timer-timeline",
+      "priority": "v1-optional",
+      "chapters": [
+        "11"
+      ],
+      "primers": []
+    },
+    {
+      "name": "irq-lifecycle",
+      "priority": "v1-optional",
+      "chapters": [
+        "11",
+        "12"
+      ],
+      "primers": []
+    },
+    {
+      "name": "image-inspector",
+      "priority": "v1-optional",
+      "chapters": [
+        "13"
+      ],
+      "primers": []
+    },
+    {
+      "name": "boot-log-annotator",
+      "priority": "v1-optional",
+      "chapters": [
+        "14"
+      ],
+      "primers": []
+    },
+    {
+      "name": "virtio-status",
+      "priority": "v1-optional",
+      "chapters": [
+        "15"
+      ],
+      "primers": []
+    },
+    {
+      "name": "blk-request",
+      "priority": "v1-optional",
+      "chapters": [
+        "18"
+      ],
+      "primers": []
+    },
+    {
+      "name": "frame-dissector",
+      "priority": "v1-optional",
+      "chapters": [
+        "19"
+      ],
+      "primers": []
+    },
+    {
+      "name": "smp-boot-timeline",
+      "priority": "v1-optional",
+      "chapters": [
+        "20"
+      ],
+      "primers": []
+    },
+    {
+      "name": "boot-chain",
+      "priority": "v1-optional",
+      "chapters": [
+        "21"
+      ],
+      "primers": []
+    },
+    {
+      "name": "vmapple-map",
+      "priority": "v1-optional",
+      "chapters": [
+        "24"
+      ],
+      "primers": []
+    },
+    {
+      "name": "hostile-guest",
+      "priority": "v1-optional",
+      "chapters": [
+        "25"
+      ],
+      "primers": []
+    },
+    {
+      "name": "syscall-stepper",
+      "priority": "v1-optional",
+      "chapters": [
+        "00"
+      ],
+      "primers": [
+        "os-basics"
+      ]
+    },
+    {
+      "name": "linker-map",
+      "priority": "v1-optional",
+      "chapters": [
+        "03"
+      ],
+      "primers": [
+        "bare-metal-rust"
+      ]
+    },
+    {
+      "name": "cache-views",
+      "priority": "v1-optional",
+      "chapters": [
+        "13"
+      ],
+      "primers": [
+        "caches"
+      ]
+    },
+    {
+      "name": "lock-order",
+      "priority": "v1-optional",
+      "chapters": [
+        "09"
+      ],
+      "primers": [
+        "host-concurrency"
+      ]
+    },
+    {
+      "name": "ansi-filter",
+      "priority": "v1-optional",
+      "chapters": [
+        "09"
+      ],
+      "primers": [
+        "tty-termios"
+      ]
+    },
+    {
+      "name": "elf-inspector",
+      "priority": "v1-optional",
+      "chapters": [
+        "13"
+      ],
+      "primers": [
+        "elf"
+      ]
+    },
+    {
+      "name": "cpio-inspector",
+      "priority": "v1-optional",
+      "chapters": [
+        "13"
+      ],
+      "primers": [
+        "cpio-initramfs"
+      ]
+    },
+    {
+      "name": "durability-ladder",
+      "priority": "v1-optional",
+      "chapters": [
+        "18"
+      ],
+      "primers": [
+        "block-storage"
+      ]
+    },
+    {
+      "name": "snapshot-diff",
+      "priority": "post-v1",
+      "chapters": [
+        "26"
+      ],
+      "primers": []
+    },
+    {
+      "name": "rsp-decoder",
+      "priority": "post-v1",
+      "chapters": [
+        "27"
+      ],
+      "primers": []
+    }
+  ]
+}

@@ -1,0 +1,981 @@
+{
+ "schema": "macvmm esr vectors v1",
+ "about": "ESR_EL2 value -> expected Exit::from_hv decode (ARM ARM DDI 0487 D17.2.40). 'reason' is the hv_exit_reason_t; 'observed' names where the syndrome was seen on real hardware. Generated once by an independent encoder (fields -> ESR) and maintained by hand; crates/vmm/tests/esr_vectors.rs checks every vector, and `cargo xtask export-vectors` copies this file to course/site/labs/vectors/esr.json.",
+ "vectors": [
+  {
+   "name": "hvc #1",
+   "reason": "exception",
+   "esr": "0x5a000001",
+   "exit": "Hvc",
+   "fields": {
+    "imm": 1
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "hvc #0x20",
+   "reason": "exception",
+   "esr": "0x5a000020",
+   "exit": "Hvc",
+   "fields": {
+    "imm": 32
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "smc #3",
+   "reason": "exception",
+   "esr": "0x5e000003",
+   "exit": "Smc",
+   "fields": {
+    "imm": 3
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "mrs x4, pmcr_el0 (trapped)",
+   "reason": "exception",
+   "esr": "0x6230e499",
+   "exit": "SysReg",
+   "fields": {
+    "op0": 3,
+    "op1": 3,
+    "crn": 9,
+    "crm": 12,
+    "op2": 0,
+    "rt": 4,
+    "read": true
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "wfi",
+   "reason": "exception",
+   "esr": "0x7e00000",
+   "exit": "Wfx",
+   "fields": {
+    "ti": 0
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "str w1, [x0] to the PL011 hole",
+   "reason": "exception",
+   "esr": "0x93810046",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 2,
+    "sse": false,
+    "srt": 1,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "ldr w3, [x0, #0x18] (PL011 FR)",
+   "reason": "exception",
+   "esr": "0x93830006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 2,
+    "sse": false,
+    "srt": 3,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "stp to MMIO: ISV=0",
+   "reason": "exception",
+   "esr": "0x92000046",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": false,
+    "sas": 0,
+    "sse": false,
+    "srt": 0,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "str x0 to a page mapped read-only from the start (translation fault L3, spike finding 11)",
+   "reason": "exception",
+   "esr": "0x93c08047",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 3,
+    "sse": false,
+    "srt": 0,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 7
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "str x0 permission fault level 3",
+   "reason": "exception",
+   "esr": "0x93c0804f",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 3,
+    "sse": false,
+    "srt": 0,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 15
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "str x1 to the PL011",
+   "reason": "exception",
+   "esr": "0x93c18046",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 3,
+    "sse": false,
+    "srt": 1,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "instruction fetch from an unmapped IPA (0x200, self-fault)",
+   "reason": "exception",
+   "esr": "0x82000006",
+   "exit": "InstructionAbort",
+   "fields": {
+    "ifsc": 6,
+    "s1ptw": false
+   },
+   "observed": "M4 self_fault e2e, spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "ESR_EL1 of self-fault: alignment fault at EL1 (EC 0x25 never reaches EL2)",
+   "reason": "exception",
+   "esr": "0x96000021",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 37,
+    "esr": "0x96000021"
+   },
+   "observed": "M4 self_fault e2e (guest ESR_EL1)"
+  },
+  {
+   "name": "guest ESR_EL2 at vEL2: unknown reason",
+   "reason": "exception",
+   "esr": "0x2000000",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 0,
+    "esr": "0x2000000"
+   },
+   "observed": "spikes/hvf-hello/RESULTS.md"
+  },
+  {
+   "name": "svc #0x4d (EC 0x15, taken at EL1)",
+   "reason": "exception",
+   "esr": "0x5600004d",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 21,
+    "esr": "0x5600004d"
+   },
+   "observed": "M4 regcheck e2e (guest ESR_EL1)"
+  },
+  {
+   "name": "store, 1 bytes, SRT=2",
+   "reason": "exception",
+   "esr": "0x93020046",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 0,
+    "sse": false,
+    "srt": 2,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "store, 2 bytes, SRT=5",
+   "reason": "exception",
+   "esr": "0x93450046",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 1,
+    "sse": false,
+    "srt": 5,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "store, 4 bytes, SRT=30",
+   "reason": "exception",
+   "esr": "0x939e0046",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 2,
+    "sse": false,
+    "srt": 30,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "store, 8 bytes, SRT=31",
+   "reason": "exception",
+   "esr": "0x93df8046",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 3,
+    "sse": false,
+    "srt": 31,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "strb wzr (SRT=31 is XZR)",
+   "reason": "exception",
+   "esr": "0x931f0046",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 0,
+    "sse": false,
+    "srt": 31,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "str xzr (SRT=31 is XZR)",
+   "reason": "exception",
+   "esr": "0x93df8046",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 3,
+    "sse": false,
+    "srt": 31,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ldr xzr (load discarded)",
+   "reason": "exception",
+   "esr": "0x93df8006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 3,
+    "sse": false,
+    "srt": 31,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ldrsb w1",
+   "reason": "exception",
+   "esr": "0x93210006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 0,
+    "sse": true,
+    "srt": 1,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ldrsb x1",
+   "reason": "exception",
+   "esr": "0x93218006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 0,
+    "sse": true,
+    "srt": 1,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ldrsh w2",
+   "reason": "exception",
+   "esr": "0x93620006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 1,
+    "sse": true,
+    "srt": 2,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ldrsh x2",
+   "reason": "exception",
+   "esr": "0x93628006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 1,
+    "sse": true,
+    "srt": 2,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ldrsw x3",
+   "reason": "exception",
+   "esr": "0x93a38006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 2,
+    "sse": true,
+    "srt": 3,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ldrb w4",
+   "reason": "exception",
+   "esr": "0x93040006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 0,
+    "sse": false,
+    "srt": 4,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ldrh w5",
+   "reason": "exception",
+   "esr": "0x93450006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 1,
+    "sse": false,
+    "srt": 5,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ldr x6",
+   "reason": "exception",
+   "esr": "0x93c68006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 3,
+    "sse": false,
+    "srt": 6,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ldar w7 (acquire)",
+   "reason": "exception",
+   "esr": "0x93874006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 2,
+    "sse": false,
+    "srt": 7,
+    "sf": false,
+    "ar": true,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "stlr x8 (release)",
+   "reason": "exception",
+   "esr": "0x93c8c046",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 3,
+    "sse": false,
+    "srt": 8,
+    "sf": true,
+    "ar": true,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "FAR not valid",
+   "reason": "exception",
+   "esr": "0x93890406",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 2,
+    "sse": false,
+    "srt": 9,
+    "sf": false,
+    "ar": false,
+    "fnv": true,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "stage-1 walk hit MMIO (S1PTW)",
+   "reason": "exception",
+   "esr": "0x93ca8085",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 3,
+    "sse": false,
+    "srt": 10,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": true,
+    "wnr": false,
+    "dfsc": 5
+   }
+  },
+  {
+   "name": "translation fault level 0",
+   "reason": "exception",
+   "esr": "0x93000004",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 0,
+    "sse": false,
+    "srt": 0,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 4
+   }
+  },
+  {
+   "name": "translation fault level 1",
+   "reason": "exception",
+   "esr": "0x93000005",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 0,
+    "sse": false,
+    "srt": 0,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 5
+   }
+  },
+  {
+   "name": "access flag fault level 3",
+   "reason": "exception",
+   "esr": "0x9300000b",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 0,
+    "sse": false,
+    "srt": 0,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 11
+   }
+  },
+  {
+   "name": "synchronous external abort",
+   "reason": "exception",
+   "esr": "0x93000010",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 0,
+    "sse": false,
+    "srt": 0,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 16
+   }
+  },
+  {
+   "name": "alignment fault",
+   "reason": "exception",
+   "esr": "0x93000021",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 0,
+    "sse": false,
+    "srt": 0,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 33
+   }
+  },
+  {
+   "name": "ISV=0 load (ldp/exclusive/atomic/SIMD)",
+   "reason": "exception",
+   "esr": "0x92000006",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": false,
+    "sas": 0,
+    "sse": false,
+    "srt": 0,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": false,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ISV=0 with junk in SAS..SF (decoded, UNKNOWN, unused)",
+   "reason": "exception",
+   "esr": "0x92e78046",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": false,
+    "sas": 3,
+    "sse": true,
+    "srt": 7,
+    "sf": true,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "ignored bits VNCR/SET/EA/CM/ISS2/RES0 set",
+   "reason": "exception",
+   "esr": "0xffffff1f93813b46",
+   "exit": "DataAbort",
+   "fields": {
+    "isv": true,
+    "sas": 2,
+    "sse": false,
+    "srt": 1,
+    "sf": false,
+    "ar": false,
+    "fnv": false,
+    "s1ptw": false,
+    "wnr": true,
+    "dfsc": 6
+   }
+  },
+  {
+   "name": "hvc #0xffff",
+   "reason": "exception",
+   "esr": "0x5a00ffff",
+   "exit": "Hvc",
+   "fields": {
+    "imm": 65535
+   }
+  },
+  {
+   "name": "hvc with junk in ISS[24:16] (imm is 15:0)",
+   "reason": "exception",
+   "esr": "0x5bff1234",
+   "exit": "Hvc",
+   "fields": {
+    "imm": 4660
+   }
+  },
+  {
+   "name": "smc #0",
+   "reason": "exception",
+   "esr": "0x5e000000",
+   "exit": "Smc",
+   "fields": {
+    "imm": 0
+   }
+  },
+  {
+   "name": "brk #0x3e8",
+   "reason": "exception",
+   "esr": "0xf20003e8",
+   "exit": "Brk",
+   "fields": {
+    "imm": 1000
+   }
+  },
+  {
+   "name": "wfe",
+   "reason": "exception",
+   "esr": "0x6000001",
+   "exit": "Wfx",
+   "fields": {
+    "ti": 1
+   }
+  },
+  {
+   "name": "wfit",
+   "reason": "exception",
+   "esr": "0x6000002",
+   "exit": "Wfx",
+   "fields": {
+    "ti": 2
+   }
+  },
+  {
+   "name": "wfet with RV and Rn set",
+   "reason": "exception",
+   "esr": "0x60000a7",
+   "exit": "Wfx",
+   "fields": {
+    "ti": 3
+   }
+  },
+  {
+   "name": "msr sctlr_el1, x0 (S3_0_C1_C0_0)",
+   "reason": "exception",
+   "esr": "0x62300400",
+   "exit": "SysReg",
+   "fields": {
+    "op0": 3,
+    "op1": 0,
+    "crn": 1,
+    "crm": 0,
+    "op2": 0,
+    "rt": 0,
+    "read": false
+   }
+  },
+  {
+   "name": "mrs x30, cntvct_el0 (S3_3_C14_C0_2)",
+   "reason": "exception",
+   "esr": "0x6234fbc1",
+   "exit": "SysReg",
+   "fields": {
+    "op0": 3,
+    "op1": 3,
+    "crn": 14,
+    "crm": 0,
+    "op2": 2,
+    "rt": 30,
+    "read": true
+   }
+  },
+  {
+   "name": "msr oslar_el1, xzr (S2_0_C1_C0_4, rt=31)",
+   "reason": "exception",
+   "esr": "0x622807e0",
+   "exit": "SysReg",
+   "fields": {
+    "op0": 2,
+    "op1": 0,
+    "crn": 1,
+    "crm": 0,
+    "op2": 4,
+    "rt": 31,
+    "read": false
+   }
+  },
+  {
+   "name": "mrs x1, S3_7_C15_C15_7 (implementation defined, all ones)",
+   "reason": "exception",
+   "esr": "0x623ffc3f",
+   "exit": "SysReg",
+   "fields": {
+    "op0": 3,
+    "op1": 7,
+    "crn": 15,
+    "crm": 15,
+    "op2": 7,
+    "rt": 1,
+    "read": true
+   }
+  },
+  {
+   "name": "instruction abort, stage-1 walk (S1PTW)",
+   "reason": "exception",
+   "esr": "0x82000087",
+   "exit": "InstructionAbort",
+   "fields": {
+    "ifsc": 7,
+    "s1ptw": true
+   }
+  },
+  {
+   "name": "instruction abort, permission fault level 3",
+   "reason": "exception",
+   "esr": "0x8200000f",
+   "exit": "InstructionAbort",
+   "fields": {
+    "ifsc": 15,
+    "s1ptw": false
+   }
+  },
+  {
+   "name": "SIMD/FP access trap: Unknown",
+   "reason": "exception",
+   "esr": "0x1e000123",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 7,
+    "esr": "0x1e000123"
+   }
+  },
+  {
+   "name": "HVC from AArch32: Unknown",
+   "reason": "exception",
+   "esr": "0x4a000123",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 18,
+    "esr": "0x4a000123"
+   }
+  },
+  {
+   "name": "SMC from AArch32: Unknown",
+   "reason": "exception",
+   "esr": "0x4e000123",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 19,
+    "esr": "0x4e000123"
+   }
+  },
+  {
+   "name": "SVC: Unknown",
+   "reason": "exception",
+   "esr": "0x56000123",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 21,
+    "esr": "0x56000123"
+   }
+  },
+  {
+   "name": "instruction abort, same EL: Unknown",
+   "reason": "exception",
+   "esr": "0x86000123",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 33,
+    "esr": "0x86000123"
+   }
+  },
+  {
+   "name": "PC alignment: Unknown",
+   "reason": "exception",
+   "esr": "0x8a000123",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 34,
+    "esr": "0x8a000123"
+   }
+  },
+  {
+   "name": "SP alignment: Unknown",
+   "reason": "exception",
+   "esr": "0x9a000123",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 38,
+    "esr": "0x9a000123"
+   }
+  },
+  {
+   "name": "SError: Unknown",
+   "reason": "exception",
+   "esr": "0xbe000123",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 47,
+    "esr": "0xbe000123"
+   }
+  },
+  {
+   "name": "EC 0x3f (unallocated): Unknown",
+   "reason": "exception",
+   "esr": "0xfe000123",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 63,
+    "esr": "0xfe000123"
+   }
+  },
+  {
+   "name": "all ones",
+   "reason": "exception",
+   "esr": "0xffffffffffffffff",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 63,
+    "esr": "0xffffffffffffffff"
+   }
+  },
+  {
+   "name": "zero",
+   "reason": "exception",
+   "esr": "0x0",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 0,
+    "esr": "0x0"
+   }
+  },
+  {
+   "name": "CANCELED (hv_vcpus_exit)",
+   "reason": "canceled",
+   "esr": "0x5a000000",
+   "exit": "Canceled"
+  },
+  {
+   "name": "VTIMER_ACTIVATED",
+   "reason": "vtimer",
+   "esr": "0x0",
+   "exit": "VtimerActivated"
+  },
+  {
+   "name": "HV_EXIT_REASON_UNKNOWN keeps the ESR",
+   "reason": "unknown",
+   "esr": "0x93810046",
+   "exit": "Unknown",
+   "fields": {
+    "ec": 36,
+    "esr": "0x93810046"
+   }
+  }
+ ]
+}

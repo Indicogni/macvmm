@@ -1,0 +1,38 @@
+# Hosted CI: the host half of scripts/check.sh on an Apple Silicon runner. Hosted runners are
+# VMs without nested virtualization, so HVF checks are not run here (PLAN §0.3); every guest
+# boot is verified on a physical Mac instead.
+#
+# Hardening (threat model SC-12): read-only token, actions pinned by full commit SHA, no
+# pull_request_target, no secrets, no cache shared with untrusted pull requests.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      MACVMM_E2E_ALLOW_SKIP: "1"
+      CARGO_TERM_COLOR: always
+    steps:
+      # actions/checkout v6.1.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Install shellcheck (mandatory in CI, TEST-2)
+        run: brew install shellcheck
+      - name: Toolchain (pinned by rust-toolchain.toml)
+        run: scripts/setup.sh
+      - name: Quality gate
+        run: scripts/check.sh
