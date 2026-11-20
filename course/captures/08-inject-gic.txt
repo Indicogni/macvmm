@@ -1,0 +1,22 @@
+# scripts/capture-cmd 08: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The same instrumented sysreg-probe and VMM as 08-inject-nogic.txt, now in the default configuration (with the in-kernel interrupt controller). Run in a copy of the reference with those edits.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/sysreg-probe.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+sysreg-probe: undef count=1 ec=0x0
+sysreg-probe: handler saw ELR_EL1=0x400812e8 SPSR_EL1=0x600003c5 ESR_EL1=0x2000000 VBAR_EL1=0x40080800
+sysreg-probe: in the handler PAN=0x400000 SCTLR_EL1=0x30000180
+sysreg-probe: elr ok (the mrs at 0x400812e8; Rt untouched)
+sysreg-probe: lo=1 lorid=0x0 undef count=0
+sysreg-probe: lorid ok
+sysreg-probe: mdccsr undef count=1 ec=0x0
+sysreg-probe: mdccsr handler saw ELR_EL1=0x40081048 SPSR_EL1=0x800003c5 ESR_EL1=0x2000000 VBAR_EL1=0x40080800
+sysreg-probe: mdccsr in the handler PAN=0x400000 SCTLR_EL1=0x30000180
+sysreg-probe: mdccsr elr ok (the mrs at 0x40081048; Rt untouched)
+sysreg-probe: oslsr after lock=0xa after unlock=0x8
+sysreg-probe: oslsr ok
+
+--- stderr ---
+inject: SCTLR_EL1=0x30000180; CPSR 0x800003c5 -> 0x804003c5; PC 0x40081048 -> 0x40080a00
+macvmm: warn: [vcpu0] guest: vcpu0: MRS MDCCSR_EL0 at pc 0x40081048: injecting UNDEF

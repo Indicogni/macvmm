@@ -1,0 +1,17 @@
+# scripts/capture-cmd 22: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 2, same build as 22-size-max-freebsd.txt: virtio-blk offers VIRTIO_BLK_F_SIZE_MAX (size_max = 64 KiB).
+# Carriage returns removed; stdout filtered with grep -E to the lines matching virtio_blk|vda|macvmm-|Power.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/run-linux.sh --test vda --disk .cache/macvmm/rootfs.img,ro --timeout 120
+exit: 0
+--- stdout ---
+[    0.000000] Machine model: macvmm-virt
+[    0.000000] Kernel command line: console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=vda
+macvmm-initramfs: ready 6.18.60-0-virt
+[    0.146328] virtio_blk virtio0: 1/0/0 default/read/poll queues
+[    0.146415] virtio_blk virtio0: [vda] 524288 512-byte logical blocks (268 MB/256 MiB)
+macvmm-vda: /dev/vda 524288 sectors ro=1
+macvmm-vda: sha256=a43f12e076f9dbd70803951713b4d4e1e77af39089a8c62e91d5eb16103b8300
+[    1.090510] reboot: Power down
+
+--- stderr ---

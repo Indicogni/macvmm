@@ -1,0 +1,27 @@
+# scripts/capture-cmd 16: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 2: in Queue::add_used in crates/vmm/src/virtio/queue.rs, the release store of used.idx is replaced by a plain write_u16.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test virtqueue_hostile used_idx_release_order
+exit: 101
+--- stdout ---
+
+running 1 test
+used_idx_release_order --- FAILED
+
+failures:
+
+---- used_idx_release_order stdout ----
+
+thread 'used_idx_release_order' (122923408) panicked at crates/vmm/tests/virtqueue_hostile.rs:827:10:
+release store of used.idx
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    used_idx_release_order
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 61 filtered out; finished in 0.00s
+
+
+--- stderr ---
+error: test failed, to rerun pass `-p vmm --test virtqueue_hostile`

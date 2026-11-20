@@ -1,0 +1,21 @@
+# scripts/capture.sh 25: run "phase-isv0" of course/checkpoints/25, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --mem 64M --testdev --kernel {guests}/hostile-isv0 --timeout 10
+exit: 0
+--- stdout ---
+hostile-isv0: 15/15 external aborts
+hostile-isv0: device state intact
+hostile-isv0: phase 2 ok
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: vcpu0: ISV=0 write at 0xb000ff8 pc 0x400811c8 not emulated (pair is not inside one device window (first 0xb000000, second none)): injecting a synchronous external abort
+macvmm: warn: [vcpu0] guest: vcpu0: ISV=0 read at 0xb000ff8 pc 0x4008128c not emulated (pair is not inside one device window (first 0xb000000, second none)): injecting a synchronous external abort
+macvmm: warn: [vcpu0] guest: vcpu0: ISV=0 write at 0xb000ffc pc 0x40081364 not emulated (pair is not inside one device window (first 0xb000000, second none)): injecting a synchronous external abort
+macvmm: warn: [vcpu0] guest: vcpu0: ISV=0 write at 0xa0001f8 pc 0x400813fc not emulated (pair is not inside one device window (first 0xa000000, second 0xa000200)): injecting a synchronous external abort
+macvmm: warn: [vcpu0] guest: vcpu0: ISV=0 read at 0xa0001f8 pc 0x40081498 not emulated (pair is not inside one device window (first 0xa000000, second 0xa000200)): injecting a synchronous external abort
+macvmm: warn: [vcpu0] guest: vcpu0: ISV=0 write at 0xa0001fc pc 0x40081568 not emulated (pair is not inside one device window (first 0xa000000, second 0xa000200)): injecting a synchronous external abort
+macvmm: warn: [vcpu0] guest: vcpu0: ISV=0 write at 0xb000ff8 pc 0x4008160c not emulated (second element at 0x9000000, expected 0xb001000): injecting a synchronous external abort
+macvmm: warn: [vcpu0] guest: vcpu0: ISV=0 read at 0xb000ff8 pc 0x400816a0 not emulated (second element at 0x9000000, expected 0xb001000): injecting a synchronous external abort
+macvmm: warn: [vcpu0] guest: vcpu0: ISV=0 write at 0xb000fe0 pc 0x40081770 not emulated (unsupported: simd-fp): injecting a synchronous external abort
+macvmm: warn: [vcpu0] guest: vcpu0: ISV=0 write at 0xb000fe8 pc 0x40081808 not emulated (unsupported: simd-fp): injecting a synchronous external abort
+

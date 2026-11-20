@@ -1,0 +1,18 @@
+# scripts/capture.sh 25: run "phase-tty" of course/checkpoints/25, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+$ course/checkpoints/25/hostile.sh tty {macvmm} {guests}/hostile-tty {out}
+exit: 0
+--- stdout ---
+hostile-tty: begin
+link6n52;c;AAAA\u{7}6n
+hostile-tty: 22 attack strings sent
+hostile-tty: end
+check: forbidden sequences in stdout: 0
+
+--- stderr ---
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=91 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=160
+macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 610: hvc 1, data abort 609
+macvmm: stats: vcpu0 time: exec 0.000 s, wfi 0.000 s
+macvmm: stats: host cpu 0.001 s over 0.001 s wall (111%)
+macvmm: stats: rlimit core=0 nofile=1048576
+

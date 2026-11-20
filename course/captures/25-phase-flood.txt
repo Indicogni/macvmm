@@ -1,0 +1,10 @@
+# scripts/capture.sh 25: run "phase-flood" of course/checkpoints/25, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+$ course/checkpoints/25/hostile.sh flood {macvmm} {guests}/hostile-flood {out}
+exit: 0
+--- stdout ---
+check: serial file holds 1048576 bytes
+
+--- stderr ---
+macvmm: warn: [vcpu0] serial file sink reached its cap of 1048576 bytes; further guest output to it is dropped (the guest keeps running)
+

@@ -4,7 +4,7 @@ slug: aarch64-reading
 kind: primer
 runs: mac+browser
 minutes: 30
-required_by: 02
+required_by: [02]
 also_used_by: [03, 07, 08, 21]
 labs: [a64-encoder]
 objectives:
@@ -345,14 +345,14 @@ int main(void) {
 ```sh
 clang -O2 sysreg.c -o sysreg
 ./sysreg
-echo "exit code: $?"
+echo "exit status: $?"
 ```
 
 ```text
 CNTVCT_EL0 = 225383687722290
 CNTFRQ_EL0 = 1000000000 Hz
 zsh: illegal hardware instruction  ./sysreg
-exit code: 132
+exit status: 132
 ```
 
 The counter value differs every run. The frequency is what an M5 Pro reports, 1 GHz; Apple M1 to M3 report 24 MHz (`24000000`), so expect either. The two `_EL0` reads worked. Reading `MPIDR_EL1` (Multiprocessor Affinity Register, "which core am I", chapter 06) from EL0 raised an exception to the kernel, exactly the hardware path of the `os-basics` primer, and macOS answered by killing the process with SIGILL, signal 4; the shell reports 128 + 4 = 132 (the [`unix-signals`](/build-your-own/vmm/primers/unix-signals/) primer explains that arithmetic). Hold on to this picture: in chapter 08, the guest kernel is the one reaching for a register it may not have, and *we* decide what happens.
@@ -435,6 +435,8 @@ This matters twice in macvmm. Chapter 04 writes little-endian helpers for guest 
 
 ## Lab
 
+:::lab a64-encoder
+
 The `a64-encoder` lab (used in chapter 02, sitting B, exploratory and unscored) shows the bit fields of `movz`, `hvc` and `b`, each field labelled, as in this primer. You type a register number or a constant, watch the bits move, and see the 32-bit word and its little-endian bytes update together. Then try the reverse: paste `d4000003` or `97fffff7` and say what it is before the lab tells you. Skipping it loses nothing; chapter 02 gives you the three words.
 
 ## Self-check
@@ -458,7 +460,7 @@ Bits 31 to 24 are `0xD4`, bits 23 to 21 are 0, `imm16` (bits 20 to 5) is 0, and 
 :::
 
 :::predict An app runs `mrs x0, SCTLR_EL1`. What happens, and why?
-The suffix says EL1: only the kernel (or higher) may access it. At EL0 the read raises an exception to the kernel, and macOS kills the app with SIGILL, exit code 132 from the shell, as `sysreg` showed for `MPIDR_EL1`.
+The suffix says EL1: only the kernel (or higher) may access it. At EL0 the read raises an exception to the kernel, and macOS kills the app with SIGILL, exit status 132 from the shell, as `sysreg` showed for `MPIDR_EL1`.
 :::
 
 :::predict A file starts with the bytes `d0 0d fe ed`. What is the 32-bit value if the format is big-endian? If it is little-endian?

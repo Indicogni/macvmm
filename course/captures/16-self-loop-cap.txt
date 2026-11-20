@@ -1,0 +1,29 @@
+# scripts/capture-cmd 16: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1, as in 16-self-loop-no-budget.txt: the hop budget in DescriptorChain::step is commented out. Here the hostile suite's self_loop case runs, which walks through into_validated with a 64 KiB total cap.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test virtqueue_hostile self_loop
+exit: 101
+--- stdout ---
+
+running 1 test
+self_loop --- FAILED
+
+failures:
+
+---- self_loop stdout ----
+
+thread 'self_loop' (121249646) panicked at crates/vmm/tests/virtqueue_hostile.rs:637:5:
+assertion `left == right` failed: case self_loop: a descriptor whose next is itself
+  left: Err(TooLarge { total: 65544, max: 65536 })
+ right: Err(ChainTooLong { budget: 8 })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    self_loop
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 61 filtered out; finished in 0.00s
+
+
+--- stderr ---
+error: test failed, to rerun pass `-p vmm --test virtqueue_hostile`

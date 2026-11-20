@@ -1,0 +1,11 @@
+# scripts/capture-cmd 05: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified, with the log policy instead of the default fatal one.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw {guests}/mmio-poke.bin@0x40080000 --timeout 10 --unhandled-mmio log
+exit: 0
+--- stdout ---
+mmio-poke: storing 0x4d to 0xc000000
+mmio-poke: survived
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: unhandled MMIO write at 0xc000000 size 4 pc 0x40081088 (ignored: --unhandled-mmio log)

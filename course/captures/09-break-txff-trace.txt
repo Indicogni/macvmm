@@ -1,0 +1,14 @@
+# scripts/capture-cmd 09: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1, the same broken FR (always TXFF = 1), run for 2 s with the exit trace on. $G is the repository's target/guests/aarch64-unknown-none/release. Then, from the trace: the number of records, the number of FR reads (loads from 0x9000018), every record that is not an FR read, and how many records each PC produced. The exit: line is the last command's (uniq); macvmm itself exited 5, as in the run above.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ printf 'ping\n' | cargo run -q -p macvmm -- run --mem 64M --raw $G/uart-echo.bin@0x40080000 --timeout 2 --trace exits:t.jsonl:mmio; wc -l < t.jsonl; grep -c '"ipa":"0x9000018","wnr":false' t.jsonl; grep -v '"ipa":"0x9000018","wnr":false' t.jsonl; grep -o '"pc":"0x[0-9a-f]*"' t.jsonl | sort | uniq -c
+exit: 0
+--- stdout ---
+  509269
+509268
+{"t_ns":218000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081184","ipa":"0x900002c","wnr":true,"size":4,"reg":9,"value":"0x70","action":"mmio","isv":true}
+   1 "pc":"0x40081184"
+509268 "pc":"0x40081370"
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 2s

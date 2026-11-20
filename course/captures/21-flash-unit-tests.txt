@@ -1,0 +1,23 @@
+# scripts/capture-cmd 21: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified: the unit tests in the flash device and the firmware loader (host only).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --lib -- devices::flash loader::firmware
+exit: 0
+--- stdout ---
+
+running 4 tests
+....
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 146 filtered out; finished in 0.03s
+
+
+--- stderr ---
+macvmm: warn: [devices::flash::tests::write_ignored_and_total_at_every_width] guest: flash: ignored 1-byte write of 0x0 at offset 0x0 (flash is read-only, write 1 to this bank)
+macvmm: warn: [devices::flash::tests::sits_in_the_flash0_row] guest: flash: ignored 1-byte write of 0x40 at offset 0x100 (flash is read-only, write 1 to this bank)
+macvmm: warn: [devices::flash::tests::write_ignored_and_total_at_every_width] guest: flash: ignored 1-byte write of 0x98 at offset 0x0 (flash is read-only, write 2 to this bank)
+macvmm: warn: [devices::flash::tests::sits_in_the_flash0_row] guest: flash: ignored 2-byte write of 0x40 at offset 0x100 (flash is read-only, write 2 to this bank)
+macvmm: warn: [devices::flash::tests::write_ignored_and_total_at_every_width] guest: flash: ignored 1-byte write of 0xff at offset 0x0 (flash is read-only, write 3 to this bank)
+macvmm: warn: [devices::flash::tests::write_ignored_and_total_at_every_width] guest: flash: ignored 1-byte write of 0x70 at offset 0x0 (flash is read-only, write 4 to this bank)
+macvmm: warn: [devices::flash::tests::sits_in_the_flash0_row] guest: flash: ignored 4-byte write of 0x40 at offset 0x100 (flash is read-only, write 3 to this bank)
+macvmm: warn: [devices::flash::tests::write_ignored_and_total_at_every_width] guest: flash: ignored 1-byte write of 0x90 at offset 0x0 (flash is read-only, write 5 to this bank)
+macvmm: warn: [devices::flash::tests::sits_in_the_flash0_row] guest: flash: ignored 8-byte write of 0x40 at offset 0x100 (flash is read-only, write 4 to this bank)
+macvmm: warn: [devices::flash::tests::write_ignored_and_total_at_every_width] guest: flash: ignored 1-byte write of 0x40 at offset 0x0 (flash is read-only, write 6 to this bank)

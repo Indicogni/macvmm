@@ -18,6 +18,7 @@ use super::{DEVICE_ID_NONE, Queue, QueueProgress, VirtioDevice, VirtioError, Vir
 use crate::memory::GuestMemoryOrdered;
 use std::sync::Arc;
 
+// ANCHOR: virtio_null_device
 /// The empty-slot device: ID 0, no queues, no features, no config.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct NullDevice;
@@ -50,3 +51,4 @@ impl VirtioDevice for NullDevice {
     }
     fn reset(&mut self) {}
 }
+// ANCHOR_END: virtio_null_device

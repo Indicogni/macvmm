@@ -1,0 +1,23 @@
+# scripts/capture-cmd 08: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1: in sysreg::handle (crates/vmm/src/arch/sysreg.rs) a new first arm answers every read whose policy is Undef (the PMU rows and every register in no row) with 0 instead of injecting UNDEF; the guest is the reference sysreg-probe.
+# Run without the in-kernel interrupt controller (--irqchip none), so that PMCR_EL0 reaches the VMM. Run in a copy of the reference with that one edit; the trace file is printed after the run, and the exit status is macvmm's.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/sysreg-probe.bin@0x40080000 --irqchip none --trace exits:/tmp/z.jsonl:sysreg --timeout 10; cat /tmp/z.jsonl
+exit: 0
+--- stdout ---
+sysreg-probe: undef count=0 ec=0xffffffffffffffff
+sysreg-probe: FAILED: elr=0x0 want 0x400811ec, Rt=0x0
+sysreg-probe: lo=1 lorid=0x0 undef count=0
+sysreg-probe: lorid ok
+sysreg-probe: mdccsr undef count=0 ec=0xffffffffffffffff
+sysreg-probe: mdccsr FAILED: elr=0x0 want 0x40081048, Rt=0x0
+sysreg-probe: oslsr after lock=0xa after unlock=0x8
+sysreg-probe: oslsr ok
+{"t_ns":927875,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400811ec","value":"0x0","sysreg":"PMCR_EL0","sysreg_enc":"0xdce0","action":"sysreg"}
+{"t_ns":1250875,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081244","value":"0x0","sysreg":"LORID_EL1","sysreg_enc":"0xc527","action":"sysreg"}
+{"t_ns":1755791,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400812ec","value":"0x1","sysreg":"OSLAR_EL1","sysreg_enc":"0x8084","action":"sysreg"}
+{"t_ns":1761166,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400812f4","value":"0xa","sysreg":"OSLSR_EL1","sysreg_enc":"0x808c","action":"sysreg"}
+{"t_ns":1765375,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081304","value":"0x0","sysreg":"OSLAR_EL1","sysreg_enc":"0x8084","action":"sysreg"}
+{"t_ns":1769500,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x4008131c","value":"0x8","sysreg":"OSLSR_EL1","sysreg_enc":"0x808c","action":"sysreg"}
+
+--- stderr ---

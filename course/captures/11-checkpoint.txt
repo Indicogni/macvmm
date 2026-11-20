@@ -1,0 +1,13 @@
+# scripts/capture-cmd 11: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run as scripts/checkpoint.sh 11 --impl <tree>, an unmodified copy of the reference, so the shared target/ binaries were not relinked; the journal step is skipped for such a tree.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 11
+exit: 0
+--- stdout ---
+checkpoint: implementation <tree>
+[PASS] contract tests   timer_rules (7 tests)
+[PASS] runs on your Mac timer-nogic: 8/8 serial markers, 2/2 trace markers, host cpu 3% < 10%, exit 0 in 1.15s
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 11 PASS
+
+--- stderr ---

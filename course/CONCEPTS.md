@@ -21,14 +21,23 @@ Sections 2 and 3 below are kept as the audit record. Lesson authors build boxes 
 section 5; when a lesson adds a concept, add its row here in the same change.
 
 **v3.1 (2026-11-18), against `course/CURRICULUM.md` v3.1 and `course/reviews/novice.md`.** The
-register was right for authors and unreadable for a learner (novice review 3.1). Section 4 is new:
+register was right for authors and unreadable for a learner (novice review 3.1). Section 4 was new:
 the **learner glossary**, one plain line per term used in Parts 0 to III plus a link to where it is
-taught, which the site renders at `/build-your-own/vmm/glossary/` and links from every first use
-(CURRICULUM section 2). Rows changed in v3.1 say `v3.1:` in the GAP column: a new **core (idea)**
+taught. It has since moved to `course/GLOSSARY.md` (the site's glossary source, covering every
+chapter), and section 4 now only points there. Rows changed in v3.1 say `v3.1:` in the GAP column: a new **core (idea)**
 tier for concepts taught but not implemented (3.4), `caches` moved to ch13, `os-basics` trimmed
 (threads, preemption and file descriptors to `host-concurrency`), the `AtomicBool` flag moved to
 ch09, type 1 and type 2 demoted to a pointer, and new rows for the exception vector table,
 firmware, bit fields and the "VM exit" versus "exit code" distinction.
+
+**Phase 3 sync (2026-11-20), against the written lessons of chapters 00 to 25.** Rows whose GAP
+column says `Phase 3:` were added or changed because a written lesson relies on a concept the
+register did not list: forward definitions in ch03 (`MPIDR_EL1`, `CPACR_EL1`, `wfe`,
+`CNTVCT_EL0`, the device tree, an address size fault) and ch06 (the redistributor, the virtual
+counter offset, the DTB address in `x0`), and pointers in ch06 (PAN and TCO), ch14 (`panic=`,
+BusyBox), ch20 (Linux's CPU numbering, the 16-CPU SGI limit, signal kicks in KVM-based VMMs) and
+ch23 (PCI Express, XPC services). The learner glossary that section 4 used to hold now lives in
+`course/GLOSSARY.md`.
 
 ## 0. How to read this file
 
@@ -100,7 +109,11 @@ before first use. Otherwise it says what is wrong:
 | Procedure call standard (AAPCS64: `x0..x7` arguments, `x0` result) | primer | 02 (`x0`), 03 | `primers/aarch64-reading.md`; `primers/smccc.md` builds on it | Closed v3: primer scope (CURRICULUM 2.1). |
 | System registers (`MRS`/`MSR`, `_ELn` suffix naming) | primer then core | 02 | `primers/aarch64-reading.md` (reading), 08 (encoding) | |
 | `SCTLR_EL1` (M, C, I, A bits) | core | 06 | 06 | |
-| `MPIDR_EL1` and affinity fields | core | 06 | 06 (value, why an OS needs it, bit 31 RES1), 20 (Aff0/Aff1, `/cpus`, redistributors) | v3.1: motivated in ch06 (novice review 2.6.2). |
+| `MPIDR_EL1` and affinity fields | core | 03 (`_start` picks a stack by it) | 03 (forward definition), 06 (value, why an OS needs it, bit 31 RES1), 20 (Aff0/Aff1, `/cpus`, redistributors) | v3.1: motivated in ch06 (novice review 2.6.2). Phase 3: ch03's `_start` reads it first, so a forward definition there. |
+| `CPACR_EL1` and the floating-point enable (`FPEN`) | pointer | 03 (`_start`) | 03 (forward definition: the compiler uses FP registers, which trap until `FPEN` is set) | Phase 3: new row; the reference `_start` sets it. |
+| PSTATE flags PAN (privileged access never) and TCO (tag check override) | pointer | 06 (the extra bits in a dumped `cpsr`) | 06 Aside; 08 (PAN set on exception entry in the injection worked example) | Phase 3: new row. |
+| Linux's CPU numbering (`cpu_logical_map`, the `Booting Linux on physical CPU` line) | pointer | 20 | 20 Aside + `arch/arm64/kernel/smp.c` | Phase 3: new row. |
+| GICv3 SGI targeting limit: 16 CPUs per cluster (`ICC_SGI1R_EL1.TargetList`) | pointer | 20 (MPIDR layout for vCPU 16 and up) | 20 (a linked sentence, IHI 0069) | Phase 3: new row. |
 | ID registers and feature discovery (`ID_AA64*`, `PMUVer`) | pointer | 08 | 08 Aside + register pages in DDI 0487 | Closed v3: ch08 box, Pointers. |
 | Trap-control registers owned by HVF (`HCR_EL2`, `MDCR_EL2`) | pointer | 08 | 08 (stated as a principle first: "what reaches us is measured"), Aside | |
 | Debug OS lock (`OSLAR_EL1`, `OSLSR_EL1`) | pointer | 08 | 08 (emulated; needs one sentence on what it is) | |
@@ -109,7 +122,7 @@ before first use. Otherwise it says what is wrong:
 | A64 loads and stores: `ldr`/`str` sizes, `ldrsh` sign-extension, `ldp`/`stp`, writeback forms | primer then core | 07 | `primers/aarch64-reading.md` (reading), 07, 21 | |
 | Exclusives, LSE atomics, SIMD loads, `DC ZVA` (what ISV=0 refuses) | pointer | 07 (`ldp` gives ISV=0) | 21 Aside + ARM ARM C6 | |
 | MMIO decode from the syndrome (ISV, SAS, SSE, SRT, SF, WnR) | core | 07 | 07 (as a story, then the table; why `ldp` gives ISV=0 in the body); ISV=0 in 21 | v3.1 (novice review 2.7.1, 2.7.3). |
-| Data abort vs instruction abort; DFSC (translation vs address-size fault); `HPFAR_EL2` | core | 05 | 05 (why the fault reports an IPA, in prose; acronyms expanded; `two-stage-walker` shows ESR/FAR/HPFAR), 07 | v3.1 (novice review 2.5.3). |
+| Data abort vs instruction abort; DFSC (translation vs address-size fault); `HPFAR_EL2` | core | 03 (address size fault, in the stack break) | 03 (address size fault, forward definition: an address too wide to be physical, taken at the guest's own level), 05 (why the fault reports an IPA, in prose; acronyms expanded; `two-stage-walker` shows ESR/FAR/HPFAR), 07 | v3.1 (novice review 2.5.3). Phase 3: ch03 forward definition added. |
 | Alignment faults (`SCTLR_EL1.A`); reading a first fault behind a second one | core | 06 | 06 (the six-link self-fault trace) | v3.1 (novice review 2.6.3). |
 | Exception injection (doing by hand what the hardware does) | core | 08 | 08; data abort injection 21 | |
 | Synchronous external abort | core | 21 | 21 | |
@@ -122,10 +135,10 @@ before first use. Otherwise it says what is wrong:
 | IPA size and `hv_vm_config_set_ipa_size`; the 36-bit default and floor | core | 00 (doctor), 01 (journal Q4) | 05 (every checkpoint constant explained, including `ipa_bits_needed(0x6000_0000) == 36`) | Parked in 00 and 01 by design; v3.1: ch01 Q4 carries a thread to hold (novice review 2.5.4, 2.5.6). |
 | Caches, cache lines, PoC/PoU, clean and invalidate, I-cache vs D-cache coherence (`CTR_EL0.DIC/IDC`) | primer | 13 ("cleaned to PoC"); 04 only in an optional, vocabulary-free callout | `primers/caches.md` (required by 13; linked from 04); ch06 has one paragraph on `SCTLR_EL1.M` and `C` | v3.1: moved from 06, whose text used none of it (novice review 2.6.4). |
 | Weak memory ordering, barriers (`DMB`, `DSB`, `ISB`), acquire/release, store-load fences | primer | 04 (seed) | `primers/memory-ordering.md` (required by 16) | |
-| Generic timer: `CNTVCT_EL0`, `CNTV_CVAL_EL0`, `CNTV_CTL_EL0`, `CNTFRQ`, counter offset | core | 01 (`mrs CNTVCT_EL0` in `trap-or-not`) | 01 (`trap-or-not` feedback, one line), 11 | Closed v3: the lab moved to ch01; its feedback defines it (ch01 box, Forward definitions). |
-| `WFI`/`WFE` (wait for interrupt or event) | core | 01 (`trap-or-not`) | 01 (`trap-or-not` feedback, one line), 11 | Closed v3: as above. |
+| Generic timer: `CNTVCT_EL0`, `CNTV_CVAL_EL0`, `CNTV_CTL_EL0`, `CNTFRQ`, counter offset | core | 01 (`mrs CNTVCT_EL0` in `trap-or-not`) | 01 (`trap-or-not` feedback, one line), 03 (`CNTVCT_EL0`, forward, `exit-bench`), 06 (the virtual counter offset, forward), 11 | Closed v3: the lab moved to ch01; its feedback defines it (ch01 box, Forward definitions). Phase 3: ch03 and ch06 forward definitions. |
+| `WFI`/`WFE` (wait for interrupt or event) | core | 01 (`trap-or-not`) | 01 (`trap-or-not` feedback, one line), 03 (`wfe` parks extra CPUs in `_start`, forward), 11 | Closed v3: as above. Phase 3: ch03 forward definition. |
 | Interrupts as state: pending, mask, vector; level vs edge | core | 09 (PL011 `RIS`/`MIS`/`IMSC`) | 09 (forward definition), 11 | Closed v3: ch09 box, Forward definitions. |
-| GICv3: distributor, redistributor, CPU interface (`ICC_*`), INTIDs, SGI/PPI/SPI, IAR and EOI, affinity routing | core | 05 (`layout.rs` invariant "INTIDs unique within 32..=1019"; `virtio_slot(0) == (…, 48)`) | 05 (INTID forward definition), 12 | Closed v3: ch05 box, Forward definitions. |
+| GICv3: distributor, redistributor, CPU interface (`ICC_*`), INTIDs, SGI/PPI/SPI, IAR and EOI, affinity routing | core | 05 (`layout.rs` invariant "INTIDs unique within 32..=1019"; `virtio_slot(0) == (…, 48)`) | 05 (INTID forward definition), 06 (the redistributor, forward), 12 | Closed v3: ch05 box, Forward definitions. Phase 3: ch06 forward definition. |
 | LPIs, the ITS and the MSI range | pointer | 12 (`GicSpi` refuses the MSI range) | 12 Aside + IHI 0069 LPI chapter | Closed v3: ch12 box, Pointers. |
 | SMC Calling Convention (function IDs, owners, fast vs yielding, conduits) | primer | 03 | `primers/smccc.md` | |
 | PSCI (`VERSION`, `FEATURES`, `SYSTEM_OFF`, `SYSTEM_RESET`, `CPU_ON`, `CPU_OFF`, `AFFINITY_INFO`) | core | 08 | 08, 20 | |
@@ -143,12 +156,13 @@ before first use. Otherwise it says what is wrong:
 | UART basics: FIFO, transmit/receive, baud divisors, flow-control flags | pointer | 09 | 09 Aside + DDI 0183 | Closed v3: ch09 box, Pointers. |
 | PL011 UART, PL031 RTC (TRMs) | core | 09 | 09 | |
 | AMBA PrimeCell and Peripheral ID registers at `0xFE0` | primer | 09 | `primers/primecell-ids.md` | |
-| Device Tree / FDT blob: header, structure block, strings, cells, `compatible`, `reg`, `#address-cells`, `/chosen`, phandles, `interrupt-parent`, 3-cell `interrupts` | core | 06 (`x0` mention deferred), 10 | 10 (GIC parts in 12) | |
+| Device Tree / FDT blob: header, structure block, strings, cells, `compatible`, `reg`, `#address-cells`, `/chosen`, phandles, `interrupt-parent`, 3-cell `interrupts` | core | 03 (the link address leaves room for it), 06 (the DTB address in `x0`), 10 | 03 and 06 (forward definitions), 10 (GIC parts in 12) | Phase 3: ch03 and ch06 forward definitions. |
 | Driver binding by `compatible` (how a kernel picks a driver for a node) | primer | 10 (journal Q2 "who reads the DTB first") | 10 (one paragraph), `primers/linux-boot-sequence.md` | Closed v3: ch10 box and new primer. |
 | Fixed clocks (`apb_pclk`) and the clock binding | pointer | 10 | 10 Aside + DT binding link | |
 | Big-endian vs little-endian byte order | prereq | 04 (little-endian helpers) | entry self-check; `primers/aarch64-reading.md` (byte order) | Closed v3: self-check question and primer section. |
 | `dtc` (device tree compiler) as a checking tool | pointer | 10 | 10 | |
 | PCI enumeration and ACPI (why x86 can probe and Arm platform devices cannot) | pointer | 10 | 10 | |
+| PCI Express (PCIe) and its configuration space (ECAM), as the bus VZ puts its virtio devices on | pointer | 23 | 23 (one section + Linux PCI documentation) | Phase 3: new row. |
 | QEMU `virt` machine as the reference platform | pointer | 02 (RAM at `0x4000_0000`) | 02 (one sentence), 05 (constants explained), 21 | v3.1 (novice review 2.2.7, 2.5.4). |
 | CFI flash (JEDEC JESD68) and why flash is not RAM | pointer | 21 | 21 | |
 | DMA / bus mastering (a device reads and writes RAM itself) | core | 04 (one-sentence forward definition) | 15 (derivation) | v3.1: forward note in ch04 (novice review 3.6). |
@@ -177,7 +191,7 @@ before first use. Otherwise it says what is wrong:
 | Target triples and cross-compiling (`aarch64-unknown-none`, `rustup target add`) | pointer | 03 | `primers/bare-metal-rust.md` | Closed v3: primer scope. |
 | ELF64: headers, program headers, `filesz` vs `memsz` | primer | 03 (the linker emits an ELF that `objcopy` flattens) | `primers/elf.md` (required by 13); 03 forward definition | Closed v3: ch03 box, Forward definitions. |
 | arm64 Linux boot protocol (`Documentation/arch/arm64/booting.rst`): Image header, `text_offset`, placement, entry registers, MMU and cache state | primer | 06 (MMU and caches off) | `primers/arm64-boot-protocol.md` (required by 06) | Closed v3: CURRICULUM 2.1 says 06. |
-| Kernel command line (`bootargs`, `console=`, `root=`, `panic=-1`) | pointer | 10 | 10 Aside + `kernel-parameters.rst` | Closed v3: ch10 box, Pointers. |
+| Kernel command line (`bootargs`, `console=`, `root=`, `panic=-1`) | pointer | 10 | 10 Aside + `kernel-parameters.rst`; 14 Aside (`panic=N`, why the checkpoint boots with `panic=-1`) | Closed v3: ch10 box, Pointers. Phase 3: ch14 `panic=` Aside. |
 | initramfs and initrd; cpio newc | primer | 13 | `primers/cpio-initramfs.md` | |
 | EFI zboot wrapper (`vmlinuz-virt`), PE/COFF header, gzip payload | primer | 13 | `primers/efi-zboot.md` | Closed v3: primer scope gains a UEFI and PE/COFF page. |
 | gzip (RFC 1952) and xz as compression containers | pointer | 13 (gzip inside zboot), 22 (xz) | `primers/efi-zboot.md` (gzip); 22 Aside (xz) | |
@@ -186,6 +200,7 @@ before first use. Otherwise it says what is wrong:
 | QEMU-`virt` firmware boot protocol (firmware at `0x0`, DTB at RAM base, `PC = 0`) | core | 21 | 21 | |
 | EDK2 / ArmVirtQemu | pointer | 21 | 21, 22 | |
 | What Linux does from entry to `/init`: early console, DT unflattening, driver probing, clocksource, initcalls, initramfs unpacking, `/init`, BusyBox shell, `dmesg` | primer | 14 | `primers/linux-boot-sequence.md` (required by 14) | Closed v3: new primer. |
+| BusyBox (one program providing `sh` and the test shell's commands) | pointer | 14 | 14 (a linked sentence); `primers/linux-boot-sequence.md` | Phase 3: new row. |
 | Kernel modules and Alpine's `modloop` (a squashfs of modules) | pointer | 18 (`modloop-virt` read-only) | 18 Aside; `primers/linux-boot-sequence.md` | Closed v3: ch18 box. |
 | Raw disk images, sectors (512 bytes), whole-disk filesystems | primer | 18 | `primers/block-storage.md` (required by 18) | Closed v3: new primer. |
 | ext4 in one picture, mounting, `root=/dev/vda`, `e2fsck`, `mkfs` (e2fsprogs) | primer | 18 | `primers/block-storage.md` | Closed v3: new primer. |
@@ -214,12 +229,13 @@ before first use. Otherwise it says what is wrong:
 | `getentropy` | pointer | 17 | 17 | |
 | macOS sandbox (Seatbelt): `sandbox_init`, `sandbox-exec`, SBPL profiles, `mach-lookup`, `iokit-open` | primer | 25 | `primers/macos-sandbox.md` (required by 25) | Closed v3: new primer. |
 | vmnet.framework | pointer | 19 | 19 | |
+| XPC services (where a VZ guest runs, with private entitlements) | pointer | 23 | 23 (core sentence + `ps` capture; Apple XPC docs) | Phase 3: new row. |
 | ParavirtualizedGraphics.framework, AVPBooter, the vmapple device set | pointer | 24 | 24 + QEMU `hw/vmapple` docs | |
 | Apple's macOS boot chain for VMs (AVPBooter, iBoot stages, kernelcache) | pointer | 24 | 24 Aside (observed, inferred, unknown) | Closed v3: ch24 box. |
 | IPSW restore images, `VZMacPlatformConfiguration`, auxiliary storage | pointer | 23 | 23 | |
 | Apple's licence terms for macOS VMs | pointer | 23 | 23 (cited, not paraphrased) | |
 | Swift (reading a small provided tool) | pointer | 23 | 23 Aside + Swift book | Closed v3: ch23 box. |
-| `codesign -d --entitlements :-`, `script`, `stty`, `dtc`, `lldb` as tools | pointer | 00 onwards | in the chapters that use them | |
+| `codesign -d --entitlements -`, `script`, `stty`, `dtc`, `lldb` as tools | pointer | 00 onwards | in the chapters that use them | |
 
 ### 1.7 Unix and operating-system concepts
 
@@ -232,6 +248,7 @@ before first use. Otherwise it says what is wrong:
 | Timer-driven preemption and scheduling | primer | 11 (objective 1: "to preempt a spinning loop") | `primers/host-concurrency.md` (09) | v3.1: moved from `os-basics`. |
 | Process exit codes, `128 + signal` (exit 130) | primer | 03 (exit 5), 09 (exit 130) | `primers/os-basics.md` (exit status), `primers/unix-signals.md` (128 + n) | Closed v3: primer scopes. |
 | Signals (SIGINT, SIGTERM, SIGUSR1), handlers, async-signal safety, the self-pipe trick | primer | 09 (`signals.rs`, `sigterm` e2e) | `primers/unix-signals.md` (required by 09) | Closed v3: new primer. |
+| Kicking a vCPU with a signal in KVM-based VMMs (Firecracker, crosvm; `KVM_RUN`, `immediate_exit`) | pointer | 20 | 20 Production note + KVM API documentation | Phase 3: new row. |
 | TTYs and ptys, termios canonical vs raw mode, echo, the line discipline turning Ctrl-C into SIGINT, `stty -g`, `script` | primer | 09 | `primers/tty-termios.md` (required by 09) | Closed v3: new primer. |
 | Terminal escape sequences (ANSI/ECMA-48: CSI, OSC, DCS) and terminal injection by guest output | primer | 09 (filter guest output; `tty_escape` test) | `primers/tty-termios.md` (09), 25 (threat model) | Closed v3: new primer and ch09 forward definition. |
 | File descriptors, `pread`/`pwrite`, `O_CLOEXEC`, `umask`, file modes (0600, 0700) | primer | 09 (`--serial file:F`), 18 | `primers/host-concurrency.md` (FDs, 09), `block-storage`, `unix-sockets`, `macos-sandbox` | v3.1: FDs moved from `os-basics`. |
@@ -438,83 +455,13 @@ minutes, with objectives and a self-check; labs follow `course/site/LABS.md`.
 - **Appendix B:** add AAPCS64 argument and result registers, register 31 as `xzr` or `sp`, and a
   byte-order section.
 
-## 4. Learner glossary (Parts 0 to III)
+## 4. Learner glossary (moved to `course/GLOSSARY.md`)
 
-This section is written **for learners**. The site renders it at
-`/build-your-own/vmm/glossary/`, and every lesson links a term's first use on a page to its entry
-(CURRICULUM section 2). Each entry is one plain line plus where the term is taught; no entry uses a
-term that is not itself in the glossary or in everyday programming. Authors add an entry in the
-same change that first uses a term in a lesson. Parts IV to XI are added as their lessons are
-written (a term a lesson uses that is not here blocks the lesson, as a GAP does above).
-
-Format, one row per term, alphabetical in the rendered page: **Term** (expansion) | plain
-definition | taught in.
-
-| Term | Plain definition | Taught in |
-|---|---|---|
-| **AArch64** | The 64-bit instruction set of Arm CPUs, the one your Mac runs. | `aarch64-reading` |
-| **ad-hoc signature** | A code signature made on your own Mac without an Apple certificate; enough to carry an entitlement for local use. | `codesign-entitlements` |
-| **binary translation** | Rewriting a guest's machine code just before it runs, so the instructions that would misbehave become traps or calls. | 00 |
-| **BSS** | The part of a program's memory for variables that start at zero; the file holds no bytes for it, so start-up code must zero it. | `bare-metal-rust`, 03 |
-| **CPSR / PSTATE** (current program status) | The CPU's current mode and flags: which exception level, which stack pointer, which interrupts are masked. | 02, 06 |
-| **DAIF** | Four mask bits in PSTATE (debug, SError, IRQ, FIQ) that stop those kinds of asynchronous exception from interrupting. | 02 |
-| **data abort** | The exception a load or store takes when its address cannot be accessed; for a guest, often a VM exit at a stage-2 hole. | 05, 07 |
-| **DFSC** (data fault status code) | Low bits of the syndrome that say which kind of data fault happened (for example translation fault). | 05 |
-| **DMA** (direct memory access) | A device reading or writing RAM by itself, without the CPU. | 04 (forward), 15 |
-| **EC** (exception class) | The top six bits of an ESR: the kind of exception, for example `0x16` for an `hvc`. | 02 |
-| **EL0, EL1, EL2, EL3** (exception levels) | Arm's privilege levels: EL0 apps, EL1 a kernel, EL2 the level that supervises kernels, EL3 firmware. Higher number, more power. | 02 (named in 00 and 01) |
-| **EL1h** | Running at EL1 using EL1's own stack pointer (`SP_EL1`); the usual mode of a kernel. | 02 |
-| **ELR** (exception link register) | Where the CPU will return to after an exception; the saved PC. | 02 |
-| **emulator** | A program that pretends to be a CPU, carrying out each guest instruction in software. Correct, but slow. | 00 |
-| **entitlement** | A permission written into a program's signature; ours is `com.apple.security.hypervisor`. | `codesign-entitlements`, 01 |
-| **ESR** (exception syndrome register) | The register that records *why* an exception happened. | 02 |
-| **exception** | On Arm, anything that makes the CPU stop the current flow and run a handler at the same or a higher level: a system call, a fault, an interrupt. Not the same as a Rust panic or a C++ exception. | `os-basics`, 02 |
-| **exception vector table** | A table of handler addresses the kernel sets up; the CPU jumps to the entry for the kind of exception. Its base is in `VBAR`. | `os-basics`, 02, 08 |
-| **exit code** | The number a process returns to the shell when it ends. `macvmm`'s codes are on the reference card. Not a VM exit. | `os-basics`, 03 |
-| **FAR** (fault address register) | The address a faulting access tried to use. | 02, 05 |
-| **fast call** | An SMCCC call that runs to completion without being interrupted part-way; all of ours are fast. | `smccc`, 03 |
-| **firmware** | The program a CPU runs first after power-on; it sets up the hardware, loads the kernel, and answers a few requests such as power-off. | `os-basics` |
-| **granule** | The page size a translation table uses: 4 KiB, 16 KiB or 64 KiB. | `page-granules` |
-| **guest** | The operating system (or test program) running inside a virtual machine. | 00 |
-| **host** | The real machine's operating system, here macOS. | 00 |
-| **HPFAR_EL2** (hypervisor IPA fault address register) | Holds the guest-physical address (IPA) of a stage-2 fault, so the VMM learns it without reading the guest's page tables. | 05 |
-| **hvc** (hypervisor call) | An instruction a guest kernel uses to call the level above it; the `svc` of EL1. | 02 |
-| **HVF** (Hypervisor.framework) | Apple's library that lets an ordinary process create VMs and run vCPUs; it makes system calls into the part of macOS that runs at EL2. | 01 |
-| **hypervisor** | In this course, the part that runs at the CPU's most privileged level and controls its virtualization hardware (on a Mac, part of macOS). Elsewhere, often used to mean the whole VMM. | 00, 01 |
-| **injection** (of an exception) | Our VMM doing by hand what the hardware would have done to deliver an exception to the guest. | 08 |
-| **instruction abort** | The exception taken when the CPU cannot fetch the next instruction from its address. | 05, 06 |
-| **INTID** | The number that names an interrupt line in Arm's interrupt controller. | 05 (forward), 12 |
-| **IPA** (intermediate physical address) | The address a guest believes is physical; stage 2 translates it to real host memory. | 02 (forward), 05 |
-| **ISS** (instruction specific syndrome) | The lower 25 bits of an ESR; their meaning depends on the EC. | 02, 07 |
-| **ISV** (instruction syndrome valid) | A bit that says whether the hardware described a faulting load or store for us (size, register, direction). | 07 |
-| **MMIO** (memory-mapped I/O) | Talking to a device by loading and storing at its addresses, where each access has side effects. | 05, 07 |
-| **MPIDR_EL1** | A CPU's own identity number, which an OS uses to tell its CPUs apart. | 06 |
-| **paravirtualization** | Changing the guest so it asks the VMM directly instead of touching hardware. | 00 |
-| **Popek and Goldberg's condition** | Trap-and-emulate works only if every instruction that touches what the VMM must control traps when run unprivileged. | 00 |
-| **preferred return address** | Where the PC goes after an exception: after a call (`svc`, `hvc`), at a fault (so it is retried). | 02 |
-| **privileged instruction** | One that traps when run in user mode. | 00 |
-| **PSCI** (power state coordination interface) | A standard set of calls a kernel uses to power off, reset or start CPUs. | 08 |
-| **RAZ/WI** (read as zero, writes ignored) | A register behaviour from the Arm manual: reads give 0, writes do nothing. | `reading-arm-specs`, 08 |
-| **reset state** | The register values a CPU has at power-on; not the same as a *system reset* the guest asks for through PSCI. | 06, 08 |
-| **sensitive instruction** | One that reads or changes machine state the VMM must control. | 00 |
-| **SMCCC** (SMC calling convention) | Arm's rules for calls to higher levels: the function number in `x0`, arguments in `x1` onwards, results back in `x0`. | `smccc` |
-| **SPSR** (saved program status register) | The mode and flags to restore when returning from an exception. | 02 |
-| **stage 1, stage 2** | The guest's own page tables (virtual to IPA), then HVF's tables (IPA to host memory). | 05 |
-| **stage-2 hole** | A guest-physical range we deliberately leave unmapped, so every access becomes a VM exit we can answer as a device. | 05 |
-| **svc** (supervisor call) | The instruction an app uses to ask its kernel for a service: Arm's system call. | `os-basics`, 02 |
-| **synchronous / asynchronous exception** | Caused by the instruction being run (a call, a fault) / caused by something outside it (a timer, an interrupt). | 02 |
-| **syndrome** | The note the hardware writes about an exception: the ESR and, for faults, the addresses. | 02 |
-| **sysreg** (system register) | A CPU control or ID register read with `mrs` and written with `msr`, named like `SCTLR_EL1`. | `aarch64-reading`, 08 |
-| **thread** | An independent flow of execution in a process, with its own registers. HVF ties each vCPU to the thread that created it. | 02 (forward), `host-concurrency` |
-| **trap** | The hardware stopping an instruction and handing control to a more privileged level. | 00 |
-| **trap-and-emulate** | Run the guest unprivileged; when it does something privileged, it traps; the VMM emulates the effect and resumes it. | 00 |
-| **UART** | The simplest serial port: write a byte to send it, read to receive. Ours is the PL011. | 05 (intro), 09 |
-| **UNDEF / UNDEFINED** | The exception real hardware raises for an instruction or register it does not have. | 08 |
-| **vCPU** (virtual CPU) | One guest CPU; HVF runs it on a host thread when we call `hv_vcpu_run`. | 02 |
-| **VBAR** (vector base address register) | Holds the address of an exception vector table. | 02 |
-| **virtio** | A standard for paravirtual devices: the guest and the VMM share rings in memory instead of trapping on every register. | 15 |
-| **VM** (virtual machine) | The illusion of a whole computer, made for a guest. | 00 |
-| **VM exit** | The moment the guest stops and our VMM runs, because the guest did something HVF forwards to us. Not an exit code. | 02 (named in 00) |
-| **VMM** (virtual machine monitor) | The program that builds and runs the virtual machine around a guest; ours is `macvmm`. | 00 |
-| **volatile access** | A memory access the compiler must perform exactly as written; it gives no atomicity and no ordering with other threads. | 04 |
-| **VZ** (Virtualization.framework) | Apple's ready-made virtual machine, configured rather than built; used in chapter 23. | 01, 23 |
+The learner glossary now lives in **`course/GLOSSARY.md`**, which the site renders at
+`/build-your-own/vmm/glossary/` and which every lesson links a term's first use to (CURRICULUM
+section 2). It was seeded from the table that used to stand here (v3.1, Parts 0 to III) and now
+covers every chapter, with one section per chapter plus a Primers section. This section keeps no
+copy, so there are not two lists to drift apart. Authors add a glossary entry to `GLOSSARY.md` in
+the same change that first uses a term in a lesson; a term a lesson uses that is in neither the
+glossary nor everyday programming blocks the lesson, as a GAP does above. Concept rows (tier,
+first use, where taught) stay in section 1 of this file.

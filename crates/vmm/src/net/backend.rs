@@ -50,7 +50,7 @@ pub trait NetBackend: Send + Sync {
     /// [`RECV_TIMEOUT`] (`WouldBlock`/`TimedOut`: nothing arrived; `PermissionDenied`: a
     /// datagram arrived and the backend dropped it, already counted).
     fn recv(&self, buf: &mut [u8]) -> io::Result<usize>;
-    /// Datagrams dropped because they did not come from the peer (NET-1). Cumulative for the
+    /// Datagrams dropped because they did not come from the configured peer. Cumulative for the
     /// lifetime of the backend, which spans in-process reboots.
     fn rx_dropped_foreign(&self) -> u64 {
         0

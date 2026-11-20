@@ -1,0 +1,10 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# XPC=/System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc, the helper process Virtualization.framework starts for each virtual machine.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ codesign -d --entitlements - "$XPC" 2>&1 | grep -A1 private.hypervisor
+exit: 0
+--- stdout ---
+	[Key] com.apple.private.hypervisor
+	[Value]
+
+--- stderr ---

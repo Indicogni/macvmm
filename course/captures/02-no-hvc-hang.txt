@@ -1,0 +1,10 @@
+# scripts/capture-cmd 02: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: the hvc word deleted from CODE in crates/macvmm/src/first_exit.rs, leaving movz x0, #0x2a and b . (two words).
+# Run in a copy of the reference with that one edit; stopped from outside after 10 s.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- first-exit
+exit: none (stopped by --timeout 10 s: still running)
+--- stdout ---
+first-exit: mapped 16 KiB at IPA 0x40000000
+
+--- stderr ---

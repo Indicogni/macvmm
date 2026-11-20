@@ -132,3 +132,246 @@ Note what changed: a felt problem, the name arriving late, one analogy with its 
 - [ ] Only the six callout labels; Security notes follow the project brief.
 - [ ] Ends with Checkpoint, What's next, one open question.
 - [ ] No banned words ("simply", "just", "obviously"); no emojis.
+
+## Appendix A. The authoring kit: formats and commands
+
+Everything here is checked by `scripts/check-lessons` unless it says otherwise. The exemplar that
+follows every rule is `course/chapters/I/02-first-exit.md` with its companions
+(`course/retrieval/02.md`, `course/journal/02.md`, `course/journal/02.rubric.md`, the
+`course/captures/02-*.txt` files). When this appendix and the exemplar disagree, fix one of them.
+
+### A.1 Commands
+
+```sh
+scripts/check-lessons 02          # one chapter by id (or: a lesson path; no argument: all lessons)
+scripts/check-anchors             # every `:::code` reference and ANCHOR marker in the repo
+cargo run -q -p xtask -- audit    # the security audit (forbidden advice, entitlements, unsafe)
+scripts/capture.sh 02             # record the chapter's checkpoint runs (reference, real Mac)
+scripts/capture-cmd [opts] course/captures/02-name.txt -- CMD ARGS...   # record any other run
+```
+
+`check-lessons` prints `LESSONS OK: …` or the errors; warnings (banned words, `chNN`, an acronym
+not expanded near its first use, a lesson over 4,000 words) never fail it. Run all three checks
+before you hand a chapter over.
+
+**Capturing a run that needs a code change** (a deliberate break, a Try it variant): never edit
+the reference. Copy the tree, edit the copy, and capture from it:
+
+```sh
+rsync -a --exclude target --exclude .cache --exclude .git ./ "$SCRATCH/ref02/"
+# edit "$SCRATCH/ref02/crates/…", then:
+scripts/capture-cmd --cwd "$SCRATCH/ref02" --timeout 10 \
+  --show "cargo run -q -p macvmm -- first-exit" \
+  --note "Deliberate breakage: <the exact edit, in one sentence>." \
+  course/captures/02-no-hvc-hang.txt -- scripts/sign-and-run.sh target/debug/macvmm first-exit
+```
+
+Build the copy first (`cargo build -q -p macvmm` inside it). `--show` is the command as the learner
+types it; every `--note` line says what differs from the reference, so the capture is honest about
+what ran. `scripts/checkpoint.sh NN --impl "$SCRATCH/ref02"` runs a checkpoint against such a copy
+without rebuilding the shared `target/` binaries that `--ref` relinks.
+
+### A.2 What each chapter owns
+
+| File | Format | Notes |
+|---|---|---|
+| `course/chapters/<part>/<NN-slug>.md` | A.3 | path from `course/chapters.json` |
+| `course/retrieval/NN.md` | A.6 | 6 to 10 items about *this* chapter, used by later warm-ups |
+| `course/journal/NN.md` | A.7 | copied to `learner/journal/NN.md` by `scripts/learner start NN` |
+| `course/journal/NN.rubric.md` | A.7 | printed by the checkpoint after the journal passes |
+| `course/captures/NN-*.txt` | A.8 | real runs only |
+| the `## Chapter NN` section of `course/GLOSSARY.md` | A.9 | edit your own section only |
+| `// ANCHOR:` markers in source files | `CLAUDE.md` | comment lines only; never change behaviour; 60 lines at most |
+
+### A.3 Lesson layout
+
+Blocks in this order (CURRICULUM section 7); headings are exact where shown:
+
+```text
+---                                   front matter (flat `key: value`; lists as [a, b])
+title: <exactly the title in course/chapters.json>
+part: I                               the part id from chapters.json
+chapter: I.1                          the display number from chapters.json
+id: 02
+runs: mac+browser                     mac | browser | mac+browser
+minutes: 330
+prereqs: [01]
+start_tag: ch-01                      the reference at the end of the previous chapter
+labs: [exception-stepper, a64-encoder]
+command: scripts/checkpoint.sh 02
+expect: CHECKPOINT 02 PASS
+---
+
+:::retrieval                          the warm-up (A.6); omitted only in chapter 00
+
+:::concepts                           "Concepts you'll need" (A.4)
+...
+:::
+
+<opening puzzle: prose, first lines of the page, may hold a :::predict;
+ one sentence names the ledger row this chapter closes (the word "ledger")>
+
+:::objectives                         measurable verbs, never "understand"
+- ...
+:::
+
+## <body sections, as many as the story needs>
+   :::predict, :::code, :::term, :::lab, callouts, **Deliberate breakage N: …** paragraphs,
+   one :::stopping-point between sittings, a "Your turn" section
+
+## Checkpoint
+:::checkpoint                         renders command and expect from the front matter
+:::term source=captures/NN-....txt    the expected output, a real capture
+What now works (a short list; it is the page's recap)
+### What's next
+### Open question                     the transfer journal question, ending with "?"
+
+## Spec hunt                          2 or 3 list items: a primary source by section or
+- ...?                                register name, and the question it answers
+```
+
+The page title is rendered from `title:`, so the body has no `#` heading; headings stop at `###`.
+Program code appears only as `:::code anchor=NAME file=PATH` (both arguments); fences are for
+shell commands (`sh`), output and ASCII diagrams (`text`). Every terminal output is a
+`:::term source=captures/…` line, never pasted text. Raw HTML, including comments, is not allowed
+(the renderer escapes it).
+
+### A.4 The Concepts box
+
+Five groups, as list items with these exact bold labels, in this order (write "none" for an empty
+group):
+
+```text
+:::concepts
+- **Core, taught here:** ...
+- **Core, from earlier:** ... (chapter NN)
+- **Primers (read first):** `slug` (what it gives you); `slug` (...)
+- **Primers (review):** `slug` (...)             optional; at least one primer group
+- **Pointers:** ... each becomes an Aside or a linked sentence in the body
+- **Forward definitions:** ... each defined in a sentence where it first appears, with "chapter NN"
+:::
+```
+
+A primer the chapter *requires* is its backticked slug, outside parentheses; it must exist in
+`course/primers/`. A primer merely linked for the curious is named in plain words ("the ELF
+primer"). Backticked words inside parentheses are descriptions, not primers.
+
+### A.5 Predict, callouts, breaks and sittings
+
+- **Predict** is always a block: `:::predict <the question>` on one line, the reveal as its body,
+  closed by `:::`. Never a `> **Predict.**` blockquote.
+- **Callouts** are STYLE section 7 blockquotes: `> **Try it.**`, `> **Aside.**`,
+  `> **Under the hood.**`, `> **Security.**`, `> **Production note.**`. No other labels; at most about
+  five per chapter. A callout holds prose only: a `:::code` or `:::term` it needs goes on its own
+  line directly after the blockquote.
+- **Deliberate breakage** (CURRICULUM section 3.7) is a paragraph starting
+  `**Deliberate breakage N: <what to change>.**`, followed by the Predict prompt, the captured run,
+  and the three-line debrief: what you saw, the misconception it exposes, the tool that finds it.
+- **Two sittings**: one `:::stopping-point <label>` line between the halves.
+
+### A.6 Retrieval banks
+
+`course/retrieval/NN.md` holds 6 to 10 items that test *use* of chapter NN, not recall of names.
+Later lessons' warm-ups draw from it.
+
+```text
+# Retrieval 02: <chapter title>
+
+## R1
+Q: A VM exit reports the syndrome `0x5a00002a`. Which instruction stopped the guest?
+A: <the answer, with the reasoning a learner can check>
+```
+
+Items are `## R1`, `## R2`, … in order, each with one `Q:` line then one `A:` line (continuation
+lines are allowed). In the lesson, `:::retrieval` renders three items: one each from the banks of
+chapters N-1, N-3 and N-7; a source that does not exist is replaced by the nearest earlier
+chapter not yet used (chapter 02 draws from 01, then 00, then 01 again). `:::retrieval from=01,00`
+overrides the sources.
+
+### A.7 Journal and rubric
+
+`course/journal/NN.md` is the learner's template; follow `course/journal/02.md`:
+
+```text
+# Journal NN: <chapter title>
+
+<!-- one comment saying how it is checked and that nothing is uploaded -->
+
+## Predict                                 when checkpoint.toml says predict = true
+
+> <the Predict fork, as a question>
+
+<!-- Write your guess here BEFORE you run it, then what you saw. -->
+
+## Q1
+
+> *Observe (evidence: <where the evidence comes from>).* <one question>
+...
+## Qn
+
+> *Transfer, the open question (evidence: ...).* <the lesson's open question>
+```
+
+Questions are ordered observe, mechanism, transfer; a park question says "Park, answered in
+chapter NN". The count must equal `questions` in `course/checkpoints/NN/checkpoint.toml`. The
+prompts are learner-facing: no author notation (A.10). `course/journal/NN.rubric.md` has the
+same headings, `# Rubric NN: <chapter title>`, and under each a list of the *ideas* a strong
+answer contains (from `course/reviews/socratic.md` Part B, corrected by CURRICULUM section 5),
+never model prose.
+
+### A.8 Captures
+
+Names are `course/captures/NN-<words>.txt` (lowercase, digits, dashes), plus
+`NN-<words>.trace.jsonl` for trace files; NN is the chapter that first shows it. Every `.txt`
+starts with a `# ` provenance line, which both tools write:
+
+```text
+# scripts/capture-cmd 02: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# <--note lines: what differs from the reference>
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ <the command as the learner types it>
+exit: 0                     or: exit: none (stopped by --timeout 10 s: still running)
+--- stdout ---
+--- stderr ---
+```
+
+`scripts/capture.sh NN` owns the files named after a checkpoint run (`NN-<run>.txt`, header
+`# scripts/capture.sh NN: …`); `capture-cmd` refuses to overwrite them. Paths are replaced by
+`<repo>`, `<tree>` and `~`, and a capture that would still contain your login name is refused.
+In prose, say "we checked this on a real Mac" and show the capture; when nothing can be captured,
+say "we have not been able to check this".
+
+### A.9 The glossary
+
+`course/GLOSSARY.md` has `# Glossary`, an introduction, `## Primers`, then `## Chapter 00` to
+`## Chapter 27`. An entry is one line:
+
+```text
+- **VM exit**: The moment the guest stops and our VMM runs, because the guest did something HVF forwards to us.
+- **ESR** (Exception Syndrome Register): The register that records *why* an exception happened.
+```
+
+The bold term is the anchor (`#vm-exit`; lowercase, other characters become `-`); the expansion
+is for acronyms only; the definition is one sentence or two, ending with a full stop, using only
+glossary words or everyday programming words. A term goes in the section of the chapter that
+earns it (a term only forward-defined there goes where its full story is). Primer entries end
+with "Taught in `slug`." Link a term's first use on a page as
+`[VM exit](/build-your-own/vmm/glossary/#vm-exit)`; the lint checks every such link resolves.
+The lint also uses the expansions: the first plain-text use of an acronym on a page should have
+its expansion within a couple of lines.
+
+### A.10 Learner-facing notation
+
+Author notation never reaches a lesson, journal, rubric or retrieval bank. The lint fails on:
+
+| Author form | Write instead |
+|---|---|
+| `[V]` | "we checked this on a real Mac", plus what ran (a capture) |
+| `[U]` | the captured observation, or "we have not been able to check this" |
+| `M4`, `K11`, `R12` (milestone and risk IDs) | nothing; say what the thing is |
+| `L1`, `L2`, `L3` | "contract tests", "runs on your Mac", "journal" |
+| `§`, "architecture §3", PLAN, CURRICULUM, review names | a learner page, a primer, or a spec section |
+| `ch05` (a warning) | "chapter 05" |
+
+"Apple M4" and "L1 cache" are fine. Code shown through `:::code` is the reference's own text and is
+not checked; prefer anchors whose comments a learner can read.

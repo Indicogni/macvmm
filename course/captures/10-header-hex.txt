@@ -1,0 +1,12 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# v.dtb is the file the run in 10-dtb-out-run wrote.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ xxd -l 64 v.dtb
+exit: 0
+--- stdout ---
+00000000: d00d feed 0000 04f7 0000 0038 0000 0424  ...........8...$
+00000010: 0000 0028 0000 0011 0000 0010 0000 0000  ...(............
+00000020: 0000 00d3 0000 03ec 0000 0000 0000 0000  ................
+00000030: 0000 0000 0000 0000 0000 0001 0000 0000  ................
+
+--- stderr ---

@@ -2,10 +2,10 @@
 title: EFI zboot: the kernel that is also a program
 slug: efi-zboot
 kind: primer
-minutes: 25
+minutes: 20
 required_by: [13]
 also_used_by: [21]
-lab: image-inspector
+labs: [image-inspector]
 runs: mac+browser
 command: xxd -l 8 .cache/macvmm/vmlinuz-virt
 expect: 00000000: 4d5a 0000 7a69 6d67                      MZ..zimg
@@ -467,6 +467,8 @@ of silently decompressing it. Three reasons:
 
 ## Lab
 
+:::lab image-inspector
+
 The `image-inspector` lab (introduced in `arm64-boot-protocol`) gains a zboot mode. Drop
 `vmlinuz-virt` onto the page and it highlights `MZ`, `zimg`, the payload offset and size, the
 compression name and `e_lfanew` in the hex view, decodes the PE signature, machine and subsystem,
@@ -521,7 +523,7 @@ cap, carry `ARM\x64` at `0x38`, and match the pinned `Image-virt` hash.
 ## Where this shows up in macvmm
 
 - [Chapter 13, `loaders`](../../linux/loaders/): the loader's format detection recognises `MZ`
-  plus `zimg` and refuses with `EFI zboot image`, a configuration error with exit code 2
+  plus `zimg` and refuses with `EFI zboot image`, a configuration error with exit status 2
   (`crates/vmm/src/loader/`); the `cargo xtask unzboot` tool (milestone M9) does what you did by
   hand, with checked offsets and an output cap (`crates/xtask/`); `scripts/fetch-manifest.txt`
   pins both `vmlinuz-virt` and the derived `Image-virt`.

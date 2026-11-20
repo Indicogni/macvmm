@@ -1,0 +1,15 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference tool, unmodified, given chapter 14's command line without its earlycon= word, which names the PL011 address on our machine; VZ has no PL011 there. run.sh builds and signs vz-mac first; its build lines are on stderr.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ tools/vz-mac/run.sh linux --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --cmdline "console=ttyAMA0 macvmm.test=boot"
+exit: 0
+--- stdout ---
+
+--- stderr ---
+Building for production...
+[1 / 1]
+Build complete! (0.33 sec)
+VZ guest state: starting
+VZ guest state: running
+VZ guest state: stopped (guest)
+vz-mac: guest powered off (exit 0)

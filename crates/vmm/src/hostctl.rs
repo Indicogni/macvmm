@@ -31,12 +31,14 @@ use crate::sync::lock;
 use crate::trace::ExitRing;
 use std::sync::{Arc, Mutex, Weak};
 
+// ANCHOR: hostctl_inner
 #[derive(Debug, Default)]
 struct Inner {
     current: Option<Weak<VmControl>>,
     quit: bool,
     rings: Vec<(usize, Weak<ExitRing>)>,
 }
+// ANCHOR_END: hostctl_inner
 
 /// The process-lifetime attach point for user requests (module docs).
 #[derive(Debug, Default)]
@@ -111,6 +113,7 @@ impl HostCtl {
         lock(&self.stats).clone()
     }
 
+    // ANCHOR: hostctl_dump_rings
     /// Make vCPU `index`'s ring visible to [`HostCtl::dump_rings`] while it runs.
     pub fn register_ring(&self, index: usize, ring: &Arc<ExitRing>) {
         let mut inner = lock(&self.inner);
@@ -124,15 +127,16 @@ impl HostCtl {
     }
 
     /// The registered rings as text: one header per vCPU, then one JSON record per line,
-    /// oldest first (LOG-6). Numbers and static names only.
+    /// oldest first. Numbers and static names only.
     pub fn dump_rings(&self) -> String {
         let rings: Vec<(usize, Arc<ExitRing>)> = lock(&self.inner)
             .rings
             .iter()
             .filter_map(|(i, w)| w.upgrade().map(|r| (*i, r)))
             .collect();
-        crate::trace::dump_rings(&rings) // the format lives with the records (M10)
+        crate::trace::dump_rings(&rings) // the format lives with the records
     }
+    // ANCHOR_END: hostctl_dump_rings
 }
 
 #[cfg(test)]

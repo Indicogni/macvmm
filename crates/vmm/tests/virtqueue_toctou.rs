@@ -23,12 +23,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use virtio_support::*;
+// ANCHOR: toctou_imports
 use vmm::bus::{AccessSize, MmioDevice};
 use vmm::irq::TestIrq;
 use vmm::memory::Mutation;
 use vmm::memory::prelude::*;
 use vmm::virtio::mmio::reg;
 use vmm::virtio::{Descriptor, QueueError, VirtioInterrupt, VirtioMmio};
+// ANCHOR_END: toctou_imports
 
 const K64: u64 = 64 * 1024;
 const TABLE: u64 = RAM + 0x2_0000;
@@ -40,6 +42,7 @@ fn desc_addr(i: u16) -> u64 {
 /// Reads before the device reaches descriptor `head`: avail.idx, then the avail-ring entry.
 const READS_BEFORE_HEAD: usize = 2;
 
+// ANCHOR: toctou_descriptor_rewritten
 #[test]
 fn descriptor_rewritten_after_its_first_read() {
     let mem = mem();
@@ -67,6 +70,7 @@ fn descriptor_rewritten_after_its_first_read() {
     assert_eq!(reads_of(&log, desc_addr(0), 16), 1, "{log:?}");
     assert_eq!(reads_of(&log, desc_addr(1), 16), 1, "{log:?}");
 }
+// ANCHOR_END: toctou_descriptor_rewritten
 
 #[test]
 fn next_rewritten_into_a_loop_after_the_read_changes_nothing() {

@@ -160,8 +160,9 @@ impl BootStats {
     }
 
     // ANCHOR: stats_report
-    /// The `--stats` lines (without the `macvmm: stats: ` prefix), numbers and static names
-    /// only (LOG-5):
+    /// The `--stats` lines (without the `macvmm: stats: ` prefix): numbers and fixed names
+    /// only, never guest-chosen text. `wfi` reads `n/a` when the framework does not report it
+    /// (no in-kernel GIC):
     /// ```text
     /// vcpu0 exits: vtimer 0, wfx 0, total 41: hvc 38, data abort 3
     /// vcpu0 time: exec 0.006 s, wfi 1.010 s

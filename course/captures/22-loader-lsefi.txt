@@ -1,0 +1,66 @@
+# scripts/capture-cmd 22: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference. .cache/f.raw is a fresh cp -c clone. At the loader menu a script pressed 3 (Escape to loader prompt) after 8 s, then typed lsdev and lsefi, then pressed space three times to page through lsefi's output; the run ends at --timeout 40.
+# Escape sequences and carriage returns removed; stdout shown from the line 'Exiting menu!' on.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --bios .cache/macvmm/u-boot.bin --disk .cache/f.raw --mem 2G --cpus 2 --timeout 40 --on-reset exit
+exit: 5
+--- stdout ---
+/\x08-\x08c\\x08|\x08  ```                        ` s` `.....---.......--.```   -/ +o   .--`         /y:`      +.  yo`:.            :o      `+-   y/               -/`   -o/  .-                  ::/sy+:.  /                     `--  / `:                          :` `:                          :`  /                          /  .-                        -.   --                      -.    `:`                  `:`      .--             `--.         .---.....----.  ```                        ` s` `.....---.......--.```   -/ +o   .--`         /y:`      +.  yo`:.            :o      `+-   y/               -/`   -o/  .-                  ::/sy+:.  /                     `--  / `:                          :` `:                          :`  /                          /  .-                        -.   --                      -.    `:`                  `:`      .--             `--.         .---.....----.  ______               ____   _____ _____   |  ____|             |  _ \ / ____|  __ \  | |___ _ __ ___  ___ | |_) | (___ | |  | | |  ___| '__/ _ \/ _ \|  _ < \___ \| |  | | | |   | | |  __/  __/| |_) |____) | |__| | | |   | | |    |    ||     |      |      | |_|   |_|  \___|\___||____/|_____/|_____/   ______               ____   _____ _____   |  ____|             |  _ \ / ____|  __ \  | |___ _ __ ___  ___ | |_) | (___ | |  | | |  ___| '__/ _ \/ _ \|  _ < \___ \| |  | | | |   | | |  __/  __/| |_) |____) | |__| | | |   | | |    |    ||     |      |      | |_|   |_|  \___|\___||____/|_____/|_____/ ╔╚╗╝════════════════════════════════════════════════════════════════════════════║║║║║║║║║║║║║║║║║║║║║║║║║║ Welcome to FreeBSD ++++----------------------------------------------------------------------------|||||||||||||||||||||||||| Welcome to FreeBSD 1. Boot Multi user [Enter]2. Boot Single user3. Escape to loader prompt4. Reboot5. Cons: VideoKernel:/\x08-\x08\\x08|\x08/\x08-\x08\\x08|\x08/\x08-\x08\\x086. kernel (1 of 1)Options:7. Boot OptionsAutoboot in 10 seconds. [Space] to pause Autoboot in 9 seconds. [Space] to pause Autoboot in 8 seconds. [Space] to pause Autoboot in 7 seconds. [Space] to pause Autoboot in 6 seconds. [Space] to pause Autoboot in 5 seconds. [Space] to pause                                                                                Exiting menu!
+
+
+Type '?' for a list of commands, 'help' for more detailed help.
+OK lsdev
+disk devices:
+    disk0:    12649563 X 512 blocks
+      disk0p1: EFI
+      disk0p2: FreeBSD swap
+      disk0p3: FreeBSD UFS
+http: (unknown)
+net devices:
+OK lsefi
+Handle for device /VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b)
+  device path
+  device path to text
+  0379be4e-d706-437d-b037-edb82fb772a4
+  e617d64c-fe08-46da-f4dc-bbd5870c7300
+  unicode collation2
+  HII string
+  HII database
+  HII config routing
+  simple text output
+  simple text input
+  simple text ex input
+Handle for device /VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,0000000000000000)/Uart(0,0,D,D)
+  device path
+Handle 0xbe67b510
+  driver binding
+Handle for device /VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,0000000000000000)/VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,8b00000000000000)/VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,17008b0000000000)
+  device path
+  block io
+  8cf2f62c-bc9b-4821-808d-ec9ec421a1a0
+Handle for device /VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,0000000000000000)/VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,8b00000000000000)/VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,17008b0000000000)/HD(1,GPT,155e469a-665c-11f1-067b-ff9d86f8dced,0x22,0x10418)
+  device path
+  block io
+  8cf2f62c-bc9b-4821-808d-ec9ec421a1a0
+ --more--  <space> page down <enter> line down <q> quit                                                           EFI System partition
+  simple fs
+Handle for device /VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,0000000000000000)/VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,8b00000000000000)/VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,17008b0000000000)/HD(2,GPT,155e46ae-665c-11f1-1d08-61407e6af4da,0x1043a,0x200000)
+  device path
+  block io
+  8cf2f62c-bc9b-4821-808d-ec9ec421a1a0
+Handle for device /VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,0000000000000000)/VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,8b00000000000000)/VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,17008b0000000000)/HD(3,GPT,155e46ae-665c-11f1-17a5-d14fff7c5968,0x21043a,0xa00000)
+  device path
+  block io
+  8cf2f62c-bc9b-4821-808d-ec9ec421a1a0
+Handle for image /VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,0000000000000000)/VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,8b00000000000000)/VenHw(e61d73b9-a384-4acc-aeab-82e828f3628b,17008b0000000000)/HD(1,GPT,155e469a-665c-11f1-067b-ff9d86f8dced,0x22,0x10418)/\EFI\BOOT\BOOTAA64.EFI
+  loaded image device path
+  loaded image
+OK   
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x40000000 at offset 0x12c668 (flash is read-only, write 1 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c670 (flash is read-only, write 2 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c678 (flash is read-only, write 3 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c680 (flash is read-only, write 4 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 4-byte write of 0x1 at offset 0xed4 (flash is read-only, write 5 to this bank)
+macvmm: timeout: the guest was still running after --timeout 40s

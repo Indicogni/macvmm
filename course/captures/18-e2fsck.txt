@@ -1,0 +1,14 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ "$(brew --prefix e2fsprogs)/sbin/e2fsck" -fn root.img
+exit: 0
+--- stdout ---
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+root: 530/65536 files (0.9% non-contiguous), 51291/262144 blocks
+
+--- stderr ---
+e2fsck 1.47.4 (6-Mar-2025)

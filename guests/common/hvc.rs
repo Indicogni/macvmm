@@ -16,10 +16,12 @@
 
 use core::arch::asm;
 
+// ANCHOR: guest_debug_ids
 /// `DEBUG_PUTC(x1 = byte)`: one byte to the serial sink, through the VMM's `AnsiFilter`.
 pub const DEBUG_PUTC: u64 = 0xC600_4D01;
 /// `DEBUG_EXIT(x1 = code)`: stop the VM; code 0 → macvmm exits 0, anything else → exit 6.
 pub const DEBUG_EXIT: u64 = 0xC600_4D02;
+// ANCHOR_END: guest_debug_ids
 /// `DEBUG_MEMHASH(x1 = ipa, x2 = len)`: `x0 = 0, x1 = FNV-1a-64`, or `x0 = -2`.
 pub const DEBUG_MEMHASH: u64 = 0xC600_4D03;
 /// `DEBUG_BOOT_COUNT`: `x0 = 0, x1 = boot generation`.
@@ -30,6 +32,7 @@ pub const NOT_SUPPORTED: i64 = -1;
 /// SMCCC `INVALID_PARAMETER` (used by MEMHASH for a range outside RAM).
 pub const INVALID_PARAMETER: i64 = -2;
 
+// ANCHOR: guest_hvc_call
 /// Make one SMCCC call through `hvc #0` and return `x0..x3`.
 #[inline(always)]
 pub fn hvc_call(x0: u64, x1: u64, x2: u64, x3: u64) -> [u64; 4] {
@@ -50,6 +53,7 @@ pub fn hvc_call(x0: u64, x1: u64, x2: u64, x3: u64) -> [u64; 4] {
     }
     [r0, r1, r2, r3]
 }
+// ANCHOR_END: guest_hvc_call
 
 // ANCHOR: guest_debug_putc
 /// Print one byte through the VMM (`hvc #0` with `x0 = 0xC600_4D01`, `x1 = byte`).
@@ -58,11 +62,13 @@ pub fn debug_putc(byte: u8) {
 }
 // ANCHOR_END: guest_debug_putc
 
+// ANCHOR: guest_debug_exit
 /// Stop the VM with `code` (0 = success). Never returns: if the VMM ignored the call, spin.
 pub fn debug_exit(code: u32) -> ! {
     hvc_call(DEBUG_EXIT, u64::from(code), 0, 0);
     crate::psci::halt()
 }
+// ANCHOR_END: guest_debug_exit
 
 /// FNV-1a-64 of guest RAM `[ipa, ipa + len)` as the VMM sees it, or the negative SMCCC error.
 pub fn memhash(ipa: u64, len: u64) -> Result<u64, i64> {

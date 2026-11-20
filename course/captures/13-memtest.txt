@@ -1,0 +1,18 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified: chapter 04's memtest guest, now loaded from its ELF file. With its MMU off it writes patterns over 16 MiB and the VMM hashes the same memory through its own cacheable mapping.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --kernel target/guests/aarch64-unknown-none/release/memtest --timeout 10
+exit: 0
+--- stdout ---
+memtest: pattern 1 ok
+memtest: pattern 2 ok
+memtest: pattern 3 ok
+memtest: pattern 4 ok
+memtest: pattern 5 ok
+memtest: pattern 6 ok
+memtest: pattern 7 ok
+memtest: pattern 8 ok
+memtest: memhash ok
+memtest: memhash rejects overflow ok
+
+--- stderr ---

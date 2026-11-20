@@ -1,8 +1,8 @@
-// Checkpoint 05 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/layout_invariants.rs.
+// Checkpoint 05 contract tests, frozen from the reference test crates/vmm/tests/layout_invariants.rs.
 // It names only items the chapter 05 lesson teaches; the harness runs it against your crates.
-//! Invariants of the `virt` memory map (PLAN M2 acceptance, architecture §5.3, threat model
-//! MEM-8). If a later milestone edits `arch/layout.rs` and breaks one of these, the board no
-//! longer matches QEMU `virt` (ADR-0003) or no longer fits HVF's rules.
+//! Invariants of the `virt` memory map, the chapter 05 list. If a later chapter edits
+//! `arch/layout.rs` and breaks one of these, the board no longer matches QEMU's `virt` board
+//! or no longer fits Hypervisor.framework's rules (16 KiB pages, the IPA size).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::collections::BTreeSet;
@@ -71,7 +71,7 @@ fn intids_are_unique_spis() {
     let region_intids = VIRT_REGIONS.iter().filter_map(|r| r.intid);
     let slot_intids = (0..VIRTIO_MMIO_SLOTS).map(|i| l.virtio_slot(i).unwrap().1);
     // A reserved block counts as every INTID in it, so a device line inside PCIe INTx or the
-    // GICv2m MSI range, or two blocks that overlap, is a duplicate (PLAN §1).
+    // GICv2m MSI range, or two blocks that overlap, is a duplicate (QEMU virt's interrupt map).
     let reserved_intids = RESERVED_INTIDS.iter().flat_map(|r| r.first..=r.last);
     for intid in region_intids.chain(slot_intids).chain(reserved_intids) {
         assert!((32..=1019).contains(&intid), "INTID {intid} is not an SPI");
@@ -84,8 +84,8 @@ fn intids_are_unique_spis() {
 }
 
 #[test]
-fn reserved_intid_blocks_match_plan_section_1() {
-    // PLAN §1: PCIe INTx SPI 3–6, GICv2m SPI 48–111 (SPI n is INTID 32 + n).
+fn reserved_intid_blocks_match_qemu_virt() {
+    // QEMU virt (hw/arm/virt.c): PCIe INTx SPI 3–6, GICv2m SPI 48–111 (SPI n is INTID 32 + n).
     assert_eq!(
         (PCIE_INTX_INTIDS.first, PCIE_INTX_INTIDS.last),
         (32 + 3, 32 + 6)
@@ -146,7 +146,7 @@ fn ipa_bits() {
     assert_eq!(l.ipa_bits_needed((1 << 36) + 1), 37);
     assert_eq!(l.ipa_bits_needed(0), 36, "never below the HVF default");
     assert_eq!(l.ipa_bits_needed(u64::MAX), 64);
-    // Every legal RAM size gives a table that validates at the computed width (MEM-8).
+    // Every legal RAM size gives a region table that accepts the computed width.
     for size in [RAM_MIN, RAM_DEFAULT, 4 << 30, RAM_MAX] {
         let end = l.ram_end(size).unwrap();
         let bits = l.ipa_bits_needed(end);
@@ -173,7 +173,7 @@ fn dt_unit_addresses_derive_from_base() {
             .unwrap()
             .unit_address()
     };
-    // The node names Linux and U-Boot expect (architecture §12.2, PLAN §1).
+    // The device-tree node names Linux and U-Boot expect (QEMU virt uses the same).
     assert_eq!(format!("pl011@{}", by("pl011")), "pl011@9000000");
     assert_eq!(format!("pl031@{}", by("pl031")), "pl031@9010000");
     assert_eq!(format!("intc@{}", by("gicd")), "intc@8000000");
@@ -193,7 +193,8 @@ fn gic_frames_fit_their_window() {
     let max = l.gicr_size(MAX_CPUS).unwrap();
     assert!(GICR_BASE + max <= GICR_WINDOW_END);
     assert_eq!(l.gicr_size(MAX_CPUS + 1), None);
-    // The in-kernel GIC needs 64 KiB-aligned bases (spike finding 15).
+    // HVF's in-kernel GIC wants its bases aligned to what hv_gic_get_*_base_alignment reports:
+    // 64 KiB on the Apple M5 Pro we used.
     assert_eq!(GICD_BASE % 0x1_0000, 0);
     assert_eq!(GICR_BASE % 0x1_0000, 0);
 }

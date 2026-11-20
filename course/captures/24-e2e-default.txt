@@ -1,0 +1,13 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run in a copy of the reference tree (the repository without .git, target and .cache).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p macvmm --features hvf-tests --test e2e_vmapple -- --test-threads=1
+exit: 0
+--- stdout ---
+
+running 3 tests
+...
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+
+--- stderr ---

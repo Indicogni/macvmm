@@ -1,0 +1,13 @@
+# scripts/capture-cmd 06: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/regcheck.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+regcheck: CurrentEL=0x4
+regcheck: MPIDR_EL1=0x80000000
+regcheck: SCTLR_EL1.M=0
+regcheck: DAIF=0x3c0
+regcheck: x0=0x40000000
+regcheck: vectors ok (svc caught at EL1, esr=0x5600004d)
+
+--- stderr ---

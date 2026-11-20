@@ -1,0 +1,152 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: in crates/vmm/src/loader/initrd.rs, place() starts the initrd 4 MiB below align_up(kernel_end, 2 MiB), at 0x42200000, inside the kernel's image_size span (one-line edit, no other change).
+# Run in a copy of the reference with that one edit, using the repository's .cache/macvmm files.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --timeout 15
+exit: 5
+--- stdout ---
+[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x610f0000]\x0d
+[    0.000000] Linux version 6.18.60-0-virt (buildozer@build-3-24-aarch64) (cc (Alpine 15.2.0) 15.2.0, GNU ld (GNU Binutils) 2.45.1) #1-Alpine SMP PREEMPT_DYNAMIC 2026-11-01 07:26:31\x0d
+[    0.000000] random: crng init done\x0d
+[    0.000000] Machine model: macvmm-virt\x0d
+[    0.000000] earlycon: pl11 at MMIO 0x0000000009000000 (options '')\x0d
+[    0.000000] printk: legacy bootconsole [pl11] enabled\x0d
+[    0.000000] efi: UEFI not found.\x0d
+[    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT\x0d
+[    0.000000] NUMA: Faking a node at [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000] NODE_DATA(0) allocated [mem 0x5fd03780-0x5fd05c3f]\x0d
+[    0.000000] Zone ranges:\x0d
+[    0.000000]   DMA      [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000]   DMA32    empty\x0d
+[    0.000000]   Normal   empty\x0d
+[    0.000000] Movable zone start for each node\x0d
+[    0.000000] Early memory node ranges\x0d
+[    0.000000]   node   0: [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000] Initmem setup node 0 [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000] psci: probing for conduit method from DT.\x0d
+[    0.000000] psci: PSCIv1.1 detected in firmware.\x0d
+[    0.000000] psci: Using standard PSCI v0.2 function IDs\x0d
+[    0.000000] psci: Trusted OS migration not required\x0d
+[    0.000000] psci: SMC Calling Convention v1.1\x0d
+[    0.000000] percpu: Embedded 34 pages/cpu s99608 r8192 d31464 u139264\x0d
+[    0.000000] Detected PIPT I-cache on CPU0\x0d
+[    0.000000] CPU features: detected: Address authentication (IMP DEF algorithm)\x0d
+[    0.000000] CPU features: detected: GICv3 CPU interface\x0d
+[    0.000000] CPU features: detected: Spectre-v4\x0d
+[    0.000000] CPU features: detected: Spectre-BHB\x0d
+[    0.000000] alternatives: applying boot alternatives\x0d
+[    0.000000] Kernel command line: console=ttyAMA0 earlycon=pl011,0x09000000\x0d
+[    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes\x0d
+[    0.000000] Dentry cache hash table entries: 65536 (order: 7, 524288 bytes, linear)\x0d
+[    0.000000] Inode-cache hash table entries: 32768 (order: 6, 262144 bytes, linear)\x0d
+[    0.000000] software IO TLB: SWIOTLB bounce buffer size adjusted to 0MB\x0d
+[    0.000000] software IO TLB: area num 1.\x0d
+[    0.000000] software IO TLB: mapped [mem 0x000000005f380000-0x000000005f400000] (0MB)\x0d
+[    0.000000] Fallback order for Node 0: 0 \x0d
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 131072\x0d
+[    0.000000] Policy zone: DMA\x0d
+[    0.000000] mem auto-init: stack:all(zero), heap alloc:on, heap free:off\x0d
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1\x0d
+[    0.000000] Dynamic Preempt: none\x0d
+[    0.000000] rcu: Preemptible hierarchical RCU implementation.\x0d
+[    0.000000] rcu: 	RCU restricting CPUs from NR_CPUS=4096 to nr_cpu_ids=1.\x0d
+[    0.000000] 	Trampoline variant of Tasks RCU enabled.\x0d
+[    0.000000] 	Tracing variant of Tasks RCU enabled.\x0d
+[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 100 jiffies.\x0d
+[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=1\x0d
+[    0.000000] RCU Tasks: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.\x0d
+[    0.000000] RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.\x0d
+[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0\x0d
+[    0.000000] GICv3: 988 SPIs implemented\x0d
+[    0.000000] GICv3: 0 Extended SPIs implemented\x0d
+[    0.000000] Root IRQ handler: gic_handle_irq\x0d
+[    0.000000] GICv3: GICv3 features: 16 PPIs, RSS\x0d
+[    0.000000] GICv3: GICD_CTLR.DS=1, SCR_EL3.FIQ=0\x0d
+[    0.000000] GICv3: CPU0: found redistributor 0 region 0:0x00000000080a0000\x0d
+[    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.\x0d
+[    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 1911260446275000 ns\x0d
+[    0.000000] arch_timer: cp15 timer running at 24.00MHz (virt).\x0d
+[    0.000000] clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns\x0d
+[    0.000000] sched_clock: 56 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns\x0d
+[    0.000832] kfence: initialized - using 2097152 bytes for 255 objects at 0x(____ptrval____)-0x(____ptrval____)\x0d
+[    0.001633] Console: colour dummy device 80x25\x0d
+[    0.001981] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=24000)\x0d
+[    0.002825] pid_max: default: 32768 minimum: 301\x0d
+[    0.003186] LSM: initializing lsm=lockdown,capability,landlock,yama\x0d
+[    0.003735] landlock: Up and running.\x0d
+[    0.003989] Yama: becoming mindful.\x0d
+[    0.004272] Mount-cache hash table entries: 1024 (order: 1, 8192 bytes, linear)\x0d
+[    0.004820] Mountpoint-cache hash table entries: 1024 (order: 1, 8192 bytes, linear)\x0d
+[    0.005746] rcu: Hierarchical SRCU implementation.\x0d
+[    0.006091] rcu: 	Max phase no-delay instances is 400.\x0d
+[    0.006557] EFI services will not be available.\x0d
+[    0.006906] smp: Bringing up secondary CPUs ...\x0d
+[    0.007303] smp: Brought up 1 node, 1 CPU\x0d
+[    0.007650] SMP: Total of 1 processors activated.\x0d
+[    0.008054] CPU: All CPU(s) started at EL1\x0d
+[    0.008461] CPU features: detected: Branch Target Identification\x0d
+[    0.009009] CPU features: detected: ARMv8.4 Translation Table Level\x0d
+[    0.009557] CPU features: detected: Data cache clean to the PoU not required for I/D coherence\x0d
+[    0.010231] CPU features: detected: Common not Private translations\x0d
+[    0.010662] CPU features: detected: CRC32 instructions\x0d
+[    0.011049] CPU features: detected: Data independent timing control (DIT)\x0d
+[    0.011595] CPU features: detected: E0PD\x0d
+[    0.011874] CPU features: detected: Enhanced Privileged Access Never\x0d
+[    0.012298] CPU features: detected: Generic authentication (IMP DEF algorithm)\x0d
+[    0.012844] CPU features: detected: RCpc load-acquire (LDAPR)\x0d
+[    0.013244] CPU features: detected: LSE atomic instructions\x0d
+[    0.013651] CPU features: detected: Privileged Access Never\x0d
+[    0.014049] CPU features: detected: RAS Extension Support\x0d
+[    0.014429] CPU features: detected: Speculation barrier (SB)\x0d
+[    0.014822] CPU features: detected: TLB range maintenance instructions\x0d
+[    0.015260] CPU features: detected: Scalable Matrix Extension\x0d
+[    0.015689] CPU features: detected: SME2\x0d
+[    0.016037] alternatives: applying system-wide alternatives\x0d
+[    0.017222] SME: minimum available vector length 64 bytes per vector\x0d
+[    0.017663] SME: maximum available vector length 64 bytes per vector\x0d
+[    0.018101] SME: default vector length 64 bytes per vector\x0d
+[    0.018503] Memory: 466784K/524288K available (13312K kernel code, 1994K rwdata, 8460K rodata, 2048K init, 9282K bss, 55028K reserved, 0K cma-reserved)\x0d
+[    0.019620] devtmpfs: initialized\x0d
+[    0.020162] posixtimers hash table entries: 512 (order: 1, 8192 bytes, linear)\x0d
+[    0.020680] futex hash table entries: 256 (16384 bytes on 1 NUMA nodes, total 16 KiB, linear).\x0d
+[    0.021341] 23904 pages in range for non-PLT usage\x0d
+[    0.021342] 515424 pages in range for PLT usage\x0d
+[    0.021723] pinctrl core: initialized pinctrl subsystem\x0d
+[    0.022494] DMI not present or invalid.\x0d
+[    0.023545] NET: Registered PF_NETLINK/PF_ROUTE protocol family\x0d
+[    0.024067] DMA: preallocated 128 KiB GFP_KERNEL pool for atomic allocations\x0d
+[    0.024607] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations\x0d
+[    0.025219] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA32 pool for atomic allocations\x0d
+[    0.025810] audit: initializing netlink subsys (disabled)\x0d
+[    0.026379] thermal_sys: Registered thermal governor 'step_wise'\x0d
+[    0.026388] audit: type=2000 audit(0.021:1): state=initialized audit_enabled=0 res=1\x0d
+[    0.027397] cpuidle: using governor ladder\x0d
+[    0.027705] cpuidle: using governor menu\x0d
+[    0.028009] hw-breakpoint: found 6 breakpoint and 4 watchpoint registers.\x0d
+[    0.028515] ASID allocator initialised with 65536 entries\x0d
+[    0.028974] Serial: AMBA PL011 UART driver\x0d
+[    0.029412] 9000000.pl011: ttyAMA0 at MMIO 0x9000000 (irq = 13, base_baud = 0) is a PL011 rev1\x0d
+[    0.030061] printk: console [ttyAMA0] enabled\x0d
+[    0.030061] printk: console [ttyAMA0] enabled\x0d
+[    0.030575] printk: legacy bootconsole [pl11] disabled\x0d
+[    0.030575] printk: legacy bootconsole [pl11] disabled\x0d
+[    0.032254] HugeTLB: registered 1.00 GiB page size, pre-allocated 0 pages\x0d
+[    0.032256] HugeTLB: 0 KiB vmemmap can be freed for a 1.00 GiB page\x0d
+[    0.032256] HugeTLB: registered 32.0 MiB page size, pre-allocated 0 pages\x0d
+[    0.032257] HugeTLB: 0 KiB vmemmap can be freed for a 32.0 MiB page\x0d
+[    0.032257] HugeTLB: registered 2.00 MiB page size, pre-allocated 0 pages\x0d
+[    0.032257] HugeTLB: 0 KiB vmemmap can be freed for a 2.00 MiB page\x0d
+[    0.032257] HugeTLB: registered 64.0 KiB page size, pre-allocated 0 pages\x0d
+[    0.032257] HugeTLB: 0 KiB vmemmap can be freed for a 64.0 KiB page\x0d
+[    0.032402] ACPI: Interpreter disabled.\x0d
+[    0.032407] iommu: Default domain type: Translated\x0d
+[    0.032408] iommu: DMA domain TLB invalidation policy: lazy mode\x0d
+[    0.032547] clocksource: Switched to clocksource arch_sys_counter\x0d
+[    0.041349] VFS: Disk quotas dquot_6.6.0\x0d
+[    0.041354] VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)\x0d
+[    0.042388] pnp: PnP ACPI: disabled\x0d
+[    0.042876] NET: Registered PF_INET protocol family\x0d
+[    0.042900] IP idents hash table entries: 8192 (order: 4, 65536 bytes, linear)\x0d
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 15s

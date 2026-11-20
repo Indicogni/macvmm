@@ -1,0 +1,25 @@
+# scripts/capture-cmd 15: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# A forward look: the finished reference, run from the repository root with G=target/guests/aarch64-unknown-none/release; its --rng puts chapter 17's entropy device in slot 0.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --rng --kernel $G/virtio-probe --timeout 10 --trace exits:/tmp/ch15/rng.jsonl:mmio
+exit: 0
+--- stdout ---
+virtio-probe: slot 0 device 4 features ok
+virtio-probe: slot 0 device id 4 status 0xf
+virtio-probe: rng 32 bytes nonzero
+virtio-probe: 32 slots magic ok version 2
+virtio-probe: 31 empty (device id 0)
+virtio-probe: narrow read RAZ ok
+virtio-probe: dt lists 1 virtio_mmio nodes ok
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 8-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 8-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 8-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte read at 0x0 is not an aligned 32-bit access (RAZ)

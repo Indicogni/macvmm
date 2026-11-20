@@ -1,0 +1,16 @@
+# scripts/capture.sh 25: run "sandbox-check" of course/checkpoints/25, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --mem 64M --sandbox --sandbox-selftest --stats --kernel {guests}/hello --timeout 10
+exit: 0
+--- stdout ---
+hello from guest, x0=0x40000000
+guest done
+
+--- stderr ---
+macvmm: sandbox: open denied, socket denied, spawn denied
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=43 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 44: hvc 44
+macvmm: stats: vcpu0 time: exec 0.000 s, wfi 0.000 s
+macvmm: stats: host cpu 0.000 s over 0.000 s wall (50%)
+macvmm: stats: rlimit core=0 nofile=21
+

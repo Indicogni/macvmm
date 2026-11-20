@@ -1,0 +1,13 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference tool, unmodified. VZ asks Apple's servers which restore image this Mac supports; nothing is downloaded and no bundle is created.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ tools/vz-mac/run.sh install --bundle .cache/macvmm/macos-vm --latest --dry-run
+exit: 0
+--- stdout ---
+
+--- stderr ---
+Building for production...
+Build complete! (0.15 sec)
+vz-mac: latest supported restore image: macOS 27.2.1 build "26B131" at "https://updates.cdn-apple.com/2026FallFCS/c202a724-db7e-4d56-917b-110aa0226507/UniversalMac_27.2.1_26B131_Restore.ipsw"
+vz-mac: requirements: at least 2 CPUs and 4096 MiB
+vz-mac: dry run: nothing downloaded, no bundle created

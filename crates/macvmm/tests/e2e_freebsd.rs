@@ -96,6 +96,7 @@ fn plain(s: &str) -> String {
 
 /// PLAN M19 `freebsd_login`: U-Boot → FreeBSD's EFI loader → the kernel → `login:`, log in
 /// as root (the VM image ships with an empty root password), `uname -sr`, power off.
+// ANCHOR: e2e_freebsd_login
 #[test]
 fn freebsd_login() {
     let Some(bios) = artifact("u-boot.bin", "uboot") else {
@@ -148,6 +149,7 @@ fn freebsd_login() {
     expect("freebsd-login", &seen);
     eprintln!("freebsd_login: powered off after {:?}", o.wall);
 }
+// ANCHOR_END: e2e_freebsd_login
 
 #[test]
 fn plain_strips_the_efi_console_noise() {

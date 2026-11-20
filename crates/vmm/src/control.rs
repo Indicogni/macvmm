@@ -114,6 +114,7 @@ impl GuestFatal {
     }
 }
 
+// ANCHOR: stop_reason
 /// Why a VM stopped.
 #[derive(Debug)]
 pub enum StopReason {
@@ -128,15 +129,18 @@ pub enum StopReason {
     GuestFatal(Box<GuestFatal>),
     /// `--timeout` expired (exit 5).
     Timeout,
-    /// SIGINT, SIGTERM or Ctrl-A x (exit 130; the signal path arrives in M6).
+    /// SIGINT, SIGTERM or Ctrl-A x (exit 130).
     UserQuit,
     /// The VMM or the host failed (exit 1, or 2 for a configuration error).
     Vmm(Error),
 }
+// ANCHOR_END: stop_reason
 
 // ANCHOR: exit_codes
 impl StopReason {
-    /// The process exit code (architecture §13.2).
+    /// The process exit code: 0 clean power-off, 1 VMM or host failure, 2 bad configuration,
+    /// 3 fatal guest error, 4 reset, 5 timeout, 6 debug exit with a nonzero code, 130 user quit.
+    // ANCHOR: exit_code_match
     pub fn exit_code(&self) -> i32 {
         match self {
             StopReason::PowerOff | StopReason::DebugExit(0) => 0,
@@ -148,6 +152,7 @@ impl StopReason {
             StopReason::UserQuit => 130,
         }
     }
+    // ANCHOR_END: exit_code_match
 }
 // ANCHOR_END: exit_codes
 
@@ -165,6 +170,7 @@ impl fmt::Display for StopReason {
     }
 }
 
+// ANCHOR: vm_control_stop_flag
 /// The VM's stop flag, first stop reason, vCPU kick list and PSCI state, shared by every
 /// thread of one boot.
 #[derive(Debug, Default)]
@@ -175,6 +181,7 @@ pub struct VmControl {
     handles: Mutex<Vec<VcpuHandle>>,
     psci: Psci,
 }
+// ANCHOR_END: vm_control_stop_flag
 
 impl VmControl {
     /// A control block for one vCPU (index 0, on).
@@ -201,11 +208,14 @@ impl VmControl {
         self.psci.park(index, || self.is_stopping())
     }
 
+    // ANCHOR: is_stopping
     /// True once a stop was requested. vCPU loops check it before every run.
     pub fn is_stopping(&self) -> bool {
         self.stopping.load(Ordering::SeqCst)
     }
+    // ANCHOR_END: is_stopping
 
+    // ANCHOR: vm_control_register
     /// Make `h` kickable. If a stop is already under way, kick it at once (its next run then
     /// returns `CANCELED`), so a vCPU that registers late cannot miss the stop.
     pub fn register(&self, h: VcpuHandle) {
@@ -219,6 +229,7 @@ impl VmControl {
     pub fn unregister(&self, h: VcpuHandle) {
         lock(&self.handles).retain(|x| *x != h);
     }
+    // ANCHOR_END: vm_control_register
 
     // ANCHOR: vm_control_request_stop
     // ANCHOR: request_stop
@@ -242,11 +253,11 @@ impl VmControl {
     // ANCHOR_END: vm_control_request_stop
 
     // ANCHOR: kick_all_vcpus
-    /// Make every vCPU look at the stop flag (architecture §14.5, steps 3 and 4): wake the
-    /// parked ones (PSCI OFF, waiting in `vcpu::wait` on their target's condition variable),
-    /// then force the running ones out of `hv_vcpu_run` with one `hv_vcpus_exit` over every
-    /// registered handle. The kick is sticky (spike finding 19): a vCPU about to enter the
-    /// guest returns `CANCELED` at once. With N vCPUs this is one framework call, not N.
+    /// Make every vCPU look at the stop flag: wake the parked ones (PSCI OFF, waiting in
+    /// `vcpu::wait` on their target's condition variable), then force the running ones out of
+    /// `hv_vcpu_run` with one `hv_vcpus_exit` over every registered handle. The kick is sticky
+    /// (measured on this Mac): a vCPU about to enter the guest returns `CANCELED` at once.
+    /// With N vCPUs this is one framework call, not N.
     fn kick_all_vcpus(&self) {
         self.psci.wake_all();
         let handles = lock(&self.handles).clone();
@@ -275,9 +286,10 @@ impl VmControl {
         }
     }
 
+    // ANCHOR: sleep_unless_stopped
     /// Sleep up to `d` on this VM's condition variable, waking early when a stop is requested
-    /// (the no-GIC WFI sleep, architecture §9.1: bounded by the caller's slice and never able
-    /// to delay a stop). Returns true if the VM is stopping.
+    /// (the no-GIC WFI sleep: bounded by the caller's slice and never able to delay a stop).
+    /// Returns true if the VM is stopping.
     pub fn sleep_unless_stopped(&self, d: Duration) -> bool {
         let slot = lock(&self.reason);
         if slot.is_some() || self.is_stopping() {
@@ -289,6 +301,7 @@ impl VmControl {
         };
         slot.is_some() || self.is_stopping()
     }
+    // ANCHOR_END: sleep_unless_stopped
 
     /// Take the stop reason (once the VM's threads are joined).
     pub fn take_reason(&self) -> Option<StopReason> {

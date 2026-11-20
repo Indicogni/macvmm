@@ -1,4 +1,5 @@
 //! Running a checkpoint: L1 contract tests, L2 black-box runs, L3 journal (CURRICULUM §3.3).
+//! The printed labels are learner words, not level numbers: see [`report::CONTRACT`].
 //!
 //! **Why the harness builds and signs the implementation itself:** a checkpoint must judge the
 //! learner's *own* VMM exactly as a user would meet it: the binary built from their tree, signed
@@ -887,7 +888,7 @@ fn level1(env: &Env, cp: &Checkpoint, out: &mut Out) -> bool {
     let Some(contract) = cp.contract.as_ref().filter(|c| !c.tests.is_empty()) else {
         out.line(&report::level_line(
             Status::Info,
-            "L1 contract",
+            report::CONTRACT,
             "none for this chapter",
         ));
         return true;
@@ -895,7 +896,7 @@ fn level1(env: &Env, cp: &Checkpoint, out: &mut Out) -> bool {
     let crate_dir = match l1_crate(env, cp) {
         Ok(d) => d,
         Err(e) => {
-            out.line(&report::level_line(Status::Fail, "L1 contract", &e));
+            out.line(&report::level_line(Status::Fail, report::CONTRACT, &e));
             return false;
         }
     };
@@ -905,14 +906,14 @@ fn level1(env: &Env, cp: &Checkpoint, out: &mut Out) -> bool {
         let p = match cargo_test(env, &crate_dir, &name, false, L1_TIMEOUT) {
             Ok(p) => p,
             Err(e) => {
-                out.line(&report::level_line(Status::Fail, "L1 contract", &e));
+                out.line(&report::level_line(Status::Fail, report::CONTRACT, &e));
                 return false;
             }
         };
         match judge_tests(&p, &name, L1_TIMEOUT) {
             TestOutcome::Pass(n) => parts.push(format!("{name} ({n} tests)")),
             TestOutcome::Fail(why, detail) => {
-                out.line(&report::level_line(Status::Fail, "L1 contract", &why));
+                out.line(&report::level_line(Status::Fail, report::CONTRACT, &why));
                 for l in detail {
                     out.line(&format!("    {l}"));
                 }
@@ -922,7 +923,7 @@ fn level1(env: &Env, cp: &Checkpoint, out: &mut Out) -> bool {
     }
     out.line(&report::level_line(
         Status::Pass,
-        "L1 contract",
+        report::CONTRACT,
         &parts.join(", "),
     ));
     true
@@ -1197,7 +1198,7 @@ fn write_capture(
 
 /// Run one `[[run]]`; returns whether it passed.
 fn level2_run(env: &mut Env, cp: &Checkpoint, r: &RunSpec, out: &mut Out) -> bool {
-    let label = "L2 run";
+    let label = report::RUNS;
     if let Some(tool) = &r.requires_tool
         && !on_path(tool)
     {
@@ -1393,7 +1394,7 @@ fn level2(env: &mut Env, cp: &Checkpoint, out: &mut Out) -> bool {
     if cp.runs.is_empty() {
         out.line(&report::level_line(
             Status::Info,
-            "L2 run",
+            report::RUNS,
             "none for this chapter",
         ));
         return true;
@@ -1468,7 +1469,7 @@ pub fn check_journal(text: &str, questions: usize, predict: bool) -> JournalChec
 
 /// L3: the journal (learner trees only; never uploaded).
 fn level3(env: &Env, cp: &Checkpoint, out: &mut Out) -> bool {
-    let label = "L3 journal";
+    let label = report::JOURNAL;
     let Some(j) = &cp.journal else {
         out.line(&report::level_line(
             Status::Info,

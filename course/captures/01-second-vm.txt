@@ -1,0 +1,14 @@
+# scripts/capture-cmd 01: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: in the learner workspace (see 01-minimal-doctor.txt), right after the first Vm::new succeeds, call Vm::new again while the first is alive and print the result; then drop the first and call Vm::new a third time.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- doctor
+exit: 0
+--- stdout ---
+macvmm doctor
+hv_vm_create: OK
+second Vm, first still alive: hv_vm_create: HV_BUSY (0xfae94002)
+third Vm, after dropping the first: OK
+vm create/destroy x100: OK
+DOCTOR OK
+
+--- stderr ---

@@ -1,0 +1,20 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# rustc 1.99.0, the toolchain rust-toolchain.toml pins.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -n -B5 -A2 "unsafe fn os_fsync" "$(rustc --print sysroot)/lib/rustlib/src/rust/library/std/src/sys/fs/unix.rs"
+exit: 0
+--- stdout ---
+1264-    pub fn fsync(&self) -> io::Result<()> {
+1265-        cvt_r(|| unsafe { os_fsync(self.as_raw_fd()) })?;
+1266-        return Ok(());
+1267-
+1268-        #[cfg(target_vendor = "apple")]
+1269:        unsafe fn os_fsync(fd: c_int) -> c_int {
+1270-            libc::fcntl(fd, libc::F_FULLFSYNC)
+1271-        }
+1272-        #[cfg(not(target_vendor = "apple"))]
+1273:        unsafe fn os_fsync(fd: c_int) -> c_int {
+1274-            libc::fsync(fd)
+1275-        }
+
+--- stderr ---

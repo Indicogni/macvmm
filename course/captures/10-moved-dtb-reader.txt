@@ -1,0 +1,19 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Edit: PL011_BASE in crates/vmm/src/arch/layout.rs moved from 0x0900_0000 to 0x0904_0000, and GICR_WINDOW_END (defined there as PL011_BASE) pinned at 0x0900_0000 so the interrupt controller's window does not grow over the PL031.
+# Run in a copy of the reference with those two edits; $G is target/guests/aarch64-unknown-none/release.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/dtb-reader.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+dtb-reader: x0=0x40000000
+dtb-reader: magic ok
+dtb-reader: model=macvmm-virt
+dtb-reader: memory@40000000 reg=0x40000000+0x4000000
+dtb-reader: pl011@9040000 compatible=arm,pl011
+dtb-reader: cpus=1
+dtb-reader: stdout-path=/pl011@9040000
+dtb-reader: rng-seed nonzero
+dtb-reader: kaslr-seed nonzero
+dtb-reader: done
+
+--- stderr ---

@@ -1,0 +1,4 @@
+hello from guest, x0=0x*
+guest done
+!unhandled
+!guest fatal

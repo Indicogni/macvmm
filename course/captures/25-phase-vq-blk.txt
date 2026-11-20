@@ -1,0 +1,84 @@
+# scripts/capture.sh 25: run "phase-vq-blk" of course/checkpoints/25, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+$ course/checkpoints/25/hostile.sh blk {macvmm} {guests}/hostile-vq {out}
+exit: 0
+--- stdout ---
+hostile-vq: RAM ends at 0x44000000
+hostile-vq: blk slot 0: capacity 131072 sectors ro=1
+hostile-vq: blk slot 0: 9 attacks answered with a status, 3 ended in needs-reset, recovered
+hostile-vq: 31 empty slots attacked, 3968 alignment faults, 0 unexpected values
+hostile-vq: survived
+check: read-only disk image unchanged
+
+--- stderr ---
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: device: blk request without a writable status byte
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 2 }
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 150994944, len: 512 }
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte write at 0x0 is not an aligned 32-bit access (WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte write at 0x0 is not an aligned 32-bit access (WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 8-byte read at 0x0 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 8-byte write at 0x0 is not an aligned 32-bit access (WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte read at 0x4 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte write at 0x4 is not an aligned 32-bit access (WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte read at 0x4 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte write at 0x4 is not an aligned 32-bit access (WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte read at 0x8 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte write at 0x8 is not an aligned 32-bit access (WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte read at 0x8 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte write at 0x8 is not an aligned 32-bit access (WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 8-byte read at 0x8 is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 8-byte write at 0x8 is not an aligned 32-bit access (WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte read at 0xc is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 1-byte write at 0xc is not an aligned 32-bit access (WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte read at 0xc is not an aligned 32-bit access (RAZ)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte write at 0xc is not an aligned 32-bit access (WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x0 outside the 0-byte config space (RAZ/WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x0 outside the 0-byte config space (RAZ/WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0x0 outside the 0-byte config space (RAZ/WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0x0 outside the 0-byte config space (RAZ/WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 4 bytes at 0x0 outside the 0-byte config space (RAZ/WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 4 bytes at 0x0 outside the 0-byte config space (RAZ/WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 8 bytes at 0x0 outside the 0-byte config space (RAZ/WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 8 bytes at 0x0 outside the 0-byte config space (RAZ/WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x1 outside the 0-byte config space (RAZ/WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x1 outside the 0-byte config space (RAZ/WI)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x9 outside the 0-byte config space (RAZ/WI) (989 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0x14 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x1f outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x29 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0x34 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte read at 0x3c is not an aligned 32-bit access (RAZ) (989 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte write at 0x3c is not an aligned 32-bit access (WI) (989 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x3f outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x49 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0x54 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x5f outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x69 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0x74 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte read at 0x7c is not an aligned 32-bit access (RAZ) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte write at 0x7c is not an aligned 32-bit access (WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x7f outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x89 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0x94 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x9f outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0xa9 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0xb4 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte read at 0xbc is not an aligned 32-bit access (RAZ) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte write at 0xbc is not an aligned 32-bit access (WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0xbf outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0xc9 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0xd4 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0xdf outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0xe9 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0xf4 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte read at 0xfc is not an aligned 32-bit access (RAZ) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: 2-byte write at 0xfc is not an aligned 32-bit access (WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0xff outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x9 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0x14 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x1f outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 1 bytes at 0x29 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: config access of 2 bytes at 0x34 outside the 0-byte config space (RAZ/WI) (999 similar messages suppressed)
+

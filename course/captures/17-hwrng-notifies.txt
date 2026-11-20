@@ -1,0 +1,9 @@
+# scripts/capture-cmd 17: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Counts the QueueNotify writes (guest-physical 0x0a000050: slot 0 at 0x0a000000, register offset 0x050) in the trace of the dd run.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -c '"ipa":"0xa000050"' rng.jsonl
+exit: 0
+--- stdout ---
+16387
+
+--- stderr ---

@@ -1,0 +1,11 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The fix: the BSS-zeroing loop restored (hello still has COUNTER), run by the same 0xA5-filling copy of the monitor as 03-bss-a5.txt.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/hello.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+hello from guest, x0=0x40000000
+hello: COUNTER = 0x0
+guest done
+
+--- stderr ---

@@ -1,0 +1,11 @@
+# scripts/capture-cmd 17: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Repeats of the two /dev/ttyAMA0 runs (count=0 and count=1) with --trace exits:pl011-0.jsonl:mmio and --trace exits:pl011-1.jsonl:mmio added; they again cost 2,868 and 11,062 exits.
+# Counts the PL011's flag-register reads (FR, offset 0x018, address 0x09000018) and data-register writes (DR, offset 0x000, address 0x09000000) in each trace.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ for c in 0 1; do echo "count=$c: flag register reads $(grep "\"ipa\":\"0x9000018\"" pl011-$c.jsonl | grep -c "\"wnr\":false"), data register writes $(grep "\"ipa\":\"0x9000000\"" pl011-$c.jsonl | grep -c "\"wnr\":true")"; done
+exit: 0
+--- stdout ---
+count=0: flag register reads 1391, data register writes 738
+count=1: flag register reads 5487, data register writes 4834
+
+--- stderr ---

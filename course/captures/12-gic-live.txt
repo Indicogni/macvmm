@@ -1,0 +1,17 @@
+# scripts/capture-cmd 12: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified: the on-Mac test the checkpoint runs as gic-live, with its own output shown.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --features hvf-tests --test hvf_gic_live -- --test-threads=1 --nocapture
+exit: 0
+--- stdout ---
+
+running 2 tests
+..
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+--- stderr ---
+hvf_gic_live: GicFacts { distributor_size: 65536, redistributor_size: 131072, spi: 32..1020, vtimer: 27, ptimer: 30 }
+hvf_gic_live: spi range 32..1020
+hvf_gic_live: ID_AA64PFR0_EL1 (hv_vcpu_get_sys_reg) = 0x1101000011110011 (GIC field 1)
+hvf_gic_live: no GIC: ID_AA64PFR0_EL1 = 0x1101000010110011 (GIC field 0); hv_vcpu_set_pending_interrupt(IRQ) = Ok(())

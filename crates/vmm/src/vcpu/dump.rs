@@ -51,6 +51,9 @@ use core::fmt::Write as _;
 const VECTOR_TABLE_SIZE: u64 = 0x800;
 const VECTOR_ENTRY: u64 = 0x80;
 
+// ANCHOR: dump_ec_suffix
+/// ` (EC 0x25: data abort, same EL)`: the exception class of `esr` in hex, then its name when
+/// [`esr::ec_name`] knows one.
 fn ec_suffix(esr: u64) -> String {
     let ec = esr::esr_ec(esr);
     match esr::ec_name(ec) {
@@ -58,6 +61,7 @@ fn ec_suffix(esr: u64) -> String {
         None => format!(" (EC {ec:#04x})"),
     }
 }
+// ANCHOR_END: dump_ec_suffix
 
 // ANCHOR: regdump_format
 /// The register block of the dump (module docs), each line indented by two spaces.

@@ -1,0 +1,59 @@
+# scripts/capture-cmd 09: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Your tree at the first run: the UART is on the bus, the clock is not yet. Made from the reference by deleting the PL031's bus.insert (and its now-unused imports) in crates/vmm/src/machine/virt.rs; nothing else changed. $G is the repository's target/guests/aarch64-unknown-none/release; ping arrives through a pipe instead of the keyboard.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ printf 'ping\n' | cargo run -q -p macvmm -- run --mem 64M --raw $G/uart-echo.bin@0x40080000 --timeout 10
+exit: 3
+--- stdout ---
+uart-echo: ready
+pong
+
+--- stderr ---
+macvmm: guest fatal: unhandled MMIO read at 0x9010000 size 4 pc 0x40081168
+vcpu0: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=0 SF=0 AR=0 FnV=0 S1PTW=0 WnR=0 DFSC=0x6 (translation fault)
+  esr=0x93800006 ipa=0x9010000
+  x0=0x000000000000000a x1=0x0000000000000067 x2=0x0000000000000004 x3=0x000000004008133c
+  x4=0x0000000000000000 x5=0x0000000000000000 x6=0x0000000000000000 x7=0x0000000000000000
+  x8=0x0000000009010000 x9=0x0000000009000000 x10=0x0000000009000000 x11=0x000000000000000a
+  x12=0x000000000000000a x13=0x0000000000000000 x14=0x0000000000000000 x15=0x0000000000000000
+  x16=0x0000000000000000 x17=0x0000000000000000 x18=0x0000000040082e0e x19=0x0000000000000000
+  x20=0x0000000000000000 x21=0x0000000000000000 x22=0x0000000000000000 x23=0x0000000000000000
+  x24=0x0000000000000000 x25=0x0000000000000000 x26=0x0000000000000000 x27=0x0000000000000000
+  x28=0x0000000000000000 x29=0x0000000000000000 x30=0x00000000400810d8
+  sp_el0=0x0 sp_el1=0x400930e0
+  pc=0x40081168 cpsr=0x600003c5 (EL1h, DAIF, nZCv)
+  ELR_EL1=0x0 SPSR_EL1=0x0 ESR_EL1=0x0 (EC 0x00: unknown reason) FAR_EL1=0x0
+  VBAR_EL1=0x40080800 SCTLR_EL1=0x30000180 TCR_EL1=0x0 TTBR0_EL1=0x0 TTBR1_EL1=0x0
+  insn at pc: 0xb9400100
+last exits: 32 (oldest first)
+  {"t_ns":1731333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081378","ipa":"0x9000000","wnr":true,"size":4,"reg":1,"value":"0x72","action":"mmio","isv":true}
+  {"t_ns":1733166,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081370","ipa":"0x9000018","wnr":false,"size":4,"reg":8,"value":"0x80","action":"mmio","isv":true}
+  {"t_ns":1734750,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081378","ipa":"0x9000000","wnr":true,"size":4,"reg":1,"value":"0x65","action":"mmio","isv":true}
+  {"t_ns":1736541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081370","ipa":"0x9000018","wnr":false,"size":4,"reg":8,"value":"0x80","action":"mmio","isv":true}
+  {"t_ns":1738166,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081378","ipa":"0x9000000","wnr":true,"size":4,"reg":1,"value":"0x61","action":"mmio","isv":true}
+  {"t_ns":1739958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081370","ipa":"0x9000018","wnr":false,"size":4,"reg":8,"value":"0x80","action":"mmio","isv":true}
+  {"t_ns":1741583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081378","ipa":"0x9000000","wnr":true,"size":4,"reg":1,"value":"0x64","action":"mmio","isv":true}
+  {"t_ns":1743375,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081370","ipa":"0x9000018","wnr":false,"size":4,"reg":8,"value":"0x80","action":"mmio","isv":true}
+  {"t_ns":1745000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081378","ipa":"0x9000000","wnr":true,"size":4,"reg":1,"value":"0x79","action":"mmio","isv":true}
+  {"t_ns":1747416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x400812e4","ipa":"0x9000018","wnr":false,"size":4,"reg":9,"value":"0x80","action":"mmio","isv":true}
+  {"t_ns":1749000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x400812f4","ipa":"0x9000000","wnr":true,"size":4,"reg":8,"value":"0xa","action":"mmio","isv":true}
+  {"t_ns":1751000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4008128c","ipa":"0x9000018","wnr":false,"size":4,"reg":11,"value":"0x80","action":"mmio","isv":true}
+  {"t_ns":1752583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4008129c","ipa":"0x9000000","wnr":false,"size":4,"reg":11,"value":"0x70","action":"mmio","isv":true}
+  {"t_ns":1754416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4008128c","ipa":"0x9000018","wnr":false,"size":4,"reg":11,"value":"0x80","action":"mmio","isv":true}
+  {"t_ns":1756000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4008129c","ipa":"0x9000000","wnr":false,"size":4,"reg":11,"value":"0x69","action":"mmio","isv":true}
+  {"t_ns":1757666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4008128c","ipa":"0x9000018","wnr":false,"size":4,"reg":11,"value":"0x80","action":"mmio","isv":true}
+  {"t_ns":1759250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4008129c","ipa":"0x9000000","wnr":false,"size":4,"reg":11,"value":"0x6e","action":"mmio","isv":true}
+  {"t_ns":1760875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4008128c","ipa":"0x9000018","wnr":false,"size":4,"reg":11,"value":"0x80","action":"mmio","isv":true}
+  {"t_ns":1762458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4008129c","ipa":"0x9000000","wnr":false,"size":4,"reg":11,"value":"0x67","action":"mmio","isv":true}
+  {"t_ns":1764041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4008128c","ipa":"0x9000018","wnr":false,"size":4,"reg":11,"value":"0x80","action":"mmio","isv":true}
+  {"t_ns":1765625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4008129c","ipa":"0x9000000","wnr":false,"size":4,"reg":11,"value":"0xa","action":"mmio","isv":true}
+  {"t_ns":1767416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081370","ipa":"0x9000018","wnr":false,"size":4,"reg":8,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":1769000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081378","ipa":"0x9000000","wnr":true,"size":4,"reg":1,"value":"0x70","action":"mmio","isv":true}
+  {"t_ns":1770833,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081370","ipa":"0x9000018","wnr":false,"size":4,"reg":8,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":1772458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081378","ipa":"0x9000000","wnr":true,"size":4,"reg":1,"value":"0x6f","action":"mmio","isv":true}
+  {"t_ns":1774291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081370","ipa":"0x9000018","wnr":false,"size":4,"reg":8,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":1775958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081378","ipa":"0x9000000","wnr":true,"size":4,"reg":1,"value":"0x6e","action":"mmio","isv":true}
+  {"t_ns":1777916,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081370","ipa":"0x9000018","wnr":false,"size":4,"reg":8,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":1779625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081378","ipa":"0x9000000","wnr":true,"size":4,"reg":1,"value":"0x67","action":"mmio","isv":true}
+  {"t_ns":1781541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x400812e4","ipa":"0x9000018","wnr":false,"size":4,"reg":9,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":1783208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x400812f4","ipa":"0x9000000","wnr":true,"size":4,"reg":8,"value":"0xa","action":"mmio","isv":true}
+  {"t_ns":1784958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081168","ipa":"0x9010000","wnr":false,"size":4,"reg":0,"action":"stop","isv":true}

@@ -1,0 +1,8 @@
+# scripts/capture-cmd 21: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ xxd -s 0x174 -l 0x10 -e .cache/macvmm/u-boot.bin
+exit: 0
+--- stdout ---
+00000174: 90000969 9119a129 a9000520 a9010d22  i...)... ..."...
+
+--- stderr ---

@@ -1,0 +1,9 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference binary, copied and re-signed WITHOUT any entitlement (sign.sh --no-entitlements); codesign then prints the signature's entitlements: none, only the Executable= line.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cp target/debug/macvmm target/ch13/macvmm-noent && scripts/sign.sh --no-entitlements target/ch13/macvmm-noent && codesign -d --entitlements - target/ch13/macvmm-noent
+exit: 0
+--- stdout ---
+
+--- stderr ---
+Executable=<repo>/target/ch13/macvmm-noent

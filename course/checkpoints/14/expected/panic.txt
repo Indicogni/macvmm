@@ -1,0 +1,2 @@
+macvmm-initramfs: triggering a kernel panic
+Kernel panic - not syncing

@@ -1,0 +1,8 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo xtask mkrootfs --out learner/rootfs.img --size 256M
+exit: 0
+--- stdout ---
+mkrootfs: OK learner/rootfs.img (268435456 bytes; 83 files, 96 dirs, 335 symlinks, 0 hard links; 181 modes applied in the guest; setid stripped: none; e2fsprogs 1.47.4)
+
+--- stderr ---

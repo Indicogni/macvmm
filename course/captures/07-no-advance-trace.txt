@@ -1,0 +1,13 @@
+# scripts/capture-cmd 07: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The trace file written by the run in 07-no-advance.txt (same copy of the reference, same edit).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ sh -c 'head -n 3 t.jsonl; tail -n 1 t.jsonl; wc -l < t.jsonl'
+exit: 0
+--- stdout ---
+{"t_ns":504083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x400810e4","ipa":"0xb000000","wnr":true,"size":1,"reg":8,"value":"0x5a","action":"mmio","isv":true}
+{"t_ns":522166,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x400810e4","ipa":"0xb000000","wnr":true,"size":1,"reg":8,"value":"0x5a","action":"mmio","isv":true}
+{"t_ns":527958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x400810e4","ipa":"0xb000000","wnr":true,"size":1,"reg":8,"value":"0x5a","action":"mmio","isv":true}
+{"t_ns":1996679333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x400810e4","ipa":"0xb000000","wnr":true,"size":1,"reg":8,"value":"0x5a","action":"mmio","isv":true}
+  324719
+
+--- stderr ---

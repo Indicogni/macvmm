@@ -1,0 +1,24 @@
+# scripts/capture-cmd 11: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Experiment: the same guest edit as 11-first-cntvct.txt (print CNTVCT_EL0 first), and the VMM's boot_offset() in crates/vmm/src/timer.rs returns 0 instead of mach_absolute_time().
+# Run in a copy of the reference with those two edits.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --irqchip none --mem 64M --raw {guests}/timer-nogic.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+timer-nogic: first cntvct=3583539855220
+timer-nogic: cntfrq=24000000
+timer-nogic: pfr0.gic=0
+timer-nogic: interval 0 = 105 ms ok
+timer-nogic: interval 1 = 105 ms ok
+timer-nogic: interval 2 = 100 ms ok
+timer-nogic: interval 3 = 101 ms ok
+timer-nogic: interval 4 = 101 ms ok
+timer-nogic: interval 5 = 105 ms ok
+timer-nogic: interval 6 = 100 ms ok
+timer-nogic: interval 7 = 105 ms ok
+timer-nogic: interval 8 = 100 ms ok
+timer-nogic: interval 9 = 101 ms ok
+timer-nogic: irqs=10 stale=274782
+timer-nogic: 10/10 intervals within 95..150 ms
+
+--- stderr ---

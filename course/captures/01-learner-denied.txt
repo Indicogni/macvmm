@@ -1,0 +1,13 @@
+# scripts/capture-cmd 01: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# A learner workspace written by following this chapter's text (scripts/learner init, start 01, then the files the lesson names), run from the repository root after cd .. from learner/.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/sign.sh --no-entitlements target/learner/debug/macvmm && target/learner/debug/macvmm doctor
+exit: 1
+--- stdout ---
+macvmm doctor
+hv_vm_create: FAILED (HV_DENIED (0xfae94007))
+
+--- stderr ---
+macvmm doctor: hv_vm_create: HV_DENIED (0xfae94007)
+hint: sign this binary: run it through scripts/sign-and-run.sh (cargo run does)
+DOCTOR FAILED

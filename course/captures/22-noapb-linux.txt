@@ -1,0 +1,15 @@
+# scripts/capture-cmd 22: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1: the PL011 node lists only the uartclk clock (clock_names ["uartclk"] in crates/vmm/src/fdt/machine.rs); apb_pclk is gone. Everything else is the reference.
+# Carriage returns removed; stdout filtered with grep -E to the lines matching PL011|pl011|ttyAMA0|console|macvmm-|Power (as in 22-linux-console.txt).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/run-linux.sh --test boot --timeout 30
+exit: 0
+--- stdout ---
+[    0.000000] Machine model: macvmm-virt
+[    0.000000] printk: legacy bootconsole [pl11] enabled
+[    0.000000] Kernel command line: console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=boot
+[    0.032977] Serial: AMBA PL011 UART driver
+[    0.169812] Warning: unable to open an initial console.
+[    0.174058] reboot: Power down
+
+--- stderr ---

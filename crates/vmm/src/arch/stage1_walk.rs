@@ -373,6 +373,7 @@ fn step(cfg: &RangeConfig, level: u32, desc: u64, va: u64) -> Result<Step, WalkE
 // ANCHOR: stage1_walk
 /// Translate `va` the way the guest's EL1&0 stage-1 MMU would (module docs). With
 /// `SCTLR_EL1.M = 0` the translation is the identity.
+// ANCHOR: stage1_walk_select
 pub fn translate(
     mem: &dyn GuestMemory,
     regs: &TranslationRegs,
@@ -401,7 +402,9 @@ pub fn translate(
             addr: table,
         });
     }
+    // ANCHOR_END: stage1_walk_select
     // At most MAX_LEVELS iterations, no recursion: a cycle in the tables cannot loop (MMIO-5).
+    // ANCHOR: stage1_walk_loop
     for level in cfg.start_level..MAX_LEVELS {
         let idx = field(va, cfg.level_shift(level), cfg.index_bits(level));
         // idx < 2^11 and the table is below 2^48, so neither step can overflow; checked anyway.
@@ -430,6 +433,7 @@ pub fn translate(
         desc: 0,
     })
 }
+// ANCHOR_END: stage1_walk_loop
 // ANCHOR_END: stage1_walk
 
 /// A read-only source of instruction words outside RAM: flash ROM (M18, module docs).
@@ -486,6 +490,7 @@ pub fn fetch_insn(
 /// [`fetch_insn`], then, if the PC's IPA is not RAM, the read-only ROM hook `rom` (module docs,
 /// M18). The translation is the same (tables from RAM only); only the final word may come
 /// from the ROM. `None` behaves exactly like [`fetch_insn`].
+// ANCHOR: stage1_fetch_insn_rom_body
 pub fn fetch_insn_rom(
     mem: &dyn GuestMemory,
     rom: Option<&dyn InsnRom>,
@@ -499,4 +504,5 @@ pub fn fetch_insn_rom(
         (other, _) => other,
     }
 }
+// ANCHOR_END: stage1_fetch_insn_rom_body
 // ANCHOR_END: stage1_fetch_insn_rom

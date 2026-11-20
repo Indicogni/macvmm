@@ -15,9 +15,11 @@
 
 use core::fmt;
 
+// ANCHOR: guest_address_type
 /// A guest-physical address (IPA).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GuestAddress(pub u64);
+// ANCHOR_END: guest_address_type
 
 // ANCHOR: guest_address_checked_add
 impl GuestAddress {

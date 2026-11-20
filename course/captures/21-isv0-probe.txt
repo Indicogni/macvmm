@@ -1,0 +1,27 @@
+# scripts/capture-cmd 21: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --testdev --kernel target/guests/aarch64-unknown-none/release/isv0-probe --trace exits:isv0.jsonl:mmio --timeout 10
+exit: 0
+--- stdout ---
+isv0-probe: mmu on
+isv0-probe: stp x ok
+isv0-probe: ldp x ok
+isv0-probe: stp w ok
+isv0-probe: ldp w ok
+isv0-probe: ldpsw ok
+isv0-probe: stp x pre-index ok
+isv0-probe: ldp x post-index ok
+isv0-probe: stp w post-index ok
+isv0-probe: ldp w pre-index ok
+isv0-probe: ldpsw pre-index ok
+isv0-probe: str x pre-index ok
+isv0-probe: ldrsh x post-index ok
+isv0-probe: ldp x via stage-1 alias ok
+isv0-probe: stp x [sp]! at EL1t ok
+isv0-probe: ldp x [sp], #16 at EL1h ok
+isv0-probe: ldp x with pc via stage-1 code alias ok
+isv0-probe: 16/16 ok
+isv0-probe: simd store -> sync external abort ok
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: vcpu0: ISV=0 write at 0xb000100 pc 0x4008187c not emulated (unsupported: simd-fp): injecting a synchronous external abort

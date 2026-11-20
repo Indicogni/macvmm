@@ -1,0 +1,12 @@
+# scripts/capture-cmd 02: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Try it: the second word changed from 0xD400_0002 (hvc #0) to 0xD400_0003 (smc #0); nothing else changed.
+# Run in a copy of the reference with that edit.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- first-exit
+exit: 0
+--- stdout ---
+first-exit: mapped 16 KiB at IPA 0x40000000
+first-exit: exit reason=EXCEPTION syndrome=0x5e000000 ec=0x17 (SMC64) imm=0x0
+first-exit: pc=0x40000004 x0=0x2a
+
+--- stderr ---

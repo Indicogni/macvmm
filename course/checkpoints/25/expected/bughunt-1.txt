@@ -1,0 +1,3 @@
+bughunt: plant 1 (missing checked_add) found after *s
+!NOT found
+!does not build

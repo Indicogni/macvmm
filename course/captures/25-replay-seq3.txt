@@ -1,0 +1,9 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The second plant's copy (05-chain-verdict-cache.patch applied) replaying the hand-built three-buffer input. Its layout: a size-4 queue, one chain of three buffers (readable 0x40008000+16, writable 0x40009000+16, writable 0x40008000+0x40000).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q --release -p fuzz -- virtqueue --replay crates/fuzz/planted/05-three-buffers.bin
+exit: 1
+--- stdout ---
+fuzz virtqueue: replay FAILED: validated buffer 0x40008000+0x40000 is not inside one RAM region (VQ-4)
+
+--- stderr ---

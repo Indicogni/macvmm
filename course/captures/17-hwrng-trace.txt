@@ -1,0 +1,11 @@
+# scripts/capture-cmd 17: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Three consecutive trace records for slot 0 from the middle of the dd run: one request's doorbell (0x050), InterruptStatus read (0x060) and InterruptACK write (0x064).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep '"ipa":"0xa0000[56]' rng.jsonl | sed -n '199,201p'
+exit: 0
+--- stdout ---
+{"t_ns":2810656500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff80007a2a0034","ipa":"0xa000050","wnr":true,"size":4,"reg":1,"value":"0x0","action":"mmio","isv":true}
+{"t_ns":2810672458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff80007a2a0884","ipa":"0xa000060","wnr":false,"size":4,"reg":19,"value":"0x1","action":"mmio","isv":true}
+{"t_ns":2810676583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff80007a2a08a4","ipa":"0xa000064","wnr":true,"size":4,"reg":19,"value":"0x1","action":"mmio","isv":true}
+
+--- stderr ---

@@ -1,0 +1,22 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run in an rsync copy of the reference with its own target directory. Three tests of the sandbox suite: four vCPUs created after the lockdown (sandbox_smp), an in-process reboot under it, a new VM with its memory and its GIC created while sandboxed (sandbox_reboot), and the rlimit line (rlimit_stats).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -p macvmm --features hvf-tests --test e2e_sandbox -- sandbox_smp sandbox_reboot rlimit_stats --test-threads=1
+exit: 0
+--- stdout ---
+
+running 3 tests
+test rlimit_stats ... ok
+test sandbox_reboot ... ok
+test sandbox_smp ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.80s
+
+
+--- stderr ---
+   Compiling hvf v0.1.0 (<tree>/crates/hvf)
+   Compiling vmm v0.1.0 (<tree>/crates/vmm)
+   Compiling fuzz v0.1.0 (<tree>/crates/fuzz)
+   Compiling macvmm v0.1.0 (<tree>/crates/macvmm)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.70s
+     Running tests/e2e_sandbox.rs (target/debug/deps/e2e_sandbox-de903fff9661cc90)

@@ -1,0 +1,13 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Variant: guests/hello/main.rs gained static COUNTER: AtomicU32 = AtomicU32::new(0), read and printed once (then stored back plus one, so the compiler cannot fold it to a constant); built in a copy of the guests. LLVM is the rustup llvm-tools directory from the bare-metal-rust primer.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ "$LLVM/llvm-nm" -n -C $G/hello | grep -e COUNTER -e BACKEND -e __bss; wc -c < $G/hello.bin
+exit: 0
+--- stdout ---
+0000000040082e60 b hello::COUNTER (.0)
+0000000040082e60 B __bss_start
+0000000040082e80 b guest::console::BACKEND (.0)
+0000000040102e90 B __bss_end
+   11866
+
+--- stderr ---

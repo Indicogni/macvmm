@@ -1,0 +1,10 @@
+# scripts/capture-cmd 04: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Try it, second half: 4 KiB (0x1000 bytes) at the 16 KiB-aligned IPA 0x40000000. Two edits in a copy of the reference: first_exit.rs maps (RAM_BASE, 0x1000);
+# OwnedMapping::new (crates/hvf/src/vm.rs) still allocates a whole 16 KiB host page and passes the 4 KiB length to hv_vm_map.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- first-exit
+exit: 1
+--- stdout ---
+
+--- stderr ---
+first-exit: hv_vm_map: HV_BAD_ARGUMENT (0xfae94003)

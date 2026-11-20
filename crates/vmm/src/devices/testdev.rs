@@ -64,6 +64,7 @@ impl TestDev {
     }
 }
 
+// ANCHOR: testdev_access
 impl MmioDevice for TestDev {
     fn read(&mut self, offset: u64, size: AccessSize) -> u64 {
         match locate(offset, size).and_then(|(i, s)| Some((*self.regs.get(i)?, s))) {
@@ -95,6 +96,7 @@ impl MmioDevice for TestDev {
         }
     }
 }
+// ANCHOR_END: testdev_access
 
 #[cfg(test)]
 #[allow(

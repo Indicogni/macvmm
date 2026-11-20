@@ -1,0 +1,9 @@
+# scripts/capture-cmd 06: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Try it: Vcpu::create no longer writes MPIDR_EL1, in a copy of the reference; nothing else changed.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/regcheck.bin@0x40080000 --timeout 10
+exit: 1
+--- stdout ---
+
+--- stderr ---
+macvmm: error: get the GIC redistributor base: hv_gic_get_redistributor_base: HV_BAD_ARGUMENT (0xfae94003)

@@ -1,0 +1,10 @@
+# scripts/capture-cmd 14: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The trace file was written to a scratch directory instead of ./mmio.jsonl; nothing else differs. The first number counts every MMIO exit; the second, those anywhere in the GIC's window, 0x0800_0000 to 0x08FF_FFFF (grep -c prints 0 and exits 1 when nothing matches).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=boot" --timeout 30 --trace exits:mmio.jsonl:mmio > /dev/null && wc -l < mmio.jsonl && grep -cE '"ipa":"0x8[0-9a-f]{6}"' mmio.jsonl
+exit: 1
+--- stdout ---
+   32811
+0
+
+--- stderr ---

@@ -1,0 +1,10 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The saved input's size, then how many of its bytes are not zero (tr deletes the zero bytes).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ wc -c < target/fuzz/crashes/virtqueue-seed1-iter23338941-0.bin; LC_ALL=C tr -d '\000' < target/fuzz/crashes/virtqueue-seed1-iter23338941-0.bin | wc -c
+exit: 0
+--- stdout ---
+    5640
+     162
+
+--- stderr ---

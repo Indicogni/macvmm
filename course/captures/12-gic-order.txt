@@ -1,0 +1,13 @@
+# scripts/capture-cmd 12: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 2: chapter 02's first-exit, with two extra hv_gic_create calls (distributor 0x0800_0000, redistributors 0x080A_0000, no MSI frame): one before hv_vm_create and one right after hv_vcpu_create. Each prints the call's result.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- first-exit
+exit: 0
+--- stdout ---
+first-exit: hv_gic_create before hv_vm_create: Err("hv_gic_create: HV_NO_DEVICE (0xfae94006)")
+first-exit: mapped 16 KiB at IPA 0x40000000
+first-exit: hv_gic_create after hv_vcpu_create: Err("hv_gic_create: HV_BUSY (0xfae94002)")
+first-exit: exit reason=EXCEPTION syndrome=0x5a000000 ec=0x16 (HVC64) imm=0x0
+first-exit: pc=0x40000008 x0=0x2a
+
+--- stderr ---

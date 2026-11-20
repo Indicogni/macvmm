@@ -1,0 +1,9 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ tools/hv-denied-probe/run.sh
+exit: 0
+--- stdout ---
+hv_vm_config_set_isa(3): 0x00000000
+hv_vm_create with private ISA 3: HV_DENIED (0xfae94007)
+
+--- stderr ---

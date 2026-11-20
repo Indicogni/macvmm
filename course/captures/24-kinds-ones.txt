@@ -1,0 +1,11 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The trace of the all-ones run (24-all-ones.txt).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ jq -r '.fn // .action // .reason' .cache/vmapple/avp.jsonl | sort | uniq -c
+exit: 0
+--- stdout ---
+ 693 mmio
+  11 PSCI_SYSTEM_RESET
+  11 PSCI_VERSION
+
+--- stderr ---

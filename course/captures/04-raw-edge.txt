@@ -1,0 +1,9 @@
+# scripts/capture-cmd 04: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference's raw loader (unchanged): chapter 03's hello guest placed at 0x43fffff0, which the loader checks against RAM before copying.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/hello.bin@0x43fffff0 --timeout 10
+exit: 2
+--- stdout ---
+
+--- stderr ---
+macvmm: cannot load the guest: --raw blob 0 (0x2d9a bytes at 0x43fffff0) does not fit inside guest RAM

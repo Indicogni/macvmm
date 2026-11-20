@@ -1,0 +1,13 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The binary run.sh built and signed (tools/vz-mac/run.sh --print-path prints this path).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ codesign -d --entitlements - target/vz-mac/signed/vz-mac
+exit: 0
+--- stdout ---
+[Dict]
+	[Key] com.apple.security.virtualization
+	[Value]
+		[Bool] true
+
+--- stderr ---
+Executable=<repo>/target/vz-mac/signed/vz-mac

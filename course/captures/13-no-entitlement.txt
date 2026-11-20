@@ -1,0 +1,13 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The same unentitled copy (target/ch13/macvmm-noent), now asked to really boot.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ target/ch13/macvmm-noent run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --timeout 10
+exit: 1
+--- stdout ---
+
+--- stderr ---
+macvmm: create VM: hv_vm_create: HV_DENIED (0xfae94007)
+hint: HV_DENIED: this binary is not signed with the
+      com.apple.security.hypervisor entitlement (never signed, or relinked by
+      a later cargo build). Run it through scripts/sign-and-run.sh (`cargo run
+      -p macvmm -- run ...` does this) or sign it with scripts/sign.sh.

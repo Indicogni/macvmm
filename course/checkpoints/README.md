@@ -19,7 +19,7 @@ scripts/capture.sh 07                   # the same, recording course/captures/07
 ```
 NN/
   checkpoint.toml      the definition (format below)
-  contract/*.rs        L1 contract tests (and data files they read, e.g. contract/data/*.json)
+  contract/*.rs        L1, the contract tests (and data files they read, e.g. contract/data/*.json)
   expected/*.txt       marker files for serial output and traces
 ```
 
@@ -28,11 +28,15 @@ NN/
 
 ## The three levels
 
-| Level | What runs | Decides by |
+Authors call the levels L1, L2 and L3; the harness prints them as `contract tests`,
+`runs on your Mac` and `journal`, because learners never see the level numbers (CURRICULUM §7
+item 10).
+
+| Level (printed label) | What runs | Decides by |
 |---|---|---|
-| **L1 contract** | A throwaway crate in `target/checkpoint/NN/<key>/crate/` (`<key>`: a hash of the implementation tree's path) depending on `<impl>/crates/vmm` (feature `test-util`) and/or `<impl>/crates/hvf`, with `contract/` mirrored to `tests/`; `cargo test --offline --test <stem>` for each listed file, build included, with a 600 s timeout and the same hard kill as L2. Host only. | every test passes, at least one ran |
-| **L2 run** | Each `[[run]]`: the tree's `macvmm` built once, copied to a private directory and signed with `scripts/sign.sh` (or `--no-entitlements`); run with piped stdio, the interaction steps, a timeout and a hard kill at timeout + 10 s. The child leads its own process group and the kill reaches every process in it (a wrapper such as `cargo run`, `sh -c` or `script(1)` cannot keep the real program alive); a subprocess still holding the output pipes after the run ended is killed and the run FAILs. | exit code (always), serial markers, trace markers, extra checks |
-| **L3 journal** | Learner trees only (a tree with `.progress.toml`): `journal/NN.md` must answer every `## Q<n>`, and `## Predict` when asked. Never uploaded. | presence, not grading |
+| **L1** (`contract tests`) | A throwaway crate in `target/checkpoint/NN/<key>/crate/` (`<key>`: a hash of the implementation tree's path) depending on `<impl>/crates/vmm` (feature `test-util`) and/or `<impl>/crates/hvf`, with `contract/` mirrored to `tests/`; `cargo test --offline --test <stem>` for each listed file, build included, with a 600 s timeout and the same hard kill as L2. Host only. | every test passes, at least one ran |
+| **L2** (`runs on your Mac`) | Each `[[run]]`: the tree's `macvmm` built once, copied to a private directory and signed with `scripts/sign.sh` (or `--no-entitlements`); run with piped stdio, the interaction steps, a timeout and a hard kill at timeout + 10 s. The child leads its own process group and the kill reaches every process in it (a wrapper such as `cargo run`, `sh -c` or `script(1)` cannot keep the real program alive); a subprocess still holding the output pipes after the run ended is killed and the run FAILs. | exit code (always), serial markers, trace markers, extra checks |
+| **L3** (`journal`) | Learner trees only (a tree with `.progress.toml`): `journal/NN.md` must answer every `## Q<n>`, and `## Predict` when asked. Never uploaded. | presence, not grading |
 
 Contract tests use **only items the chapter's lesson names** (the frozen contracts of
 architecture §6), so a learner's own types satisfy them. Where an earlier chapter's item would
@@ -136,9 +140,9 @@ and every run asserts its exit code.
 ## Output
 
 ```
-[PASS] L1 contract  esr_vectors (2 tests)
-[PASS] L2 run       mmio-probe: 5/5 serial markers, 8/8 trace markers, exit 0 in 0.07s
-[INFO] L3 journal   not checked (not a learner tree)
+[PASS] contract tests   esr_vectors (2 tests)
+[PASS] runs on your Mac mmio-probe: 5/5 serial markers, 8/8 trace markers, exit 0 in 0.07s
+[INFO] journal          not checked (not a learner tree)
 CHECKPOINT 07 PASS
 ```
 

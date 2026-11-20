@@ -1,0 +1,9 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The hand-built three-buffer input (crates/fuzz/planted/05-three-buffers.bin) against an unmodified copy of the reference.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q --release -p fuzz -- virtqueue --replay crates/fuzz/planted/05-three-buffers.bin
+exit: 0
+--- stdout ---
+fuzz virtqueue: replay OK
+
+--- stderr ---

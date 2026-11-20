@@ -1,0 +1,9 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The second plant's copy (05-chain-verdict-cache.patch applied): replaying the input the fuzzer saved, before any minimisation.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q --release -p fuzz -- virtqueue --replay target/fuzz/crashes/virtqueue-seed1-iter23338941-0.bin
+exit: 1
+--- stdout ---
+fuzz virtqueue: replay FAILED: validated buffer 0x40003000+0x80000000 is not inside one RAM region (VQ-4)
+
+--- stderr ---

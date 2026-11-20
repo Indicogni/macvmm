@@ -1,0 +1,3 @@
+bughunt: control: no finding in *s on the unplanted reference (exit 0)
+!NOT found
+!FAILED

@@ -1,0 +1,12 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 3 again (Bus::read locks the MMIO counter, then the device; Bus::write the device, then the counter), in a copy of the reference with that one edit. A script ran the VMM in the background and sent it SIGINT, what Ctrl-C sends, twice: 30 s after the start, then 3 s later; it printed whether the VMM was still running before each signal, and its exit status.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --cpus 4 --mem 512M --disk disk.img,ro --stats --serial file:boot.txt --on-reset exit --timeout 20 --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=smp-stress" & pid=$!; sleep 30; kill -INT $pid; sleep 3; kill -INT $pid; wait $pid
+exit: 0
+--- stdout ---
+30 s: running=yes
+first SIGINT +3 s: running=yes
+second SIGINT: exit 130
+
+--- stderr ---
+macvmm: user quit (second signal: exiting now)

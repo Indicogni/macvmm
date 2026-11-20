@@ -4,7 +4,7 @@
 //! firmware finds its devices. Apple's macOS-guest boot ROM, AVPBooter, was built for the
 //! board Virtualization.framework emulates, and expects devices somewhere else entirely. The
 //! values below are **facts**, not code, taken from `docs/research/macos-guest.md` §3.1, which
-//! cites QEMU's public `hw/vmapple/vmapple.c` (`memmap[]`, QEMU 9.2) and its documentation
+//! cites QEMU's public `hw/vmapple/vmapple.c` (`memmap[]`, QEMU v10.0.0) and its documentation
 //! `docs/system/arm/vmapple.rst`. No QEMU code or prose is copied (GPL-2.0-or-later, ADR-0008
 //! decision 4), and nothing here came from disassembling Apple code (D4, ADR-0009). We have
 //! verified only that `hv_gic_create` accepts the two GIC bases `[verified-on-machine]`; every
@@ -31,7 +31,7 @@ use crate::arch::layout::{Layout, MachineProfile, Region, RegionKind};
 pub const ROM_BASE: u64 = 0x0010_0000;
 /// The ROM window: 1 MiB (AVPBooter.vmapple2.bin is about 335 KB on macOS 27.2).
 pub const ROM_SIZE: u64 = 0x0010_0000;
-/// The configuration block VZ fills in (ECID, serial, RAM size, ...): S2, not modelled.
+/// The configuration block VZ fills in (ECID, serial, RAM size, ...): not modelled yet.
 pub const CFG_BASE: u64 = 0x0040_0000;
 pub const GICD_BASE: u64 = 0x1000_0000;
 pub const GICD_SIZE: u64 = 0x0001_0000;
@@ -44,9 +44,9 @@ pub const PL011_INTID: u32 = 33;
 pub const PL031_BASE: u64 = 0x2005_0000;
 pub const PL061_BASE: u64 = 0x2006_0000;
 pub const PVPANIC_BASE: u64 = 0x2007_0000;
-/// The "backdoor" block interface iBoot reads its disks through (S2; threat model POST-6).
+/// The "backdoor" block interface iBoot reads its disks through (not modelled yet).
 pub const BDIF_BASE: u64 = 0x3000_0000;
-/// RAM. AVPBooter is told nothing about its size in S1 (no DTB, no cfg block).
+/// RAM. AVPBooter is told nothing about its size here (no DTB, no cfg block).
 pub const RAM_BASE: u64 = 0x7000_0000;
 
 use RegionKind::*;

@@ -226,13 +226,16 @@ pub fn parse_run(args: &[String]) -> Result<VmConfig, String> {
             // M16 (architecture §8.1): the range (1..=MAX_CPUS) is `VmConfig::validate`'s; the
             // host's own limit (`hv_vm_get_max_vcpu_count`) is checked in `Machine::build`.
             "--cpus" => cfg.cpus = parse_cpus(&value()?)?,
+            // ANCHOR: cli_parse_kernel
             "--kernel" => {
                 if cfg.boot.kernel.is_some() {
                     return Err("--kernel given twice".into());
                 }
                 cfg.boot.kernel = Some(PathBuf::from(value()?));
             }
+            // ANCHOR_END: cli_parse_kernel
             // M9: Linux inputs (HostIo reads them; the plan checks them against the kernel).
+            // ANCHOR: cli_parse_linux_inputs
             "--initrd" => {
                 if cfg.boot.initrd.is_some() {
                     return Err("--initrd given twice".into());
@@ -249,6 +252,7 @@ pub fn parse_run(args: &[String]) -> Result<VmConfig, String> {
                 }
                 cfg.boot.cmdline = Some(value()?);
             }
+            // ANCHOR_END: cli_parse_linux_inputs
             "--dry-run" => {
                 if inline.is_some() {
                     return Err("--dry-run takes no value".into());
@@ -410,7 +414,7 @@ fn parse_machine(s: &str) -> Result<vmm::arch::layout::MachineProfile, String> {
         #[cfg(not(feature = "experimental-vmapple"))]
         "vmapple" => Err(
             "--machine vmapple: built without experimental-vmapple (rebuild with \
-             `--features experimental-vmapple`; PLAN M21)"
+             `--features experimental-vmapple`)"
                 .into(),
         ),
         other => Err(format!("invalid --machine {other:?}: virt|vmapple")),
@@ -497,6 +501,7 @@ pub fn parse_net(s: &str) -> Result<vmm::config::NetSpec, String> {
             ));
         }
     }
+    // ANCHOR: cli_net_peer
     let peer = match (peer, learn) {
         (Some(p), false) => NetPeer::Path(p),
         (None, true) => NetPeer::Learn,
@@ -505,6 +510,7 @@ pub fn parse_net(s: &str) -> Result<vmm::config::NetSpec, String> {
         }
         (None, false) => return Err("--net unixgram needs peer=PATH (or ,learn)".into()),
     };
+    // ANCHOR_END: cli_net_peer
     Ok(NetSpec {
         local: PathBuf::from(local),
         peer,
@@ -613,6 +619,7 @@ fn exit(code: i32) -> ExitCode {
     ExitCode::from(u8::try_from(code).unwrap_or(1))
 }
 
+// ANCHOR: sandbox_confine
 /// M22 (SBX-3, SBX-4): apply `--sandbox[=best-effort]` and the optional self-test. `Err` is
 /// the line to print before exiting 1 (enforce mode could not lock down, or the self-test
 /// failed); best-effort warns and carries on unconfined. Called once every host file is open.
@@ -634,6 +641,7 @@ fn confine(sandbox: crate::sandbox::Opts, cfg: &VmConfig) -> Result<(), String> 
     }
     Ok(())
 }
+// ANCHOR_END: sandbox_confine
 
 /// `macvmm run …`.
 pub fn run(args: &[String]) -> ExitCode {
@@ -705,6 +713,7 @@ pub fn run(args: &[String]) -> ExitCode {
     }
     // PROC-1: raw mode only for an interactive TTY; stdin goes only to the stdio sink (the
     // serial or, M13, the console one: `HostIo::stdin`).
+    // ANCHOR: sandbox_threads_first
     let interactive = host.stdin != StdinBinding::Unbound;
     let mut terminal = term::Terminal::setup(interactive);
     if terminal.is_raw() {
@@ -718,16 +727,20 @@ pub fn run(args: &[String]) -> ExitCode {
         err(&format!("macvmm: cannot start the stdin thread: {e}"));
         return ExitCode::from(1);
     }
+    // ANCHOR_END: sandbox_threads_first
     // M22 (SBX-3): every host file is open and every host thread exists; lock down before the
     // first guest instruction. vCPU creation and any reboot run under the sandbox.
+    // ANCHOR: sandbox_confine_call
     if let Err(line) = confine(sandbox, &cfg) {
-        // SBX-4: fail closed. Nothing ran yet; undo the terminal and stop.
+        // Fail closed: `--sandbox` was asked for, so never run unconfined. Nothing ran yet; undo
+        // the terminal and stop.
         host.close_sinks(&[]);
         terminal.restore();
         err(&line);
         return ExitCode::from(1);
     }
     let result = vmm::run(&cfg, &host);
+    // ANCHOR_END: sandbox_confine_call
     finish(&cfg, &host, &mut terminal, result)
 }
 

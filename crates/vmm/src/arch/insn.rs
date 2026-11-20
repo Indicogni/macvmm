@@ -914,6 +914,7 @@ impl fmt::Display for Refusal {
 /// the access must stay inside that one stage-1 mapping ([`within_mapping`]). A pair has the
 /// extra rules of [`plan_second`]. `bus` is only asked for window identities here, never
 /// accessed.
+// ANCHOR: isv0_plan_body
 pub fn plan_isv0<B: Isv0Bus + ?Sized>(
     insn: &MemInsn,
     ops: &Operands,
@@ -954,6 +955,7 @@ pub fn plan_isv0<B: Isv0Bus + ?Sized>(
         writeback,
     })
 }
+// ANCHOR_END: isv0_plan_body
 // ANCHOR_END: isv0_plan
 
 /// Refuse an access of `len` bytes at `va` that leaves the stage-1 page or block `map`
@@ -990,6 +992,7 @@ fn within_mapping(va: u64, len: u64, map: Mapped) -> Result<(), Refusal> {
 /// tables map a pair across the end of a device window would send the second element to the
 /// neighbouring device, which never saw a fault (F17, a confused deputy). Because the check runs
 /// before any access, a store pair can never half-happen.
+// ANCHOR: isv0_pair_body
 fn plan_second<B: Isv0Bus + ?Sized>(
     insn: &MemInsn,
     ops: &Operands,
@@ -1021,6 +1024,7 @@ fn plan_second<B: Isv0Bus + ?Sized>(
         write: insn.store_data(ops.rt2),
     })
 }
+// ANCHOR_END: isv0_pair_body
 // ANCHOR_END: isv0_pair
 
 /// The register updates of a finished emulation. The caller applies `loads`, then `writeback`,
@@ -1049,6 +1053,7 @@ pub enum Isv0Error<E> {
 /// Perform a plan's accesses in order and return the register updates. It changes no register
 /// itself, so a failure leaves the vCPU exactly as the fault found it (writeback only after
 /// both accesses succeed, MMIO-4).
+// ANCHOR: isv0_execute_body
 pub fn execute<B: Isv0Bus + ?Sized>(plan: &Plan, bus: &mut B) -> Result<Commit, B::Error> {
     let mut one = |a: BusAccess| match a.write {
         Some(v) => bus.write(a.ipa, a.size, v).map(|()| None),
@@ -1084,4 +1089,5 @@ pub fn emulate_isv0<B: Isv0Bus + ?Sized>(
     let plan = plan_isv0(insn, ops, exit, translate, &*bus).map_err(Isv0Error::Refused)?;
     execute(&plan, bus).map_err(Isv0Error::Bus)
 }
+// ANCHOR_END: isv0_execute_body
 // ANCHOR_END: isv0_execute

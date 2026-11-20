@@ -100,6 +100,7 @@ fn main(_x0: u64) {
         0xffff_ffff_ffff_ff42,
     );
 
+    // ANCHOR: mmio_probe_xzr
     store!("str {v}, [{a}]", 16, u64::MAX);
     {
         let a: u64 = TESTDEV + 16;
@@ -115,10 +116,11 @@ fn main(_x0: u64) {
         // SAFETY: as `load!`: an aligned load into XZR (SRT = 31), whose result is discarded.
         unsafe { asm!("ldr xzr, [{a}]", a = in(reg) a, options(nostack)) };
     }
-    // A VMM that writes the loaded 0x1111 into register 31 sets HV_REG_PC: execution never
-    // reaches this check (fatal instruction abort at 0x1111). SP is compared for a VMM that
-    // maps 31 to SP instead.
+    // A VMM that writes the loaded 0x1111 into register 31 sets HV_REG_PC; after its +4
+    // advance the guest takes a PC alignment fault at 0x1115 and never reaches this check.
+    // SP is compared for a VMM that maps 31 to SP instead.
     check(&mut ok, "ldr xzr discarded (sp kept)", sp(), before);
+    // ANCHOR_END: mmio_probe_xzr
 
     store!("strb {v:w}, [{a}]", 32, 0x80);
     check(

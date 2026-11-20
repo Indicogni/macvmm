@@ -163,10 +163,10 @@ pub fn plan_boot(cfg: &VmConfig, host: &HostIo) -> Result<BootPlan> {
 }
 
 // ANCHOR: machine_device_tree
-/// Generate this boot's device tree (M7, architecture §12.2) and size `plan`'s DTB slot to it.
-/// Fresh `rng-seed`/`kaslr-seed` come from `host.entropy` on every boot (FDT-3); the first
-/// boot also writes the seed-redacted copy to `--dtb-out` (FDT-4). The guest gets the real
-/// seeds.
+/// Generate this boot's device tree and size `plan`'s DTB slot to it. Fresh
+/// `rng-seed`/`kaslr-seed` come from `host.entropy` on every boot; the first boot (generation
+/// 0; a guest reboot starts a new generation) also writes the seed-redacted copy to
+/// `--dtb-out`. The guest gets the real seeds.
 pub fn device_tree(
     cfg: &VmConfig,
     host: &HostIo,
@@ -175,10 +175,10 @@ pub fn device_tree(
 ) -> Result<Vec<u8>> {
     let mut desc = MachineDesc::from_entropy(cfg.cpus, cfg.mem_bytes, &host.entropy)
         .map_err(Error::Entropy)?;
-    // M9: the kernel command line and the initrd range go to `/chosen`.
+    // Chapter 13: the kernel command line and the initrd range go to `/chosen`.
     desc.bootargs.clone_from(&plan.bootargs);
     desc.initrd = plan.initrd;
-    // M11: one `/virtio_mmio@…` node per populated slot (none until M12).
+    // Chapter 15: one `/virtio_mmio@…` node per populated slot.
     desc.virtio_slots = virt::virtio_populated(cfg);
     let with_gic = cfg.irqchip == IrqChip::InKernelGicV3;
     let dtb = fdt::build_dtb_with(Layout::virt(), &desc, with_gic)?;
@@ -285,6 +285,7 @@ pub fn check_cpus(cpus: u32, host_max: u32) -> Result<()> {
 /// M18: copy `--bios` into flash bank 0 (the rest of the flash reads as zero), map both banks
 /// read+execute, and put a write-ignore flash device over each bank (module docs). A no-op
 /// without `--bios`.
+// ANCHOR: machine_load_firmware_body
 fn load_firmware(
     rom: Option<&RomRegion>,
     host: &HostIo,
@@ -307,6 +308,7 @@ fn load_firmware(
     }
     Ok(())
 }
+// ANCHOR_END: machine_load_firmware_body
 // ANCHOR_END: machine_load_firmware
 
 fn stop_workers(workers: &[Arc<Worker>]) -> bool {
@@ -330,17 +332,19 @@ impl Machine {
         check_cpus(cfg.cpus, caps.max_vcpus)?;
         let (vm, gic) = vm::create_vm_with(layout, ram_end, &caps, cfg.irqchip)?;
         // ANCHOR: machine_gic_checks
-        // Architecture §9 startup assertions, before any memory exists: on a mismatch, dropping
+        // Startup assertions on the GIC layout, before any memory exists: on a mismatch, dropping
         // the VM destroys it and nothing else was built.
         if let Some(g) = &gic {
             vm::check_gic(g, layout)?;
         }
         // ANCHOR_END: machine_gic_checks
+        // ANCHOR: machine_guest_ram
         // If allocation fails nothing is mapped yet: dropping the VM destroys it.
         let ram = Arc::new(GuestRam::new(
             &virt::ram_regions(cfg.mem_bytes),
             vm::ipa_bits(layout, ram_end),
         )?);
+        // ANCHOR_END: machine_guest_ram
         let inputs = boot_inputs(cfg, host);
         let cpus = usize::try_from(cfg.cpus).map_err(|_| Error::Internal("cpus"))?;
         let mut bus = Bus::new();
@@ -417,14 +421,16 @@ impl Machine {
                 return Err(e);
             }
         };
-        // M6: input pushed by the stdin thread wakes this boot's UART (architecture §14.4). A
-        // weak reference: the hook never keeps a torn-down machine's device alive.
+        // ANCHOR: serial_input_hook
+        // Input pushed by the stdin thread wakes this boot's UART. A weak reference: the
+        // hook never keeps a torn-down machine's device alive.
         let weak = Arc::downgrade(&uart);
         host.serial_input.set_hook(Some(Arc::new(move || {
             if let Some(u) = weak.upgrade() {
                 crate::sync::lock(&u).input_ready();
             }
         })));
+        // ANCHOR_END: serial_input_hook
         Ok(Machine {
             vm,
             gic,
@@ -476,11 +482,13 @@ impl Machine {
                 .as_ref()
                 .map(|r| r as &dyn crate::arch::stage1_walk::InsnRom),
         };
+        // ANCHOR: boot_params_x0
         let boot = BootParams {
             pc: self.plan.entry,
             x: [self.plan.x0, 0, 0, 0],
             cpsr: self.plan.cpsr,
         };
+        // ANCHOR_END: boot_params_x0
         let obs = Observe {
             trace: self.trace.as_deref(),
             clock: Clock::new(self.vtimer_offset),
@@ -496,12 +504,15 @@ impl Machine {
             irqchip: self.irqchip,
             stats: &per_vcpu,
         };
+        // ANCHOR: machine_stats_start
         let cpu0 = hvf::host::process_cpu_time();
         let t0 = Instant::now();
         let reason = manager::run_vcpus(&self.vm, &setup, &env, &obs, deadline);
+        // ANCHOR_END: machine_stats_start
         // M12 (architecture §14.5): the vCPUs are joined; stop the virtio workers. RUST-7: a
         // worker panic is the verdict even if a guest stop was posted just before it.
         let reason = crate::virtio::worker::final_reason(reason, stop_workers(&self.workers));
+        // ANCHOR: machine_stats_end
         let wall = t0.elapsed();
         let cpu1 = hvf::host::process_cpu_time();
         drop(attached);
@@ -514,6 +525,7 @@ impl Machine {
                 wall,
                 host_cpu: cpu0.zip(cpu1).map(|(a, b)| b.saturating_sub(a)),
             };
+            // ANCHOR_END: machine_stats_end
             let mut lines = stats.report();
             // M24: each NIC's counters (`net0 slot 1: tx_packets=… rx_dropped_foreign=…`),
             // from the companions the workers stopped above.

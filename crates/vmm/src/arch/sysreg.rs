@@ -167,7 +167,8 @@ const fn span(
 /// The policy table (module docs). Coordinates are `(op0, op1, CRn, CRm, op2)` as each
 /// register's ARM ARM description prints them ("Accessing <register>"); [`span`] rows give
 /// inclusive `(lo, hi)` ranges for `CRm` and `op2`. First match wins; a register in no row
-/// gets [`Policy::Undef`] (HC-6).
+/// gets [`Policy::Undef`]: unknown
+/// registers fail loudly in the guest instead of reading as a made-up value.
 pub const POLICY: &[Rule] = &[
     // The OS lock (ARM ARM D19.3: OSLAR_EL1 2,0,1,0,4; OSLSR_EL1 2,0,1,1,4; OSDLR_EL1 2,0,1,3,4).
     one("OSLAR_EL1", (2, 0, 1, 0, 4), Policy::OsLockAccess),

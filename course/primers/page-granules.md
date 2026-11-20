@@ -2,10 +2,10 @@
 title: Page granules: 4 KiB and 16 KiB
 slug: page-granules
 kind: primer
-minutes: 20
+minutes: 15
 required_by: [04]
 also_used_by: [02, 05, 21, 26]
-lab: two-stage-walker
+labs: [two-stage-walker]
 runs: mac+browser
 command: pagesize
 expect: 16384
@@ -36,11 +36,18 @@ lines of arithmetic.
 - Read the granule-support fields of `ID_AA64MMFR0_EL1`.
 :::
 
+:::prereqs
+- The [`os-basics`](/build-your-own/vmm/primers/os-basics/) primer: virtual memory, pages and a page table, with its worked
+  two-level example.
+- Chapter 02, where the guest got its first memory as one 16 KiB host page.
+- Shell arithmetic with hex numbers (`$(( ))` and `printf '%#x'`), which the primer shows as it
+  goes.
+:::
+
 ## Your Mac's page size, measured
 
-This primer builds on the
-[`os-basics`](/build-your-own/vmm/primers/os-basics/) primer; read that first if virtual memory
-is new to you. A quick reminder: an operating system does not track memory byte by byte. It cuts
+A quick reminder from the
+[`os-basics`](/build-your-own/vmm/primers/os-basics/) primer: an operating system does not track memory byte by byte. It cuts
 memory into equal, aligned pieces called **pages**. Each program sees **virtual addresses**, and a
 **page table** says, for each virtual page, which **physical page** (a real piece of RAM) backs
 it. The low bits of an address, the **page offset**, pass through translation unchanged; only the
@@ -376,7 +383,6 @@ exits to our VMM. The 16 KiB rule applies only to what we map, such as RAM and f
 ## Lab
 
 :::lab two-stage-walker
-:::
 
 In the `two-stage-walker` lab you set the **stage-1 granule and the stage-2 granule separately**.
 Type a guest virtual address, predict each level's index, then let the lab walk the guest's

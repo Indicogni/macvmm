@@ -1,0 +1,10 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run in an unmodified copy of the reference, from its root; $G is target/guests/aarch64-unknown-none/release; v.dtb is written in the current directory (removed first).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --irqchip none --raw $G/hello.bin@0x40080000 --dtb-out v.dtb --timeout 10
+exit: 0
+--- stdout ---
+hello from guest, x0=0x40000000
+guest done
+
+--- stderr ---

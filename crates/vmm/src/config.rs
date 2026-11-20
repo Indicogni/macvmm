@@ -413,11 +413,10 @@ impl VmConfig {
     }
 
     // ANCHOR: irqchip_none_restrictions
-    /// The half of the `--irqchip none` restriction that needs the input bytes (threat model
-    /// §10.2 M8): the teaching mode exists for test guests only. `test_guest` is
-    /// `machine::is_test_guest` (decided from the `HostIo` bytes, HOSTIO-1). An arm64 Image,
-    /// firmware or vmapple boot would expect a GIC (the DTB of a real OS describes one), so it
-    /// is refused with exit code 2 before any HVF call.
+    /// The `--irqchip none` restriction: the teaching mode exists only for our own test guests
+    /// on one vCPU. A real operating system expects an interrupt controller, so anything else
+    /// is refused with exit code 2 before any Hypervisor.framework call. `test_guest` says
+    /// whether the loaded bytes are one of our test guests.
     pub fn validate_irqchip(&self, test_guest: bool) -> Result<()> {
         if self.irqchip == IrqChip::None && (!test_guest || self.cpus != 1) {
             return Err(Error::Config(IRQCHIP_NONE_RESTRICTION.into()));

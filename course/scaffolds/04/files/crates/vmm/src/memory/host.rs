@@ -132,8 +132,8 @@ impl Block {
         // SAFETY: (the `Vm::map` contract) `ptr..ptr+len` is one live `hv_vm_allocate` block owned
         // by this `Block`. It stays allocated until the mapping is gone, because `Drop` frees a
         // block only in state NOT_MAPPED (reached again only after a successful unmap) and
-        // otherwise leaks it (MEM-9, MEM-11). No Rust reference to it is ever created: all
-        // access is through the volatile copies and the atomic accessors below (MEM-5, MEM-6).
+        // otherwise leaks it. No Rust reference to it is ever created: all access is through the
+        // volatile copies and the atomic accessors below.
         // The block is never handed out as ordinary Rust memory.
         let mapped = unsafe { vm.map(ptr, self.ipa, self.len, flags) };
         if let Err(err) = mapped {
@@ -273,7 +273,7 @@ const _: () = {
 
 impl GuestRam {
     /// Allocate (but do not map) RAM for `regions` in a VM with `ipa_bits` of IPA space. The
-    /// table rules of MEM-8 are checked first, so nothing is allocated for a bad layout.
+    /// region-table rules (no overlap, no zero size, 16 KiB alignment) are checked first, so nothing is allocated for a bad layout.
     pub fn new(regions: &[(GuestAddress, u64)], ipa_bits: u32) -> Result<GuestRam> {
         let table = RegionTable::new(regions, ipa_bits)?;
         let mut blocks = Vec::with_capacity(table.spans().len());
@@ -402,7 +402,7 @@ impl GuestMemoryOrdered for GuestRam {
     fn read_u16_acquire(&self, addr: GuestAddress) -> core::result::Result<u16, MemoryError> {
         check_aligned_u16(addr)?;
         let p = self.host_ptr(addr, 2)?;
-        // SAFETY: (MEM-6) `p` is inside a live block (checked) and 2-aligned (the IPA is
+        // SAFETY: `p` is inside a live block (checked) and 2-aligned (the IPA is
         // 2-aligned and blocks are page-aligned, so the host address is too). `AtomicU16` has
         // the size and alignment of `u16`. The guest is not Rust: its accesses, including
         // mixed-size ones, are outside the Rust memory model, and we only ever use the value we
@@ -418,7 +418,7 @@ impl GuestMemoryOrdered for GuestRam {
     ) -> core::result::Result<(), MemoryError> {
         check_aligned_u16(addr)?;
         let p = self.host_ptr(addr, 2)?;
-        // SAFETY: (MEM-6) as in `read_u16_acquire`; the store publishes the VMM's earlier
+        // SAFETY: as in `read_u16_acquire`; the store publishes the VMM's earlier
         // writes (the used ring elements) to the guest.
         unsafe { AtomicU16::from_ptr(p.cast::<u16>()) }.store(val.to_le(), Ordering::Release);
         Ok(())

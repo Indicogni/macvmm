@@ -215,6 +215,7 @@ fn property_no_overlap_nothing_outside_ram() {
                 Err(_) => continue,
             }
         };
+        // ANCHOR: bootplan_property_asserts
         accepted += 1;
         let ilen = iend - istart;
         let dtb = (RAM_BASE, DTB_MAX);
@@ -237,6 +238,7 @@ fn property_no_overlap_nothing_outside_ram() {
         );
         assert_eq!(p.entry, img.load);
         assert!(p.dtb_limit <= DTB_MAX && p.dtb_limit > 0);
+        // ANCHOR_END: bootplan_property_asserts
     }
     assert!(
         accepted > 1000,

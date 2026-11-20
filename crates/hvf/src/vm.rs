@@ -75,12 +75,13 @@ pub(crate) fn with_live_vm<T>(
 }
 // ANCHOR_END: with_live_vm
 
+// ANCHOR: mem_flags
 /// Stage-2 permissions (`HV_MEMORY_*`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MemFlags(pub ffi::hv_memory_flags_t);
 
 impl MemFlags {
-    /// Mapped, but every access faults (spike: `flags = 0` maps successfully).
+    /// Mapped, but every access faults (`flags = 0` maps successfully; checked on a real Mac).
     pub const NONE: MemFlags = MemFlags(0);
     pub const READ: MemFlags = MemFlags(ffi::HV_MEMORY_READ);
     pub const WRITE: MemFlags = MemFlags(ffi::HV_MEMORY_WRITE);
@@ -90,6 +91,7 @@ impl MemFlags {
     pub const RWX: MemFlags =
         MemFlags(ffi::HV_MEMORY_READ | ffi::HV_MEMORY_WRITE | ffi::HV_MEMORY_EXEC);
 }
+// ANCHOR_END: mem_flags
 
 impl BitOr for MemFlags {
     type Output = MemFlags;
@@ -157,21 +159,25 @@ impl VmBuilder {
         self
     }
 
+    // ANCHOR: vm_builder_with_gic
     /// Create the in-kernel GICv3 at these addresses as part of `create`.
     pub fn with_gic(mut self, config: GicConfig) -> VmBuilder {
         self.gic = Some(config);
         self
     }
+    // ANCHOR_END: vm_builder_with_gic
 
     // ANCHOR: vm_builder_create
     /// Create the process's VM, and its GIC if requested (then `Some(Gic)`).
     pub fn create(self) -> Result<(Vm, Option<Gic>), CallError> {
+        // ANCHOR: vm_singleton
         if VM_LIVE.swap(true, Ordering::AcqRel) {
             return Err(CallError {
                 call: "hv_vm_create",
                 error: HvError::Busy,
             });
         }
+        // ANCHOR_END: vm_singleton
         // On failure VM_LIVE is released here and only here: `create_inner` never builds a `Vm`
         // on an error path, so no `Vm::drop` can clear the flag a second time (which could
         // clear another thread's claim taken in between).
@@ -184,6 +190,7 @@ impl VmBuilder {
 
     /// Everything after claiming VM_LIVE. Returns a `Vm` only on success.
     fn create_inner(self) -> Result<(Vm, Option<Gic>), CallError> {
+        // ANCHOR: vm_config_ipa_size
         // SAFETY: no preconditions; the result is checked for NULL by `OsObject::new`.
         let config = OsObject::new("hv_vm_config_create", unsafe { ffi::hv_vm_config_create() })?;
         if let Some(bits) = self.ipa_bits {
@@ -192,6 +199,7 @@ impl VmBuilder {
                 ffi::hv_vm_config_set_ipa_size(config.as_ptr(), bits)
             })?;
         }
+        // ANCHOR_END: vm_config_ipa_size
         if self.el2 {
             // SAFETY: as above.
             check("hv_vm_config_set_el2_enabled", unsafe {
@@ -201,11 +209,14 @@ impl VmBuilder {
         if let Some(granule) = self.granule {
             set_ipa_granule(&config, granule)?;
         }
+        // ANCHOR: vm_create_call
         // SAFETY: `config` is a live configuration; the framework copies what it needs, so
         // releasing `config` afterwards is allowed (`hv_vm.h`).
         check("hv_vm_create", unsafe {
             ffi::hv_vm_create(config.as_ptr())
         })?;
+        // ANCHOR_END: vm_create_call
+        // ANCHOR: vm_builder_gic
         let generation = NEXT_GENERATION.fetch_add(1, Ordering::Relaxed);
         let gic = match self.gic.map(|c| gic::create(c, generation)).transpose() {
             Ok(gic) => gic,
@@ -220,6 +231,7 @@ impl VmBuilder {
         };
         // Publish last: no token of this generation works before the VM is complete.
         Ok((Vm::publish(generation), gic))
+        // ANCHOR_END: vm_builder_gic
     }
     // ANCHOR_END: vm_builder_create
 }
@@ -280,9 +292,11 @@ impl Vm {
         if *live == self.generation {
             *live = 0;
         }
+        // ANCHOR: vm_destroy_unsafe
         // SAFETY: this value represents the live VM created by `VmBuilder::create`, and nothing
         // borrowing it (no `Vcpu`, no `OwnedMapping`) can outlive it; destroying it once is valid.
         let result = check("hv_vm_destroy", unsafe { ffi::hv_vm_destroy() });
+        // ANCHOR_END: vm_destroy_unsafe
         drop(live);
         VM_LIVE.store(false, Ordering::Release);
         // Test builds only: report a failure the framework did not produce (MEM-11 tests).
@@ -309,7 +323,7 @@ impl Vm {
     ///   that stays allocated until this IPA range is unmapped or the VM is destroyed.
     /// - While mapped, the guest may read and write those bytes at any moment: no Rust
     ///   reference (`&`/`&mut`, slice) to them may exist; access them with volatile raw-pointer
-    ///   operations only (threat model MEM-5).
+    ///   operations only.
     /// - The same host range must not also be handed out as ordinary Rust memory.
     pub unsafe fn map(
         &self,
@@ -350,12 +364,14 @@ impl Vm {
     }
 }
 
+// ANCHOR: vm_drop
 impl Drop for Vm {
     fn drop(&mut self) {
         // A destroy failure cannot be reported from `drop`; callers who need it use `destroy`.
         let _ = self.destroy_inner();
     }
 }
+// ANCHOR_END: vm_drop
 
 /// An access outside an [`OwnedMapping`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -392,6 +408,7 @@ pub fn checked_span(size: usize, offset: u64, len: usize) -> Result<Range<usize>
 }
 // ANCHOR_END: owned_mapping_range
 
+// ANCHOR: owned_mapping_struct
 /// Host memory that this value allocated and mapped at a fixed IPA; unmapped and freed on drop.
 ///
 /// It borrows the [`Vm`], so it cannot outlive it. Host-side access copies bytes with volatile
@@ -403,8 +420,10 @@ pub struct OwnedMapping<'vm> {
     ipa: u64,
     alloc: Option<host::Allocation>,
 }
+// ANCHOR_END: owned_mapping_struct
 
 impl<'vm> OwnedMapping<'vm> {
+    // ANCHOR: owned_mapping_new
     /// Allocate `len` bytes (a non-zero multiple of the host page size) and map them at `ipa`.
     pub fn new(
         vm: &'vm Vm,
@@ -423,6 +442,7 @@ impl<'vm> OwnedMapping<'vm> {
             alloc: Some(alloc),
         })
     }
+    // ANCHOR_END: owned_mapping_new
 
     /// The guest-physical base address.
     pub fn ipa(&self) -> u64 {
@@ -477,18 +497,20 @@ impl<'vm> OwnedMapping<'vm> {
     }
 }
 
+// ANCHOR: owned_mapping_drop
 impl Drop for OwnedMapping<'_> {
     fn drop(&mut self) {
         if let Some(alloc) = self.alloc.take() {
             if self.vm.unmap(self.ipa, alloc.len()).is_ok() {
                 drop(alloc);
             } else {
-                // Fail closed (MEM-11): memory the guest may still reach is never freed.
+                // Fail closed: memory the guest may still reach is never freed.
                 let _ = alloc.leak();
             }
         }
     }
 }
+// ANCHOR_END: owned_mapping_drop
 
 #[cfg(test)]
 mod tests {

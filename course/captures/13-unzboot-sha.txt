@@ -1,0 +1,10 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Right after the unzboot run; the first file is its output, the second the copy fetch.sh made.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ shasum -a 256 .cache/ch13/Image .cache/macvmm/Image-virt
+exit: 0
+--- stdout ---
+a2cecb9b6fdbd83e87bd43c8040de67300d5b8dde1fc50c34714faa272888f17  .cache/ch13/Image
+a2cecb9b6fdbd83e87bd43c8040de67300d5b8dde1fc50c34714faa272888f17  .cache/macvmm/Image-virt
+
+--- stderr ---

@@ -2,10 +2,10 @@
 title: Bare-metal Rust: no_std, linker scripts, flat binaries
 slug: bare-metal-rust
 kind: primer
-minutes: 30
+minutes: 25
 required_by: [03]
 also_used_by: [13]
-lab: linker-map
+labs: [linker-map]
 runs: mac+browser
 command: wc -c < bare.bin
 expect: 68
@@ -709,7 +709,6 @@ begins.
 ## Lab
 
 :::lab linker-map
-:::
 
 Optional, and it runs in your browser on the course site (no Mac needed). Goal: predict where the
 linker puts every byte, then check yourself.

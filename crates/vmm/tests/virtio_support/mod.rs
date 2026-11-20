@@ -3,6 +3,7 @@
 //! driver, a `MockDevice` that plays a device model, and the xorshift PRNG (PLAN §0.3).
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used)]
 
+// ANCHOR: virtio_support_imports
 use std::sync::{Arc, Mutex};
 use vmm::memory::prelude::*;
 use vmm::memory::{Access, VecMemory};
@@ -11,6 +12,7 @@ use vmm::virtio::{
     Descriptor, Queue, QueueError, QueueProgress, ValidatedChain, VirtioDevice, VirtioError,
     VirtioInterrupt, features,
 };
+// ANCHOR_END: virtio_support_imports
 
 pub const RAM: u64 = 0x4000_0000;
 pub const RAM_SIZE: u64 = 0x10_0000; // 1 MiB

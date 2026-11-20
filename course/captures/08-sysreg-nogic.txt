@@ -1,0 +1,23 @@
+# scripts/capture-cmd 08: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference sysreg-probe and VMM, without the in-kernel interrupt controller (--irqchip none); the trace file is printed after the run, and the exit status is macvmm's.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/sysreg-probe.bin@0x40080000 --irqchip none --trace exits:/tmp/n.jsonl:sysreg --timeout 10; cat /tmp/n.jsonl
+exit: 0
+--- stdout ---
+sysreg-probe: undef count=1 ec=0x0
+sysreg-probe: elr ok (the mrs at 0x400811ec; Rt untouched)
+sysreg-probe: lo=1 lorid=0x0 undef count=0
+sysreg-probe: lorid ok
+sysreg-probe: mdccsr undef count=0 ec=0xffffffffffffffff
+sysreg-probe: mdccsr FAILED: elr=0x400811ec want 0x40081048, Rt=0x0
+sysreg-probe: oslsr after lock=0xa after unlock=0x8
+sysreg-probe: oslsr ok
+{"t_ns":692541,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400811ec","sysreg":"PMCR_EL0","sysreg_enc":"0xdce0","action":"inject_undef"}
+{"t_ns":998958,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081244","value":"0x0","sysreg":"LORID_EL1","sysreg_enc":"0xc527","action":"sysreg"}
+{"t_ns":1476958,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400812ec","value":"0x1","sysreg":"OSLAR_EL1","sysreg_enc":"0x8084","action":"sysreg"}
+{"t_ns":1481291,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400812f4","value":"0xa","sysreg":"OSLSR_EL1","sysreg_enc":"0x808c","action":"sysreg"}
+{"t_ns":1484916,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081304","value":"0x0","sysreg":"OSLAR_EL1","sysreg_enc":"0x8084","action":"sysreg"}
+{"t_ns":1488375,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x4008131c","value":"0x8","sysreg":"OSLSR_EL1","sysreg_enc":"0x808c","action":"sysreg"}
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: vcpu0: MRS PMCR_EL0 at pc 0x400811ec: injecting UNDEF

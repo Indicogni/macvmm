@@ -8,7 +8,7 @@ setup: macOS: 27.2.1
 setup: clang: Apple clang version 21.0.0 (clang-2100.4.1.1)
 setup: rust: rustc 1.99.0 (b940084d7 2026-09-28) with rustfmt, clippy, llvm-tools, aarch64-unknown-none
 setup: optional: dtc        present (/opt/homebrew/bin/dtc)
-setup: optional: e2fsprogs  present
+setup: optional: e2fsprogs  present (1.47.4, /opt/homebrew/opt/e2fsprogs/sbin/mkfs.ext4)
 setup: optional: xz         present (xz (XZ Utils) 5.8.4)
 setup: optional: shellcheck present (0.11.0)
 setup: OK

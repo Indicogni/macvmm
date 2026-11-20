@@ -1,0 +1,17 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Typed at the / # prompt, one line at a time: the lines shown after each prompt.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 512M --kernel ../.cache/macvmm/Image-virt --initrd ../.cache/macvmm/initramfs-test.img --disk disk.img --on-reset exit --timeout 100 --cmdline "console=ttyAMA0 panic=-1 quiet macvmm.test=shell"
+exit: 0
+--- stdout ---
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+/ # modprobe virtio_mmio; modprobe virtio_blk; sleep 1\x0d
+/ # cat /sys/block/vda/serial; echo\x0d
+macvmm-disk0\x0d
+/ # cat /sys/block/vda/size /sys/block/vda/ro\x0d
+131072\x0d
+0\x0d
+/ # poweroff -f\x0d
+[    8.708675] reboot: Power down\x0d
+
+--- stderr ---

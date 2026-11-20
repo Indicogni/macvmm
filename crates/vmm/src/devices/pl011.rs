@@ -68,6 +68,7 @@ pub const PL011_SIZE: u64 = 0x1000;
 /// RX FIFO depth with `LCR_H.FEN` set (TRM §2.4.3; MMIO-9).
 pub const PL011_FIFO_DEPTH: usize = 32;
 
+// ANCHOR: pl011_regs
 pub const DR: u64 = 0x000;
 pub const RSR: u64 = 0x004;
 pub const FR: u64 = 0x018;
@@ -113,7 +114,9 @@ pub const CR_RESET: u32 = 0x300;
 pub const IFLS_RESET: u32 = 0x12;
 /// `UARTPeriphID0-3`, `UARTPCellID0-3` (TRM §3.3.15-22; QEMU `pl011_id_arm`).
 pub const ID_BYTES: [u8; 8] = [0x11, 0x10, 0x14, 0x00, 0x0d, 0xf0, 0x05, 0xb1];
+// ANCHOR_END: pl011_regs
 
+// ANCHOR: pl011_state
 /// The UART's state.
 pub struct Pl011 {
     ilpr: u32,
@@ -131,6 +134,7 @@ pub struct Pl011 {
     input: Option<Arc<SerialInput>>,
     irq: Arc<dyn IrqLine>,
 }
+// ANCHOR_END: pl011_state
 
 impl core::fmt::Debug for Pl011 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -143,6 +147,7 @@ impl core::fmt::Debug for Pl011 {
 }
 
 impl Pl011 {
+    // ANCHOR: pl011_new
     /// A UART in its reset state that transmits to `sink`, receives from `input` (if any) and
     /// drives `irq`.
     pub fn new(sink: SinkHandle, input: Option<Arc<SerialInput>>, irq: Arc<dyn IrqLine>) -> Pl011 {
@@ -165,6 +170,7 @@ impl Pl011 {
         u.update_irq();
         u
     }
+    // ANCHOR_END: pl011_new
 
     /// The RX FIFO depth the guest selected (`LCR_H.FEN`).
     fn depth(&self) -> usize {
@@ -175,6 +181,7 @@ impl Pl011 {
         }
     }
 
+    // ANCHOR: pl011_status
     /// Move bytes from `SerialInput` into the FIFO until it is full (lock order: this device's
     /// mutex is held, `SerialInput`'s is taken inside `pop`).
     fn refill(&mut self) {
@@ -207,20 +214,23 @@ impl Pl011 {
         }
         v
     }
+    // ANCHOR_END: pl011_status
 
     // ANCHOR: pl011_update_irq
     /// Drive the interrupt line to the OR of the masked status (`UARTMIS != 0`): a level, not
-    /// an event, recomputed after every access and every input push (architecture §6.3).
+    /// an event, recomputed after every access and every input push (PL011 TRM, UARTINTR).
     pub fn update_irq(&self) {
         self.irq.set_level(self.ris() & self.imsc != 0);
     }
     // ANCHOR_END: pl011_update_irq
 
+    // ANCHOR: pl011_input_ready
     /// Host input arrived in `SerialInput` (the push hook): refill the FIFO and update the line.
     pub fn input_ready(&mut self) {
         self.refill();
         self.update_irq();
     }
+    // ANCHOR_END: pl011_input_ready
 
     /// Bytes in the RX FIFO.
     pub fn rx_len(&self) -> usize {
@@ -229,8 +239,8 @@ impl Pl011 {
 
     // ANCHOR: pl011_write_dr
     /// A guest store to `UARTDR`: transmit the low byte. It goes through the sink's terminal
-    /// filter (TTY-1) onto the sink's bounded queue (SINK-1); `write(2)` happens on the sink's
-    /// writer thread, never here. The transmit "completes" at once, so `RIS.TX` is set.
+    /// filter onto the sink's bounded queue; `write(2)` happens on the sink's writer thread,
+    /// never here. The transmit "completes" at once, so `RIS.TX` is set.
     fn write_dr(&mut self, value: u32) {
         let byte = u8::try_from(value & 0xff).unwrap_or(0); // 8 data bits; the rest ignored
         Sink::write_guest(&self.sink, &[byte]);
@@ -238,6 +248,7 @@ impl Pl011 {
     }
     // ANCHOR_END: pl011_write_dr
 
+    // ANCHOR: pl011_read_reg
     /// A guest load from `UARTDR`: pop the FIFO (0 when empty), then refill it.
     fn read_dr(&mut self) -> u32 {
         let v = self.rx.pop_front().map_or(0, u32::from);
@@ -268,7 +279,9 @@ impl Pl011 {
             _ => return None,
         })
     }
+    // ANCHOR_END: pl011_read_reg
 
+    // ANCHOR: pl011_write_reg
     fn write_reg(&mut self, offset: u64, v: u32) -> bool {
         match offset {
             DR => self.write_dr(v),
@@ -292,8 +305,10 @@ impl Pl011 {
         }
         true
     }
+    // ANCHOR_END: pl011_write_reg
 }
 
+// ANCHOR: pl011_mmio
 /// The register an access names, if it is one this device answers: 4-byte aligned, at most
 /// 32 bits wide.
 fn reg_offset(offset: u64, size: AccessSize) -> Option<u64> {
@@ -329,3 +344,4 @@ impl MmioDevice for Pl011 {
         }
     }
 }
+// ANCHOR_END: pl011_mmio

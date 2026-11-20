@@ -1,0 +1,8 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ jq -r 'select(.ipa) | .ipa' .cache/vmapple/avp.jsonl | sort -u | wc -l
+exit: 0
+--- stdout ---
+      14
+
+--- stderr ---

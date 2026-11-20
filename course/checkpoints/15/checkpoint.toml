@@ -1,0 +1,34 @@
+# Checkpoint 15 `virtio-mmio`: the virtio-mmio version 2 transport in all 32 slots, empty ones
+# answering DeviceID 0 and absent from the device tree.
+id = "15"
+slug = "virtio-mmio"
+requires = ["14"]
+
+# The transport's register file and status state machine, driven through MmioDevice with a mock
+# device, guest RAM in a vector and a TestIrq: status bits only in order; FEATURES_OK refused
+# without VERSION_1 and with unoffered bits; queue writes ignored after QueueReady or DRIVER_OK;
+# a bad QueueNum ignored; QueueSel out of range reads 0; narrow control access RAZ/WI;
+# ConfigGeneration; writing 0 resets; DRIVER_OK with a ring outside RAM sets DEVICE_NEEDS_RESET
+# and raises a configuration interrupt; InterruptACK lowers the line. Host only.
+[contract]
+tests = ["contract/virtio_mmio_state.rs"]
+
+# The bare-metal probe scans all 32 slots: magic and version 2 everywhere, device ID 0 in each,
+# wrong-sized reads answered zero, and no virtio_mmio node in the device tree.
+[[run]]
+name = "probe-empty"
+guest = "virtio-probe"
+args = ["run", "--mem", "64M", "--kernel", "{guest}", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/probe-empty.txt"
+
+[journal]
+file = "journal/15.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "The transport never carries data: it only tells the device where the rings are, agrees on features, and signals. Treat every register write as a hostile request checked against the current status: bits are only added in order, FEATURES_OK latches only if accepted is a subset of offered and contains VERSION_1, queue registers freeze once the queue is ready or DRIVER_OK is set, and the rings are checked once, at DRIVER_OK."
+spec = "virtio 1.2 (virtio-v1.2-cs01): 4.2.2 MMIO Device Register Layout and 4.2.2.1/4.2.2.2 its requirements; 4.2.3.1 device initialization (DeviceID 0); 2.1 Device Status Field and 2.1.2 its device requirements; 2.2 Feature Bits; 3.1.1 Driver Requirements: Device Initialization."
+pseudocode = "read/write: not an aligned 4-byte access below 0x100 -> RAZ/WI + warning. Status write v: 0 -> reset all; FAILED bit -> latch; needs reset -> ignore; v must contain the current bits and be the next step; adding FEATURES_OK: offered & accepted == accepted && accepted has VERSION_1, else keep only ACK|DRIVER; adding DRIVER_OK: every ready queue validate(mem) (rings inside one RAM region), else set_needs_reset; then activate. Queue writes: only if QueueSel names a queue, it is not ready and DRIVER_OK is clear. InterruptACK: status &= !bits; line = status != 0, under one lock."
+anchor = "crates/vmm/src/virtio/mmio.rs (read_reg, write_reg, write_status, features_ok, driver_ok, reset, notify), crates/vmm/src/virtio/interrupt.rs (signal_used, ack, set_needs_reset), crates/vmm/src/virtio/null.rs, crates/vmm/src/virtio/queue.rs (validate), crates/vmm/src/machine/virt.rs (the 32 empty transports)."

@@ -1,0 +1,2 @@
+[stderr] --machine vmapple: built without experimental-vmapple
+![stderr] vmapple: first exit

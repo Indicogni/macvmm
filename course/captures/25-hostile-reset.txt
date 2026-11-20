@@ -1,0 +1,19 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --kernel target/guests/aarch64-unknown-none/release/hostile-reset --timeout 30
+exit: 3
+--- stdout ---
+hostile-reset: boot 0
+hostile-reset: boot 1
+hostile-reset: boot 2
+hostile-reset: boot 3
+hostile-reset: boot 4
+hostile-reset: boot 5
+hostile-reset: boot 6
+hostile-reset: boot 7
+hostile-reset: boot 8
+hostile-reset: boot 9
+hostile-reset: boot 10
+
+--- stderr ---
+macvmm: guest fatal: reset storm: more than 10 resets within 10 s

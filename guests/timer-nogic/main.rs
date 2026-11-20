@@ -40,12 +40,13 @@ fn bump(c: &AtomicU32) {
     c.store(c.load(Ordering::Relaxed).wrapping_add(1), Ordering::Relaxed);
 }
 
+// ANCHOR: timer_nogic_on_irq
 static FIRED_AT: AtomicU64 = AtomicU64::new(0);
 static IRQS: AtomicU32 = AtomicU32::new(0);
 static STALE: AtomicU32 = AtomicU32::new(0);
 
 fn on_irq(_frame: &mut ExceptionFrame) {
-    // No PSTATE games: return as taken. A stale re-take finds the timer quiet (module docs).
+    // No PSTATE games: return as taken. A stale re-take finds the timer quiet: count it only.
     let ctl = timer::ctl();
     if ctl & timer::ENABLE != 0 && ctl & timer::ISTATUS != 0 {
         timer::set_ctl(0);
@@ -55,12 +56,14 @@ fn on_irq(_frame: &mut ExceptionFrame) {
         bump(&STALE);
     }
 }
+// ANCHOR_END: timer_nogic_on_irq
 
 fn main(_x0: u64) {
     set_irq_hook(Some(on_irq));
     let freq = guest::cntfrq();
     println!("timer-nogic: cntfrq={freq}");
     println!("timer-nogic: pfr0.gic={}", guest::gic::pfr0_gic());
+    // ANCHOR: timer_nogic_loop
     let mut ok = 0;
     for i in 0..10 {
         FIRED_AT.store(0, Ordering::Relaxed);
@@ -78,6 +81,7 @@ fn main(_x0: u64) {
             if good { "ok" } else { "OUT OF RANGE" }
         );
     }
+    // ANCHOR_END: timer_nogic_loop
     println!(
         "timer-nogic: irqs={} stale={}",
         IRQS.load(Ordering::Relaxed),

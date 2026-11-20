@@ -41,11 +41,14 @@ pub struct Capabilities {
 impl Capabilities {
     /// Ask the framework. Each query is independent of any VM.
     pub fn probe() -> Result<Capabilities, CallError> {
+        // ANCHOR: caps_out_pointer
         let mut max_vcpus = 0u32;
         // SAFETY: the out-pointer refers to a live, writable, properly aligned local `u32`.
         check("hv_vm_get_max_vcpu_count", unsafe {
             ffi::hv_vm_get_max_vcpu_count(&mut max_vcpus)
         })?;
+        // ANCHOR_END: caps_out_pointer
+        // ANCHOR: caps_ipa_probe
         let mut max_ipa_bits = 0u32;
         // SAFETY: as above, a local `u32` out-parameter.
         check("hv_vm_config_get_max_ipa_size", unsafe {
@@ -56,6 +59,7 @@ impl Capabilities {
         check("hv_vm_config_get_default_ipa_size", unsafe {
             ffi::hv_vm_config_get_default_ipa_size(&mut default_ipa_bits)
         })?;
+        // ANCHOR_END: caps_ipa_probe
         let mut el2_supported = false;
         // SAFETY: a local `bool` out-parameter; C `bool` and Rust `bool` share size and ABI.
         check("hv_vm_config_get_el2_supported", unsafe {
@@ -103,6 +107,7 @@ pub fn feature_reg(reg: ffi::hv_feature_reg_t) -> Result<u64, CallError> {
     Ok(v)
 }
 
+// ANCHOR: host_page_size
 /// The host page size. `sysconf` cannot fail for `_SC_PAGESIZE` on Darwin; a nonsensical
 /// answer is reported as 0 rather than trusted.
 pub fn host_page_size() -> usize {
@@ -110,6 +115,7 @@ pub fn host_page_size() -> usize {
     let raw = unsafe { ffi::sysconf(ffi::_SC_PAGESIZE) };
     usize::try_from(raw).unwrap_or(0)
 }
+// ANCHOR_END: host_page_size
 
 #[cfg(all(test, feature = "hvf-tests"))]
 mod hvf_tests {

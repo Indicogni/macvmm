@@ -1,0 +1,8 @@
+# scripts/capture-cmd 21: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/check-insn-corpus.sh
+exit: 0
+--- stdout ---
+OK: 139 instructions match clang
+
+--- stderr ---

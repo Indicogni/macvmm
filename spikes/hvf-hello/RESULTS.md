@@ -36,9 +36,9 @@ The same binary signed **without** the entitlement gets `hv_vm_create -> HV_DENI
 | 19 | `hv_vcpus_exit` works from any thread and on several vCPUs at once. Called before `hv_vcpu_run`, it makes the next run return CANCELED immediately (2 µs). `hv_vcpu_get_reg` from a non-owning thread returns `HV_BAD_ARGUMENT`. A second `hv_vcpu_create` on the same thread, a second `hv_vm_create`, and a second `hv_gic_create` all return `HV_BUSY`. An overlapping `hv_vm_map` returns `HV_ERROR`. A VM can be destroyed and re-created in the same process. | basic, smp, gic |
 | 20 | `hv_vcpu_{get,set}_pending_interrupt` return `HV_UNSUPPORTED` once a GIC exists. CNTP_* sysregs become accessible only with a GIC, and EL2 sysregs only with EL2 enabled (otherwise `HV_UNSUPPORTED`). | basic, gic |
 | 21 | GIC state is a binary plist (`bplist00…`) of about 123 KiB. `hv_gic_set_state` succeeded even after the vCPU had run (the header says to restore before running). `hv_gic_reset` resets GICD_CTLR to 0x50. | gic |
-| 22 | With EL2 enabled, a vCPU started with CPSR=0x3c9 runs at EL2 (`CurrentEL`=8). `HVC` at vEL2 goes to the *guest's own* VBAR_EL2 vector, not to the VMM. PMU access with PMUVer=0 is injected as UNDEFINED into the guest (guest ESR_EL2 EC=0). | el2 |
+| 22 | With EL2 enabled, a vCPU started with CPSR=0x3c9 runs at EL2 (`CurrentEL`=8). A PMU access (`mrs PMCR_EL0`, PMUVer=0) at vEL2 is injected as UNDEFINED into the guest: guest ESR_EL2=0x2000000 (EC=0), ELR_EL2=0x4000000c, and the VMM sees only the stage-2 instruction abort when the guest jumps to its own vector at VBAR_EL2+0x200. **Correction (2026-11-20):** this run does *not* show where an `hvc` at vEL2 goes. The `hvc #0x42` that follows the PMU access never ran, because the guest's vector was unmapped. The claim that an `hvc` at vEL2 goes to the *guest's own* VBAR_EL2 vector, not to the VMM, is evidenced instead by `course/captures/02-el2-hvc.txt`: guest ESR_EL2=0x5a000000 (EC 0x16, HVC, imm 0), ELR_EL2=0x40000008 (the instruction after the `hvc`), and the only VM exit is the instruction abort at pc=0x200 (VBAR_EL2=0 plus the 0x200 offset for a synchronous exception from the current EL). | el2; `course/captures/02-el2-hvc.txt` |
 | 23 | The FFI pitfall: `hv_vcpu_set_simd_fp_reg` takes a 16-byte vector **by value in v0**. Stable Rust rejects SIMD types in `extern "C"`, so the spike calls it with an inline-asm trampoline (`ffi::set_simd_fp_reg`). The Q5 round-trip is verified. | basic |
-| 25 | **Timer wake-up from in-kernel WFI arrives about 2–4 ms late.** A vtimer programmed about 15.6 ms ahead is delivered after 17.4–19.6 ms when the guest idles in WFI, and after 15.63 ms when it busy-loops (`HVF_GIC_SPIN=1`). Setting the vCPU thread to QoS USER_INTERACTIVE (`HVF_QOS=1`) did not help. SPI delivery from a host thread did not show the penalty. | supplementary below |
+| 25 | **Timer wake-up from in-kernel WFI arrives about 2–4 ms late.** A vtimer programmed about 15.6 ms ahead is delivered after 17.4–19.6 ms when the guest idles in WFI, and after 15.63 ms when it busy-loops (`HVF_GIC_SPIN=1`). Setting the vCPU thread to QoS USER_INTERACTIVE (`HVF_QOS=1`) did not help. SPI delivery from a host thread did not show the penalty. **Follow-up (2026-11-20):** for 100 ms sleeps the course saw no such penalty against the no-GIC mode: `course/captures/12-timer-repeat.txt` (three runs with the in-kernel GIC, three with `--irqchip none`) shows intervals of 100 to 105 ms in both modes. This finding is about a 15.6 ms timer, idle WFI against busy-loop, and is not a GIC-versus-no-GIC comparison. | supplementary below; `course/captures/12-timer-repeat.txt` |
 | 24 | `hv_vcpu_create` *after* other vCPUs have run still succeeds and gets the next redistributor slot. Whether such a late vCPU is fully functional was not tested. | smp |
 
 ## Supplementary: WFI wake-up latency (run by hand, 2026-11-18)
@@ -431,3 +431,13 @@ The guest programs CVAL = CNTVCT + CNTFRQ/64, which is 15.625 ms ahead.
     4K-granule guest: reason=EXCEPTION ESR=0x5a000004 EC=0x16 (HVC (AArch64)) IL=1 ISS=0x0000004 FAR(VA)=0x0 IPA=0x0
       imm16=0x4 x0=0x4b
 ```
+
+## Note on the `el2` run (added 2026-11-20)
+
+The guest program is `str` CurrentEL to MMIO
+(`0x40000008`, exit #1), `mrs x3, PMCR_EL0` (`0x4000000c`), then `hvc #0x42` (`0x40000010`). The
+PMU access was injected into the guest as UNDEFINED (ESR_EL2 EC=0, ELR_EL2=`0x4000000c`), the
+guest took it at its own vector (`VBAR_EL2` 0 + 0x200), and that unmapped fetch is exit #2. The
+`hvc` never executed, so this run says nothing about where an `hvc` at vEL2 is taken. That
+behaviour is shown by `course/captures/02-el2-hvc.txt` (finding 22).
+

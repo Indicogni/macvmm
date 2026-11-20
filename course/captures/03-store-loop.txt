@@ -1,0 +1,11 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Store-loop step: guests/exit-bench/main.rs gained a second loop that times 1,000,000 volatile 8-byte stores to a local variable with the same counter and prints ps (picoseconds) per store; built in a copy of the guests (G points at that copy's release directory), run with the reference monitor at the repository root.
+# --log error hides the 110 rate-limited warnings shown in 03-exit-bench-run.txt.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- --log error run --mem 64M --raw $G/exit-bench.bin@0x40080000 --timeout 30
+exit: 0
+--- stdout ---
+exit-bench: 100000 hvc in 3398102 ticks, 1415 ns/exit
+exit-bench: 1000000 stores in 5606 ticks, 233 ps/store
+
+--- stderr ---

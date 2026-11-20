@@ -1,0 +1,9 @@
+# scripts/capture-cmd 21: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# A copy of the reference with one debug line added to translate() in crates/vmm/src/arch/stage1_walk.rs: it prints every descriptor the walker reads (debug walk: ...). grep keeps the walks of the code-alias PC.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --testdev --kernel <repo>/target/guests/aarch64-unknown-none/release/isv0-probe --timeout 10 2>&1 | grep -o 'debug walk: va 0x80081828 .*'
+exit: 0
+--- stdout ---
+debug walk: va 0x80081828 level 1: entry at 0x40086010 = 0x40000705
+
+--- stderr ---

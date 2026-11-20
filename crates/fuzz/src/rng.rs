@@ -22,6 +22,7 @@ impl Rng {
         Rng(seed.max(1))
     }
 
+    // ANCHOR: fuzz_rng_derive
     /// A generator derived from `(seed, stream)`, so iteration `n` of a run can be regenerated
     /// without replaying iterations `0..n`. SplitMix64's finalizer decorrelates the two.
     pub fn derive(seed: u64, stream: u64) -> Rng {
@@ -30,7 +31,9 @@ impl Rng {
         z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
         Rng::new(z ^ (z >> 31))
     }
+    // ANCHOR_END: fuzz_rng_derive
 
+    // ANCHOR: fuzz_rng_next
     /// The next 64 random bits.
     pub fn next_u64(&mut self) -> u64 {
         let mut x = self.0;
@@ -40,6 +43,7 @@ impl Rng {
         self.0 = x;
         x.wrapping_mul(0x2545_f491_4f6c_dd1d)
     }
+    // ANCHOR_END: fuzz_rng_next
 
     /// A value in `0..n` (`0` when `n == 0`). The modulo bias is irrelevant here.
     pub fn below(&mut self, n: u64) -> u64 {

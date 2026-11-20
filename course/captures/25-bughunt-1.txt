@@ -1,0 +1,10 @@
+# scripts/capture.sh 25: run "bughunt-1" of course/checkpoints/25, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+$ course/checkpoints/25/bughunt.sh <repo> <repo> {out} 1 540
+exit: 0
+--- stdout ---
+bughunt: plant 1 (missing checked_add) found after 1s
+    fuzz virtqueue: FAILURE at iteration 250 (seed 1): validated buffer 0x4002e6e9+0x5193a is not inside one RAM region (VQ-4)
+
+--- stderr ---
+

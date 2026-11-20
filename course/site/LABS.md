@@ -7,7 +7,17 @@ else needs to change in the builder.
 
 The lab list, priorities and owning chapters come from `course/CURRICULUM.md` (section 8 and
 each chapter's **Lab** line) through `course/chapters.json`. Use the lab name exactly as it is
-spelled there (`esr-decoder`, `two-stage-walker`, `virtqueue-visualizer`, ...).
+spelled there (`esr-decoder`, `two-stage-walker`, `virtqueue-visualizer`, ...). A lab that a
+primer embeds is listed under that primer's `labs` in `chapters.json` when CURRICULUM says so
+("(in the `elf` primer)", "the `uefi` primer also embeds"), and always in the primer's own
+`labs:` front matter.
+
+**Status (2026-11-20).** What exists today: `lib/frontmatter.mjs`, `lib/html.mjs`,
+`lib/highlight.mjs`, `lib/curriculum.mjs` with `gen-chapters.mjs`, the vectors in `labs/vectors/`,
+and the tests in `test/`. The builder itself (`build.mjs`, `lib/md.mjs`, `lib/svg.mjs`,
+`serve.mjs`, `package.json`) is not written yet. Everything below that says "the builder does X"
+is the contract it will implement; write your lab against it now, and test the model with
+`node --test`.
 
 ## 1. Files
 
@@ -136,13 +146,15 @@ section 7). Concretely, a lab must not:
 
 ## 7. Testing and checks
 
-- `node --test course/site/` runs every `*.test.mjs` in the site tree, including yours.
+- `node --test course/site/` (Node 22 or later) runs every `*.test.mjs` in the site tree,
+  including yours and the shared ones in `course/site/test/`.
 - The builder fails on: a missing `model.mjs` when `view.mjs` exists, a disallowed file type,
   a `view.mjs` that does not contain `export function mount` or `export async function mount`,
   or any of these strings in shipped lab code: `eval(`, `new Function`, `innerHTML =` with a
   non-literal, `http://`, `https://` (outside comments).
-- Run `node course/site/build.mjs`, then open `course/site/public/build-your-own/vmm/labs/<name>/index.html`
-  through `npm run dev` (or `node course/site/serve.mjs`) to try it.
+- Once the builder exists: run `node course/site/build.mjs`, then open
+  `course/site/public/build-your-own/vmm/labs/<name>/index.html` through `npm run dev` (or
+  `node course/site/serve.mjs`) to try it. Until then, exercise the model with `node --test`.
 
 ## 8. Embedding from a lesson
 
@@ -150,6 +162,9 @@ section 7). Concretely, a lab must not:
 :::lab esr-decoder
 ```
 
-One line, no closing fence. The lab must be listed for that chapter in `course/chapters.json`
-(generated from the chapter's **Lab** line in CURRICULUM.md); embedding an unlisted lab is a
-warning, so the curriculum and the lessons cannot drift apart silently.
+One line, no closing fence (a `:::` after it would close nothing and is an error). In a
+chapter, the lab must be in the front matter's `labs`, which must equal that chapter's `labs` in
+`course/chapters.json` (generated from the chapter's **Lab** line in CURRICULUM.md);
+`scripts/check-lessons` fails otherwise, so the curriculum and the lessons cannot drift apart
+silently. In a primer, the front matter's `labs:` list and the `:::lab` lines must agree
+(`course/site/test/primers.test.mjs` checks it).

@@ -26,7 +26,7 @@ questions = 5
 predict = true
 
 [hints]
-conceptual = "setup.sh only checks and reports; doctor.sh builds the reference macvmm, signs it and asks the kernel to create a VM."
-spec = "PLAN M0 (scripts/setup.sh, scripts/doctor.sh); the codesign primer (course/primers/codesign-entitlements.md)."
+conceptual = "setup.sh only checks and reports; doctor.sh builds a tiny C probe (scripts/doctor/hvprobe.c), signs it with com.apple.security.hypervisor only, and asks macOS to create a VM."
+spec = "Read scripts/setup.sh and scripts/doctor.sh; the codesign primer (course/primers/codesign-entitlements.md) explains the signature."
 pseudocode = "If doctor fails at hv_vm_create, read the hint line it prints: HV_DENIED means the signature, HV_NO_DEVICE the machine."
 anchor = "Read scripts/doctor.sh top to bottom; every line it prints is checked by expected/doctor.txt."

@@ -107,7 +107,7 @@ pub mod reg {
     /// region that does not exist.
     pub const SHM_BASE_LOW: u64 = 0x0b8;
     pub const SHM_BASE_HIGH: u64 = 0x0bc;
-    /// RAZ/WI: `VIRTIO_F_RING_RESET` is not offered (VQ-15).
+    /// RAZ/WI: `VIRTIO_F_RING_RESET` is not offered.
     pub const QUEUE_RESET: u64 = 0x0c0;
     pub const CONFIG_GENERATION: u64 = 0x0fc;
     /// Device-specific configuration space starts here.
@@ -120,7 +120,7 @@ pub const MAGIC_VALUE: u32 = 0x7472_6976;
 pub const MMIO_VERSION: u32 = 2;
 /// macvmm's VendorID: "MMVM" read as a little-endian u32 (any value is allowed, §4.2.2).
 pub const VENDOR_ID: u32 = 0x4d56_4d4d;
-/// The size of one transport window (PLAN §1: slots are 0x200 apart).
+/// The size of one transport window (slots are 0x200 apart, as on QEMU `virt`).
 pub const WINDOW_SIZE: u64 = 0x200;
 /// What each SHMLen/SHMBase half reads for a shared-memory region that does not exist
 /// (§4.2.2): together the halves make the 64-bit `-1` / `0xffff_ffff_ffff_ffff`.
@@ -145,6 +145,7 @@ const STATUS_STEPS: [u32; 4] = [
     st::ACKNOWLEDGE | st::DRIVER | st::FEATURES_OK | st::DRIVER_OK,
 ];
 
+// ANCHOR: virtio_mmio_struct
 /// One virtio-mmio transport (module docs). It is the `MmioDevice` the bus sees for a slot.
 pub struct VirtioMmio {
     device: Arc<Mutex<dyn VirtioDevice>>,
@@ -166,6 +167,7 @@ pub struct VirtioMmio {
     queues: Vec<Queue>,
     config_generation: u32,
 }
+// ANCHOR_END: virtio_mmio_struct
 
 impl core::fmt::Debug for VirtioMmio {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -320,6 +322,7 @@ impl VirtioMmio {
         self.queues.get(usize::try_from(self.queue_sel).ok()?)
     }
 
+    // ANCHOR: virtio_queue_writable
     /// The selected queue if its registers may still change (not ready, no DRIVER_OK).
     fn selected_writable(&mut self, what: &str) -> Option<&mut Queue> {
         let frozen = self.status & st::DRIVER_OK != 0;
@@ -339,7 +342,9 @@ impl VirtioMmio {
         }
         Some(q)
     }
+    // ANCHOR_END: virtio_queue_writable
 
+    // ANCHOR: virtio_read_reg
     fn read_reg(&self, offset: u64) -> u32 {
         if self.device_id == DEVICE_ID_NONE {
             // §4.2.3.1.1: an empty slot is Magic + Version + DeviceID 0; the rest is RAZ.
@@ -381,7 +386,9 @@ impl VirtioMmio {
             }
         }
     }
+    // ANCHOR_END: virtio_read_reg
 
+    // ANCHOR: virtio_write_reg
     fn write_reg(&mut self, offset: u64, v: u32) {
         if self.device_id == DEVICE_ID_NONE {
             crate::guest_debug!("virtio-mmio: write to an empty slot at {offset:#x} (WI)");
@@ -432,7 +439,9 @@ impl VirtioMmio {
             ),
         }
     }
+    // ANCHOR_END: virtio_write_reg
 
+    // ANCHOR: virtio_ready_freeze
     /// QueueReady may go 1 → 0 before DRIVER_OK, so only DRIVER_OK freezes it.
     fn selected_writable_ready(&mut self) -> Option<&mut Queue> {
         if self.status & st::DRIVER_OK != 0 {
@@ -448,8 +457,10 @@ impl VirtioMmio {
         }
         q
     }
+    // ANCHOR_END: virtio_ready_freeze
 
-    /// One half of a 64-bit ring address: `hi << 32 | lo`, never an addition (VQ-1).
+    // ANCHOR: virtio_ring_addr
+    /// One half of a 64-bit ring address: `hi << 32 | lo`, never an addition.
     fn write_ring_addr(
         &mut self,
         offset: u64,
@@ -464,7 +475,9 @@ impl VirtioMmio {
             set(q, GuestAddress(join(lo, hi)));
         }
     }
+    // ANCHOR_END: virtio_ring_addr
 
+    // ANCHOR: virtio_driver_features
     fn write_driver_features(&mut self, v: u32) {
         if self.status & st::DRIVER == 0 || self.status & st::FEATURES_OK != 0 {
             crate::guest_warn!(
@@ -484,9 +497,10 @@ impl VirtioMmio {
             }
         }
     }
+    // ANCHOR_END: virtio_driver_features
 
     // ANCHOR: virtio_status_machine
-    /// A Status write (module docs; §2.1, §3.1.1, VQ-14).
+    /// A Status write (module docs; §2.1, §3.1.1).
     fn write_status(&mut self, v: u32) {
         if v == 0 {
             self.reset();
@@ -503,7 +517,7 @@ impl VirtioMmio {
             );
             return;
         }
-        // M18 (module docs): DRIVER implies ACKNOWLEDGE, which gates nothing (U-Boot quirk).
+        // DRIVER implies ACKNOWLEDGE, which gates nothing (U-Boot quirk).
         let v = if v & st::DRIVER != 0 {
             v | st::ACKNOWLEDGE
         } else {
@@ -531,9 +545,9 @@ impl VirtioMmio {
     // ANCHOR_END: virtio_status_machine
 
     // ANCHOR: virtio_features_ok
-    /// FEATURES_OK: `accepted ⊆ offered` and `VERSION_1 ∈ accepted` (§2.2.1, §6.1; VQ-15).
+    /// FEATURES_OK: `accepted ⊆ offered` and `VERSION_1 ∈ accepted` (§2.2.1, §6.1).
     /// On success the device learns the set and the queues learn whether indirect descriptors
-    /// were negotiated (VQ-6).
+    /// were negotiated.
     fn features_ok(&mut self) -> bool {
         let accepted = self.driver_features;
         let unoffered = accepted & !self.device_features;
@@ -560,6 +574,7 @@ impl VirtioMmio {
     }
     // ANCHOR_END: virtio_features_ok
 
+    // ANCHOR: virtio_driver_ok
     /// DRIVER_OK: validate every ready queue, then activate; any failure → NEEDS_RESET.
     fn driver_ok(&mut self) {
         let Some(mem) = self.mem.clone() else {
@@ -586,9 +601,11 @@ impl VirtioMmio {
             self.interrupt.set_needs_reset();
         }
     }
+    // ANCHOR_END: virtio_driver_ok
 
-    /// Status ← 0 (VQ-14): the device mutex is taken first, so an in-flight worker batch
-    /// finishes before the queues and the memory handle are dropped. A dead device (RUST-7) is
+    // ANCHOR: virtio_reset
+    /// Status ← 0: the device mutex is taken first, so an in-flight worker batch
+    /// finishes before the queues and the memory handle are dropped. A dead device (a worker panicked) is
     /// left alone: the VM is stopping.
     fn reset(&mut self) {
         let Some(mut device) = self.live_device() else {
@@ -605,8 +622,10 @@ impl VirtioMmio {
         self.queue_sel = 0;
         self.interrupt.reset();
     }
+    // ANCHOR_END: virtio_reset
 
-    /// QueueNotify (VQ-13): only for an activated, healthy device and an existing ready queue.
+    // ANCHOR: virtio_notify
+    /// QueueNotify: only for an activated, healthy device and an existing ready queue.
     fn notify(&mut self, v: u32) {
         if self.status & st::DRIVER_OK == 0
             || self.status & st::FAILED != 0
@@ -633,8 +652,10 @@ impl VirtioMmio {
             None => self.process_inline(index),
         }
     }
+    // ANCHOR_END: virtio_notify
 
     /// Process queue `index` on this thread (no worker yet: M11, host tests).
+    // ANCHOR: virtio_process_inline
     fn process_inline(&self, index: usize) {
         let budget = self.queues.get(index).map_or(0, |q| q.size());
         let Some(mut d) = self.live_device() else {
@@ -651,6 +672,7 @@ impl VirtioMmio {
             }
         }
     }
+    // ANCHOR_END: virtio_process_inline
 
     fn read_config(&self, offset: u64, size: AccessSize) -> u64 {
         let Some((off, n)) = self.config_range(offset, size) else {
@@ -700,10 +722,12 @@ impl VirtioMmio {
 /// Put the device into DEVICE_NEEDS_RESET after a queue error (VQ-10): a config interrupt and
 /// one rate-limited warning; nothing more is processed until Status = 0. Used by the inline
 /// path here and by the M12 worker.
+// ANCHOR: virtio_report_error
 pub fn report_error(interrupt: &VirtioInterrupt, queue: usize, err: &VirtioError) {
     crate::guest_warn!("virtio: queue {queue:?} failed, device needs reset: {err}");
     interrupt.set_needs_reset();
 }
+// ANCHOR_END: virtio_report_error
 
 /// The warning for an access to a dead device. A macvmm bug made it dead, but the guest decides
 /// how often it is touched, so the message is rate-limited like a guest warning (LOG-1).
@@ -728,6 +752,7 @@ fn join(lo: u32, hi: u32) -> u64 {
     u64::from_le_bytes([l0, l1, l2, l3, h0, h1, h2, h3])
 }
 
+// ANCHOR: virtio_mmio_access
 impl MmioDevice for VirtioMmio {
     fn read(&mut self, offset: u64, size: AccessSize) -> u64 {
         if self.is_dead() {
@@ -738,7 +763,7 @@ impl MmioDevice for VirtioMmio {
             return self.read_config(offset, size);
         }
         if size != AccessSize::B4 || !offset.is_multiple_of(4) {
-            // §4.2.2.1: control registers take aligned 32-bit accesses only (VQ-13).
+            // §4.2.2.1: control registers take aligned 32-bit accesses only.
             crate::guest_warn!(
                 "virtio-mmio: {:?}-byte read at {offset:#x} is not an aligned 32-bit access (RAZ)",
                 size.bytes()
@@ -768,6 +793,7 @@ impl MmioDevice for VirtioMmio {
         self.write_reg(offset, lo);
     }
 }
+// ANCHOR_END: virtio_mmio_access
 
 #[cfg(test)]
 mod tests {

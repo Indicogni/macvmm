@@ -36,7 +36,7 @@ use core::fmt;
 /// Alignment of every region base and size: the default 16 KiB stage-2 granule.
 pub const REGION_ALIGN: u64 = 16 * 1024;
 
-/// The most regions one table may hold (RUST-4: a named cap). The `virt` machine uses one RAM
+/// The most regions one table may hold (a named cap, never a guest value). The `virt` machine uses one RAM
 /// region; the rest is headroom (high RAM, hotplug experiments).
 pub const MAX_REGIONS: usize = 16;
 

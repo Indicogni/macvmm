@@ -5,12 +5,12 @@ kind: primer
 minutes: 30
 required_by: [00]
 also_used_by: [01, 02, 05, 08, 09, 11]
-lab: syscall-stepper
+labs: [syscall-stepper]
 runs: mac+browser
 command: sh -c 'exit 5'; echo $?
 expect: 5
 objectives:
-- Explain what a process is, run a program and read its exit code with `echo $?`, and say why `exit 300` shows up as 44.
+- Explain what a process is, run a program and read its exit status with `echo $?`, and say why `exit 300` shows up as 44.
 - Name the two privilege modes (user mode and kernel mode), give two things only kernel mode may do, and give their Arm names (EL0 and EL1).
 - Describe a system call at the hardware level in four steps (mode switch, jump through the exception vector table, return address saved in a register, return) and point at the `svc` in a real macOS disassembly (run with `lldb` on a Mac, or read from the captured output).
 - Translate a virtual address by hand through a two-level page table, and say when the walk ends in a page fault.
@@ -52,7 +52,7 @@ zsh: segmentation fault  ./null
 If your shell is bash, the first line reads `Segmentation fault: 11` instead; the `139` is the same.
 
 :::objectives
-- Read a process's exit code, and explain the 44 in `exit 300`.
+- Read a process's exit status, and explain the 44 in `exit 300`.
 - Name user and kernel mode, and their Arm names EL0 and EL1.
 - Walk a system call through the hardware in four steps, and find the `svc` in macOS (with `lldb` on a Mac; browser-only readers can use the captured output below).
 - Translate an address through a two-level page table by hand, and spot the page fault.
@@ -80,7 +80,7 @@ them when the process runs again. Your shell is a process too. When you type `./
 kernel to create a new process, then asks to be woken when that process ends.
 
 When a process ends, the kernel hands its parent one small number: the
-[**exit code**](/build-your-own/vmm/glossary/#exit-code) (POSIX calls it the exit status). Zero
+[**exit status**](/build-your-own/vmm/glossary/#exit-code) (the chapters call the one macvmm returns its *exit code*; it is the same number). Zero
 means success; anything else means "something went wrong", and the program decides what each
 value means. The shell keeps the last one in `$?`.
 
@@ -102,18 +102,18 @@ echo $?
 5
 ```
 
-The 139 from the opening puzzle is also an exit code, but the program never chose it. A
+The 139 from the opening puzzle is also an exit status, but the program never chose it. A
 **signal** is a numbered notification the kernel delivers to a process, and some signals end the
 process on the spot. Signal 11, named SIGSEGV, means "bad memory access". The shell's rule is
-plain: when a process was killed by a signal, its exit code is **128 + the signal number**. So
+plain: when a process was killed by a signal, its exit status is **128 + the signal number**. So
 139 is 128 + 11. (The later [`unix-signals`](/build-your-own/vmm/primers/unix-signals/) primer covers signals in depth; for now, remember that
 someone other than the program decided how it ended.)
 
 > **Try it.** Run `sh -c 'exit 300'` and then `echo $?`. You will see `44`, not `300`. The parent
-> only receives the low 8 bits of the exit code, and 300 is `0x12C`, whose low byte is `0x2C`,
-> which is 44. This is why `macvmm` keeps all its own exit codes below 128.
+> only receives the low 8 bits of the exit status, and 300 is `0x12C`, whose low byte is `0x2C`,
+> which is 44. This is why `macvmm` keeps all its own exit statuses below 128.
 
-One word of warning, because this course uses both: an exit code is what a *process* returns to
+One word of warning, because this course uses both: an exit status is what a *process* returns to
 its shell. In chapter 00 you will meet a "VM exit", which is something else entirely. The two
 never share the bare word "exit".
 
@@ -182,7 +182,7 @@ libsystem_kernel.dylib`__exit:
 ```
 
 The first two instructions do the work. `mov x16, #0x1` puts the number 1 in register `x16`: on
-macOS, that number tells the kernel *which* service you want (1 is exit). The exit code, 5, is
+macOS, that number tells the kernel *which* service you want (1 is exit). The exit status, 5, is
 already in register `x0`: by an agreement all compiled code follows (the **calling
 convention**), a function's first argument travels in `x0`. Then
 [`svc`](/build-your-own/vmm/glossary/#svc) (supervisor call) knocks on the kernel's door. The
@@ -515,7 +515,7 @@ Nobody in the program noticed anything. The CPU noticed, and the kernel decided.
 Commit to an answer before you reveal it.
 
 :::predict A program runs `exit(258)`. What does `echo $?` print in the shell that started it, and why?
-`2`. The parent receives only the low 8 bits of the exit code: 258 is `0x102`, whose low byte is
+`2`. The parent receives only the low 8 bits of the exit status: 258 is `0x102`, whose low byte is
 `0x02`. Values from 0 to 255 survive unchanged, and the shell itself uses 128 and above to report
 death by a signal.
 :::
@@ -556,7 +556,6 @@ but on many Arm systems it stays resident to answer a few requests from the kern
 ## Lab
 
 :::lab syscall-stepper
-:::
 
 In the `syscall-stepper` lab you single-step a tiny app in user mode (EL0) up to its `svc`, then
 take the exception. A state panel shows four labels: **mode**, **PC**, **saved return address**
@@ -580,7 +579,7 @@ three screens can be read side by side.
   primer, with every register named, then the same mechanism one level up: a guest's `hvc`
   becomes our first VM exit.
 - [Chapter 03, test-guests](/build-your-own/vmm/bare-machine/test-guests/): `macvmm` reports
-  results through its own exit codes (exit code 5 means a timeout), read with `echo $?`.
+  results through its own exit statuses (exit status 5 means a timeout), read with `echo $?`.
 - [Chapter 05, address-space](/build-your-own/vmm/memory/address-space/): a second page table,
   owned by Hypervisor.framework, translates the guest's "physical" addresses; a fault there is how
   device accesses reach us (the guest-memory code under `crates/vmm/src/memory/`).
@@ -604,7 +603,7 @@ three screens can be read side by side.
   return address, and the exception vectors (the table of `VBAR_ELx` offsets). Section numbers
   move between issues, so search by title. The [`reading-arm-specs`](/build-your-own/vmm/primers/reading-arm-specs/) primer shows how to navigate it.
 - On your Mac: `man 2 getrusage` (the page-fault counters), `man 2 wait` (how a parent collects an
-  exit code), and Apple's *Platform Security Guide*, "Boot process for a Mac with Apple silicon",
+  exit status), and Apple's *Platform Security Guide*, "Boot process for a Mac with Apple silicon",
   for the firmware stages before macOS.
 
 ## Checkpoint

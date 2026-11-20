@@ -1,0 +1,13 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Signed in place first with scripts/sign.sh target/debug/macvmm (cargo run signs a private copy instead, which you cannot easily point codesign at).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ codesign -d --entitlements - target/debug/macvmm
+exit: 0
+--- stdout ---
+[Dict]
+	[Key] com.apple.security.hypervisor
+	[Value]
+		[Bool] true
+
+--- stderr ---
+Executable=<repo>/target/debug/macvmm

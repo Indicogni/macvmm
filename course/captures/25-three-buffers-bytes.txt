@@ -1,0 +1,10 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Size of the hand-built input, then how many of its bytes are not zero (tr deletes the zero bytes).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ wc -c < crates/fuzz/planted/05-three-buffers.bin; LC_ALL=C tr -d '\000' < crates/fuzz/planted/05-three-buffers.bin | wc -c
+exit: 0
+--- stdout ---
+     568
+      17
+
+--- stderr ---

@@ -1,0 +1,4 @@
+"fn":"PSCI_VERSION"
+"fn":"PSCI_SYSTEM_OFF"
+!"ec":"0x24"
+!"fn":"DEBUG_

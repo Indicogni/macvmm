@@ -1,0 +1,16 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The chapter's checkpoint, run against an unmodified copy of the reference laid out as a learner/ workspace (scripts/checkpoint.sh 18 --impl <tree>): what a finished chapter 18 looks like.
+# The journal line reports "not a learner tree" here; in your own learner/ workspace it checks your journal.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 18
+exit: 0
+--- stdout ---
+checkpoint: implementation <tree>
+[PASS] contract tests   virtio_blk_hostile (32 tests), blk_short_read (7 tests), blk_budget (1 tests)
+[PASS] runs on your Mac disk-vda: 11/11 serial markers, exit 0 in 3.87s
+[PASS] runs on your Mac disk-lock: 6/6 serial markers, exit 0 in 0.14s
+[PASS] runs on your Mac disk-rootfs: 11/11 serial markers, exit 0 in 0.91s
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 18 PASS
+
+--- stderr ---

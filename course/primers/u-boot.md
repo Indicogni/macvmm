@@ -2,10 +2,10 @@
 title: U-Boot: the firmware we run first
 slug: u-boot
 kind: primer
-minutes: 30
+minutes: 20
 required_by: [21]
 also_used_by: [22]
-lab: boot-chain
+labs: [boot-chain]
 runs: mac+browser
 command: strings .cache/macvmm/u-boot.bin | grep -m1 '^bootcmd='
 expect: bootcmd=bootflow scan -lb
@@ -530,7 +530,6 @@ about the machine, macvmm told it.
 ## Lab
 
 :::lab boot-chain
-:::
 
 In the `boot-chain` lab you step through two boots side by side: direct boot (macvmm loads the
 kernel and DTB, `PC` = kernel entry) and firmware boot (macvmm loads U-Boot and the DTB, `PC = 0`,

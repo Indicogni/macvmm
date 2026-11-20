@@ -1,0 +1,12 @@
+# scripts/capture-cmd 01: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# A learner workspace written by following this chapter's text (scripts/learner init, start 01, then the files the lesson names), run from inside learner/.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- doctor
+exit: 0
+--- stdout ---
+macvmm doctor
+hv_vm_create: OK
+vm create/destroy x100: OK
+DOCTOR OK
+
+--- stderr ---

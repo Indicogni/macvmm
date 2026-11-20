@@ -141,7 +141,7 @@ pub fn split_flags(args: &[String]) -> Result<(Opts, Vec<String>), String> {
 }
 
 // ANCHOR: sandbox_profile
-/// The lockdown profile (SBX-2; module docs). SBPL, the Scheme dialect of macOS's Seatbelt.
+/// The lockdown profile (module docs). SBPL, the Scheme dialect of macOS's Seatbelt.
 /// Rules are matched last-to-first with `deny default` as the fallback; the explicit denials
 /// restate the policy for the reader (and keep it if a later edit adds a broad `allow`).
 pub const PROFILE: &str = r#"(version 1)
@@ -256,8 +256,8 @@ pub struct Lockdown {
 pub const NOFILE_SLACK: u64 = 16;
 
 // ANCHOR: sandbox_lockdown
-/// Lower `RLIMIT_NOFILE`, then apply the profile (module docs: timing, PROC-4, SBX-2).
-/// Irrevocable. `Err` is the reason; the caller decides between exit 1 and a warning (SBX-4).
+/// Lower `RLIMIT_NOFILE`, then apply the profile (module docs: timing).
+/// Irrevocable. `Err` is the reason; the caller decides between exit 1 and a warning.
 pub fn lockdown(cfg: &VmConfig) -> Result<Lockdown, String> {
     let profile = profile_for(cfg)?;
     let (soft, _) = hvf::host::get_rlimit(hvf::host::RLIMIT_NOFILE)
@@ -303,6 +303,7 @@ const ECONNREFUSED: i32 = 61;
 /// The SBX-3 item 4 probes, after [`lockdown`]: `open("/etc/hosts")`, a loopback TCP connect
 /// and `posix_spawn("/usr/bin/true")` must all be refused by the sandbox. `Ok` is the line to
 /// print; `Err` names what got through.
+// ANCHOR: sandbox_selftest
 pub fn selftest() -> Result<String, String> {
     let mut bad = Vec::new();
     if let Err(e) = denied("open", hvf::host::probe_open("/etc/hosts"), &[]) {
@@ -327,6 +328,7 @@ pub fn selftest() -> Result<String, String> {
         Err(format!("sandbox: self-test FAILED: {}", bad.join(", ")))
     }
 }
+// ANCHOR_END: sandbox_selftest
 
 #[cfg(test)]
 mod tests {

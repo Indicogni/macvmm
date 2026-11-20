@@ -23,7 +23,8 @@ umask 077
 # ANCHOR: sign_and_run
 bin="$(physical_file "$1")"
 shift
-# SIGN-4: only binaries cargo built under the target dir are ever signed or run.
+# Only binaries cargo built under the target dir are ever signed or run: the runner must not
+# become a way to give the hypervisor entitlement to an arbitrary file.
 inside_target_dir "$bin" || die "refusing $bin: not under $(target_dir) (SIGN-4)"
 
 # A private copy that no cargo build writes to; stale copies of exited runs are removed.

@@ -1,0 +1,17 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run in a copy of the reference tree, so the shared build directory is not touched.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -p vmm --test psci_smp 2>&1 | grep -E '^test |^test result'
+exit: 0
+--- stdout ---
+test smp_desc_from_entropy ... ok
+test mpidr_for_index ... ok
+test cpu_off_then_on_with_affinity_at_each_step ... ok
+test independent_targets_in_parallel ... ok
+test four_cpu_dts_matches_golden ... ok
+test stop_wakes_every_parked_target ... ok
+test eight_threads_race_cpu_on ... ok
+test storm_against_a_cycling_target_starts_once_per_success ... ok
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+--- stderr ---

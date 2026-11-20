@@ -1,0 +1,25 @@
+# scripts/capture-cmd 19: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The broken VM B of the previous capture, started again the same way, with the reference VM A (no --stats) in a second terminal; sampled after A had exited, about 15 s after B's guest began to power off (its --timeout 20 had already passed).
+# B holds VM B's process ID. Once A has exited, pgrep -x macvmm prints it; on this Mac other VMs were running, so it was picked by its --net path. Addresses, sample counts and thread numbers differ run to run.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ sample "$B" 1 2>/dev/null | grep -E 'Thread_|Net7receive|9functions5sleep|10VirtioMmio5reset|5Mutex4lock|ScopedJoinHandleuE4join'
+exit: 0
+--- stdout ---
+    691 Thread_123835475   DispatchQueue_1: com.apple.main-thread  (serial)
+    +                                                                   691 _RNvMs1_NtNtCs1SSuMAdGM58_3std6thread6scopedINtB5_16ScopedJoinHandleuE4joinCs2rxmOgGCNRe_3vmm  (in macvmm) + 40  [0x10029c2fc]
+    691 Thread_123835623: sink:stdout
+    691 Thread_123835624: signal
+    691 Thread_123835626: com.apple.virtualization.thread.virtual-clock
+    691 Thread_123835661: virtio-net-0
+    691 Thread_123835662: virtio-net-rx-0
+    +                       671 _RNvMs1_NtNtCs2rxmOgGCNRe_3vmm6virtio3netNtB5_3Net7receive  (in macvmm) + 700  [0x10028c514]
+    +                       ! 670 _RNvNtNtCs1SSuMAdGM58_3std6thread9functions5sleep  (in macvmm) + 100  [0x10030a1a0]
+    +                       ! 1 _RNvNtNtCs1SSuMAdGM58_3std6thread9functions5sleep  (in macvmm) + 100  [0x10030a1a0]
+    +                       18 _RNvMs1_NtNtCs2rxmOgGCNRe_3vmm6virtio3netNtB5_3Net7receive  (in macvmm) + 436  [0x10028c40c]
+    +                       1 _RNvMs1_NtNtCs2rxmOgGCNRe_3vmm6virtio3netNtB5_3Net7receive  (in macvmm) + 448  [0x10028c418]
+    +                       1 _RNvMs1_NtNtCs2rxmOgGCNRe_3vmm6virtio3netNtB5_3Net7receive  (in macvmm) + 696  [0x10028c510]
+    691 Thread_123835663: vcpu0
+                                              691 _RNvMs_NtNtCs2rxmOgGCNRe_3vmm6virtio4mmioNtB4_10VirtioMmio5reset  (in macvmm) + 36  [0x10021ca24]
+                                                    691 _RNvMNtNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4sync5mutexNtB2_5Mutex4lock  (in macvmm) + 12  [0x1002f718c]
+
+--- stderr ---

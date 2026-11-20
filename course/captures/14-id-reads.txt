@@ -1,0 +1,24 @@
+# scripts/capture-cmd 14: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The trace file was written to a scratch directory instead of ./mmio.jsonl; nothing else differs.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=boot" --timeout 30 --trace exits:mmio.jsonl:mmio > /dev/null && grep -E '"ipa":"0x90(0|1)0f' mmio.jsonl
+exit: 0
+--- stdout ---
+{"t_ns":100722833,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9000fe0","wnr":false,"size":4,"reg":2,"value":"0x11","action":"mmio","isv":true}
+{"t_ns":100727041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9000fe4","wnr":false,"size":4,"reg":2,"value":"0x10","action":"mmio","isv":true}
+{"t_ns":100742083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9000fe8","wnr":false,"size":4,"reg":2,"value":"0x14","action":"mmio","isv":true}
+{"t_ns":100745583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9000fec","wnr":false,"size":4,"reg":2,"value":"0x0","action":"mmio","isv":true}
+{"t_ns":100748916,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9000ff0","wnr":false,"size":4,"reg":2,"value":"0xd","action":"mmio","isv":true}
+{"t_ns":100752208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9000ff4","wnr":false,"size":4,"reg":2,"value":"0xf0","action":"mmio","isv":true}
+{"t_ns":100755541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9000ff8","wnr":false,"size":4,"reg":2,"value":"0x5","action":"mmio","isv":true}
+{"t_ns":100758833,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9000ffc","wnr":false,"size":4,"reg":2,"value":"0xb1","action":"mmio","isv":true}
+{"t_ns":104125416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9010fe0","wnr":false,"size":4,"reg":2,"value":"0x31","action":"mmio","isv":true}
+{"t_ns":104135208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9010fe4","wnr":false,"size":4,"reg":2,"value":"0x10","action":"mmio","isv":true}
+{"t_ns":104138708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9010fe8","wnr":false,"size":4,"reg":2,"value":"0x14","action":"mmio","isv":true}
+{"t_ns":104142125,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9010fec","wnr":false,"size":4,"reg":2,"value":"0x0","action":"mmio","isv":true}
+{"t_ns":104145458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9010ff0","wnr":false,"size":4,"reg":2,"value":"0xd","action":"mmio","isv":true}
+{"t_ns":104148833,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9010ff4","wnr":false,"size":4,"reg":2,"value":"0xf0","action":"mmio","isv":true}
+{"t_ns":104152208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9010ff8","wnr":false,"size":4,"reg":2,"value":"0x5","action":"mmio","isv":true}
+{"t_ns":104155583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9010ffc","wnr":false,"size":4,"reg":2,"value":"0xb1","action":"mmio","isv":true}
+
+--- stderr ---

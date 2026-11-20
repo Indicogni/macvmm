@@ -1,0 +1,21 @@
+# scripts/capture-cmd 22: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The trace written by the run in 22-trace-run.txt; sed keeps the vCPU, the PC and the call or register name of each line.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ sed -E s/.*"vcpu":([0-9]+).*"pc":"([^"]*)".*"(fn|sysreg)":"([^"]*)".*/vcpu \1  pc=\2  \4/ .cache/t.jsonl
+exit: 0
+--- stdout ---
+vcpu 0  pc=0xffff00000093242c  OSLAR_EL1
+vcpu 0  pc=0xffff0000009d510c  PSCI_CPU_ON
+vcpu 0  pc=0xffff0000009d510c  PSCI_VERSION
+vcpu 0  pc=0xffff0000009d510c  PSCI_FEATURES
+vcpu 0  pc=0xffff0000009d510c  SMCCC_VERSION
+vcpu 0  pc=0xffff0000009d510c  PSCI_FEATURES
+vcpu 0  pc=0xffff0000009d510c  SMCCC_VERSION
+vcpu 0  pc=0xffff0000009d510c  SMCCC_ARCH_FEATURES
+vcpu 0  pc=0xffff0000009d510c  SMCCC_ARCH_FEATURES
+vcpu 0  pc=0xffff0000009d510c  SMCCC_ARCH_FEATURES
+vcpu 1  pc=0xffff0000009d510c  SMCCC_ARCH_FEATURES
+vcpu 1  pc=0xffff000000932618  OSLAR_EL1
+vcpu 0  pc=0xbf69a1b8  PSCI_SYSTEM_OFF
+
+--- stderr ---

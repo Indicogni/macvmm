@@ -1,0 +1,18 @@
+# scripts/capture-cmd 11: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: nogic_before_entry in crates/vmm/src/vcpu/mod.rs never calls set_vtimer_mask(false), so the vtimer stays masked after the first VTIMER_ACTIVATED exit.
+# Run in a copy of the reference with that one edit.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --irqchip none --mem 64M --raw {guests}/timer-nogic.bin@0x40080000 --stats --timeout 10
+exit: 5
+--- stdout ---
+timer-nogic: cntfrq=24000000
+timer-nogic: pfr0.gic=0
+timer-nogic: interval 0 = 104 ms ok
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 10s
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=89 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 1, wfx 9435272, total 9435363: canceled 1, vtimer 1, wfx 9435272, hvc 89
+macvmm: stats: vcpu0 time: exec 3.106 s, wfi n/a
+macvmm: stats: host cpu 9.687 s over 10.001 s wall (97%)
+macvmm: stats: rlimit core=0 nofile=1048576

@@ -3,7 +3,7 @@ title: Page tables: stage-1 translation
 slug: page-tables
 kind: primer
 minutes: 30
-required_by: 05
+required_by: [05]
 objectives:
 - Split a 64-bit virtual address into its level indices and page offset for a 4 KiB or 16 KiB granule, by hand or with shell arithmetic.
 - Walk a virtual address through a three- or four-level table by hand, naming every descriptor read and the physical address it produces.
@@ -11,7 +11,7 @@ objectives:
 - Say which of TTBR0_EL1 and TTBR1_EL1 translates a given address, and compute the virtual address size from TCR_EL1.T0SZ.
 - Explain what changes when SCTLR_EL1.M turns the MMU on, and why the code that does it must be identity-mapped.
 - Explain why a device register must be Device memory and not Normal memory, and decode a MAIR_EL1 byte.
-lab: two-stage-walker
+labs: [two-stage-walker]
 ---
 
 # Same address, two values
@@ -490,6 +490,8 @@ touched without ever reading the guest's tables.
 > `S1PTW` bit ("stage 1 page table walk"), which chapter 21's walker has to respect.
 
 ## Lab
+
+:::lab two-stage-walker
 
 In the [`two-stage-walker`](/build-your-own/vmm/labs/two-stage-walker/) lab (stage-1 mode) you
 start from the worked example above, already filled in, then a three-level toy table (4 KiB

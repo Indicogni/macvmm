@@ -1,0 +1,37 @@
+# scripts/capture-cmd 08: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1 (every read whose policy is Undef answers 0), checked by the real checkpoint run against a copy of the reference with that one edit (scripts/checkpoint.sh 08 --impl <tree>).
+# The journal line reports "not a learner tree" here; in your own learner/ workspace it checks your journal.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 08
+exit: 1
+--- stdout ---
+checkpoint: implementation <tree>
+[FAIL] contract tests   sysreg_policy: 2 failed: pmu_is_undef, unknown_is_undef_sweep
+    ---- pmu_is_undef stdout ----
+    
+    thread 'pmu_is_undef' (126666786) panicked at tests/sysreg_policy.rs:85:13:
+    assertion `left == right` failed
+      left: Read(0)
+     right: Undef
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+    
+    ---- unknown_is_undef_sweep stdout ----
+    
+    thread 'unknown_is_undef_sweep' (126666787) panicked at tests/sysreg_policy.rs:129:13:
+    assertion `left == right` failed: S0_0_C0_C0_0(0x0000)
+[FAIL] runs on your Mac sysreg-probe: expected/sysreg-probe.txt:5: stdout marker "sysreg-probe: mdccsr undef count=1 ec=0x0" missing (in order) (4/9 serial markers matched before it)
+    expected/sysreg-probe.trace.txt:2: trace marker "\"ec\":\"0x18\",*\"sysreg\":\"MDCCSR_EL0\",\"sysreg_enc\":\"0x9808\",\"action\":\"inject_undef\"" missing (in order) (1/4 trace markers matched before it)
+    last 20 trace records:
+      {"t_ns":592458,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081244","value":"0x0","sysreg":"LORID_EL1","sysreg_enc":"0xc527","action":"sysreg"}
+      {"t_ns":826166,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081048","value":"0x0","sysreg":"MDCCSR_EL0","sysreg_enc":"0x9808","action":"sysreg"}
+      {"t_ns":1277250,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400812ec","value":"0x1","sysreg":"OSLAR_EL1","sysreg_enc":"0x8084","action":"sysreg"}
+      {"t_ns":1282916,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400812f4","value":"0xa","sysreg":"OSLSR_EL1","sysreg_enc":"0x808c","action":"sysreg"}
+      {"t_ns":1287083,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081304","value":"0x0","sysreg":"OSLAR_EL1","sysreg_enc":"0x8084","action":"sysreg"}
+      {"t_ns":1290958,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x4008131c","value":"0x8","sysreg":"OSLSR_EL1","sysreg_enc":"0x808c","action":"sysreg"}
+    stderr (last lines):
+[PASS] runs on your Mac psci-probe: 11/11 serial markers, exit 0 in 0.01s
+[PASS] runs on your Mac psci-probe-exit: 4/4 serial markers, exit 4 in 0.01s
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 08 FAIL
+
+--- stderr ---

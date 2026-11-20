@@ -1,0 +1,14 @@
+cloned rootfs.img
+macvmm-rootfs: mounted ext4 /dev/vda
+macvmm-rootfs: boot 1
+macvmm-rootfs: wrote /persist.bin sha256=
+macvmm-rootfs: rebooting
+macvmm-rootfs: boot 2
+macvmm-rootfs: persist ok sha256=
+rootfs rc=0
+Pass 5: Checking group summary information
+e2fsck rc=0
+[stderr] guest reset: rebooting (boot 1)
+!Kernel panic
+!macvmm-rootfs: FAILED
+![stderr] needs reset

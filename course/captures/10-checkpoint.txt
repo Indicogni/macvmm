@@ -1,0 +1,14 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run as scripts/checkpoint.sh 10 --impl . inside an unmodified copy of the reference (journal not checked there); your own run targets learner/ and also checks your journal.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 10
+exit: 0
+--- stdout ---
+[PASS] contract tests   fdt_writer (9 tests)
+[PASS] runs on your Mac dtb-reader: 10/10 serial markers, exit 0 in 0.05s
+[PASS] runs on your Mac hello-x0: 2/2 serial markers, exit 0 in 0.01s
+[PASS] runs on your Mac dtc-clean: 1/1 serial markers, exit 0 in 0.02s
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 10 PASS
+
+--- stderr ---

@@ -1,0 +1,14 @@
+# scripts/capture-cmd 09: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Predict fork, the same broken FR (always RXFE = 1), run for 2 s with the exit trace on. Then, from the trace: the number of records, the number of FR reads (loads from 0x9000018), the number of DR reads (loads from 0x9000000), and the last record.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ printf 'ping\n' | cargo run -q -p macvmm -- run --mem 64M --raw $G/uart-echo.bin@0x40080000 --timeout 2 --trace exits:t.jsonl:mmio; wc -l < t.jsonl; grep -c '"ipa":"0x9000018","wnr":false' t.jsonl; grep -c '"ipa":"0x9000000","wnr":false' t.jsonl; tail -n 1 t.jsonl
+exit: 0
+--- stdout ---
+uart-echo: ready
+  601453
+601435
+0
+{"t_ns":2003670666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4008128c","ipa":"0x9000018","wnr":false,"size":4,"reg":11,"value":"0x90","action":"mmio","isv":true}
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 2s

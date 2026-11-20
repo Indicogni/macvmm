@@ -1,0 +1,5 @@
+[stderr] vmapple: first exit at pc=0x1*: data abort
+[stderr] vmapple: * unknown MMIO accesses logged
+[stderr] macvmm: timeout:
+trace: first record: exception ec=0x24 pc=0x1
+![stderr] unknown MMIO #

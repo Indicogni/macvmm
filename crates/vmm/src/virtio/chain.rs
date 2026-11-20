@@ -33,6 +33,7 @@
 use super::QueueError;
 use crate::memory::{FromLeBytes, GuestAddress, GuestMemoryExt, GuestMemoryOrdered};
 
+// ANCHOR: chain_descriptor
 /// `VIRTQ_DESC_F_NEXT` (§2.7.5).
 pub const F_NEXT: u16 = 1;
 /// `VIRTQ_DESC_F_WRITE`: device-writable (§2.7.5).
@@ -42,7 +43,7 @@ pub const F_INDIRECT: u16 = 4;
 /// The size of one descriptor in a table (§2.7.5).
 pub const DESC_SIZE: u64 = 16;
 
-/// One descriptor, as copied out of guest memory (the copy is what we validate, MEM-7).
+/// One descriptor, as copied out of guest memory (the copy is what we validate).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Descriptor {
     pub addr: u64,
@@ -50,6 +51,7 @@ pub struct Descriptor {
     pub flags: u16,
     pub next: u16,
 }
+// ANCHOR_END: chain_descriptor
 
 impl Descriptor {
     /// `F_WRITE`: the device writes this buffer.
@@ -99,6 +101,7 @@ impl FromLeBytes for Descriptor {
     }
 }
 
+// ANCHOR: chain_struct
 /// An iterator over one chain's buffer descriptors (indirect tables flattened in place).
 pub struct DescriptorChain<'m> {
     mem: &'m dyn GuestMemoryOrdered,
@@ -108,12 +111,13 @@ pub struct DescriptorChain<'m> {
     table: GuestAddress,
     table_len: u16,
     next: Option<u16>,
-    /// Hops left in the current table (VQ-5).
+    /// Hops left in the current table: the budget that ends loops and over-long chains.
     budget: u16,
     in_indirect: bool,
     indirect_allowed: bool,
     failed: bool,
 }
+// ANCHOR_END: chain_struct
 
 impl core::fmt::Debug for DescriptorChain<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -166,7 +170,9 @@ impl<'m> DescriptorChain<'m> {
         self.head
     }
 
-    /// Read descriptor `index` of the current table: once, into a local (MEM-7).
+    // ANCHOR: chain_read_desc
+    /// Read descriptor `index` of the current table: once, into a local, so the guest
+    /// cannot change it between our check and our use.
     fn read_desc(&self, index: u16) -> Result<Descriptor, QueueError> {
         if index >= self.table_len {
             return Err(QueueError::NextOutOfRange {
@@ -183,6 +189,7 @@ impl<'m> DescriptorChain<'m> {
             })?;
         Ok(self.mem.read_obj::<Descriptor>(addr)?)
     }
+    // ANCHOR_END: chain_read_desc
 
     // ANCHOR: chain_next_descriptor
     /// One step of the walk: the next *buffer* descriptor, or `None` at the end of the chain.
@@ -191,7 +198,7 @@ impl<'m> DescriptorChain<'m> {
             let Some(index) = self.next else {
                 return Ok(None);
             };
-            // VQ-5: the hop budget catches loops and over-long chains without a visited set.
+            // The hop budget catches loops and over-long chains without a visited set.
             self.budget = self.budget.checked_sub(1).ok_or(QueueError::ChainTooLong {
                 budget: if self.in_indirect {
                     self.table_len
@@ -204,7 +211,7 @@ impl<'m> DescriptorChain<'m> {
                 self.enter_indirect(&d)?;
                 continue;
             }
-            // VQ-4, on the copy: non-empty, no overflow, entirely in one RAM region.
+            // On the copy: non-empty, no overflow, entirely in one RAM region.
             if d.len == 0 {
                 return Err(QueueError::ZeroLength { index });
             }
@@ -238,7 +245,7 @@ impl<'m> DescriptorChain<'m> {
     // ANCHOR_END: chain_next_descriptor
 
     // ANCHOR: chain_indirect
-    /// Switch the walk to the indirect table `d` describes (§2.7.5.3; VQ-6). The referring
+    /// Switch the walk to the indirect table `d` describes (§2.7.5.3). The referring
     /// descriptor's `F_WRITE` is ignored, as §2.7.5.3.2 requires of the device.
     fn enter_indirect(&mut self, d: &Descriptor) -> Result<(), QueueError> {
         if !self.indirect_allowed {
@@ -274,14 +281,15 @@ impl<'m> DescriptorChain<'m> {
         self.table = GuestAddress(d.addr);
         self.table_len = entries;
         self.next = Some(0);
-        self.budget = entries; // the hop budget restarts at len / 16 (architecture §11.2 item 6)
+        self.budget = entries; // the hop budget restarts at len / 16, the table's entries
         self.in_indirect = true;
         Ok(())
     }
     // ANCHOR_END: chain_indirect
 
-    /// Walk the whole chain and check it as one request: readable descriptors first (VQ-7),
-    /// and each direction's total at most `max_total` bytes (VQ-8).
+    // ANCHOR: chain_into_validated
+    /// Walk the whole chain and check it as one request: readable descriptors first,
+    /// and each direction's total at most `max_total` bytes.
     pub fn into_validated(mut self, max_total: u64) -> Result<ValidatedChain, QueueError> {
         let mut v = ValidatedChain {
             head: self.head,
@@ -316,8 +324,10 @@ impl<'m> DescriptorChain<'m> {
         }
         Ok(v)
     }
+    // ANCHOR_END: chain_into_validated
 }
 
+// ANCHOR: chain_iterator
 impl Iterator for DescriptorChain<'_> {
     type Item = Result<Descriptor, QueueError>;
 
@@ -338,10 +348,12 @@ impl Iterator for DescriptorChain<'_> {
         }
     }
 }
+// ANCHOR_END: chain_iterator
 
 impl ValidatedChain {
+    // ANCHOR: chain_write_writable
     /// Copy `data` into the writable buffers in order, and return how many bytes were written:
-    /// the value `add_used` must report (VQ-9: never the requested length). Stops at the end of
+    /// the value `add_used` must report (never the requested length). Stops at the end of
     /// `data` or of the buffers. Buffers were range-checked during the walk; a failing write
     /// (memory changed shape) is an `Err`, never a panic.
     pub fn write_writable(
@@ -365,6 +377,7 @@ impl ValidatedChain {
             max: u64::from(u32::MAX),
         })
     }
+    // ANCHOR_END: chain_write_writable
 }
 
 #[cfg(test)]

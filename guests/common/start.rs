@@ -164,6 +164,7 @@ pub extern "C" fn guest_power_off() -> ! {
     crate::psci::power_off()
 }
 
+// ANCHOR: guest_entry_macro
 /// Define the guest's entry function: `guest::entry!(main);` with `fn main(x0: u64)`.
 ///
 /// `_start` calls the symbol `guest_main` with the boot argument in `x0` (AAPCS64: the first
@@ -180,3 +181,4 @@ macro_rules! entry {
         }
     };
 }
+// ANCHOR_END: guest_entry_macro

@@ -80,6 +80,7 @@ func loadBundle(_ bundle: MacBundle) throws(VZMacError) -> LoadedBundle {
 /// Hardware model, machine identifier (ECID) and auxiliary storage must be the ones the guest
 /// was installed with; `VZMacOSBootLoader` then runs Apple's AVPBooter ROM, which verifies and
 /// loads the guest's own boot chain from disk (macos-guest.md §2). None of it is inspectable.
+// ANCHOR: vz_mac_identity
 func makeMacConfiguration(
     hardwareModel: VZMacHardwareModel, machineIdentifier: VZMacMachineIdentifier,
     auxiliaryStorage: VZMacAuxiliaryStorage, disk: URL, cpus: Int, memory: UInt64
@@ -94,7 +95,9 @@ func makeMacConfiguration(
     config.bootLoader = VZMacOSBootLoader()
     config.cpuCount = cpus
     config.memorySize = memory
+    // ANCHOR_END: vz_mac_identity
 
+    // ANCHOR: vz_mac_devices
     // The main disk must be the first storage device (VZVirtualMachineConfiguration.h).
     let attachment: VZDiskImageStorageDeviceAttachment
     do {
@@ -117,6 +120,7 @@ func makeMacConfiguration(
     config.entropyDevices = [VZVirtioEntropyDeviceConfiguration()]
     return config
 }
+// ANCHOR_END: vz_mac_devices
 // ANCHOR_END: vz_mac_platform
 
 /// Validate a configuration, mapping VZ's error to ours.

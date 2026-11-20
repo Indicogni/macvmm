@@ -4,7 +4,7 @@
              let Some(index) = self.next else {
                  return Ok(None);
              };
--            // VQ-5: the hop budget catches loops and over-long chains without a visited set.
+-            // The hop budget catches loops and over-long chains without a visited set.
 -            self.budget = self.budget.checked_sub(1).ok_or(QueueError::ChainTooLong {
 -                budget: if self.in_indirect {
 -                    self.table_len

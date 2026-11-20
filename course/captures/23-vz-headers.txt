@@ -1,0 +1,40 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Read-only: the file names of the Virtualization.framework headers in the Xcode SDK on this Mac.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ ls "$(xcrun --show-sdk-path)/System/Library/Frameworks/Virtualization.framework/Headers" | grep -E 'Device(Specific)?Configuration|Keyboard|Trackpad|Pointing'
+exit: 0
+--- stdout ---
+VZAudioDeviceConfiguration.h
+VZConsoleDeviceConfiguration.h
+VZCustomVirtioDeviceConfiguration.h
+VZCustomVirtioDeviceConfigurationDelegate.h
+VZDirectorySharingDeviceConfiguration.h
+VZEntropyDeviceConfiguration.h
+VZGraphicsDeviceConfiguration.h
+VZKeyboardConfiguration.h
+VZMacGraphicsDeviceConfiguration.h
+VZMacKeyboardConfiguration.h
+VZMacTrackpadConfiguration.h
+VZMemoryBalloonDeviceConfiguration.h
+VZNetworkDeviceConfiguration.h
+VZNVMExpressControllerDeviceConfiguration.h
+VZPointingDeviceConfiguration.h
+VZSocketDeviceConfiguration.h
+VZStorageDeviceConfiguration.h
+VZUSBDeviceConfiguration.h
+VZUSBKeyboardConfiguration.h
+VZUSBMassStorageDeviceConfiguration.h
+VZUSBPassthroughDeviceConfiguration.h
+VZUSBScreenCoordinatePointingDeviceConfiguration.h
+VZVirtioBlockDeviceConfiguration.h
+VZVirtioConsoleDeviceConfiguration.h
+VZVirtioDeviceSpecificConfiguration.h
+VZVirtioEntropyDeviceConfiguration.h
+VZVirtioFileSystemDeviceConfiguration.h
+VZVirtioGraphicsDeviceConfiguration.h
+VZVirtioNetworkDeviceConfiguration.h
+VZVirtioSocketDeviceConfiguration.h
+VZVirtioSoundDeviceConfiguration.h
+VZVirtioTraditionalMemoryBalloonDeviceConfiguration.h
+
+--- stderr ---

@@ -1,0 +1,31 @@
+# scripts/capture-cmd 08: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Part III explain-back: one of the repository's test guests, renamed mystery.bin so its name does not give it away; the VMM is the reference. The guest's own output and macvmm's messages are discarded; only the exit code and the trace (without its one-byte DEBUG_PUTC print records) are shown.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/mystery.bin@0x40080000 --trace exits:x.jsonl:psci,hvc --timeout 10 >/dev/null 2>&1; echo "macvmm exit code: $?"; grep -v DEBUG_PUTC x.jsonl
+exit: 0
+--- stdout ---
+macvmm exit code: 3
+{"t_ns":362500,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081094","imm":0,"fn":"DEBUG_BOOT_COUNT","action":"smccc"}
+{"t_ns":552166,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810b4","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci"}
+{"t_ns":245458,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081094","imm":0,"fn":"DEBUG_BOOT_COUNT","action":"smccc","boot":1}
+{"t_ns":349250,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810b4","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci","boot":1}
+{"t_ns":1464083,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081094","imm":0,"fn":"DEBUG_BOOT_COUNT","action":"smccc","boot":2}
+{"t_ns":1569708,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810b4","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci","boot":2}
+{"t_ns":178291,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081094","imm":0,"fn":"DEBUG_BOOT_COUNT","action":"smccc","boot":3}
+{"t_ns":337333,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810b4","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci","boot":3}
+{"t_ns":294083,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081094","imm":0,"fn":"DEBUG_BOOT_COUNT","action":"smccc","boot":4}
+{"t_ns":399083,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810b4","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci","boot":4}
+{"t_ns":185500,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081094","imm":0,"fn":"DEBUG_BOOT_COUNT","action":"smccc","boot":5}
+{"t_ns":282166,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810b4","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci","boot":5}
+{"t_ns":428333,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081094","imm":0,"fn":"DEBUG_BOOT_COUNT","action":"smccc","boot":6}
+{"t_ns":526291,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810b4","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci","boot":6}
+{"t_ns":459083,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081094","imm":0,"fn":"DEBUG_BOOT_COUNT","action":"smccc","boot":7}
+{"t_ns":580791,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810b4","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci","boot":7}
+{"t_ns":183708,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081094","imm":0,"fn":"DEBUG_BOOT_COUNT","action":"smccc","boot":8}
+{"t_ns":297625,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810b4","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci","boot":8}
+{"t_ns":1184916,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081094","imm":0,"fn":"DEBUG_BOOT_COUNT","action":"smccc","boot":9}
+{"t_ns":1288583,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810b4","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci","boot":9}
+{"t_ns":240541,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081094","imm":0,"fn":"DEBUG_BOOT_COUNT","action":"smccc","boot":10}
+{"t_ns":348916,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810b4","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci","boot":10}
+
+--- stderr ---

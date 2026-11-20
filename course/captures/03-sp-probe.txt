@@ -1,0 +1,11 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Probe: the guest of 03-no-stack.txt (no mov sp, x10) with eight instructions added at the very top of _start: mov x1, sp; mov x2, #0x41; cbz x1, 3f; mov x2, #0x3f; 3: mov x1, x2; then x0 = 0xC6004D01 (DEBUG_PUTC) and hvc #0. It prints A if sp is exactly 0 and ? otherwise.
+# Built in a copy of the guests (G points at that copy's release directory); run with the reference monitor at the repository root.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/hello.bin@0x40080000 --timeout 2
+exit: 5
+--- stdout ---
+A
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 2s

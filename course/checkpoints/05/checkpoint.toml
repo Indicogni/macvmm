@@ -1,4 +1,4 @@
-# Checkpoint 05 `address-space` (CURRICULUM §5 ch05).
+# Checkpoint 05 `address-space`: the memory map as one table, and a store to a hole stopped with exit code 3.
 id = "05"
 slug = "address-space"
 requires = ["04"]
@@ -17,11 +17,11 @@ serial = "expected/mmio-poke.txt"
 
 [journal]
 file = "journal/05.md"
-questions = 4
+questions = 5
 predict = true
 
 [hints]
 conceptual = "Stage 2 maps only what you choose; every hole is a trap. An access to an unmapped IPA is a data abort that reaches the VMM."
-spec = "PLAN §1 (the machine memory map) and arch/layout.rs; ARM ARM D8 (stage-2 translation)."
+spec = "The QEMU virt memory map (hw/arm/virt.c, base_memmap[]) and arch/layout.rs; the Arm Architecture Reference Manual, chapter D8 (stage-2 translation)."
 pseudocode = "regions sorted, no overlap, 16 KiB aligned, below 1 << ipa_bits; virtio_slot(n) = (0x0a000000 + n * 0x200, 48 + n) for n < 32."
 anchor = "crates/vmm/src/arch/layout.rs."

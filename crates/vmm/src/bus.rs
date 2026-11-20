@@ -35,7 +35,9 @@ use crate::sync::lock;
 use core::fmt;
 use std::sync::{Arc, Mutex};
 
-/// The width of one MMIO access (a load or store of 1, 2, 4 or 8 bytes). [frozen ch09]
+// ANCHOR: access_size
+/// The width of one MMIO access (a load or store of 1, 2, 4 or 8 bytes). Frozen from
+/// chapter 9 on: later chapters rely on it unchanged.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AccessSize {
     B1 = 1,
@@ -61,7 +63,7 @@ impl AccessSize {
     }
 
     /// From a data abort's `SAS` field (`size = 1 << SAS`). Only the low two bits are used,
-    /// so every input gives a size (MMIO-3).
+    /// so every input gives a size.
     pub const fn from_sas(sas: u8) -> AccessSize {
         match sas & 3 {
             0 => AccessSize::B1,
@@ -82,9 +84,10 @@ impl AccessSize {
         }
     }
 }
+// ANCHOR_END: access_size
 
 // ANCHOR: mmio_device_trait
-/// An emulated device on the bus. [frozen ch09]
+/// An emulated device on the bus. Frozen from chapter 9 on: later chapters rely on it unchanged.
 pub trait MmioDevice: Send {
     /// `offset` is relative to the device base. Return value is zero-extended to 64 bits;
     /// the caller sign-extends if the instruction asked for it.
@@ -144,6 +147,7 @@ impl fmt::Display for BusError {
 
 impl std::error::Error for BusError {}
 
+// ANCHOR: bus_struct
 /// One device window.
 struct Entry {
     name: &'static str,
@@ -153,11 +157,13 @@ struct Entry {
     dev: Arc<Mutex<dyn MmioDevice>>,
 }
 
-/// The machine's device windows, sorted by base, immutable once the VM runs. [frozen ch09]
+/// The machine's device windows, sorted by base, immutable once the VM runs. Frozen
+/// from chapter 9 on: later chapters rely on it unchanged.
 #[derive(Default)]
 pub struct Bus {
     entries: Vec<Entry>,
 }
+// ANCHOR_END: bus_struct
 
 impl fmt::Debug for Bus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -174,8 +180,9 @@ impl Bus {
         Bus::default()
     }
 
+    // ANCHOR: bus_insert
     /// Add `dev` at `[base, base + size)`. Refuses size 0, an overflowing end and any
-    /// overlap (MMIO-7). Called only while the machine is built.
+    /// overlap. Called only while the machine is built.
     pub fn insert(
         &mut self,
         name: &'static str,
@@ -210,6 +217,7 @@ impl Bus {
         );
         Ok(())
     }
+    // ANCHOR_END: bus_insert
 
     // ANCHOR: bus_lookup
     /// The window containing `ipa`, and the offset of `ipa` inside it. Binary search: the last

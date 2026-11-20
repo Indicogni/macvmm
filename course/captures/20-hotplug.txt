@@ -1,0 +1,16 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# tail keeps the last round of three; the first two rounds print the same lines.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --cpus 4 --mem 512M --serial file:hotplug.txt --on-reset exit --timeout 60 --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=smp-hotplug"; grep -a -e 'killed' -e 'Booted secondary' -e 'macvmm-smp' hotplug.txt | tr -d '\r' | tail -n 8
+exit: 0
+--- stdout ---
+[    0.219230] psci: CPU1 killed (polled 0 ms)
+[    0.228307] psci: CPU2 killed (polled 0 ms)
+[    0.234208] psci: CPU3 killed (polled 0 ms)
+[    0.239301] CPU1: Booted secondary processor 0x0000000001 [0x610f0000]
+[    0.239921] CPU2: Booted secondary processor 0x0000000002 [0x610f0000]
+[    0.241674] CPU3: Booted secondary processor 0x0000000003 [0x610f0000]
+macvmm-smp: round 3: 4 cpus online
+macvmm-smp: hotplug ok
+
+--- stderr ---

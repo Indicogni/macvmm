@@ -1,0 +1,17 @@
+vda rc=0
+macvmm-vda: /dev/vda 131072 sectors ro=0
+vda: the guest hash equals the host hash
+macvmm-vda: write done
+vda-write rc=0
+vda-write: 1 MiB of macvmm at 8 MiB
+vda-write: nothing else changed
+macvmm-vda: /dev/vda 131072 sectors ro=1
+macvmm-vda-ro: write rejected
+vda-ro rc=0
+vda-ro: image unchanged
+!Kernel panic
+!hash differs
+!pattern differs
+!other bytes changed
+!image changed
+![stderr] needs reset

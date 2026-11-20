@@ -1,0 +1,29 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The chapter's checkpoint, run against the reference (scripts/checkpoint.sh 25 --ref): what a finished chapter 25 looks like. The bughunt runs put crates/fuzz into a planted copy of the reference.
+# The journal line reports "not a learner tree" here; in your own learner/ workspace it checks your journal.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 25
+exit: 0
+--- stdout ---
+[INFO] contract tests   none for this chapter
+[PASS] runs on your Mac bughunt-control: 1/1 serial markers, exit 0 in 24.11s
+[PASS] runs on your Mac bughunt-1: 1/1 serial markers, exit 0 in 3.95s
+[PASS] runs on your Mac bughunt-2: 1/1 serial markers, exit 0 in 3.71s
+[PASS] runs on your Mac bughunt-3: 1/1 serial markers, exit 0 in 3.64s
+[PASS] runs on your Mac sandbox-check: 4/4 serial markers, exit 0 in 0.07s
+[PASS] runs on your Mac rlimit-check: 3/3 serial markers, exit 0 in 0.01s
+[PASS] runs on your Mac phase-mmio: 9/9 serial markers, exit 0 in 0.25s
+[PASS] runs on your Mac phase-isv0: 3/3 serial markers, exit 0 in 0.01s
+[PASS] runs on your Mac phase-sysreg: 4/4 serial markers, exit 0 in 0.03s
+[PASS] runs on your Mac phase-smccc: 4/4 serial markers, exit 0 in 0.06s
+[PASS] runs on your Mac phase-vq-empty: 3/3 serial markers, exit 0 in 0.10s
+[PASS] runs on your Mac phase-vq-rng: 5/5 serial markers, exit 0 in 0.11s
+[PASS] runs on your Mac phase-vq-blk: 7/7 serial markers, exit 0 in 0.45s
+[PASS] runs on your Mac phase-toctou: 10/10 serial markers, exit 0 in 25.35s
+[PASS] runs on your Mac phase-tty: 4/4 serial markers, exit 0 in 0.03s
+[PASS] runs on your Mac phase-reset: 3/3 serial markers, exit 3 in 0.02s
+[PASS] runs on your Mac phase-flood: 1/1 serial markers, exit 0 in 7.57s
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 25 PASS
+
+--- stderr ---

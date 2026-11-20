@@ -2,10 +2,10 @@
 title: ELF: the file the linker hands you
 slug: elf
 kind: primer
-minutes: 25
+minutes: 20
 required_by: [13]
 also_used_by: [03, 27]
-lab: elf-inspector
+labs: [elf-inspector]
 runs: mac+browser
 command: head -c 4 target/guests/aarch64-unknown-none/release/hello | xxd
 expect: 00000000: 7f45 4c46                                .ELF
@@ -42,6 +42,14 @@ read all three out of the file by hand, from a hex dump.
 - Explain `p_filesz` versus `p_memsz` and the zero-filled gap.
 - Explain why loaders use segments, not sections.
 - List a loader's validity checks and the sums that must be checked for overflow.
+:::
+
+:::prereqs
+- The [`bare-metal-rust`](/build-your-own/vmm/primers/bare-metal-rust/) primer: sections, the linker script and the flat binary made by
+  `objcopy`.
+- Chapter 03, where you built the `hello` guest and loaded its flat binary with `--raw`.
+- Reading hex and little-endian numbers, from the byte-order section of the
+  [`aarch64-reading`](/build-your-own/vmm/primers/aarch64-reading/) primer.
 :::
 
 ## Why a program file needs a header at all
@@ -483,7 +491,6 @@ had to zero `__bss_start` to `__bss_end` itself before running any Rust code.
 ## Lab
 
 :::lab elf-inspector
-:::
 
 In the `elf-inspector` lab you drop an ELF file onto the page (it is parsed locally in your
 browser; nothing is uploaded) and see its ELF header and program headers decoded, with each field

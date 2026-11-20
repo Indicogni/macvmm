@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Record one real run as a course capture, for terminal output a lesson shows that is not a
+# checkpoint step (a deliberate break, a Try it variant, a hang ended by a timeout).
+# Checkpoint runs are recorded by scripts/capture.sh NN instead.
+#
+#   scripts/capture-cmd [--timeout SECS] [--cwd DIR] [--show "CMD"] [--note TEXT]...
+#                       [--subst PATH=TOKEN]... course/captures/NN-name.txt -- CMD [ARGS...]
+#
+# Runs CMD (default timeout 60 s; the whole process group is killed after it), then writes the
+# transcript (provenance header, `$ CMD`, exit, stdout, stderr) to the capture file and prints
+# it. The repository path becomes <repo>, the --cwd tree <tree>, the home directory ~; control
+# characters are escaped. Format and naming: course/STYLE.md appendix A. Needs a real Mac for
+# anything that touches Hypervisor.framework; never edit a capture by hand.
+set -euo pipefail
+IFS=$'\n\t'
+umask 077
+# shellcheck source=scripts/lib/common.sh
+. "$(dirname -- "${BASH_SOURCE[0]}")/lib/common.sh"
+
+case "${1:-}" in
+  -h|--help|'') sed -n '2,13p' "$0"; exit 0 ;;
+esac
+# No `cd`: the output path and the command stay relative to the caller's directory.
+exec cargo run --locked --quiet --manifest-path "$REPO_ROOT/Cargo.toml" -p xtask -- capture "$@"

@@ -133,6 +133,7 @@ pub const BLK_BATCH_BYTES: u64 = 2 * BLK_MAX_DATA;
 /// A batch ends after this many backend syncs (module docs, "Batches"). One `F_FULLFSYNC` can
 /// take milliseconds on an internal SSD and far longer on external media.
 pub const BLK_BATCH_SYNCS: u32 = 1;
+// ANCHOR: blk_wire_format
 /// The request header (`struct virtio_blk_req` up to `data`, §5.2.6).
 pub const BLK_HDR_LEN: u64 = 16;
 /// GET_ID's buffer: "20 bytes", NUL-padded, not NUL-terminated when 20 long (§5.2.6.1).
@@ -141,6 +142,7 @@ pub const BLK_ID_BYTES: usize = 20;
 /// (§5.2.4, offsets 0..24). Fields beyond belong to features that are not offered.
 pub const BLK_CONFIG_LEN: u32 = 24;
 
+// ANCHOR: blk_req_types
 /// Request types (§5.2.6).
 pub mod req {
     pub const IN: u32 = 0;
@@ -155,6 +157,7 @@ pub mod blk_status {
     pub const IOERR: u8 = 1;
     pub const UNSUPP: u8 = 2;
 }
+// ANCHOR_END: blk_req_types
 
 /// Device feature bits (§5.2.3). Only these are offered.
 pub mod blk_features {
@@ -173,6 +176,7 @@ pub mod blk_features {
     /// offered** (module docs); listed so tests can check that.
     pub const CONFIG_WCE: u64 = 1 << 11;
 }
+// ANCHOR_END: blk_wire_format
 
 /// The request header, as copied once out of guest memory (MEM-7, BLK-1).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -319,15 +323,17 @@ impl Blk {
     }
 
     // ANCHOR: blk_parse_request
-    /// Execute one validated chain; returns the used `len` (VQ-9). `Err` is a protocol
+    // ANCHOR: blk_status_rule
+    /// Execute one validated chain; returns the used `len` (the bytes
+    /// actually written, never the length the guest asked for). `Err` is a protocol
     /// violation that leaves nowhere to write a status (DEVICE_NEEDS_RESET).
     fn execute(
         &mut self,
         mem: &dyn GuestMemoryOrdered,
         req: &ValidatedChain,
     ) -> Result<u32, VirtioError> {
-        // BLK-3: the status is the last writable byte, so the chain needs ≥ 1 writable byte
-        // (zero-length descriptors were already refused by the walk, VQ-4).
+        // The status is the last writable byte, so the chain needs ≥ 1 writable byte
+        // (zero-length descriptors were already refused by the walk).
         let status_at = last_byte(&req.writable).ok_or(VirtioError::Device(
             "blk request without a writable status byte",
         ))?;
@@ -341,13 +347,15 @@ impl Blk {
             blk_status::UNSUPP => self.stats.unsupp = self.stats.unsupp.saturating_add(1),
             _ => {}
         }
-        // Exactly one byte is written for the status (BLK-3).
+        // Exactly one byte is written for the status.
         mem.write_u8(status_at, status)
             .map_err(|e| VirtioError::Queue(e.into()))?;
         Ok(written.saturating_add(1))
     }
+    // ANCHOR_END: blk_status_rule
 
-    /// BLK-1 and the segment cap: the header, copied once from readable bytes only, and the
+    // ANCHOR: blk_parse_header
+    /// The header rule and the segment cap: the header, copied once from readable bytes only, and the
     /// OUT data length behind it. `Err` is IOERR.
     fn parse(
         mem: &dyn GuestMemoryOrdered,
@@ -358,7 +366,7 @@ impl Blk {
             return Err(IOERR); // a short header, or one in a writable descriptor
         }
         let hdr = read_header(mem, &req.readable).map_err(|_| IOERR)?;
-        // Segments: header + SEG_MAX data + status at most (VQ-8, `seg_max`).
+        // Segments: header + SEG_MAX data + status at most (`seg_max`).
         let descs = req.readable.len().saturating_add(req.writable.len());
         let max = usize::try_from(SEG_MAX).unwrap_or(usize::MAX);
         if descs > max.saturating_add(2) {
@@ -366,10 +374,12 @@ impl Blk {
         }
         Ok((hdr, req.readable_len.saturating_sub(BLK_HDR_LEN)))
     }
+    // ANCHOR_END: blk_parse_header
     // ANCHOR_END: blk_parse_request
 
     // ANCHOR: blk_execute
-    /// One parsed request (BLK-2..BLK-5, BLK-9). `data_out` readable and `data_in` writable data
+    // ANCHOR: blk_execute_io
+    /// One parsed request. `data_out` readable and `data_in` writable data
     /// bytes surround the header and the status; each type allows data in one direction only.
     /// `Ok(written)` is OK; `Err` carries the status and the data bytes already written.
     fn parse_and_run(
@@ -387,15 +397,17 @@ impl Blk {
             }
             req::OUT if data_in == 0 => {
                 if self.read_only {
-                    return Err(IOERR); // BLK-5
+                    return Err(IOERR); // a read-only disk
                 }
                 let offset = self.bounds_check(hdr.sector, data_out).ok_or(IOERR)?;
                 self.write_from_guest(mem, &req.readable, offset, data_out)?;
                 Ok(0)
             }
+            // ANCHOR_END: blk_execute_io
+            // ANCHOR: blk_execute_rest
             req::FLUSH if data_out == 0 && data_in == 0 => {
                 self.stats.flushes = self.stats.flushes.saturating_add(1);
-                // BLK-9: OK only once the data is durable. A read-only disk has nothing to
+                // OK only once the data is durable. A read-only disk has nothing to
                 // flush (and its fd is O_RDONLY).
                 if !self.read_only {
                     self.sync().map_err(|_| IOERR)?;
@@ -403,7 +415,7 @@ impl Blk {
                 Ok(0)
             }
             req::GET_ID if data_out == 0 => {
-                // BLK-4: min(20, writable data bytes).
+                // The ID string: min(20, writable data bytes).
                 let n = usize::try_from(data_in)
                     .unwrap_or(usize::MAX)
                     .min(BLK_ID_BYTES);
@@ -416,6 +428,7 @@ impl Blk {
             _ => Err((blk_status::UNSUPP, 0)),
         }
     }
+    // ANCHOR_END: blk_execute_rest
     // ANCHOR_END: blk_execute
 
     /// The backend's `sync` (`F_FULLFSYNC`), counted against the batch (module docs).
@@ -425,7 +438,7 @@ impl Blk {
     }
 
     // ANCHOR: blk_bounds_check
-    /// BLK-2: the byte offset of `sector`, if `len` bytes from there are a whole number of
+    /// The byte offset of `sector`, if `len` bytes from there are a whole number of
     /// sectors, at most [`BLK_MAX_DATA`], and inside the disk. Every step is checked: a
     /// wrapped multiplication would turn a huge sector number into a small offset.
     fn bounds_check(&self, sector: u64, len: u64) -> Option<u64> {
@@ -439,7 +452,7 @@ impl Blk {
     // ANCHOR_END: blk_bounds_check
 
     // ANCHOR: blk_data_path
-    /// IN: disk → bounce buffer → guest, chunk by chunk (VQ-11). Returns the bytes written to
+    /// IN: disk → bounce buffer → guest, chunk by chunk (a fresh, zeroed buffer). Returns the bytes written to
     /// the guest; a short read or an I/O error is IOERR with the bytes produced so far.
     fn read_into_guest(
         &mut self,
@@ -465,7 +478,7 @@ impl Blk {
                 done = done.saturating_add(got_u);
                 seg_done = seg_done.saturating_add(got_u);
                 if res.is_err() || got_u < n {
-                    return Err((blk_status::IOERR, written(done))); // BLK-6
+                    return Err((blk_status::IOERR, written(done))); // short: the file shrank since open
                 }
             }
         }
@@ -479,7 +492,7 @@ impl Blk {
     // ANCHOR: blk_write_path
     /// OUT: guest → bounce buffer → disk, chunk by chunk. Each guest byte is read once into a
     /// fresh buffer and written from that copy. In write-through mode (FLUSH not negotiated,
-    /// module docs) the write is synced before it may answer OK (§5.2.6, BLK-9).
+    /// module docs) the write is synced before it may answer OK (§5.2.6).
     fn write_from_guest(
         &mut self,
         mem: &dyn GuestMemoryOrdered,
@@ -599,9 +612,11 @@ impl VirtioDevice for Blk {
     fn queue_max_sizes(&self) -> &[u16] {
         &[BLK_QUEUE_SIZE]
     }
+    // ANCHOR: blk_features_offer
     /// Architecture §11.3: VERSION_1, SEG_MAX, BLK_SIZE, FLUSH, INDIRECT_DESC, and RO for a
     /// `,ro` disk. Nothing in `features::NEVER_OFFERED` (VQ-15). Not SIZE_MAX (M19, module
     /// docs "Why `size_max` is not offered").
+    // ANCHOR: blk_device_features
     fn device_features(&self) -> u64 {
         let mut f = features::VERSION_1
             | features::INDIRECT_DESC
@@ -613,6 +628,8 @@ impl VirtioDevice for Blk {
         }
         f
     }
+    // ANCHOR_END: blk_device_features
+    // ANCHOR: blk_ack_features
     /// One accepted bit changes the device: `FLUSH` selects write-back, its absence
     /// write-through (module docs, §5.2.6). The rest need nothing here: `INDIRECT_DESC` is
     /// enforced by the queue (the transport tells it), and an OUT on a read-only disk fails
@@ -620,6 +637,8 @@ impl VirtioDevice for Blk {
     fn ack_features(&mut self, accepted: u64) {
         self.writeback = accepted & blk_features::FLUSH != 0;
     }
+    // ANCHOR_END: blk_ack_features
+    // ANCHOR_END: blk_features_offer
     fn config_len(&self) -> u32 {
         BLK_CONFIG_LEN
     }

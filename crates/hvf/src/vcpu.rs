@@ -99,6 +99,7 @@ pub mod vcpu_borrows_vm_ok {}
 #[cfg(doctest)]
 pub mod vcpu_handle_is_send_sync {}
 
+// ANCHOR: vcpu_exit_reason
 /// Why `hv_vcpu_run` returned (`hv_exit_reason_t`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExitReason {
@@ -106,7 +107,8 @@ pub enum ExitReason {
     Canceled,
     /// A synchronous exception to EL2: decode `esr`.
     Exception,
-    /// The virtual timer fired (only without an in-kernel GIC). The framework has masked it.
+    /// The virtual timer fired (only without an in-kernel interrupt controller). The framework
+    /// has masked it.
     VtimerActivated,
     /// `HV_EXIT_REASON_UNKNOWN`: "should not happen under normal operation".
     Unknown,
@@ -136,7 +138,9 @@ impl ExitReason {
         }
     }
 }
+// ANCHOR_END: vcpu_exit_reason
 
+// ANCHOR: vcpu_exit_record
 /// An owned copy of the framework's exit record.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VcpuExit {
@@ -159,6 +163,7 @@ impl VcpuExit {
         }
     }
 }
+// ANCHOR_END: vcpu_exit_record
 
 /// `Copy + Send + Sync`: the only thing another thread may do to a vCPU is make it exit.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -193,6 +198,7 @@ pub fn vcpus_exit(handles: &[VcpuHandle]) -> Result<(), CallError> {
 }
 // ANCHOR_END: vcpus_exit_handle
 
+// ANCHOR: vcpu_get_via_out
 /// Generate an owner-thread getter that reads one value through an out-pointer.
 macro_rules! get_via_out {
     ($(#[$m:meta])* $fname:ident, $call:ident, $ty:ty, $($arg:expr),*) => {
@@ -206,10 +212,12 @@ macro_rules! get_via_out {
         }
     };
 }
+// ANCHOR_END: vcpu_get_via_out
 
 impl<'vm> Vcpu<'vm> {
+    // ANCHOR: vcpu_create
     /// Create a vCPU for the calling thread. A thread may own only one vCPU at a time (a second
-    /// create returns `HV_BUSY`, spike).
+    /// create returns `HV_BUSY`; checked on a real Mac).
     ///
     /// `vm` is not passed to the framework (the VM is per process); taking the borrow is what
     /// ties the vCPU's lifetime to the VM's.
@@ -239,6 +247,7 @@ impl<'vm> Vcpu<'vm> {
             _not_send: PhantomData,
         })
     }
+    // ANCHOR_END: vcpu_create
 
     /// The kick handle for other threads.
     pub fn handle(&self) -> VcpuHandle {
@@ -263,6 +272,7 @@ impl<'vm> Vcpu<'vm> {
     }
     // ANCHOR_END: vcpu_run
 
+    // ANCHOR: vcpu_regs
     /// Read a general-purpose or special register.
     pub fn get_reg(&self, reg: Reg) -> Result<u64, CallError> {
         let mut v = 0u64;
@@ -280,8 +290,11 @@ impl<'vm> Vcpu<'vm> {
             ffi::hv_vcpu_set_reg(self.id, reg.0, value)
         })
     }
+    // ANCHOR_END: vcpu_regs
 
-    /// Read a system register (only those in [`SysReg::HV_ACCESSIBLE`] are reachable).
+    // ANCHOR: vcpu_sys_regs
+    /// Read a system register. HVF reaches only the registers `hv_vcpu_types.h` lists (our
+    /// copy of that list: [`SysReg::HV_ACCESSIBLE`]).
     pub fn get_sys_reg(&self, reg: SysReg) -> Result<u64, CallError> {
         let mut v = 0u64;
         // SAFETY: owning thread; live out-parameter.
@@ -298,6 +311,7 @@ impl<'vm> Vcpu<'vm> {
             ffi::hv_vcpu_set_sys_reg(self.id, reg.0, value)
         })
     }
+    // ANCHOR_END: vcpu_sys_regs
 
     /// Read SIMD/FP register Q`q` (0..=31) as a little-endian `u128` (byte 0 = lane 0).
     pub fn get_simd(&self, q: u32) -> Result<u128, CallError> {
@@ -317,12 +331,13 @@ impl<'vm> Vcpu<'vm> {
         })
     }
 
+    // ANCHOR: vcpu_vtimer_fns
     get_via_out!(
         /// `CNTVCT_EL0 = mach_absolute_time() - offset` for this vCPU.
         vtimer_offset, hv_vcpu_get_vtimer_offset, u64,
     );
 
-    /// Set the virtual counter offset (same value on every vCPU, architecture §8.1 step 5).
+    /// Set the virtual counter offset (the same value on every vCPU, before its first run).
     pub fn set_vtimer_offset(&self, offset: u64) -> Result<(), CallError> {
         // SAFETY: owning thread; plain values.
         check("hv_vcpu_set_vtimer_offset", unsafe {
@@ -331,7 +346,8 @@ impl<'vm> Vcpu<'vm> {
     }
 
     get_via_out!(
-        /// Whether the framework currently masks the vtimer (no-GIC mode, spike finding 11).
+        /// Whether the framework currently masks the vtimer (no-GIC mode; it sets the mask
+        /// itself on every VTIMER exit).
         vtimer_mask, hv_vcpu_get_vtimer_mask, bool,
     );
 
@@ -342,11 +358,14 @@ impl<'vm> Vcpu<'vm> {
             ffi::hv_vcpu_set_vtimer_mask(self.id, masked)
         })
     }
+    // ANCHOR_END: vcpu_vtimer_fns
 
+    // ANCHOR: vcpu_exec_time
     get_via_out!(
         /// Cumulative guest run time in mach ticks.
         exec_time, hv_vcpu_get_exec_time, u64,
     );
+    // ANCHOR_END: vcpu_exec_time
 
     /// Time spent in WFI, in mach ticks. `Ok(None)` when this macOS lacks the call (27.0+);
     /// `HV_UNSUPPORTED` without a GIC (spike).
@@ -411,6 +430,7 @@ impl<'vm> Vcpu<'vm> {
         Ok(v)
     }
 
+    // ANCHOR: vcpu_set_pending_interrupt
     /// Assert or clear the IRQ/FIQ line; auto-cleared after each `run` (`hv_vcpu.h`).
     pub fn set_pending_interrupt(&self, fiq: bool, pending: bool) -> Result<(), CallError> {
         let ty = if fiq {
@@ -423,6 +443,7 @@ impl<'vm> Vcpu<'vm> {
             ffi::hv_vcpu_set_pending_interrupt(self.id, ty, pending)
         })
     }
+    // ANCHOR_END: vcpu_set_pending_interrupt
 
     get_via_out!(
         /// Whether BRK/watchpoint exceptions exit to the VMM (gdbstub seam, M26).
@@ -563,6 +584,7 @@ impl<'vm> Vcpu<'vm> {
     }
 }
 
+// ANCHOR: vcpu_drop
 impl Drop for Vcpu<'_> {
     fn drop(&mut self) {
         // SAFETY: `Vcpu` is `!Send`, so this runs on the creating (owning) thread, as
@@ -570,6 +592,7 @@ impl Drop for Vcpu<'_> {
         let _ = unsafe { ffi::hv_vcpu_destroy(self.id) };
     }
 }
+// ANCHOR_END: vcpu_drop
 
 #[cfg(test)]
 mod tests {

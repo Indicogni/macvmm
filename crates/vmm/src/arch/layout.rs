@@ -44,18 +44,20 @@ pub enum MachineProfile {
     VmApple,
 }
 
+// ANCHOR: layout_region_kind
+// ANCHOR: layout_region_kind_enum
 /// What a region is, which decides how the VMM treats an access to it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RegionKind {
     /// Guest RAM, mapped RWX at stage 2. Not in [`VIRT_REGIONS`]: its size comes from `--mem`.
     Ram,
-    /// Flash: mapped RX with `--bios` (bank 0 the image, bank 1 empty; M18), else unmapped.
+    /// Flash: mapped RX with `--bios` (bank 0 the image, bank 1 empty; chapter 21), else unmapped.
     Rom,
     /// In-kernel GIC distributor (HVF services it, no exits).
     GicDist,
     /// In-kernel GIC redistributors, `ncpus` frames of 128 KiB; the rest of the window is RAZ/WI.
     GicRedist,
-    /// GICv2m MSI frame (in-kernel, only with PCI, post-v1).
+    /// GICv2m MSI frame (in-kernel, used only with PCI, which this machine does not have).
     GicMsi,
     /// Trapped device window: every access exits to the VMM.
     Mmio,
@@ -63,8 +65,12 @@ pub enum RegionKind {
     Reserved,
 }
 
+// ANCHOR_END: layout_region_kind_enum
+// ANCHOR: layout_may_be_mapped
 impl RegionKind {
-    /// True if regions of this kind can ever be stage-2 mapped (and so must be 16 KiB-aligned).
+    /// True for the kinds that are not trapped to us: RAM and flash are mapped with `hv_vm_map`,
+    /// and HVF's in-kernel GIC claims its own windows. All keep 16 KiB alignment (the GIC's
+    /// bases need 64 KiB, `hv_gic_get_*_base_alignment`, checked separately).
     pub const fn may_be_mapped(self) -> bool {
         matches!(
             self,
@@ -76,8 +82,11 @@ impl RegionKind {
         )
     }
 }
+// ANCHOR_END: layout_may_be_mapped
+// ANCHOR_END: layout_region_kind
 
 // ANCHOR: layout_virt_regions
+// ANCHOR: layout_region
 /// One row of the map.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Region {
@@ -88,13 +97,15 @@ pub struct Region {
     /// The region's interrupt as an INTID, where it has one.
     pub intid: Option<u32>,
 }
+// ANCHOR_END: layout_region
 
+// ANCHOR: layout_bases
 pub const FLASH0_BASE: u64 = 0x0000_0000;
 pub const FLASH1_BASE: u64 = 0x0400_0000;
 pub const FLASH_BANK_SIZE: u64 = 0x0400_0000;
-/// Both flash banks (M18): one read+execute `RomRegion` from `FLASH0_BASE`. Bank 1 must be
-/// readable because U-Boot `qemu_arm64` reads its environment memory-mapped from
-/// `CONFIG_ENV_ADDR = 0x0400_0000` before any driver probes (observed, `docs/compat/uboot.md`).
+/// Both flash banks: one read+execute `RomRegion` from `FLASH0_BASE` (chapter 21). Bank 1 must
+/// be readable because U-Boot `qemu_arm64` reads its environment memory-mapped from
+/// `CONFIG_ENV_ADDR = 0x0400_0000` before any driver probes.
 pub const FLASH_SIZE: u64 = 0x0800_0000;
 pub const GICD_BASE: u64 = 0x0800_0000;
 pub const GICD_SIZE: u64 = 0x0001_0000;
@@ -109,9 +120,12 @@ pub const TESTDEV_BASE: u64 = 0x0b00_0000;
 /// The never-populated hole that `guests/mmio-poke` stores into.
 pub const PROBE_HOLE_BASE: u64 = 0x0c00_0000;
 pub const RAM_BASE: u64 = 0x4000_0000;
+// ANCHOR_END: layout_bases
 
+// ANCHOR: layout_virt_table
 use RegionKind::*;
-/// Every region of the `virt` board except RAM, sorted by base (PLAN §1, one row per line).
+/// Every region of the `virt` board except RAM, sorted by base (QEMU `hw/arm/virt.c`,
+/// `base_memmap[]`; one row per line).
 #[rustfmt::skip]
 pub const VIRT_REGIONS: &[Region] = &[
     Region { name: "flash0",      base: FLASH0_BASE,      size: FLASH_BANK_SIZE, kind: Rom,       intid: None },
@@ -132,25 +146,35 @@ pub const VIRT_REGIONS: &[Region] = &[
     Region { name: "pcie-pio",    base: 0x3eff_0000,      size: 0x0001_0000,     kind: Reserved,  intid: None },
     Region { name: "pcie-ecam",   base: 0x3f00_0000,      size: 0x0100_0000,     kind: Reserved,  intid: None },
 ];
+// ANCHOR_END: layout_virt_table
 // ANCHOR_END: layout_virt_regions
 
-/// One redistributor (RD_base + SGI_base frames), 128 KiB (GICv3 spec IHI 0069, §12.10
-/// "The GIC Redistributor register map").
+// ANCHOR: layout_gic_frames
+/// One redistributor (RD_base + SGI_base frames), 128 KiB (GICv3 spec IHI 0069, section
+/// 12.10 "The GIC Redistributor register map").
 pub const GICR_FRAME_SIZE: u64 = 0x0002_0000;
 /// The redistributor window ends where the PL011 begins; unclaimed frames are RAZ/WI.
 pub const GICR_WINDOW_END: u64 = PL011_BASE;
-/// The most vCPUs the `virt` board describes (architecture §5.1: 64 × 128 KiB = 8 MiB of
-/// redistributors, well inside the 0xF6_0000-byte window).
+/// The most vCPUs the `virt` board describes: 64 × 128 KiB = 8 MiB of redistributors, well
+/// inside the 0xF6_0000-byte window.
 pub const MAX_CPUS: u32 = 64;
+// ANCHOR_END: layout_gic_frames
+// ANCHOR: layout_virtio_consts
 pub const VIRTIO_MMIO_STRIDE: u64 = 0x200;
 pub const VIRTIO_MMIO_SLOTS: usize = 32;
 /// SPI 16 → INTID 48 for slot 0.
 pub const VIRTIO_FIRST_INTID: u32 = 48;
-/// The virtual timer PPI (INTID 27; architecture §5.1 PPI table).
+// ANCHOR_END: layout_virtio_consts
+// ANCHOR: layout_reserved_intids
+// ANCHOR: layout_vtimer_intid
+/// The EL1 virtual timer's interrupt: a PPI (INTIDs 16 to 31, private to one CPU), INTID 27
+/// on every Arm board (the device tree's timer node lists it).
 pub const VTIMER_INTID: u32 = 27;
+// ANCHOR_END: layout_vtimer_intid
 
+// ANCHOR: layout_intid_range
 /// A block of consecutive INTIDs, `first..=last`, that the board reserves for a group of lines
-/// rather than for one device (PLAN §1, interrupt column).
+/// rather than for one device (QEMU `hw/arm/virt.c`, `a15irqmap[]`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct IntidRange {
     pub name: &'static str,
@@ -165,13 +189,15 @@ impl IntidRange {
     }
 }
 
-/// PCIe legacy INTA..INTD: SPI 3–6 → INTID 35–38 (PLAN §1, the reserved PCIe MMIO row).
+// ANCHOR_END: layout_intid_range
+// ANCHOR: layout_intid_blocks
+/// PCIe legacy INTA..INTD: SPI 3–6 → INTID 35–38 (QEMU's PCIe host bridge).
 pub const PCIE_INTX_INTIDS: IntidRange = IntidRange {
     name: "pcie-intx",
     first: 35,
     last: 38,
 };
-/// The SPIs the GICv2m frame turns MSIs into: SPI 48–111 → INTID 80–143 (PLAN §1). It sits
+/// The SPIs the GICv2m frame turns MSIs into: SPI 48–111 → INTID 80–143. It sits
 /// directly above the virtio block (INTID 48–79), so a 33rd virtio slot would collide with it.
 pub const GIC_V2M_INTIDS: IntidRange = IntidRange {
     name: "gic-v2m",
@@ -180,37 +206,49 @@ pub const GIC_V2M_INTIDS: IntidRange = IntidRange {
 };
 /// Every reserved INTID block, sorted by `first`. No device line may fall inside one.
 pub const RESERVED_INTIDS: &[IntidRange] = &[PCIE_INTX_INTIDS, GIC_V2M_INTIDS];
+// ANCHOR_END: layout_intid_blocks
+// ANCHOR_END: layout_reserved_intids
 
-/// RAM limits (architecture §5.1): 64 MiB ≤ size ≤ 255 GiB, a multiple of 2 MiB (so the
-/// Linux Image's 2 MiB-aligned placement, booting.rst §4, always fits whole blocks).
+// ANCHOR: layout_ram_limits
+/// RAM limits: 64 MiB ≤ size ≤ 255 GiB, a multiple of 2 MiB (so the Linux Image's 2 MiB-aligned
+/// placement, booting.rst section 4, always fits whole blocks).
 pub const RAM_MIN: u64 = 64 << 20;
 /// The top of the RAM window: 255 GiB of RAM ends at `0x40_0000_0000` (2^38).
 pub const RAM_MAX_END: u64 = 0x40_0000_0000;
 pub const RAM_MAX: u64 = RAM_MAX_END - RAM_BASE;
 pub const RAM_ALIGN: u64 = 2 << 20;
 pub const RAM_DEFAULT: u64 = 512 << 20;
+// ANCHOR_END: layout_ram_limits
 
+// ANCHOR: layout_linux
 /// The DTB slot at the start of RAM: 2 MiB for a Linux Image, 512 KiB when a test guest
-/// (linked at `RAM_BASE + 512 KiB`) is loaded (PLAN §1 "Placement in RAM").
+/// (linked at `RAM_BASE + 512 KiB`) is loaded.
 pub const DTB_MAX: u64 = 2 << 20;
+// ANCHOR: layout_test_guest_base
 pub const DTB_MAX_TEST_GUEST: u64 = 512 << 10;
-/// Where test guests are linked (CURRICULUM ch03).
+/// Where test guests are linked (chapter 03).
 pub const TEST_GUEST_BASE: u64 = RAM_BASE + DTB_MAX_TEST_GUEST;
+// ANCHOR_END: layout_test_guest_base
 
-/// M9 (PLAN §1 "Placement in RAM"): the 2 MiB-aligned base a Linux arm64 Image is placed at,
-/// right after the 2 MiB DTB slot. The kernel itself starts `text_offset` bytes above it
-/// (booting.rst §4: "placed text_offset bytes from a 2MB aligned base address").
+/// The 2 MiB-aligned base a Linux arm64 Image is placed at, right after the 2 MiB DTB slot.
+/// The kernel itself starts `text_offset` bytes above it (booting.rst section 4: "placed
+/// text_offset bytes from a 2MB aligned base address").
 pub const LINUX_IMAGE_BASE: u64 = RAM_BASE + DTB_MAX;
-/// The alignment of the Image's base address and of the initrd (booting.rst §4; PLAN §1).
+/// The alignment of the Image's base address and of the initrd (booting.rst section 4).
 pub const LINUX_ALIGN: u64 = 2 << 20;
-/// booting.rst §4: the initrd must lie, with the kernel Image, inside one 1 GiB-aligned
-/// physical window of at most 32 GiB.
+/// booting.rst section 4: the initrd must lie, with the kernel Image, inside one
+/// 1 GiB-aligned physical window of at most 32 GiB.
 pub const LINUX_WINDOW_ALIGN: u64 = 1 << 30;
 pub const LINUX_WINDOW_MAX: u64 = 32 << 30;
+// ANCHOR_END: layout_linux
 
-/// The smallest IPA width the VMM asks for (HVF's default is 36, spike finding 3).
+// ANCHOR: layout_min_ipa_bits
+/// The smallest IPA width the VMM asks for: HVF's default, 36
+/// (`hv_vm_config_get_default_ipa_size`).
 pub const MIN_IPA_BITS: u32 = 36;
+// ANCHOR_END: layout_min_ipa_bits
 
+// ANCHOR: layout_region_methods
 impl Region {
     /// One past the last byte. `layout_invariants.rs` proves no row overflows, so the
     /// saturation never triggers for the static table.
@@ -224,14 +262,16 @@ impl Region {
     }
 
     /// The DT unit address of a node for this region: the base in lowercase hex without a
-    /// prefix or leading zeros (DT spec v0.4 §2.2.1 "Node names": `node-name@unit-address`,
+    /// prefix or leading zeros (DT spec v0.4 section 2.2.1 "Node names": `node-name@unit-address`,
     /// where the unit address matches the first address in `reg`). Derived from `base` so the
     /// node name and `reg` can never disagree.
     pub fn unit_address(&self) -> String {
         format!("{:x}", self.base)
     }
 }
+// ANCHOR_END: layout_region_methods
 
+// ANCHOR: layout_ram_size_error
 /// Why a `--mem` size was refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RamSizeError {
@@ -263,7 +303,9 @@ impl fmt::Display for RamSizeError {
 }
 
 impl std::error::Error for RamSizeError {}
+// ANCHOR_END: layout_ram_size_error
 
+// ANCHOR: layout_struct
 /// A board: its profile and its static regions.
 #[derive(Debug)]
 pub struct Layout {
@@ -281,7 +323,9 @@ impl Layout {
     pub fn virt() -> &'static Layout {
         &VIRT
     }
+    // ANCHOR_END: layout_struct
 
+    // ANCHOR: layout_virtio_slot
     /// Base address and INTID of virtio-mmio slot `i` (0..32); `None` past the last slot.
     pub fn virtio_slot(&self, i: usize) -> Option<(u64, u32)> {
         if i >= VIRTIO_MMIO_SLOTS {
@@ -300,7 +344,9 @@ impl Layout {
     pub fn find(&self, ipa: u64) -> Option<&Region> {
         self.regions.iter().find(|r| r.contains(ipa))
     }
+    // ANCHOR_END: layout_virtio_slot
 
+    // ANCHOR: layout_gicr_ram_end
     /// Bytes of redistributor frames for `ncpus` vCPUs (`1..=MAX_CPUS`); the rest of the
     /// window up to [`GICR_WINDOW_END`] is the RAZ/WI remainder.
     pub fn gicr_size(&self, ncpus: u32) -> Option<u64> {
@@ -325,6 +371,7 @@ impl Layout {
             .checked_add(size)
             .ok_or(RamSizeError::TooLarge { size })
     }
+    // ANCHOR_END: layout_gicr_ram_end
 
     // ANCHOR: layout_ipa_bits
     /// The smallest IPA width ≥ 36 that covers `max(ram_end, highest region end)`: a VM with

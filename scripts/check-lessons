@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# The course lesson lint: every lesson follows the authoring template (CURRICULUM §7,
+# course/STYLE.md appendix A, course/site/DESIGN.md §9).
+#
+#   scripts/check-lessons                 every lesson in course/chapters/, plus the glossary
+#   scripts/check-lessons 02              one chapter, by id
+#   scripts/check-lessons FILE.md...      the named lesson files (paths relative to here)
+#
+# Checks front matter, the required blocks and their order, `:::code` anchors (the same scanner
+# as scripts/check-anchors), captures, primer slugs, glossary links, and author notation that
+# must not reach learners; also the chapter's retrieval bank, journal and rubric. Errors fail;
+# warnings (STYLE's banned words, `chNN`, unexpanded acronyms) are printed only.
+# Prints `LESSONS OK: …` last on success.
+set -euo pipefail
+IFS=$'\n\t'
+umask 077
+# shellcheck source=scripts/lib/common.sh
+. "$(dirname -- "${BASH_SOURCE[0]}")/lib/common.sh"
+
+case "${1:-}" in
+  -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+esac
+# No `cd`: file arguments stay relative to the caller's directory.
+exec cargo run --locked --quiet --manifest-path "$REPO_ROOT/Cargo.toml" -p xtask -- lessons "$@"

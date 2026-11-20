@@ -1,0 +1,44 @@
+# scripts/capture-cmd 17: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: in crates/vmm/src/virtio/rng.rs, process_queue passes u32::try_from(req.readable_len + req.writable_len).unwrap() to add_used instead of written.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test virtio_rng
+exit: 101
+--- stdout ---
+
+running 14 tests
+........ 8/14
+a_readable_only_chain_is_returned_with_len_0 --- FAILED
+fills_only_writable_descriptors_and_ignores_readable_ones --- FAILED
+....
+failures:
+
+---- a_readable_only_chain_is_returned_with_len_0 stdout ----
+
+thread 'a_readable_only_chain_is_returned_with_len_0' (123013879) panicked at crates/vmm/tests/virtio_rng.rs:131:5:
+assertion `left == right` failed
+  left: (0, 16)
+ right: (0, 0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- fills_only_writable_descriptors_and_ignores_readable_ones stdout ----
+
+thread 'fills_only_writable_descriptors_and_ignores_readable_ones' (123013884) panicked at crates/vmm/tests/virtio_rng.rs:104:5:
+assertion `left == right` failed: len counts only the writable bytes
+  left: (0, 96)
+ right: (0, 32)
+
+
+failures:
+    a_readable_only_chain_is_returned_with_len_0
+    fills_only_writable_descriptors_and_ignores_readable_ones
+
+test result: FAILED. 12 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+--- stderr ---
+macvmm: warn: [rings_out_of_ram_are_refused_at_driver_ok] guest: virtio-mmio: queue 0 refused at DRIVER_OK: virtqueue: RingOutOfRam { ring: Used, addr: 1074790396, len: 134 }
+macvmm: warn: [virtio-rng-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+macvmm: warn: [rings_out_of_ram_are_refused_at_driver_ok] guest: virtio-mmio: QueueNotify 0 ignored in status 79
+macvmm: warn: [a_hostile_chain_means_needs_reset_and_the_vmm_keeps_running] guest: virtio-mmio: QueueNotify 0 ignored in status 79
+macvmm: warn: [end_to_end_through_the_transport_and_the_worker] guest: virtio-mmio: config access of 4 bytes at 0x0 outside the 0-byte config space (RAZ/WI)
+error: test failed, to rerun pass `-p vmm --test virtio_rng`

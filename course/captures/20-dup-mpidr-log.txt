@@ -1,0 +1,17 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# boot.txt is the serial log of the run in 20-dup-mpidr-run; tr removes the carriage returns the guest sends.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -a -e 'smp:' -e 'psci: failed' -e 'CPU[0-9]:' -e 'macvmm-smp' boot.txt | tr -d '\r'
+exit: 0
+--- stdout ---
+[    0.000000] GICv3: CPU0: found redistributor 0 region 0:0x00000000080a0000
+[    0.006707] smp: Bringing up secondary CPUs ...
+[    0.007045] psci: failed to boot CPU1 (-22)
+[    0.007314] CPU1: failed to boot: -22
+[    0.007559] smp: Brought up 1 node, 1 CPU
+macvmm-smp: nproc=1
+macvmm-smp: online=0
+macvmm-smp: timer irqs on 1 cpus
+macvmm-smp: ipis on 0 cpus total 0
+
+--- stderr ---

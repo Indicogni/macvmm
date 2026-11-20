@@ -2,8 +2,12 @@
 //!
 //! **Why one module for output:** the learner reads these lines to decide whether they are done,
 //! and lessons quote the last line in their `expect:` front matter, so the format is a contract
-//! (`[PASS] L1 contract …`, `[PASS] L2 run …`, `[INFO] L3 journal …`, `CHECKPOINT NN PASS`).
-//! Keeping every format string here keeps that contract in one place.
+//! (`[PASS] contract tests …`, `[PASS] runs on your Mac …`, `[INFO] journal …`,
+//! `CHECKPOINT NN PASS`). Keeping every format string here keeps that contract in one place.
+//!
+//! **Labels.** Authors call the three levels L1, L2 and L3 (CURRICULUM §3.3), but learners never
+//! see those names (CURRICULUM §7 item 10): the printed labels are [`CONTRACT`], [`RUNS`] and
+//! [`JOURNAL`].
 //!
 //! Output goes to an [`Out`]: normally stdout, but `bughunt` (PLAN M27) collects the lines so it
 //! can show the learner only the failing symptom and never the planted patch's name.
@@ -101,10 +105,17 @@ impl Status {
     }
 }
 
-/// `[PASS] L1 contract  <detail>`: the level label is padded to 12 columns, so the detail
-/// starts in the same column for `L1 contract`, `L2 run` and `L3 journal`, as in §3.3.
+/// The label of the contract tests (level L1, host only).
+pub const CONTRACT: &str = "contract tests";
+/// The label of each `[[run]]` (level L2: the signed `macvmm` on the learner's Mac).
+pub const RUNS: &str = "runs on your Mac";
+/// The label of the journal check (level L3, learner trees only).
+pub const JOURNAL: &str = "journal";
+
+/// `[PASS] contract tests    <detail>`: the label is padded to 16 columns (the length of
+/// [`RUNS`]), so the detail starts in the same column for all three labels.
 pub fn level_line(status: Status, level: &str, detail: &str) -> String {
-    format!("{} {level:<12} {detail}", status.tag())
+    format!("{} {level:<16} {detail}", status.tag())
 }
 
 /// The verdict line: `CHECKPOINT NN PASS`, `CHECKPOINT NN PASS (borrowed: a, b)` or
@@ -217,12 +228,12 @@ mod tests {
     #[test]
     fn shapes() {
         assert_eq!(
-            level_line(Status::Pass, "L1 contract", "esr (40 tests)"),
-            "[PASS] L1 contract  esr (40 tests)"
+            level_line(Status::Pass, CONTRACT, "esr (40 tests)"),
+            "[PASS] contract tests   esr (40 tests)"
         );
         assert_eq!(
-            level_line(Status::Pass, "L2 run", "x"),
-            "[PASS] L2 run       x"
+            level_line(Status::Pass, RUNS, "x"),
+            "[PASS] runs on your Mac x"
         );
         assert_eq!(verdict("07", true, &[]), "CHECKPOINT 07 PASS");
         assert_eq!(

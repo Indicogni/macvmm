@@ -2,10 +2,10 @@
 title: cpio and the initramfs
 slug: cpio-initramfs
 kind: primer
-minutes: 25
+minutes: 15
 required_by: [13]
 also_used_by: [14, 23]
-lab: cpio-inspector
+labs: [cpio-inspector]
 objectives:
 - Explain in two sentences why Linux needs files before it has a disk driver, and how an initramfs differs from the older initrd
 - Decode a newc cpio header from a hex dump into its 13 fields, including the file type and permissions packed into c_mode
@@ -442,6 +442,8 @@ gzip -dc "$f" | cpio -itv init 2>/dev/null   # Alpine's own /init
 > `docs/security/threat-model.md` for the rules macvmm's own archive code follows.
 
 ## Lab
+
+:::lab cpio-inspector
 
 *Optional, and coming later: this in-browser lab is not built yet. Nothing else in the primer
 depends on it.*

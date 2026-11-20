@@ -1,0 +1,14 @@
+# scripts/capture-cmd 12: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified. Each line is one run's ten intervals in ms: three runs with the in-kernel GIC (timer guest), then three with --irqchip none (chapter 11's timer-nogic guest).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ for i in 1 2 3; do cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/timer.bin@0x40080000 | sed -n 's/.*= \([0-9]*\) ms.*/\1/p' | tr '\n' ' '; echo; done; for i in 1 2 3; do cargo run -q -p macvmm -- run --irqchip none --mem 64M --raw target/guests/aarch64-unknown-none/release/timer-nogic.bin@0x40080000 | sed -n 's/.*= \([0-9]*\) ms.*/\1/p' | tr '\n' ' '; echo; done
+exit: 0
+--- stdout ---
+101 105 105 105 105 104 103 105 104 105 
+105 105 105 105 105 103 105 105 103 105 
+101 105 105 102 105 105 104 105 101 105 
+105 102 105 104 104 104 105 104 105 105 
+102 105 105 105 105 103 101 100 105 100 
+100 101 105 103 105 101 105 105 103 101 
+
+--- stderr ---

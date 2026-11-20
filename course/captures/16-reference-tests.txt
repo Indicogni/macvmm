@@ -1,0 +1,19 @@
+# scripts/capture-cmd 16: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test virtqueue_hostile --test virtqueue_toctou
+exit: 0
+--- stdout ---
+
+running 62 tests
+..............................................................
+test result: ok. 62 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+
+running 9 tests
+.........
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s
+
+
+--- stderr ---
+queue_pop_model: seed 1495053, 10000 rings: {"AvailIdxJump": 1004, "BadIndirectLen": 250, "BufferOutOfRam": 1718, "ChainTooLong": 148, "HeadOutOfRange": 694, "IndirectNotNegotiated": 556, "IndirectWithNext": 292, "NestedIndirect": 2, "NextOutOfRange": 357, "Overflow": 473, "ReadableAfterWritable": 53, "TooLarge": 510, "ZeroLength": 908, "empty": 2153, "ok": 882}
+racing_len_flip: double-fetch walker caught 15934/291639; re-reading device on the real walker caught 4730/124254; real walker 62925 ok + 75572 refused of 138497 (8656 log-sampled)

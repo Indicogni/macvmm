@@ -36,6 +36,7 @@ pub mod start;
 pub mod timer;
 pub mod uart;
 
+// ANCHOR: guest_panic_handler
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
     match info.location() {
@@ -49,7 +50,9 @@ fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
     }
     hvc::debug_exit(1)
 }
+// ANCHOR_END: guest_panic_handler
 
+// ANCHOR: guest_cntvct
 /// Read the virtual counter `CNTVCT_EL0` (ARM ARM, CNTVCT_EL0 register description). The `isb`
 /// stops the read from being taken early, out of program order (ARM ARM, "Reading the
 /// counter" in the Generic Timer chapter).
@@ -59,6 +62,7 @@ pub fn cntvct() -> u64 {
     unsafe { core::arch::asm!("isb", "mrs {}, cntvct_el0", out(reg) v, options(nomem, nostack)) };
     v
 }
+// ANCHOR_END: guest_cntvct
 
 /// The counter frequency in Hz (`CNTFRQ_EL0`), 24 MHz on Apple Silicon (spike finding 4).
 pub fn cntfrq() -> u64 {

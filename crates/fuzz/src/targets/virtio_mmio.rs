@@ -188,6 +188,7 @@ pub fn run(data: &[u8]) -> crate::Verdict {
         Some(gm),
     )
     .map_err(|e| format!("transport: {e}"))?;
+    // ANCHOR: fuzz_mmio_sequence
     let mut input = Input::new(data);
     let mut steps = 0;
     while !input.is_empty() && steps < 256 {
@@ -212,6 +213,7 @@ pub fn run(data: &[u8]) -> crate::Verdict {
         } else {
             let _ = t.read(offset, size);
         }
+        // ANCHOR_END: fuzz_mmio_sequence
         if t.is_dead() {
             continue;
         }

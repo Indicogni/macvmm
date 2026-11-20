@@ -1,0 +1,18 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --cpus 4 --mem 1G --stats --serial file:boot.txt --on-reset exit --timeout 60 --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=smp"
+exit: 0
+--- stdout ---
+
+--- stderr ---
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=12924 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 23000: hvc 19, sysreg 2, data abort 22979
+macvmm: stats: vcpu0 time: exec 1.895 s, wfi 0.091 s
+macvmm: stats: vcpu1 exits: vtimer 0, wfx 0, total 433: canceled 1, hvc 2, sysreg 2, data abort 428
+macvmm: stats: vcpu1 time: exec 1.932 s, wfi 0.044 s
+macvmm: stats: vcpu2 exits: vtimer 0, wfx 0, total 4558: canceled 1, hvc 2, sysreg 2, data abort 4553
+macvmm: stats: vcpu2 time: exec 1.893 s, wfi 0.082 s
+macvmm: stats: vcpu3 exits: vtimer 0, wfx 0, total 7238: canceled 1, hvc 2, sysreg 2, data abort 7233
+macvmm: stats: vcpu3 time: exec 1.878 s, wfi 0.089 s
+macvmm: stats: host cpu 7.768 s over 2.047 s wall (380%)
+macvmm: stats: rlimit core=0 nofile=1048576

@@ -13,6 +13,14 @@
 //   §8 "Labs, by priority"         the lab list and its priority tiers
 // Anything the curriculum does not state (part URL slugs, primer display titles) is kept in the
 // small tables below, in one place.
+//
+// Required versus linked primers. A chapter *requires* a primer when the chapter's "Primers (read
+// first)" group names it, when it is the primer's "First required by" chapter, or when it appears
+// in "Also used by" with no qualifier. It only *links* a primer when "Also used by" qualifies the
+// chapter ("02 (one link)", "04 (seed)", "00 (doctor line)"; section 2.1 says such a chapter
+// "does not require it") or when the primer is named elsewhere in the Concepts box (a pointer or
+// a forward definition). Chapters carry `primers` (required) and `primers_linked`; primers carry
+// `required_by` and `linked_from`, and `also_used_by` keeps the table's full list.
 
 /** Short URL slugs per part. The curriculum names parts but does not give them URL slugs. */
 export const PART_SLUGS = {
@@ -30,32 +38,36 @@ export const PART_SLUGS = {
   XI: "production",
 };
 
-/** Display titles for primers; the curriculum table only gives slugs and what they cover. */
+/**
+ * Display titles for primers; the curriculum table only gives slugs and what they cover. Each
+ * must equal the `title:` in course/primers/<slug>.md (test/curriculum.test.mjs checks this), so
+ * the site's lists, the sidebar and the primer page itself all name a primer the same way.
+ */
 export const PRIMER_TITLES = {
   "os-basics": "OS basics: processes, memory, syscalls, interrupts",
   "codesign-entitlements": "Code signing and entitlements",
-  smccc: "The SMC Calling Convention",
+  smccc: "SMCCC: the calling convention for calls to a higher level",
   "page-tables": "Page tables: stage-1 translation",
   "page-granules": "Page granules: 4 KiB and 16 KiB",
   "primecell-ids": "PrimeCell peripheral IDs",
   "arm64-boot-protocol": "The arm64 boot protocol",
-  elf: "ELF64 in 20 minutes",
+  elf: "ELF: the file the linker hands you",
   "cpio-initramfs": "cpio and the initramfs",
-  "efi-zboot": "EFI zboot kernels",
+  "efi-zboot": "EFI zboot: the kernel that is also a program",
   "memory-ordering": "Memory ordering and barriers",
-  "u-boot": "U-Boot",
+  "u-boot": "U-Boot: the firmware we run first",
   "aarch64-reading": "Reading AArch64: registers, instructions, byte order",
   "bare-metal-rust": "Bare-metal Rust: no_std, linker scripts, flat binaries",
   caches: "Caches and coherency",
   "reading-arm-specs": "Reading the ARM ARM and other primary specs",
   "host-concurrency": "Host concurrency: threads, locks, atomics",
-  "unix-signals": "Unix signals and exit codes",
-  "tty-termios": "TTYs, raw mode and escape sequences",
-  "linux-boot-sequence": "What Linux does from entry to /init",
+  "unix-signals": "Unix signals: who decides how a program ends",
+  "tty-termios": "TTYs, termios and escape sequences: who owns your keystrokes",
+  "linux-boot-sequence": "The Linux boot sequence",
   "block-storage": "Block storage: disk images, ext4, durability",
-  "unix-sockets": "Unix domain sockets",
-  uefi: "UEFI in 25 minutes",
-  "macos-sandbox": "The macOS sandbox and resource limits",
+  "unix-sockets": "Unix domain sockets: a wire between two programs, named by a file",
+  uefi: "UEFI: the interface between firmware and an OS loader",
+  "macos-sandbox": "The macOS sandbox, rlimits and other one-way doors",
 };
 
 const PART_ORDER = ["0", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI"];
@@ -143,14 +155,22 @@ export function parseCurriculum(text) {
       if (!l.startsWith("| `")) continue;
       const [slug, covers, first, also] = cells(l);
       const s = unbacktick(slug);
+      // The reading time sits in the paragraph under the table: "30-minute `os-basics`".
       const minuteMatch = text.match(new RegExp("(\\d+)-minute `" + s.replace(/[-]/g, "\\-") + "`"));
+      if (!minuteMatch) fail(`primer ${s}: no "NN-minute \`${s}\`" reading time under the §2.1 table`);
+      const firstId = (first.match(/\b\d\d\b/) || [null])[0];
+      if (!firstId) fail(`primer ${s}: "First required by" names no chapter`);
+      // "02 (one link), 05, 26": an id followed by a parenthesis is only linked, not required.
+      const uses = [...also.matchAll(/\b(\d\d)\b(\s*\()?/g)].map((m) => ({ id: m[1], qualified: Boolean(m[2]) }));
       primers.push({
         slug: s,
-        title: PRIMER_TITLES[s] || s,
+        title: PRIMER_TITLES[s] || fail(`primer ${s} has no display title; add it to PRIMER_TITLES`),
         covers,
-        first_required_by: (first.match(/\d\d/) || [null])[0],
-        also_used_by: [...also.matchAll(/\b(\d\d)\b/g)].map((m) => m[1]),
-        minutes: minuteMatch ? Number(minuteMatch[1]) : null,
+        first_required_by: firstId,
+        also_used_by: uses.map((u) => u.id),
+        required_by: [firstId, ...uses.filter((u) => !u.qualified).map((u) => u.id)],
+        linked_from: uses.filter((u) => u.qualified).map((u) => u.id),
+        minutes: Number(minuteMatch[1]),
         labs: [],
         file: `course/primers/${s}.md`,
         url: `primers/${s}/`,
@@ -180,6 +200,7 @@ export function parseCurriculum(text) {
         runs: "mac",
         labs: [],
         primers: [],
+        primers_linked: [],
         prereqs: [],
         file: `course/chapters/${part}/${id}-${unbacktick(slug)}.md`,
         url: null,
@@ -192,36 +213,65 @@ export function parseCurriculum(text) {
   }
 
   // ---- §5 part headings and per-chapter entries ------------------------------------------
+  // Only §5 holds the part headings and chapter entries; other sections may quote them.
+  const ch5 = section(lines, /^## 5\. /);
   const parts = [];
-  for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(/^### Part ([0IVX]+): (.+)$/);
-    if (m) parts.push({ id: m[1], title: m[2].trim(), slug: PART_SLUGS[m[1]], chapters: [] });
+  for (const l of ch5) {
+    const m = l.match(/^### Part ([0IVX]+): (.+)$/);
+    if (!m) continue;
+    if (parts.some((p) => p.id === m[1])) fail(`part ${m[1]} has two "### Part" headings`);
+    parts.push({ id: m[1], title: m[2].trim(), slug: PART_SLUGS[m[1]], chapters: [] });
   }
   for (const p of parts) if (!p.slug) fail(`no URL slug for part ${p.id}; add it to PART_SLUGS`);
   parts.sort((a, b) => PART_ORDER.indexOf(a.id) - PART_ORDER.indexOf(b.id));
 
   const byId = new Map(chapters.map((c) => [c.id, c]));
-  for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(/^#### (\d\d) `([^`]+)`: (.+)$/);
+  const primerBySlug = new Map(primers.map((p) => [p.slug, p]));
+  const linkLab = (L, slug) => {
+    if (!L.primers.includes(slug)) L.primers.push(slug);
+    const P = primerBySlug.get(slug);
+    if (!P.labs.includes(L.name)) P.labs.push(L.name);
+  };
+  const seen = new Set();
+  for (let i = 0; i < ch5.length; i++) {
+    const m = ch5[i].match(/^#### (\d\d) `([^`]+)`: (.+)$/);
     if (!m) continue;
     const ch = byId.get(m[1]);
     if (!ch) fail(`entry for unknown chapter ${m[1]}`);
+    if (seen.has(ch.id)) fail(`chapter ${ch.id} has two entries in §5`);
+    seen.add(ch.id);
     if (ch.slug !== m[2]) fail(`chapter ${m[1]}: overview slug "${ch.slug}" differs from entry slug "${m[2]}"`);
     let end = i + 1;
-    while (end < lines.length && !/^#{2,4} /.test(lines[end])) end++;
-    const entry = lines.slice(i + 1, end);
+    while (end < ch5.length && !/^#{2,4} /.test(ch5[end])) end++;
+    const entry = ch5.slice(i + 1, end);
 
-    const lab = bullet(entry, "Lab") || "";
-    for (const lm of lab.matchAll(/(ch\d\d's )?`([a-z0-9]+(?:-[a-z0-9]+)*)`(\s*\(in the `([a-z0-9-]+)` primer\))?/g)) {
-      const [, borrowed, name, , inPrimer] = lm;
+    // "**Lab.** `a` ... `b` (in the `p` primer) ... ch06's `c` ... that the `q` primer also embeds."
+    // Backticked words that are not lab names (instructions, flags) are skipped; a lab another
+    // chapter owns ("ch06's `c`") is not this chapter's.
+    const lab = bullet(entry, "Lab");
+    if (lab === null) fail(`chapter ${ch.id} has no **Lab.** line`);
+    if (!/^None\b/.test(lab)) {
+      const firstName = (lab.match(/`([^`]+)`/) || [])[1];
+      if (!firstName || !labs.has(firstName)) {
+        fail(`chapter ${ch.id}: the **Lab.** line starts with "${firstName}", which is not in the §8 lab list`);
+      }
+    }
+    let lastLab = null;
+    const labRe = /(ch\d\d's )?`([a-z0-9]+(?:-[a-z0-9]+)*)`(\s*\(in the `([a-z0-9-]+)` primer\)|\s+primer also embeds)?/g;
+    for (const lm of lab.matchAll(labRe)) {
+      const [, borrowed, name, tail, inPrimer] = lm;
+      if (tail && !inPrimer && primerSlugs.has(name) && lastLab) {
+        linkLab(lastLab, name); // "... that the `uefi` primer also embeds"
+        continue;
+      }
       if (!labs.has(name) || borrowed) continue;
       if (!ch.labs.includes(name)) ch.labs.push(name);
       const L = labs.get(name);
+      lastLab = L;
       if (!L.chapters.includes(ch.id)) L.chapters.push(ch.id);
-      if (inPrimer && primerSlugs.has(inPrimer)) {
-        if (!L.primers.includes(inPrimer)) L.primers.push(inPrimer);
-        const P = primers.find((p) => p.slug === inPrimer);
-        if (!P.labs.includes(name)) P.labs.push(name);
+      if (inPrimer) {
+        if (!primerSlugs.has(inPrimer)) fail(`chapter ${ch.id}: lab ${name} is "in the ${inPrimer} primer", which §2.1 does not list`);
+        linkLab(L, inPrimer);
       }
     }
     ch.runs = ch.labs.length ? "mac+browser" : "mac";
@@ -231,16 +281,36 @@ export function parseCurriculum(text) {
     const lead = pre.split(/[.;]\s|[.;]$/)[0];
     ch.prereqs = [...lead.matchAll(/\b(\d\d)\b/g)].map((x) => x[1]).filter((x) => byId.has(x) && x !== ch.id);
 
+    // The Concepts box is a bullet of "- *Group:* ..." sub-bullets. Primers named in the
+    // "Primers (read first)" group are required; a primer named in any other group (a pointer,
+    // a forward definition, "byte order, from `aarch64-reading`") is only linked.
     const concepts = bullet(entry, "Concepts you'll need") || "";
-    for (const pm of concepts.matchAll(/`([a-z0-9-]+)`/g)) {
-      if (primerSlugs.has(pm[1]) && !ch.primers.includes(pm[1])) ch.primers.push(pm[1]);
+    for (const group of concepts.split(/(?=- \*[^*]+:\*)/)) {
+      const required = /^- \*Primers\b/.test(group);
+      for (const pm of group.matchAll(/`([a-z0-9-]+)`/g)) {
+        if (!primerSlugs.has(pm[1])) continue;
+        const list = required ? ch.primers : ch.primers_linked;
+        if (!list.includes(pm[1])) list.push(pm[1]);
+      }
     }
   }
+  for (const id of byId.keys()) if (!seen.has(id)) fail(`chapter ${id} is in the §5 overview but has no "#### ${id}" entry`);
   for (const p of primers) {
-    for (const id of [p.first_required_by, ...p.also_used_by]) {
-      const c = id && byId.get(id);
-      if (c && !c.primers.includes(p.slug)) c.primers.push(p.slug);
+    for (const id of p.required_by) {
+      const c = byId.get(id);
+      if (!c) fail(`primer ${p.slug} names chapter ${id}, which does not exist`);
+      if (!c.primers.includes(p.slug)) c.primers.push(p.slug);
     }
+    for (const id of p.linked_from) {
+      const c = byId.get(id);
+      if (!c) fail(`primer ${p.slug} names chapter ${id}, which does not exist`);
+      if (!c.primers_linked.includes(p.slug)) c.primers_linked.push(p.slug);
+    }
+  }
+  // Required wins: a primer one source links and another requires is required.
+  for (const c of chapters) c.primers_linked = c.primers_linked.filter((s) => !c.primers.includes(s));
+  for (const L of labs.values()) {
+    if (L.chapters.length === 0) fail(`lab ${L.name} is in §8 but no chapter's **Lab.** line names it`);
   }
 
   // ---- numbering and URLs ----------------------------------------------------------------

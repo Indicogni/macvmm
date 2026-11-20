@@ -78,6 +78,19 @@ fn capacity_is_the_fd_size_rounded_down() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Calls `open` until it stops failing with `DiskLocked` (at most ~2 s), then unwraps it.
+fn retry_unlocked<T>(mut open: impl FnMut() -> Result<T, InputError>) -> T {
+    for _ in 0..200 {
+        match open() {
+            Err(InputError::DiskLocked { .. }) => {
+                std::thread::sleep(std::time::Duration::from_millis(10))
+            }
+            r => return r.unwrap_or_else(|e| panic!("unexpected {e}")),
+        }
+    }
+    panic!("disk image still locked after 2 s");
+}
+
 #[test]
 fn locks_are_exclusive_for_rw_and_shared_for_ro() {
     let dir = scratch("lock");
@@ -94,11 +107,14 @@ fn locks_are_exclusive_for_rw_and_shared_for_ro() {
     assert!(locked(open_disk(&p, false, &[])), "rw + rw");
     assert!(locked(open_disk(&p, true, &[])), "rw + ro");
     drop(rw); // closing the fd releases the lock
-    let (ro1, _) = open_disk(&p, true, &[]).unwrap();
+    // ...eventually: another test in this binary may be spawning a child process right now, and
+    // between fork and exec that child holds a duplicate of every open file description, ours
+    // included, so the flock lingers for a moment. Retry briefly instead of flaking.
+    let (ro1, _) = retry_unlocked(|| open_disk(&p, true, &[]));
     let (ro2, _) = open_disk(&p, true, &[]).unwrap(); // ro + ro: shared
     assert!(locked(open_disk(&p, false, &[])), "ro + rw");
     drop((ro1, ro2));
-    assert!(open_disk(&p, false, &[]).is_ok());
+    retry_unlocked(|| open_disk(&p, false, &[]));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

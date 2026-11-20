@@ -97,8 +97,10 @@ pub struct DiskFile {
 }
 
 impl DiskFile {
+    // ANCHOR: file_backend_new
     /// Wrap the fd `file`, opened `O_RDONLY` if `read_only` and `O_RDWR` otherwise: `fstat`
-    /// it (a regular file, BLK-11), fix the capacity (BLK-6) and lock it (BLK-8).
+    /// it (it must be a regular file, not a device), fix the capacity once from the open fd,
+    /// and lock it so two VMs cannot write one disk.
     pub fn new(file: File, read_only: bool) -> Result<DiskFile, DiskError> {
         let meta = file.metadata().map_err(DiskError::Stat)?; // fstat(2) on the fd
         if !meta.file_type().is_file() {
@@ -122,6 +124,7 @@ impl DiskFile {
             capacity_sectors: size_bytes / SECTOR_SIZE,
         })
     }
+    // ANCHOR_END: file_backend_new
 
     /// The file size at open, in bytes.
     pub fn size_bytes(&self) -> u64 {
@@ -148,11 +151,12 @@ impl BlockBackend for DiskFile {
         self.file.read_at(buf, offset)
     }
     /// `pwrite(2)`. On a `,ro` disk the fd is `O_RDONLY`, so the kernel answers `EBADF`
-    /// whatever the caller checked (BLK-5; host test `disk_ro_is_o_rdonly`).
+    /// whatever the caller checked (host test `disk_ro_is_o_rdonly`).
     fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         self.file.write_at(buf, offset)
     }
-    /// `File::sync_all` = `fcntl(F_FULLFSYNC)` on Apple targets (BLK-9).
+    /// `File::sync_all` = `fcntl(F_FULLFSYNC)` on Apple targets: the data
+    /// reaches stable storage, not only the drive cache.
     fn sync(&self) -> io::Result<()> {
         self.file.sync_all()
     }

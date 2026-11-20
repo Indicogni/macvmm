@@ -1,0 +1,32 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference tool, unmodified. run.sh builds and signs vz-mac first; its build lines are on stderr.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ tools/vz-mac/run.sh linux --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --cmdline "console=hvc0 macvmm.test=boot"
+exit: 0
+--- stdout ---
+[    0.044643] hv_vmbus: registering driver hyperv_keyboard\x0d
+[    0.044843] rtc-pl031 20050000.pl031: registered as rtc0\x0d
+[    0.044888] rtc-pl031 20050000.pl031: setting system clock to 2026-11-20T09:12:00 UTC (1795165920)\x0d
+[    0.045042] NET: Registered PF_INET6 protocol family\x0d
+[    0.046628] Segment Routing with IPv6\x0d
+[    0.046678] In-situ OAM (IOAM) with IPv6\x0d
+[    0.050367] registered taskstats version 1\x0d
+[    0.050510] Loading compiled-in X.509 certificates\x0d
+[    0.088238] Freeing initrd memory: 9204K\x0d
+[    0.091070] Loaded X.509 cert 'alpinelinux.org: Alpine Linux kernel key: 87fa969a47f3e2a6aa35859eb932a17c95abcd82'\x0d
+[    0.091832] Demotion targets for Node 0: null\x0d
+[    0.091959] Key type .fscrypt registered\x0d
+[    0.091990] Key type fscrypt-provisioning registered\x0d
+[    0.093376] clk: Disabling unused clocks\x0d
+[    0.093410] PM: genpd: Disabling unused power domains\x0d
+[    0.093840] Freeing unused kernel memory: 2048K\x0d
+[    0.093895] Run /init as init process\x0d
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+
+--- stderr ---
+Building for production...
+Build complete! (0.15 sec)
+VZ guest state: starting
+VZ guest state: running
+VZ guest state: stopped (guest)
+vz-mac: guest powered off (exit 0)

@@ -84,6 +84,7 @@ pub const ID_BASE: u64 = 0xfe0;
 /// `RTCPeriphID0-3`, `RTCPCellID0-3` (TRM §3.3.9-16; QEMU `pl031_id`).
 pub const ID_BYTES: [u8; 8] = [0x31, 0x10, 0x14, 0x00, 0x0d, 0xf0, 0x05, 0xb1];
 
+// ANCHOR: pl031_host_clock
 /// Where the host's seconds come from: the real clock, or a test's.
 pub type WallClock = Box<dyn Fn() -> u64 + Send>;
 
@@ -98,6 +99,7 @@ pub fn host_clock() -> WallClock {
         last.fetch_max(now, Ordering::Relaxed).max(now)
     })
 }
+// ANCHOR_END: pl031_host_clock
 
 /// The longest one alarm-thread sleep lasts before it re-reads the host clock: the wall
 /// clock can jump (host sleep, NTP) while a monotonic wait does not see it.
@@ -260,7 +262,7 @@ impl Regs {
     }
 
     // ANCHOR: pl031_read_dr
-    /// `RTCDR`: the guest's view of the time, `host + offset` in wrapping u32 seconds (MMIO-9).
+    /// `RTCDR`: the guest's view of the time, `host + offset` in wrapping u32 seconds.
     fn dr(&self) -> u32 {
         self.host_secs().wrapping_add(self.offset)
     }
@@ -290,6 +292,7 @@ impl Regs {
         self.irq.set_level(self.ris & self.imsc & 1 != 0);
     }
 
+    // ANCHOR: pl031_read_reg
     fn read_reg(&self, offset: u64) -> Option<u32> {
         Some(match offset {
             DR => self.dr(),
@@ -307,7 +310,9 @@ impl Regs {
             _ => return None,
         })
     }
+    // ANCHOR_END: pl031_read_reg
 
+    // ANCHOR: pl031_write_reg
     fn write_reg(&mut self, offset: u64, v: u32) -> bool {
         match offset {
             MR => {
@@ -329,6 +334,7 @@ impl Regs {
         }
         true
     }
+    // ANCHOR_END: pl031_write_reg
 }
 
 /// The RTC is a 32-bit seconds counter: keep the low 32 bits (it wraps in 2106).

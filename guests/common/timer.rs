@@ -28,6 +28,7 @@ pub const ISTATUS: u64 = 1 << 2;
 /// The virtual timer's PPI with the in-kernel GIC (PLAN §1).
 pub const VTIMER_INTID: u32 = 27;
 
+// ANCHOR: guest_timer_arm
 /// Write `CNTV_CVAL_EL0`.
 pub fn set_cval(v: u64) {
     // SAFETY: an EL1-accessible timer register; only arms the comparator.
@@ -55,6 +56,7 @@ pub fn arm_in(ticks: u64) -> u64 {
     set_ctl(ENABLE);
     now
 }
+// ANCHOR_END: guest_timer_arm
 
 /// Whole milliseconds in `ticks` of a `freq` Hz counter.
 pub fn ticks_to_ms(ticks: u64, freq: u64) -> u64 {

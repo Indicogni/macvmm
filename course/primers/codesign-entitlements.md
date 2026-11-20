@@ -2,8 +2,8 @@
 title: Code signing and entitlements
 slug: codesign-entitlements
 kind: primer
-minutes: 25
-required_by: 01
+minutes: 20
+required_by: [01]
 also_used_by: [00, 19, 23, 25]
 objectives:
 - Predict, from `codesign -dv` and `codesign -d --entitlements -` output, whether a program is killed at launch, gets `HV_DENIED` from `hv_vm_create`, or creates a VM
@@ -12,7 +12,7 @@ objectives:
 - (Going deeper) Name the moments macOS checks a signature (launch, page-in, the hypervisor call) and say which one catches tampering, a restricted entitlement and a missing hypervisor entitlement
 - (Going deeper) Show with `DYLD_PRINT_LIBRARIES` what the hardened runtime changes, and say why macvmm signs with `-o runtime`
 - (Going deeper) Explain why macvmm needs no provisioning profile, no SIP change and no sudo, and why its entitlement is not a security boundary
-lab: none
+labs: []
 ---
 
 # Same program, three fates: why macOS gates the hypervisor
@@ -41,7 +41,14 @@ will read those bytes yourself and know exactly which copy will do what before y
 - (Going deeper) Explain why macvmm needs no provisioning profile, no SIP change and no sudo, and why its entitlement is not a security boundary.
 :::
 
-The primer has two parts. **Need to know** (about 12 minutes) is all that chapter 01 requires.
+:::prereqs
+- No earlier primer. You need to be able to type commands in Terminal; you do not need to read C
+  fluently, because the primer says what each program does.
+- A Mac with Apple Silicon and the Xcode command-line tools (`clang`, `codesign`). This primer
+  never needs sudo, and never asks you to change your Mac's security settings.
+:::
+
+The primer has two parts. **Need to know** (about 10 minutes) is all that chapter 01 requires.
 **Going deeper** is optional until chapters 19 and 25; read it now if you are curious, or come back
 later.
 

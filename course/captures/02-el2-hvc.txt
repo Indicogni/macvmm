@@ -1,0 +1,13 @@
+# scripts/capture-cmd 02: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Experiment: the same three words, but the VM is created with EL2 enabled for the guest (VmBuilder::new().el2(true)), the vCPU starts at EL2 (CPSR 0x3c9, EL2h, DAIF masked), and the guest's own ESR_EL2, ELR_EL2 and VBAR_EL2 are printed after the exit.
+# Run in a copy of the reference with that edit.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- first-exit
+exit: 0
+--- stdout ---
+first-exit: mapped 16 KiB at IPA 0x40000000
+first-exit: exit reason=EXCEPTION syndrome=0x82000006 ec=0x20 (IABT_LOWER) imm=0x6
+first-exit: pc=0x200 x0=0x2a
+first-exit: guest ESR_EL2=0x5a000000 ELR_EL2=0x40000008 VBAR_EL2=0x0
+
+--- stderr ---

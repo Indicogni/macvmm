@@ -39,6 +39,6 @@ predict = true
 
 [hints]
 conceptual = "Some instructions must not run on the real hardware's behalf: system-register accesses trap, and the VMM answers, emulates or injects an exception the guest's own vector handles."
-spec = "ARM ARM D1.10 (exception entry: vector offsets, ELR/SPSR/ESR), ESR EC 0x18 ISS; SMCCC 1.4 and PSCI 1.1 (course/primers/smccc.md)."
-pseudocode = "inject: ELR_EL1 = pc, SPSR_EL1 = cpsr, ESR_EL1 = EC<<26|IL, pc = VBAR + offset(mode), cpsr = 0x3c5; HVC: x0 selects the function, unknown -> -1."
+spec = "ARM ARM D1.10 (exception entry: vector offsets, ELR/SPSR/ESR), ESR EC 0x18 ISS; SMCCC (Arm DEN 0028; the VMM reports version 1.1) and PSCI 1.1 (Arm DEN 0022; course/primers/smccc.md)."
+pseudocode = "inject: ELR_EL1 = pc, SPSR_EL1 = cpsr, ESR_EL1 = EC<<26|IL, pc = VBAR + offset(mode), cpsr = entry_pstate(old cpsr, SCTLR_EL1) = 0x3c5 | (old & (NZCV | DIT)) | PAN (set if SCTLR_EL1.SPAN == 0, else kept from old) | SSBS (if SCTLR_EL1.DSSBS == 1); HVC: x0 selects the function, unknown -> -1."
 anchor = "crates/vmm/src/arch/inject.rs and crates/vmm/src/psci.rs."

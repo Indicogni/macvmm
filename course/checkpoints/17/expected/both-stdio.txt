@@ -1,0 +1,1 @@
+[stderr] only one of --serial/--console may be stdio

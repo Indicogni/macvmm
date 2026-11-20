@@ -1,0 +1,20 @@
+U-Boot 2026.04
+Flash: 0 Bytes
+Loading Environment from Flash... *** Warning - bad CRC, using default environment
+Hit any key to stop autoboot
+=> version
+U-Boot 2026.04
+gcc (Alpine
+=> virtio scan; virtio info
+Device 0: * VirtIO Block Device
+Type: Hard Disk
+=> poweroff
+poweroff ...
+[stderr] flash: ignored 8-byte write of 0x40000000 at offset 0x12c668
+[stderr] flash: ignored 8-byte write of 0x0 at offset 0x12c680
+!Synchronous Abort
+!resetting
+![stderr] unhandled MMIO
+![stderr] unknown SMCCC
+![stderr] not emulated
+![stderr] guest fatal

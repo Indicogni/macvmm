@@ -11,7 +11,7 @@ objectives:
 - Trace how a Device Tree node with a compatible string becomes a bound driver, and name the two ways the binding can still fail
 - Read the time stamps in a boot log and say why they are all 0.000000 until the timer is set up
 - Say what /init is, why its exit panics the kernel, and why Alpine keeps most drivers in modules and its modloop
-lab: boot-log-annotator
+labs: [boot-log-annotator]
 ---
 
 # Who printed the first line?
@@ -540,6 +540,8 @@ Remember the catch from the log buffer section: without earlycon, lines from sta
 the serial port only once stage 6 has registered the `ttyAMA0` console.
 
 ## Lab
+
+:::lab boot-log-annotator
 
 The `boot-log-annotator` lab takes a pasted boot log, from the reference machine or later from
 your own macvmm, and annotates it in the browser. Each line links to the chapter and the DTB node

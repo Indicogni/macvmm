@@ -38,6 +38,7 @@ use core::num::Wrapping;
 /// `VIRTQ_AVAIL_F_NO_INTERRUPT` (§2.7.7): the driver does not want used-buffer interrupts.
 pub const AVAIL_F_NO_INTERRUPT: u16 = 1;
 
+// ANCHOR: queue_struct
 /// One queue: the registers the driver programmed, and our ring positions (module docs).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Queue {
@@ -53,7 +54,7 @@ pub struct Queue {
     broken: bool,
 }
 
-/// `(offset of ring[i])` helpers: `base + head + elem·i` with `checked_*` (VQ-1).
+/// `(offset of ring[i])` helpers: `base + head + elem·i` with `checked_*`.
 fn at(base: GuestAddress, head: u64, elem: u64, i: u16) -> Result<GuestAddress, QueueError> {
     elem.checked_mul(u64::from(i))
         .and_then(|off| off.checked_add(head))
@@ -63,6 +64,7 @@ fn at(base: GuestAddress, head: u64, elem: u64, i: u16) -> Result<GuestAddress, 
             len: u32::from(i),
         })
 }
+// ANCHOR_END: queue_struct
 
 impl Queue {
     /// A queue whose `QueueNumMax` is `max_size` (clamped to [`QUEUE_SIZE_MAX`]). Its size
@@ -158,7 +160,7 @@ impl Queue {
     }
 
     // ANCHOR: queue_validate_rings
-    /// Check the ring placement at DRIVER_OK (§2.7 alignment table; VQ-1): size, alignment,
+    /// Check the ring placement at DRIVER_OK (§2.7 alignment table): size, alignment,
     /// and each ring entirely inside one RAM region, all lengths with `checked_*`.
     pub fn validate(&self, mem: &dyn GuestMemory) -> Result<(), QueueError> {
         if !self.size_ok(self.size) {
@@ -192,7 +194,7 @@ impl Queue {
                 addr: addr.0,
                 len: u64::MAX,
             })?;
-            // `check_range` computes the end with `checked_add` and demands one region (MEM-2).
+            // `check_range` computes the end with `checked_add` and demands one region.
             if !mem.check_range(addr, len) {
                 return Err(QueueError::RingOutOfRam {
                     ring,
@@ -206,8 +208,8 @@ impl Queue {
     // ANCHOR_END: queue_validate_rings
 
     // ANCHOR: queue_pop_avail
-    /// Take the next available chain, if any (§2.7.13.x device side; VQ-2, VQ-3). On `Err`
-    /// the queue is marked broken (VQ-10).
+    /// Take the next available chain, if any (§2.7.13.x device side). On `Err`
+    /// the queue is marked broken until the driver resets the device.
     pub fn pop<'m>(
         &mut self,
         mem: &'m dyn GuestMemoryOrdered,
@@ -232,7 +234,7 @@ impl Queue {
         let avail_idx = mem.read_u16_acquire(at(self.avail_ring, 2, 0, 0)?)?;
         let pending = Wrapping(avail_idx) - self.next_avail;
         if pending.0 > self.size {
-            // VQ-2: the index jumped by more than the queue holds.
+            // The index jumped by more than the queue holds.
             return Err(QueueError::AvailIdxJump {
                 avail_idx,
                 next_avail: self.next_avail.0,
@@ -244,7 +246,7 @@ impl Queue {
         }
         // `size` is a power of two (checked), so `& (size - 1)` is `% size` (§2.7.6).
         let slot = self.next_avail.0 & self.size.wrapping_sub(1);
-        let head = mem.read_obj::<u16>(at(self.avail_ring, 4, 2, slot)?)?; // copied once (MEM-7)
+        let head = mem.read_obj::<u16>(at(self.avail_ring, 4, 2, slot)?)?; // copied once
         if head >= self.size {
             return Err(QueueError::HeadOutOfRange {
                 head,
@@ -269,7 +271,7 @@ impl Queue {
     }
 
     // ANCHOR: queue_add_used
-    /// Return chain `head` to the driver with `written` bytes produced (§2.7.8; VQ-9).
+    /// Return chain `head` to the driver with `written` bytes produced (§2.7.8).
     ///
     /// `written` MUST be the number of bytes the device actually wrote into the chain's
     /// writable buffers, never the requested or the available length: the driver trusts it
@@ -306,7 +308,7 @@ impl Queue {
     /// After `add_used`: does the driver want a used-buffer interrupt (§2.7.7)? It does unless
     /// `avail.flags` has `NO_INTERRUPT` (a hint: the driver may still poll).
     ///
-    /// **The full fence** (VQ-9; architecture §11.2 item 9). Our `used.idx` store and our
+    /// **The full fence.** Our `used.idx` store and our
     /// `avail.flags` load are a store followed by a load to *different* addresses; release and
     /// acquire do not order those, so the CPU may perform the load first. Meanwhile the driver
     /// does the mirror image in `virtqueue_enable_cb`: clear NO_INTERRUPT, `virtio_mb()`, re-read

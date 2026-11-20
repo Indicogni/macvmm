@@ -107,7 +107,8 @@ pub fn run(vcpu: &mut Vcpu<'_>, env: &ExitEnv<'_>, obs: &Observe<'_>, log: &mut 
                 ctl.request_stop(reason);
                 return;
             }
-            // PSCI CPU_OFF (M5): park outside `hv_vcpu_run` until a CPU_ON or the stop.
+            // A vCPU that powered itself off (chapter 20): park outside `hv_vcpu_run` until it is
+            // powered on again or the VM stops.
             Ok(ExitAction::CpuOff) => match park(vcpu, ctl) {
                 Some(on) => vcpu.power_on(&on),
                 None => return,

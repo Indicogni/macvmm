@@ -52,6 +52,7 @@ pub struct Access {
     pub fence: bool,
 }
 
+// ANCHOR: vec_memory_mutation
 /// After `after_reads` successful reads, write `bytes` at `addr` (once).
 #[derive(Clone, Debug)]
 pub struct Mutation {
@@ -59,6 +60,7 @@ pub struct Mutation {
     pub addr: GuestAddress,
     pub bytes: Vec<u8>,
 }
+// ANCHOR_END: vec_memory_mutation
 
 /// Why `VecMemory::new` refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -145,6 +147,7 @@ impl VecMemory {
         lock(&self.inner).mutation = Some(m);
     }
 
+    // ANCHOR: vec_memory_access
     /// Resolve the access, run `op` on the target bytes and log it. Nothing happens on `Err`.
     fn access(
         &self,
@@ -180,6 +183,7 @@ impl VecMemory {
         }
         Ok(())
     }
+    // ANCHOR_END: vec_memory_access
 
     /// Count a successful read and fire the mutation hook when it is due.
     fn after_read(&self) {

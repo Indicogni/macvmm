@@ -1,0 +1,9 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified. The kernel is a copy of .cache/macvmm/Image-virt with the byte at offset 0x38 changed from 0x41 ('A') to 0x42 ('B'); the copy lived in a private scratch directory, shown as .cache/ch13.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/ch13/Image-badmagic --initrd .cache/macvmm/initramfs-test.img --mem 512M --timeout 10
+exit: 2
+--- stdout ---
+
+--- stderr ---
+macvmm: cannot load the guest: --initrd needs an arm64 Image --kernel

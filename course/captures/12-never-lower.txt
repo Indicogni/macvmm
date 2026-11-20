@@ -1,0 +1,17 @@
+# scripts/capture-cmd 12: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1: Pl011::update_irq only ever raises the line (set_level(true) when RIS & IMSC != 0; never set_level(false)).
+# The keystrokes a, b and c were piped to stdin 3 s after start, then 0.5 s apart (in a terminal, type them after irq: ready).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/irq.bin@0x40080000 --timeout 10 --stats
+exit: 5
+--- stdout ---
+irq: pfr0.gic=1
+irq: ready
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 10s
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=27 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 4212050: data abort 4212050
+macvmm: stats: vcpu0 time: exec 1.633 s, wfi 2.699 s
+macvmm: stats: host cpu 6.849 s over 10.001 s wall (69%)
+macvmm: stats: rlimit core=0 nofile=1048576

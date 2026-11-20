@@ -6,7 +6,7 @@ minutes: 30
 runs: mac+browser
 required_by: [16]
 also_used_by: [04, 17, 20]
-lab: litmus
+labs: [litmus]
 objectives:
 - Predict which outcomes of a two-thread litmus test arm64 allows, and run one on your Mac to see an "impossible" result
 - Name the four kinds of reordering and say which one x86 keeps and which ones arm64 adds
@@ -714,6 +714,8 @@ forever: a lost wakeup again, built from a different row of the same table.
 > and needs the same store-load fence. macvmm v1 does not offer it; chapter 16 points at it.
 
 ## Lab
+
+:::lab litmus
 
 The interactive `litmus` lab, planned for this page and chapter 16, is not published yet. It will
 simulate a weak memory model with visible store buffers so you can step the machine and list every

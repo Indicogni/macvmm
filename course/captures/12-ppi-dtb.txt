@@ -1,0 +1,16 @@
+# scripts/capture-cmd 12: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 3: in crates/vmm/src/fdt/machine.rs, spi_cells writes GIC_PPI (1) instead of GIC_SPI (0) as the first cell; the VMM still drives INTID 33.
+# dtc's own warnings are discarded, as is the guest's output.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/hello.bin@0x40080000 --dtb-out v.dtb --timeout 10 && dtc -I dtb -O dts v.dtb | grep -A6 'pl011@9000000 {'
+exit: 0
+--- stdout ---
+	pl011@9000000 {
+		compatible = "arm,pl011", "arm,primecell";
+		reg = <0x00 0x9000000 0x00 0x1000>;
+		interrupts = <0x01 0x01 0x04>;
+		clocks = <0x02 0x02>;
+		clock-names = "uartclk", "apb_pclk";
+	};
+
+--- stderr ---

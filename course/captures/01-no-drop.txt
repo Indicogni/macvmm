@@ -1,0 +1,13 @@
+# scripts/capture-cmd 01: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: the learner workspace (see 01-minimal-doctor.txt) with the whole impl Drop for Vm deleted, so dropping a Vm no longer calls hv_vm_destroy.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- doctor
+exit: 1
+--- stdout ---
+macvmm doctor
+hv_vm_create: OK
+vm create/destroy x100: FAILED at round 1
+
+--- stderr ---
+macvmm doctor: hv_vm_create: HV_BUSY (0xfae94002)
+DOCTOR FAILED

@@ -73,29 +73,32 @@ pub const DEVICE_ID_CONSOLE: u32 = 3;
 pub const DEVICE_ID_RNG: u32 = 4;
 // ANCHOR_END: virtio_ids
 
+// ANCHOR: virtio_features
 /// Reserved feature bits (virtio 1.2 §6). Device-specific bits are 0..=23 and live with each
 /// device.
 pub mod features {
     /// `VIRTIO_F_INDIRECT_DESC` (§2.7.5.3): indirect descriptor tables. Offered only by blk.
     pub const INDIRECT_DESC: u64 = 1 << 28;
-    /// `VIRTIO_F_EVENT_IDX` (§2.7.7.2, §2.7.10): **not offered** in v1 (VQ-15).
+    /// `VIRTIO_F_EVENT_IDX` (§2.7.7.2, §2.7.10): **not offered** in v1.
     pub const EVENT_IDX: u64 = 1 << 29;
     /// `VIRTIO_F_VERSION_1` (§6.1): a modern (non-legacy) device. Required (§4.2.2: legacy
     /// interfaces are not supported by a Version 2 transport).
     pub const VERSION_1: u64 = 1 << 32;
-    /// `VIRTIO_F_ACCESS_PLATFORM` (§6.1): an IOMMU translates addresses. Not offered (VQ-15).
+    /// `VIRTIO_F_ACCESS_PLATFORM` (§6.1): an IOMMU translates addresses. Not offered.
     pub const ACCESS_PLATFORM: u64 = 1 << 33;
-    /// `VIRTIO_F_RING_PACKED` (§2.8): the packed ring. Not offered (VQ-15).
+    /// `VIRTIO_F_RING_PACKED` (§2.8): the packed ring. Not offered.
     pub const RING_PACKED: u64 = 1 << 34;
-    /// `VIRTIO_F_NOTIFICATION_DATA` (§6.1). Not offered (VQ-15).
+    /// `VIRTIO_F_NOTIFICATION_DATA` (§6.1). Not offered.
     pub const NOTIFICATION_DATA: u64 = 1 << 38;
-    /// `VIRTIO_F_RING_RESET` (§2.6.1): per-queue reset; QueueReset is RAZ. Not offered (VQ-15).
+    /// `VIRTIO_F_RING_RESET` (§2.6.1): per-queue reset; QueueReset is RAZ. Not offered.
     pub const RING_RESET: u64 = 1 << 40;
-    /// Features v1 must never offer without new hostile tests (VQ-15).
+    /// Features v1 must never offer without new hostile tests.
     pub const NEVER_OFFERED: u64 =
         EVENT_IDX | ACCESS_PLATFORM | RING_PACKED | NOTIFICATION_DATA | RING_RESET;
 }
+// ANCHOR_END: virtio_features
 
+// ANCHOR: virtio_status_bits
 /// Device status bits (virtio 1.2 §2.1).
 pub mod status {
     pub const ACKNOWLEDGE: u32 = 1;
@@ -105,6 +108,7 @@ pub mod status {
     pub const DEVICE_NEEDS_RESET: u32 = 64;
     pub const FAILED: u32 = 128;
 }
+// ANCHOR_END: virtio_status_bits
 
 /// The largest queue size the transport accepts as `QueueNumMax` (virtio 1.2 §2.7: "Queue
 /// Size … the maximum Queue Size value is 32768"; VQ-3, architecture §21.5).
@@ -114,58 +118,60 @@ pub const QUEUE_SIZE_MAX: u16 = 32768;
 /// §11.2 item 11 and §21.5). Allocated per request, zero-initialised, never reused.
 pub const MAX_BOUNCE: usize = 64 * 1024;
 
-/// Why a ring or a descriptor chain was refused (architecture §11.2; threat model VQ-1..9).
+// ANCHOR: queue_error
+/// Why a ring or a descriptor chain was refused (`docs/security/threat-model.md`
+/// lists each rule).
 /// Every variant is something the *guest* did; the transport answers each with
-/// DEVICE_NEEDS_RESET (VQ-10).
+/// DEVICE_NEEDS_RESET.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QueueError {
-    /// The queue size is 0, above its maximum, or not a power of two (§2.7, VQ-3).
+    /// The queue size is 0, above its maximum, or not a power of two (§2.7).
     BadSize { size: u16, max: u16 },
     /// A ring address is not aligned as §2.7 requires (16 / 2 / 4).
     Unaligned { ring: Ring, addr: u64 },
-    /// A ring does not fit in one RAM region, or its end overflows (VQ-1).
+    /// A ring does not fit in one RAM region, or its end overflows.
     RingOutOfRam { ring: Ring, addr: u64, len: u64 },
-    /// `avail.idx` moved by more than the queue size since we last looked (VQ-2).
+    /// `avail.idx` moved by more than the queue size since we last looked.
     AvailIdxJump {
         avail_idx: u16,
         next_avail: u16,
         size: u16,
     },
-    /// An avail-ring entry names a descriptor `≥ N` (VQ-3).
+    /// An avail-ring entry names a descriptor `≥ N`.
     HeadOutOfRange { head: u16, size: u16 },
-    /// A descriptor's `next` is outside its table (VQ-4).
+    /// A descriptor's `next` is outside its table.
     NextOutOfRange { next: u16, table_len: u16 },
-    /// `addr + len` overflows (VQ-4).
+    /// `addr + len` overflows.
     Overflow { addr: u64, len: u32 },
     /// A buffer is not entirely inside one RAM region: outside RAM, in MMIO, or straddling
-    /// the end of RAM (VQ-4, MEM-2/MEM-3).
+    /// the end of RAM.
     BufferOutOfRam { addr: u64, len: u32 },
-    /// A zero-length descriptor (VQ-4).
+    /// A zero-length descriptor.
     ZeroLength { index: u16 },
     /// More descriptors than the hop budget (`N`, or `len / 16` inside an indirect table):
-    /// a loop or an over-long chain (VQ-5).
+    /// a loop or an over-long chain.
     ChainTooLong { budget: u16 },
-    /// `F_INDIRECT` without the feature negotiated (VQ-6).
+    /// `F_INDIRECT` without the feature negotiated.
     IndirectNotNegotiated,
-    /// `F_INDIRECT` inside an indirect table (VQ-6, §2.7.5.3.1).
+    /// `F_INDIRECT` inside an indirect table (§2.7.5.3.1).
     NestedIndirect,
-    /// `F_INDIRECT` together with `F_NEXT` (VQ-6, §2.7.5.3.1).
+    /// `F_INDIRECT` together with `F_NEXT` (§2.7.5.3.1).
     IndirectWithNext,
-    /// An indirect table length that is 0, not a multiple of 16, or more than `N` entries
-    /// (VQ-6).
+    /// An indirect table length that is 0, not a multiple of 16, or more than `N` entries.
     BadIndirectLen { len: u32 },
-    /// A device-readable descriptor after a device-writable one (VQ-7, §2.7.4.2).
+    /// A device-readable descriptor after a device-writable one (§2.7.4.2).
     ReadableAfterWritable,
-    /// The chain's readable or writable total exceeds the device's `max_total` (VQ-8).
+    /// The chain's readable or writable total exceeds the device's `max_total`.
     TooLarge { total: u64, max: u64 },
     /// A guest-memory access failed on a ring itself (cannot happen after `validate` unless
     /// memory changed shape; kept total, never a panic).
     Memory(MemoryError),
-    /// The queue already failed and the driver has not reset the device (VQ-10).
+    /// The queue already failed and the driver has not reset the device.
     Broken,
     /// The queue is not ready or has no size (a driver bug or a device bug).
     NotReady,
 }
+// ANCHOR_END: queue_error
 
 /// Which ring a [`QueueError`] is about.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -233,7 +239,7 @@ pub enum QueueProgress {
 }
 
 // ANCHOR: virtio_device_trait
-/// A virtio device model behind the transport (architecture §6.6). The transport owns the
+/// A virtio device model behind the transport. The transport owns the
 /// registers and the status machine; the device owns its queues once activated.
 pub trait VirtioDevice: Send {
     /// The virtio device ID (§5): 2 blk, 3 console, 4 rng, 1 net; 0 for an empty slot.
@@ -241,19 +247,19 @@ pub trait VirtioDevice: Send {
     /// One entry per queue: its maximum size (a power of two, ≤ [`QUEUE_SIZE_MAX`]).
     fn queue_max_sizes(&self) -> &[u16];
     /// The features offered. MUST include [`features::VERSION_1`] and none of
-    /// [`features::NEVER_OFFERED`] (VQ-15).
+    /// [`features::NEVER_OFFERED`].
     fn device_features(&self) -> u64;
     /// Called once, at a FEATURES_OK write the transport accepted (`accepted ⊆ offered`).
     fn ack_features(&mut self, accepted: u64);
-    /// The size of the device configuration space in bytes (M11: the per-device bound of
-    /// VQ-13; the transport refuses any config access beyond it).
+    /// The size of the device configuration space in bytes: the per-device bound the
+    /// transport enforces (it refuses any config access beyond it).
     fn config_len(&self) -> u32 {
         0
     }
     /// Read `data.len()` config bytes at `offset`; the transport already checked
     /// `offset + data.len() ≤ config_len()`.
     fn read_config(&self, offset: u32, data: &mut [u8]);
-    /// Write config bytes (same bound). Read-only fields MUST ignore writes (VQ-13).
+    /// Write config bytes (same bound). Read-only fields MUST ignore writes.
     fn write_config(&mut self, offset: u32, data: &[u8]);
     /// At DRIVER_OK, after every ready queue passed `Queue::validate`. `queues` has one entry
     /// per `queue_max_sizes` entry (check `Queue::ready`).
@@ -263,10 +269,11 @@ pub trait VirtioDevice: Send {
         queues: Vec<Queue>,
         irq: Arc<VirtioInterrupt>,
     ) -> Result<(), VirtioError>;
-    /// Process at most `budget` chains of queue `index`, then return (VQ-12). On `Err` the
+    /// Process at most `budget` chains of queue `index`, then return, so one busy
+    /// queue cannot starve the others. On `Err` the
     /// caller puts the device into DEVICE_NEEDS_RESET.
     fn process_queue(&mut self, index: usize, budget: u16) -> Result<QueueProgress, VirtioError>;
-    /// Status ← 0: drop the queues and the memory handle (VQ-14). Nothing may use the old
+    /// Status ← 0: drop the queues and the memory handle. Nothing may use the old
     /// ring addresses afterwards.
     fn reset(&mut self);
 }

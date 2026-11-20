@@ -25,6 +25,10 @@
 //!   `scripts/learner` wraps it.
 //! - `bughunt <part> [--patch NAME] [--keep]` (M27, [`xtask::checkpoint::bughunt`]);
 //!   `scripts/bughunt.sh` wraps it.
+//! - `lessons [FILE|NN]...`: the course lesson lint ([`xtask::lessons`]); `scripts/check-lessons`
+//!   wraps it. With no argument it checks every lesson under `course/chapters/`.
+//! - `capture [opts] OUT -- CMD...`: record a real run as a course capture ([`xtask::capture`]);
+//!   `scripts/capture-cmd` wraps it.
 //! - `export-vectors [--check]`: copy the ESR test vectors (M4), the FDT vectors (M7) and the
 //!   virtqueue vectors (M11) to the course labs ([`xtask::vectors`]); `--check` only verifies
 //!   the copies are current.
@@ -47,7 +51,7 @@ const DERIVE_KINDS: [(&str, &str); 3] = [
 ];
 // ANCHOR_END: xtask_derive_kinds
 
-const USAGE: &str = "usage: cargo xtask checkpoint <NN|all> [--ref | --impl DIR] [--keep] [--capture] | learner <init|start|hint|lifeline|status|gen-scaffold> ... | bughunt <part> | check-anchors [--root DIR] | audit [--root DIR] [--deps] | derive [--] <kind> <input> <output> [arg] | export-vectors [--root DIR] [--check] | unzboot IN OUT | mkinitramfs --base F --init F [--add SRC:DST]... --out F | mkdisk --size S --seed N --out F | mkrootfs --out F --size S [--minirootfs F] [--init F] [--manifest F] | write-sparse OUT";
+const USAGE: &str = "usage: cargo xtask lessons [FILE|NN]... | capture [opts] OUT -- CMD... | checkpoint <NN|all> [--ref | --impl DIR] [--keep] [--capture] | learner <init|start|hint|lifeline|status|gen-scaffold> ... | bughunt <part> | check-anchors [--root DIR] | audit [--root DIR] [--deps] | derive [--] <kind> <input> <output> [arg] | export-vectors [--root DIR] [--check] | unzboot IN OUT | mkinitramfs --base F --init F [--add SRC:DST]... --out F | mkdisk --size S --seed N --out F | mkrootfs --out F --size S [--minirootfs F] [--init F] [--manifest F] | write-sparse OUT";
 
 fn say(line: &str) {
     let _ = writeln!(std::io::stdout().lock(), "{line}");
@@ -76,6 +80,8 @@ fn main() -> ExitCode {
         "checkpoint" => return ExitCode::from(xtask::checkpoint::main(&repo_root, rest)),
         "learner" => return ExitCode::from(xtask::learner::main(&repo_root, rest)),
         "bughunt" => return ExitCode::from(xtask::checkpoint::bughunt::main(&repo_root, rest)),
+        "lessons" => return lessons(&repo_root, rest),
+        "capture" => return capture(&repo_root, rest),
         _ => {}
     }
     match cmd.as_str() {
@@ -125,6 +131,54 @@ fn main() -> ExitCode {
         }
         other => {
             warn(&format!("xtask: unknown command {other:?}\n{USAGE}"));
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn lessons(root: &std::path::Path, args: &[String]) -> ExitCode {
+    if args.iter().any(|a| a == "-h" || a == "--help") {
+        say("usage: scripts/check-lessons [FILE|NN]...   (no argument: every lesson)");
+        return ExitCode::SUCCESS;
+    }
+    let report = match xtask::lessons::run(root, args) {
+        Ok(r) => r,
+        Err(e) => {
+            warn(&format!("check-lessons: {e}"));
+            return ExitCode::from(2);
+        }
+    };
+    for d in &report.diags {
+        warn(&format!("check-lessons: {d}"));
+    }
+    let (e, w) = (report.errors(), report.warnings());
+    if e == 0 {
+        say(&format!(
+            "LESSONS OK: {} lesson(s), {w} warning(s)",
+            report.lessons
+        ));
+        ExitCode::SUCCESS
+    } else {
+        warn(&format!(
+            "check-lessons: {e} error(s), {w} warning(s) in {} lesson(s)",
+            report.lessons
+        ));
+        ExitCode::from(1)
+    }
+}
+
+fn capture(root: &std::path::Path, args: &[String]) -> ExitCode {
+    if args.iter().any(|a| a == "-h" || a == "--help") {
+        say(xtask::capture::USAGE);
+        return ExitCode::SUCCESS;
+    }
+    match xtask::capture::main(root, args) {
+        Ok(t) => {
+            let _ = write!(std::io::stdout().lock(), "{t}");
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            warn(&format!("capture-cmd: {e}"));
             ExitCode::from(2)
         }
     }

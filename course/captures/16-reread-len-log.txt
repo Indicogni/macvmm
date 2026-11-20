@@ -1,0 +1,30 @@
+# scripts/capture-cmd 16: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 3: at the end of DescriptorChain::step in crates/vmm/src/virtio/chain.rs, the descriptor handed out takes its len from a fresh read_u32 of guest memory instead of the validated copy.
+# The racing test alone, in a run where its access-log check fired first.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test virtqueue_toctou racing_len_flip
+exit: 101
+--- stdout ---
+
+running 1 test
+racing_len_flip_catches_a_double_fetch_but_not_the_real_walker --- FAILED
+
+failures:
+
+---- racing_len_flip_catches_a_double_fetch_but_not_the_real_walker stdout ----
+
+thread 'racing_len_flip_catches_a_double_fetch_but_not_the_real_walker' (123032292) panicked at crates/vmm/tests/virtqueue_toctou.rs:384:13:
+assertion `left == right` failed: len is never re-read on its own
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    racing_len_flip_catches_a_double_fetch_but_not_the_real_walker
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.67s
+
+
+--- stderr ---
+error: test failed, to rerun pass `-p vmm --test virtqueue_toctou`

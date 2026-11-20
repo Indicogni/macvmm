@@ -1,0 +1,24 @@
+# scripts/capture-cmd 01: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified, built in a copy of the repository; your own binary is target/learner/debug/macvmm instead.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/sign.sh --no-entitlements target/debug/macvmm && target/debug/macvmm doctor
+exit: 1
+--- stdout ---
+macvmm doctor
+codesign entitlements: FAILED (no entitlements)
+hardened runtime: yes
+hv_vm_create: FAILED (HV_DENIED (0xfae94007))
+max IPA: 40 bits (default 36)
+EL2 supported: yes
+max vCPUs: 64
+in-kernel GICv3 (hv_gic_create): SKIPPED (no VM)
+page size: 16384
+vm create/destroy x100: SKIPPED (no VM)
+
+--- stderr ---
+macvmm doctor: entitlements must be exactly {com.apple.security.hypervisor}: no entitlements
+macvmm doctor: hv_vm_create: HV_DENIED (0xfae94007)
+hint: this binary lacks com.apple.security.hypervisor. Build and run it
+      through scripts/sign-and-run.sh (`cargo run -p macvmm -- doctor`
+      does this), or sign it with scripts/sign.sh.
+DOCTOR FAILED: 2 problem(s)

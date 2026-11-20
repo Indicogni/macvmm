@@ -1,0 +1,5 @@
+hello from guest, x0=0x*
+guest done
+[stderr] rlimit core=0
+!unhandled
+!guest fatal

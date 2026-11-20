@@ -1,0 +1,9 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Try it variant: DEBUG_PUTC changed from 0xC600_4D01 to 0xC600_0001 in guests/common/hvc.rs (the number first planned for it); built in a copy of the guests, run with the reference monitor.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/hello.bin@0x40080000 --trace exits:id1.jsonl:hvc --timeout 10; cat id1.jsonl
+exit: 0
+--- stdout ---
+{"t_ns":209458,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810ac","imm":0,"fn":"PSCI_SYSTEM_OFF","action":"psci"}
+
+--- stderr ---

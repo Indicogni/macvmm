@@ -1,0 +1,66 @@
+# scripts/capture-cmd 09: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference's own PL011 register tests (the checkpoint's contract tests are a frozen copy of them), run in an unmodified copy of the reference.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test pl011_regs
+exit: 0
+--- stdout ---
+
+running 9 tests
+.........
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+--- stderr ---
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0x1 names no register (read as zero)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0x1 names no register (ignored)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0x2 names no register (read as zero)
+macvmm: warn: [serial_input_is_bounded_at_4k_and_never_blocks] console input: the guest is not reading its UART; typed bytes are being dropped (see serial_input_dropped in --stats). Ctrl-A x still quits.
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0x2 names no register (ignored)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0x3 names no register (read as zero)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0x3 names no register (ignored)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0x5 names no register (read as zero)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0x5 names no register (ignored)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0x6 names no register (read as zero)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0x6 names no register (ignored)
+macvmm: warn: [narrow_accesses] guest: pl011: 8-byte write at offset 0x30 names no register (ignored)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0x7 names no register (read as zero)
+macvmm: warn: [narrow_accesses] guest: pl011: 8-byte read at offset 0x18 names no register (read as zero)
+macvmm: warn: [narrow_accesses] guest: pl011: 1-byte read at offset 0x19 names no register (read as zero)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0x7 names no register (ignored)
+macvmm: warn: [narrow_accesses] guest: pl011: 1-byte write at offset 0x2 names no register (ignored)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0x8 names no register (read as zero)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0x8 names no register (ignored)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0x9 names no register (read as zero)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0x9 names no register (ignored)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0x3f3 names no register (read as zero) (989 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0x3f3 names no register (ignored) (989 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0x7db names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0x7db names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0xbc3 names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0xbc3 names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte read at offset 0xfab names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 1-byte write at offset 0xfab names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 2-byte read at offset 0x3a9 names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 2-byte write at offset 0x3a9 names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 2-byte read at offset 0x791 names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 2-byte write at offset 0x791 names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 2-byte read at offset 0xb79 names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 2-byte write at offset 0xb79 names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 2-byte read at offset 0xf61 names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 2-byte write at offset 0xf61 names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 4-byte read at offset 0x360 names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 4-byte write at offset 0x360 names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 4-byte read at offset 0x748 names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 4-byte write at offset 0x748 names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 4-byte read at offset 0xb30 names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 4-byte write at offset 0xb30 names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 4-byte read at offset 0xf18 names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 4-byte write at offset 0xf18 names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 8-byte read at offset 0x30b names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 8-byte write at offset 0x30c names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 8-byte read at offset 0x6f3 names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 8-byte write at offset 0x6f4 names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 8-byte read at offset 0xadb names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 8-byte write at offset 0xadc names no register (ignored) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 8-byte read at offset 0xec3 names no register (read as zero) (999 similar messages suppressed)
+macvmm: warn: [every_offset_and_width_is_total] guest: pl011: 8-byte write at offset 0xec4 names no register (ignored) (999 similar messages suppressed)

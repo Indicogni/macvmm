@@ -29,7 +29,7 @@ questions = 4
 predict = true
 
 [hints]
-conceptual = "A data abort with ISV=1 carries the whole instruction in its syndrome: size, register, sign extension, direction. Decode, then emulate."
+conceptual = "A data abort with ISV=1 describes the access in its syndrome (size, register, sign extension, direction); you emulate the access, not the instruction."
 spec = "ARM ARM ESR_EL2 ISS encoding for data aborts (ISV, SAS, SSE, SRT, SF, WnR); register 31 is XZR here, never SP."
 pseudocode = "ec == 0x24 && isv -> size = 1 << sas; write: value = x[srt] masked (0 for 31); read: sign-extend if sse, zero-extend to 32 if !sf; pc += 4."
 anchor = "crates/vmm/src/arch/esr.rs (Exit::decode) and crates/vmm/src/vcpu/mmio.rs."

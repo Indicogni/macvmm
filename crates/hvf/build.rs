@@ -2,7 +2,9 @@
 //! it here as well keeps the framework on the link line for every target in this crate (tests,
 //! examples) and documents the dependency in one obvious place.
 
+// ANCHOR: build_rs
 fn main() {
     println!("cargo:rustc-link-lib=framework=Hypervisor");
     println!("cargo:rerun-if-changed=build.rs");
 }
+// ANCHOR_END: build_rs

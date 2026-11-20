@@ -1,0 +1,36 @@
+--- a/crates/vmm/src/virtio/chain.rs
++++ b/crates/vmm/src/virtio/chain.rs
+@@ -116,6 +116,7 @@
+     in_indirect: bool,
+     indirect_allowed: bool,
+     failed: bool,
++    seen: [Option<(u64, u32)>; 2],
+ }
+ // ANCHOR_END: chain_struct
+ 
+@@ -162,6 +163,7 @@
+             in_indirect: false,
+             indirect_allowed,
+             failed: false,
++            seen: [None, None],
+         }
+     }
+ 
+@@ -221,12 +223,16 @@
+             GuestAddress(d.addr)
+                 .checked_add(u64::from(d.len))
+                 .ok_or(overflow)?;
+-            if !self.mem.check_range(GuestAddress(d.addr), u64::from(d.len)) {
++            // PLANTED BUG 5 (chapter 25, the Predict fork): a "verdict cache". A buffer at the
++            // same address as the one two hops back reuses that verdict, ignoring its new length.
++            let cached = matches!(self.seen[0], Some((a, _)) if a == d.addr);
++            if !cached && !self.mem.check_range(GuestAddress(d.addr), u64::from(d.len)) {
+                 return Err(QueueError::BufferOutOfRam {
+                     addr: d.addr,
+                     len: d.len,
+                 });
+             }
++            self.seen = [self.seen[1], Some((d.addr, d.len))];
+             self.next = if d.flags & F_NEXT != 0 {
+                 if d.next >= self.table_len {
+                     return Err(QueueError::NextOutOfRange {

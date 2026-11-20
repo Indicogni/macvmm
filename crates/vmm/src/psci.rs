@@ -120,6 +120,7 @@ impl PsciError {
     }
 }
 
+// ANCHOR: psci_target_state
 /// One target vCPU's mutable PSCI state: its power state and its CPU_ON mailbox.
 #[derive(Debug)]
 struct TargetState {
@@ -144,6 +145,7 @@ impl Target {
         Some(on)
     }
 }
+// ANCHOR_END: psci_target_state
 
 /// The power state of every vCPU of one boot, and their mailboxes.
 #[derive(Debug)]
@@ -189,9 +191,11 @@ impl Psci {
         self.cpus.is_empty()
     }
 
+    // ANCHOR: psci_index_of
     /// The vCPU index whose MPIDR affinity equals `target`, or `INVALID_PARAMETERS` if
     /// `target` has bits outside [`AFFINITY_MASK`] or names no vCPU (HC-3: only created vCPUs
     /// are valid targets).
+    // ANCHOR: psci_index_of_fn
     pub fn index_of(&self, target: u64) -> Result<usize, PsciError> {
         if target & !AFFINITY_MASK != 0 {
             return Err(PsciError::InvalidParameters);
@@ -201,6 +205,8 @@ impl Psci {
             .position(|t| t.mpidr & AFFINITY_MASK == target)
             .ok_or(PsciError::InvalidParameters)
     }
+    // ANCHOR_END: psci_index_of_fn
+    // ANCHOR_END: psci_index_of
 
     fn target(&self, index: usize) -> Result<&Target, PsciError> {
         self.cpus.get(index).ok_or(PsciError::InvalidParameters)
@@ -222,6 +228,7 @@ impl Psci {
     /// `OnPending` (-5) or, once the target has taken its mailbox, `On` (-4). No thread is
     /// created here: the target's thread has existed since startup and only waits (a CPU_ON
     /// storm cannot spawn threads, threat model §10.2 M16).
+    // ANCHOR: psci_cpu_on_fn
     pub fn cpu_on(
         &self,
         target: u64,
@@ -247,11 +254,14 @@ impl Psci {
             }
         }
     }
+    // ANCHOR_END: psci_cpu_on_fn
     // ANCHOR_END: psci_cpu_on_mailbox
     // ANCHOR_END: psci_cpu_on
 
+    // ANCHOR: psci_affinity_cpu_off
     /// PSCI AFFINITY_INFO (DEN 0022 §5.1.5; HC-4): the state of `target` at affinity level 0.
     /// A higher level is `INVALID_PARAMETERS`.
+    // ANCHOR: psci_affinity_cpu_off_fn
     pub fn affinity_info(&self, target: u64, level: u64) -> Result<CpuPower, PsciError> {
         if level != 0 {
             return Err(PsciError::InvalidParameters);
@@ -274,6 +284,8 @@ impl Psci {
         s.mailbox = None;
         true
     }
+    // ANCHOR_END: psci_affinity_cpu_off_fn
+    // ANCHOR_END: psci_affinity_cpu_off
 
     /// True if no vCPU is on or about to be (every vCPU called CPU_OFF). Each target is read
     /// under its own lock, one after the other: the answer is a snapshot, used only for a
@@ -289,6 +301,7 @@ impl Psci {
         Target::take(&mut lock(&self.cpus.get(index)?.state))
     }
 
+    // ANCHOR: psci_park_wake
     /// Park vCPU `index` (it is `Off`) until its `PowerOn` arrives (returned) or `stopping()`
     /// becomes true (`None`); `None` at once for an index that does not exist. The wait itself
     /// is `vcpu::wait::wait_for` on this target's mutex and condition variable.
@@ -306,6 +319,7 @@ impl Psci {
             t.wake.notify_all();
         }
     }
+    // ANCHOR_END: psci_park_wake
 }
 
 #[cfg(test)]

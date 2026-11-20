@@ -1,0 +1,14 @@
+# scripts/capture-cmd 02: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: the b . word deleted from CODE (two words remain: movz x0, #0x2a and hvc #0), and steps 4 and 5 of first_exit() wrapped in a loop that runs twice.
+# Run in a copy of the reference with that edit.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- first-exit
+exit: 0
+--- stdout ---
+first-exit: mapped 16 KiB at IPA 0x40000000
+first-exit: exit reason=EXCEPTION syndrome=0x5a000000 ec=0x16 (HVC64) imm=0x0
+first-exit: pc=0x40000008 x0=0x2a
+first-exit: exit reason=EXCEPTION syndrome=0x82000006 ec=0x20 (IABT_LOWER) imm=0x6
+first-exit: pc=0x200 x0=0x2a
+
+--- stderr ---

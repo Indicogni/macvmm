@@ -1,0 +1,14 @@
+# scripts/capture-cmd 06: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: the boot CPSR changed from 0x3c5 (EL1h) to 0x3c4 (EL1t) in a copy of the reference; nothing else changed.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/regcheck.bin@0x40080000 --timeout 10
+exit: 5
+--- stdout ---
+regcheck: CurrentEL=0x4
+regcheck: MPIDR_EL1=0x80000000
+regcheck: SCTLR_EL1.M=0
+regcheck: DAIF=0x3c0
+regcheck: x0=0x40000000
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 10s

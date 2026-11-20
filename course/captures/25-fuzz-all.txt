@@ -1,0 +1,33 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run in an rsync copy of the reference with its own target directory. Two seconds per target is a smoke test; the acceptance run is 60 s per target.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/fuzz.sh all --seconds 2
+exit: 0
+--- stdout ---
+fuzz virtqueue: 394733 iterations, 0 failures
+fuzz virtqueue_race: 111728 iterations, 0 failures
+fuzz virtio_mmio: 816126 iterations, 0 failures
+fuzz blk: 429647 iterations, 0 failures
+fuzz rng: 149728 iterations, 0 failures
+fuzz console: 157603 iterations, 0 failures
+fuzz elf: 896188 iterations, 0 failures
+fuzz image: 11349584 iterations, 0 failures
+fuzz initrd_plan: 226417 iterations, 0 failures
+fuzz esr: 18335737 iterations, 0 failures
+fuzz insn: 8409075 iterations, 0 failures
+fuzz stage1: 258906 iterations, 0 failures
+fuzz pl011: 733206 iterations, 0 failures
+fuzz pl031: 142069 iterations, 0 failures
+fuzz testdev: 2454751 iterations, 0 failures
+fuzz razwi: 3324226 iterations, 0 failures
+fuzz smccc: 64871 iterations, 0 failures
+fuzz ansi: 2345972 iterations, 0 failures
+fuzz cli: 1876422 iterations, 0 failures
+fuzz cli (parse_run): 902927 iterations, 0 failures
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 33 filtered out; finished in 2.00s
+fuzz tar: 4702 iterations, 0 failures
+fuzz cpio: 686096 iterations, 0 failures
+fuzz zboot: 11905128 iterations, 0 failures
+fuzz: fuzz OK: 22 target(s), 2s each, seed 1
+
+--- stderr ---

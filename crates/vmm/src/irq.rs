@@ -48,7 +48,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 // ANCHOR: irq_line_trait
-/// One level-sensitive interrupt line. [frozen ch11]
+/// One level-sensitive interrupt line. Frozen: devices depend on exactly this.
 pub trait IrqLine: Send + Sync {
     /// Drive the line. All macvmm device lines are level-sensitive: assert while the device
     /// condition holds, deassert when it clears. Idempotent.
@@ -64,6 +64,7 @@ impl IrqLine for NullIrq {
     fn set_level(&self, _high: bool) {}
 }
 
+// ANCHOR: test_irq
 /// A line that records its level changes, for host tests.
 #[derive(Debug, Default)]
 pub struct TestIrq {
@@ -116,7 +117,9 @@ impl IrqLine for TestIrq {
         }
     }
 }
+// ANCHOR_END: test_irq
 
+// ANCHOR: spi_backend
 /// Where a [`GicSpi`] sends its level: `hvf::GicHandle` on a real machine, a recorder in host
 /// tests. `Send + Sync` because every [`IrqLine`] is.
 pub trait SpiBackend: Send + Sync {
@@ -129,6 +132,7 @@ impl SpiBackend for hvf::GicHandle {
         hvf::GicHandle::set_spi(self, intid, level)
     }
 }
+// ANCHOR_END: spi_backend
 
 /// The INTIDs a wired line may use: the framework's SPI range minus the MSI block.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -167,9 +171,10 @@ impl core::fmt::Display for SpiError {
 
 impl std::error::Error for SpiError {}
 
+// ANCHOR: spi_limits_check
 impl SpiLimits {
     /// The limits of the live in-kernel GIC: its SPI range, minus the board's GICv2m MSI block
-    /// (PLAN §1: INTIDs 80..143 are reserved for MSIs whether or not a frame is configured).
+    /// (the board reserves INTIDs 80..143 for MSIs whether or not a frame is configured).
     pub fn of(gic: &hvf::Gic) -> Result<SpiLimits, hvf::CallError> {
         Ok(SpiLimits {
             spi: gic.spi_range()?,
@@ -193,9 +198,10 @@ impl SpiLimits {
         Ok(())
     }
 }
+// ANCHOR_END: spi_limits_check
 
 // ANCHOR: gic_spi_set_level
-/// A level-sensitive line wired to one SPI of the in-kernel GIC (architecture §6.3, §9).
+/// A level-sensitive line wired to one SPI of the in-kernel GIC (`hv_gic_set_spi`, `hv_gic.h`).
 pub struct GicSpi<B: SpiBackend = hvf::GicHandle> {
     intid: u32,
     backend: B,

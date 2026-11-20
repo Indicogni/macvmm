@@ -24,7 +24,9 @@ pub enum Backend {
     Pl011 = 1,
 }
 
+// ANCHOR: guest_console_backend
 static BACKEND: AtomicU8 = AtomicU8::new(Backend::Hvc as u8);
+// ANCHOR_END: guest_console_backend
 
 /// PL011 UART0 in the QEMU `virt` map (PLAN §1).
 const PL011_BASE: usize = 0x0900_0000;
@@ -48,6 +50,7 @@ fn pl011_putc(byte: u8) {
     }
 }
 
+// ANCHOR: guest_console_putc
 /// Write one byte to the current backend.
 pub fn putc(byte: u8) {
     if BACKEND.load(Ordering::Relaxed) == Backend::Pl011 as u8 {
@@ -56,6 +59,7 @@ pub fn putc(byte: u8) {
         crate::hvc::debug_putc(byte);
     }
 }
+// ANCHOR_END: guest_console_putc
 
 /// The console as a `core::fmt::Write` sink.
 pub struct Console;

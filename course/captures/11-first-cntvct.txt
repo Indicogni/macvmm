@@ -1,0 +1,24 @@
+# scripts/capture-cmd 11: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Experiment: the guest reads CNTVCT_EL0 as its very first action and prints it as 'first cntvct'. The VMM is the reference (offset = the host count at boot).
+# Run in a copy of the reference with that one guest edit.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --irqchip none --mem 64M --raw {guests}/timer-nogic.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+timer-nogic: first cntvct=133166
+timer-nogic: cntfrq=24000000
+timer-nogic: pfr0.gic=0
+timer-nogic: interval 0 = 108 ms ok
+timer-nogic: interval 1 = 101 ms ok
+timer-nogic: interval 2 = 101 ms ok
+timer-nogic: interval 3 = 105 ms ok
+timer-nogic: interval 4 = 102 ms ok
+timer-nogic: interval 5 = 104 ms ok
+timer-nogic: interval 6 = 105 ms ok
+timer-nogic: interval 7 = 103 ms ok
+timer-nogic: interval 8 = 105 ms ok
+timer-nogic: interval 9 = 102 ms ok
+timer-nogic: irqs=10 stale=302824
+timer-nogic: 10/10 intervals within 95..150 ms
+
+--- stderr ---

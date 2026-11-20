@@ -63,6 +63,7 @@ pub const DEBUG_BOOT_COUNT: u32 = 0xC600_4D04;
 pub const SMCCC_VERSION: u32 = 0x8000_0000;
 /// SMCCC_ARCH_FEATURES(fn) (DEN 0028 §7.3): 0 if `fn` is implemented.
 pub const SMCCC_ARCH_FEATURES: u32 = 0x8000_0001;
+// ANCHOR: smccc_psci_ids
 /// PSCI_VERSION (DEN 0022 §5.1.1).
 pub const PSCI_VERSION: u32 = 0x8400_0000;
 /// CPU_SUSPEND (DEN 0022 §5.1.2), SMC32 and SMC64.
@@ -104,6 +105,7 @@ pub const NOT_SUPPORTED: u64 = u64::MAX;
 pub const INVALID_PARAMETERS: u64 = u64::MAX - 1;
 /// PSCI `DENIED` (-3) as the register value.
 pub const DENIED: u64 = u64::MAX - 2;
+// ANCHOR_END: smccc_psci_ids
 
 /// Every function this table serves, with its trace name: the PSCI_FEATURES and
 /// `function_name` source of truth. `debug` marks the HC-2 calls.
@@ -162,12 +164,13 @@ const MEMHASH_BOUNCE: usize = 64 * 1024;
 pub const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 pub const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 
+// ANCHOR: smccc_call_types
 /// How the guest made the call.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Conduit {
-    /// `hvc #imm`: the hardware has already advanced the PC (spike finding 5).
+    /// `hvc #imm`: the hardware has already advanced the PC (checked on a real Mac).
     Hvc,
-    /// `smc #imm`: the PC still points at the SMC (spike finding 6); the caller adds 4.
+    /// `smc #imm`: the PC still points at the SMC (checked on a real Mac); the caller adds 4.
     Smc,
 }
 
@@ -190,6 +193,7 @@ pub enum Outcome {
     /// stop). Nothing is written back: CPU_OFF never returns on success (DEN 0022 §5.1.3).
     CpuOff,
 }
+// ANCHOR_END: smccc_call_types
 
 /// What the dispatcher may touch: guest RAM (read-only use), the serial sink, the VM's stop
 /// flag and PSCI state, the calling vCPU, and two facts about this boot.
@@ -209,6 +213,7 @@ fn ret(x0: u64) -> Outcome {
     Outcome::Return([Some(x0), None, None, None])
 }
 
+// ANCHOR: smccc_function_id
 /// `W0`: the function ID is the low 32 bits of `x0` (DEN 0028 §2).
 fn function_id(x0: u64) -> u32 {
     let [b0, b1, b2, b3, ..] = x0.to_le_bytes();
@@ -225,6 +230,7 @@ fn args(fid: u32, x: [u64; 4]) -> [u64; 3] {
         [x1, x2, x3]
     }
 }
+// ANCHOR_END: smccc_function_id
 
 fn psci_err(e: PsciError) -> Outcome {
     ret(e.reg())
@@ -237,14 +243,19 @@ fn implemented(ctx: &Ctx<'_>, fid: u32) -> bool {
         .any(|&(id, _, debug)| id == fid && (!debug || ctx.debug_calls))
 }
 
+// ANCHOR: smccc_entry_valid
 /// An entry point CPU_ON may start a vCPU at: 4-byte aligned and inside RAM (HC-3). ROM
 /// (`--bios`, M18) joins this check when it exists.
+// ANCHOR: smccc_entry_valid_fn
 fn entry_valid(ctx: &Ctx<'_>, entry: u64) -> bool {
     entry.is_multiple_of(4) && ctx.mem.check_range(GuestAddress(entry), 4)
 }
+// ANCHOR_END: smccc_entry_valid_fn
+// ANCHOR_END: smccc_entry_valid
 
 // ANCHOR: smccc_dispatch
-/// Dispatch one SMCCC call (module docs, architecture §8.6). Total over every input (HC-1).
+/// Dispatch one SMCCC call (module docs). Total over every input: any `x0` a guest passes gets
+/// an answer, never a panic.
 pub fn dispatch(ctx: &Ctx<'_>, call: &Call) -> Outcome {
     if call.imm != 0 {
         crate::guest_warn!(
@@ -304,6 +315,7 @@ pub fn dispatch(ctx: &Ctx<'_>, call: &Call) -> Outcome {
 // ANCHOR: smccc_debug_calls
 /// The macvmm debug calls (HC-2; only reached when `ctx.debug_calls`). They are SMC64 calls,
 /// so they read the full `x1..x2`.
+// ANCHOR: smccc_debug_call_fn
 fn debug_call(ctx: &Ctx<'_>, fid: u32, x: [u64; 4]) -> Outcome {
     let [_, x1, x2, _] = x;
     match fid {
@@ -314,14 +326,17 @@ fn debug_call(ctx: &Ctx<'_>, fid: u32, x: [u64; 4]) -> Outcome {
         }
         // A code that does not fit in 32 bits saturates, so it can never read as 0 (success).
         DEBUG_EXIT => Outcome::Stop(StopReason::DebugExit(u32::try_from(x1).unwrap_or(u32::MAX))),
+        // ANCHOR: smccc_memhash_arm
         DEBUG_MEMHASH => match memhash(ctx.mem, x1, x2, ctx.ctl) {
             Some(h) => Outcome::Return([Some(0), Some(h), None, None]),
             None => ret(INVALID_PARAMETERS),
         },
+        // ANCHOR_END: smccc_memhash_arm
         DEBUG_BOOT_COUNT => Outcome::Return([Some(0), Some(ctx.generation), None, None]),
         _ => ret(NOT_SUPPORTED),
     }
 }
+// ANCHOR_END: smccc_debug_call_fn
 // ANCHOR_END: smccc_debug_calls
 
 /// The static name of the SMCCC function in `x0`, for the exit trace's `fn` field (M4;
@@ -343,9 +358,10 @@ pub fn is_psci(x0: u64) -> bool {
     matches!(function_id(x0) & !0x4000_001f, 0x8400_0000)
 }
 
+// ANCHOR: smccc_memhash
 /// FNV-1a-64 of guest RAM `[ipa, ipa + len)`, or `None` if the range is empty, longer than
 /// [`MAX_MEMHASH_LEN`], overflows, or is not entirely in one RAM region (`checked_add`
-/// inside `check_range`, MEM-2). Also `None` if the VM is stopping mid-hash.
+/// inside `check_range`). Also `None` if the VM is stopping mid-hash.
 pub fn memhash(mem: &dyn GuestMemory, ipa: u64, len: u64, ctl: &VmControl) -> Option<u64> {
     if len > MAX_MEMHASH_LEN || !mem.check_range(GuestAddress(ipa), len) {
         return None;
@@ -372,6 +388,7 @@ pub fn memhash(mem: &dyn GuestMemory, ipa: u64, len: u64, ctl: &VmControl) -> Op
     }
     Some(h)
 }
+// ANCHOR_END: smccc_memhash
 
 /// FNV-1a-64 of a host buffer (tests and the course's reference).
 pub fn fnv1a(bytes: &[u8]) -> u64 {

@@ -2,10 +2,10 @@
 title: TTYs, termios and escape sequences: who owns your keystrokes
 slug: tty-termios
 kind: primer
-minutes: 25
+minutes: 20
 required_by: [09]
 also_used_by: [14, 25]
-lab: ansi-filter
+labs: [ansi-filter]
 runs: mac+browser
 command: printf 'x\033[31my\n' | xxd -p
 expect: 781b5b33316d790a
@@ -480,7 +480,6 @@ it: stray characters at the prompt. With `safe`, the query never reaches the ter
 ## Lab
 
 :::lab ansi-filter
-:::
 
 In the `ansi-filter` lab you paste or type a byte string, with escapes such as `\x1b[31m`, and
 see three views side by side. The first shows the bytes split into tokens (text, C0 control,

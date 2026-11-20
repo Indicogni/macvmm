@@ -1,0 +1,6 @@
+hello from guest, x0=0x*
+guest done
+[stderr] sandbox: open denied, socket denied, spawn denied
+[stderr] rlimit core=0
+!unhandled
+!guest fatal

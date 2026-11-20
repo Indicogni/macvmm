@@ -1,0 +1,52 @@
+# scripts/capture.sh 25: run "phase-smccc" of course/checkpoints/25, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --cpus 4 --mem 64M --stats --kernel {guests}/hostile-smp --timeout 60
+exit: 0
+--- stdout ---
+hostile-smp: 4 cpus, 0 virtio devices, RAM ends at 0x44000000
+hostile-smp: phase 4: cpus=4 random calls=12000 unexpected=0
+hostile-smp: storm: cpu_on successes=224 cpu 3 starts=224 wrong answers=0
+hostile-smp: survived
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: hvc/smc with immediate 0xffff is not SMCCC; returning -1
+macvmm: warn: [vcpu0] guest: unknown SMCCC function 0xb07df10c; returning -1
+macvmm: warn: [vcpu1] guest: hvc/smc with immediate 0xffff is not SMCCC; returning -1
+macvmm: warn: [vcpu0] guest: unknown SMCCC function 0x82000000; returning -1
+macvmm: warn: [vcpu0] guest: unknown SMCCC function 0x1f54987f; returning -1
+macvmm: warn: [vcpu1] guest: unknown SMCCC function 0x86000000; returning -1
+macvmm: warn: [vcpu1] guest: unknown SMCCC function 0x155b4ba5; returning -1
+macvmm: warn: [vcpu0] guest: unknown SMCCC function 0x84000017; returning -1
+macvmm: warn: [vcpu1] guest: unknown SMCCC function 0xedb61286; returning -1
+macvmm: warn: [vcpu0] guest: unknown SMCCC function 0xc6cb98ee; returning -1
+macvmm: warn: [vcpu1] guest: unknown SMCCC function 0xd5bbe113; returning -1
+macvmm: warn: [vcpu0] guest: unknown SMCCC function 0x2cf59ab1; returning -1
+macvmm: warn: [vcpu0] guest: hvc/smc with immediate 0x4d56 is not SMCCC; returning -1
+macvmm: warn: [vcpu1] guest: hvc/smc with immediate 0x1 is not SMCCC; returning -1
+macvmm: warn: [vcpu2] guest: hvc/smc with immediate 0xffff is not SMCCC; returning -1
+macvmm: warn: [vcpu3] guest: hvc/smc with immediate 0xffff is not SMCCC; returning -1
+macvmm: warn: [vcpu1] guest: hvc/smc with immediate 0xffff is not SMCCC; returning -1
+macvmm: warn: [vcpu0] guest: hvc/smc with immediate 0xffff is not SMCCC; returning -1
+macvmm: warn: [vcpu3] guest: hvc/smc with immediate 0xffff is not SMCCC; returning -1
+macvmm: warn: [vcpu1] guest: hvc/smc with immediate 0x1 is not SMCCC; returning -1
+macvmm: warn: [vcpu2] guest: unknown SMCCC function 0xc6004d09; returning -1 (989 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: unknown SMCCC function 0xc6004d0b; returning -1 (999 similar messages suppressed)
+macvmm: warn: [vcpu2] guest: unknown SMCCC function 0x9103373; returning -1 (999 similar messages suppressed)
+macvmm: warn: [vcpu1] guest: unknown SMCCC function 0xc400001c; returning -1 (999 similar messages suppressed)
+macvmm: warn: [vcpu1] guest: unknown SMCCC function 0x86000000; returning -1 (999 similar messages suppressed)
+macvmm: warn: [vcpu3] guest: unknown SMCCC function 0x8400000f; returning -1 (999 similar messages suppressed)
+macvmm: warn: [vcpu1] guest: unknown SMCCC function 0x9ab4b5cc; returning -1 (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: unknown SMCCC function 0xf49b8a13; returning -1 (999 similar messages suppressed)
+macvmm: warn: [vcpu2] guest: unknown SMCCC function 0x8400001b; returning -1 (999 similar messages suppressed)
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=219 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 28170: hvc 28124, smc 14, data abort 32
+macvmm: stats: vcpu0 time: exec 0.014 s, wfi 0.000 s
+macvmm: stats: vcpu1 exits: vtimer 0, wfx 0, total 27924: canceled 1, hvc 27909, smc 14
+macvmm: stats: vcpu1 time: exec 0.012 s, wfi 0.000 s
+macvmm: stats: vcpu2 exits: vtimer 0, wfx 0, total 27934: canceled 1, hvc 27919, smc 14
+macvmm: stats: vcpu2 time: exec 0.011 s, wfi 0.001 s
+macvmm: stats: vcpu3 exits: vtimer 0, wfx 0, total 3151: hvc 3137, smc 14
+macvmm: stats: vcpu3 time: exec 0.001 s, wfi 0.000 s
+macvmm: stats: host cpu 0.175 s over 0.065 s wall (267%)
+macvmm: stats: rlimit core=0 nofile=1048576
+

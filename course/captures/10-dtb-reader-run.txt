@@ -1,0 +1,18 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run in an unmodified copy of the reference; $G is target/guests/aarch64-unknown-none/release. The checkpoint runs the same command on your VMM.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/dtb-reader.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+dtb-reader: x0=0x40000000
+dtb-reader: magic ok
+dtb-reader: model=macvmm-virt
+dtb-reader: memory@40000000 reg=0x40000000+0x4000000
+dtb-reader: pl011@9000000 compatible=arm,pl011
+dtb-reader: cpus=1
+dtb-reader: stdout-path=/pl011@9000000
+dtb-reader: rng-seed nonzero
+dtb-reader: kaslr-seed nonzero
+dtb-reader: done
+
+--- stderr ---

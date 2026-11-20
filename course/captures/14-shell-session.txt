@@ -1,0 +1,14 @@
+# scripts/capture-cmd 14: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Typed at the / # prompt: echo macvmm-shell: $((6*7)), then poweroff -f. Only the last 6 lines of stdout are kept.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=shell" --timeout 30
+exit: 0
+--- stdout ---
+[    0.122833] Run /init as init process\x0d
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+/ # echo macvmm-shell: $((6*7))\x0d
+macvmm-shell: 42\x0d
+/ # poweroff -f\x0d
+[    3.903152] reboot: Power down\x0d
+
+--- stderr ---

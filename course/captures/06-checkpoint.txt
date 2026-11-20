@@ -1,0 +1,15 @@
+# scripts/capture-cmd 06: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The chapter's checkpoint, run against an unmodified copy of the reference (scripts/checkpoint.sh 06 --impl <tree>): what a finished chapter 06 looks like.
+# The journal line reports "not a learner tree" here; in your own learner/ workspace it checks your journal.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 06
+exit: 0
+--- stdout ---
+checkpoint: implementation <tree>
+[PASS] contract tests   dump_format (4 tests)
+[PASS] runs on your Mac regcheck: 6/6 serial markers, exit 0 in 0.05s
+[PASS] runs on your Mac self-fault: 5/5 serial markers, exit 3 in 0.01s
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 06 PASS
+
+--- stderr ---

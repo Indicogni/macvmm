@@ -1,0 +1,86 @@
+# scripts/capture-cmd 21: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# No --disk. At the prompts a script typed: Enter, bdinfo, printenv fdtcontroladdr, fdt addr $fdtcontroladdr; fdt header, md.l 0x40000000 2, poweroff.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --bios .cache/macvmm/u-boot.bin --mem 512M
+exit: 0
+--- stdout ---
+Bloblist at 0 not found (err=-2)\x0d
+alloc space exhausted ptr 400 limit 0\x0d
+Bloblist at 0 not found (err=-2)\x0d
+\x0d
+\x0d
+U-Boot 2026.04 (Apr 21 2026 - 09:17:42 +0000)\x0d
+\x0d
+DRAM:  512 MiB\x0d
+using memory 0x5e65a000-0x5f69a000 for malloc()\x0d
+Core:  14 devices, 8 uclasses, devicetree: board\x0d
+Flash: 0 Bytes\x0d
+Loading Environment from Flash... *** Warning - bad CRC, using default environment\x0d
+\x0d
+In:    serial,usbkbd\x0d
+Out:   serial,vidconsole\x0d
+Err:   serial,vidconsole\x0d
+No USB controllers found\x0d
+Net:   No ethernet found.\x0d
+\x1b[?25h\x0d
+\x1b[2K\x0dHit any key to stop autoboot: 2\x1b[2K\x0dHit any key to stop autoboot: 0\x0d
+=> bdinfo\x0d
+boot_params = 0x0000000000000000\x0d
+DRAM bank   = 0x0000000000000000\x0d
+-> start    = 0x0000000040000000\x0d
+-> size     = 0x0000000020000000\x0d
+flashstart  = 0x0000000000000000\x0d
+flashsize   = 0x0000000000000000\x0d
+flashoffset = 0x0000000000162f78\x0d
+baudrate    = 115200 bps\x0d
+relocaddr   = 0x000000005f69a000\x0d
+reloc off   = 0x000000005f69a000\x0d
+Build       = 64-bit\x0d
+current eth = unknown\x0d
+eth-1addr   = (not set)\x0d
+IP addr     = <NULL>\x0d
+fdt_blob    = 0x000000005e6596e0\x0d
+lmb_dump_all:\x0d
+ memory.count = 0x1\x0d
+ memory[0]	[0x40000000-0x5fffffff], 0x20000000 bytes, flags: none\x0d
+ reserved.count = 0x2\x0d
+ reserved[0]	[0x5d635000-0x5d637fff], 0x3000 bytes, flags: no-notify, no-overwrite\x0d
+ reserved[1]	[0x5d638ff0-0x5fffffff], 0x29c7010 bytes, flags: no-overwrite\x0d
+devicetree  = board\x0d
+serial addr = 0x0000000009000000\x0d
+ width      = 0x0000000000000004\x0d
+ shift      = 0x0000000000000002\x0d
+ offset     = 0x0000000000000000\x0d
+ clock      = 0x0000000000000000\x0d
+arch_number = 0x0000000000000000\x0d
+TLB addr    = 0x000000005ffe0000\x0d
+irq_sp      = 0x000000005e638ff0\x0d
+sp start    = 0x000000005e638ff0\x0d
+Early malloc usage: da8 / 2000\x0d
+=> printenv fdtcontroladdr\x0d
+fdtcontroladdr=5e6596e0\x0d
+=> fdt addr $fdtcontroladdr; fdt header\x0d
+Working FDT set to 5e6596e0\x0d
+magic:			0xd00dfeed\x0d
+totalsize:		0x697 (1687)\x0d
+off_dt_struct:		0x38\x0d
+off_dt_strings:		0x564\x0d
+off_mem_rsvmap:		0x28\x0d
+version:		17\x0d
+last_comp_version:	16\x0d
+boot_cpuid_phys:	0x0\x0d
+size_dt_strings:	0x133\x0d
+size_dt_struct:		0x52c\x0d
+number mem_rsv:		0x0\x0d
+\x0d
+=> md.l 0x40000000 2\x0d
+40000000: edfe0dd0 97060000                    ........\x0d
+=> poweroff\x0d
+poweroff ...\x0d
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x40000000 at offset 0x12c668 (flash is read-only, write 1 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c670 (flash is read-only, write 2 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c678 (flash is read-only, write 3 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c680 (flash is read-only, write 4 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 4-byte write of 0x1 at offset 0xed4 (flash is read-only, write 5 to this bank)

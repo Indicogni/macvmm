@@ -1,0 +1,11 @@
+# scripts/capture-cmd 22: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Hashes the cached download and prints the project's pinned lines for it. FreeBSD publishes the same hash for the .xz file in CHECKSUM.SHA256 next to the image (https://download.freebsd.org/releases/VM-IMAGES/15.1-RELEASE/aarch64/Latest/).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ shasum -a 256 .cache/macvmm/FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.raw.xz; grep -F ufs.raw.xz scripts/fetch-manifest.txt | cut -d ' ' -f 2,3
+exit: 0
+--- stdout ---
+36028829cbd5a74a050d9964cd5fd391c9d12edca1c3d520cbcce257e1d999c8  .cache/macvmm/FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.raw.xz
+FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.raw.xz 36028829cbd5a74a050d9964cd5fd391c9d12edca1c3d520cbcce257e1d999c8
+freebsd-15.1-ufs.raw d7a05077131d07a17c3fb2faf803ff34edf511ddbf796c35934d6d2afc44b959
+
+--- stderr ---

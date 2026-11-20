@@ -1,0 +1,12 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run right after a sandboxed self-test run (cargo run -q -p macvmm -- run --mem 64M --sandbox --sandbox-selftest --kernel <hello> --timeout 10), in the same shell command, so the 10-second window holds only that run.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ log show --last 10s --style compact --predicate 'eventMessage BEGINSWITH "Sandbox: macvmm"'
+exit: 0
+--- stdout ---
+Timestamp               Ty Process[PID:TID]
+2026-11-20 01:14:37.977 E  kernel[0:73ca05c] (Sandbox) Sandbox: macvmm(84685) deny(1) file-read-metadata /etc
+2026-11-20 01:14:37.977 E  kernel[0:73ca05c] (Sandbox) Sandbox: macvmm(84685) deny(1) network-outbound remote:*:1
+2026-11-20 01:14:37.977 E  kernel[0:73ca05c] (Sandbox) Sandbox: macvmm(84685) deny(1) process-fork
+
+--- stderr ---

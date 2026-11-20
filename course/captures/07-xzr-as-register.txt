@@ -1,0 +1,17 @@
+# scripts/capture-cmd 07: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: register number 31 treated as a real register. Two edits: hvf::Reg::x accepts n <= 31 instead of n <= 30 (crates/hvf/src/regs.rs), and MmioAccess::from_data_abort reads regs.x(reg) without the reg == 31 check (crates/vmm/src/vcpu/mmio.rs).
+# Run in a copy of the reference with those edits.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --testdev --raw target/guests/aarch64-unknown-none/release/mmio-probe.bin@0x40080000 --timeout 10
+exit: 6
+--- stdout ---
+mmio-probe: strb/ldrb ok
+mmio-probe: strh/ldrh ok
+mmio-probe: str w/ldr w ok
+mmio-probe: str x/ldr x ok
+mmio-probe: write masked to 1 byte ok
+mmio-probe: FAILED: str xzr stores 0: got 0x400811dc, want 0x0
+guest exception: kind=4 (sync, EL1h) esr=0x8a000000 ec=0x22 elr=0x1115 far=0x1115
+
+--- stderr ---
+macvmm: guest exit code 228

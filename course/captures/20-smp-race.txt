@@ -1,0 +1,28 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --cpus 4 --mem 64M --stats --kernel target/guests/aarch64-unknown-none/release/smp-race --timeout 20
+exit: 0
+--- stdout ---
+smp-race: cpu 0 mpidr=0x80000000 entry=0x40080078
+smp-race: cpu_on(1) first=0 second=-4
+smp-race: cpu 1 up mpidr=0x80000001
+smp-race: cpu 2 up mpidr=0x80000002
+smp-race: cpu_on(3) race: cpu0=0 cpu1=-5 cpu2=-5 successes=1 refused=2
+smp-race: cpu 3 up mpidr=0x80000003
+smp-race: cpu_off(3) affinity=1
+smp-race: cpu 3 back on ctx=0x33 affinity=0
+smp-race: cpu_on(4)=-2 bad_entry=-9 affinity_level1=-2
+smp-race: done
+
+--- stderr ---
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=413 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 430: hvc 430
+macvmm: stats: vcpu0 time: exec 0.000 s, wfi 0.000 s
+macvmm: stats: vcpu1 exits: vtimer 0, wfx 0, total 2: canceled 1, hvc 1
+macvmm: stats: vcpu1 time: exec 0.000 s, wfi 0.000 s
+macvmm: stats: vcpu2 exits: vtimer 0, wfx 0, total 2: canceled 1, hvc 1
+macvmm: stats: vcpu2 time: exec 0.000 s, wfi 0.000 s
+macvmm: stats: vcpu3 exits: vtimer 0, wfx 0, total 2: canceled 1, hvc 1
+macvmm: stats: vcpu3 time: exec 0.000 s, wfi 0.000 s
+macvmm: stats: host cpu 0.003 s over 0.001 s wall (198%)
+macvmm: stats: rlimit core=0 nofile=1048576

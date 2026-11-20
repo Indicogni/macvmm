@@ -5,7 +5,7 @@ kind: primer
 minutes: 30
 required_by: [09]
 also_used_by: [02, 11, 17, 20, 26]
-lab: lock-order
+labs: [lock-order]
 runs: mac+browser
 command: sh -c 'umask 077 && cd "$(mktemp -d)" && touch f && ls -l f | cut -c1-10'
 expect: -rw-------
@@ -850,7 +850,6 @@ and does not use or change the shared position.
 ## Lab
 
 :::lab lock-order
-:::
 
 In the `lock-order` lab you are the scheduler. Two threads, each with a short script of
 `lock` and `unlock` steps on two mutexes, sit side by side; you click which thread takes its next

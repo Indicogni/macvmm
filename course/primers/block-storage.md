@@ -6,7 +6,7 @@ minutes: 30
 runs: mac+browser
 required_by: [18]
 also_used_by: [22]
-lab: durability-ladder
+labs: [durability-ladder]
 command: xxd -s 1080 -l 2 -p disk.img
 expect: 53ef
 objectives:
@@ -570,7 +570,6 @@ blocks that changed.
 ## Lab
 
 :::lab durability-ladder
-:::
 
 In the `durability-ladder` lab you follow one guest `write()` down the five rungs of the ladder:
 guest page cache, a virtio `OUT` request, the host page cache, the drive's cache and flash. Send

@@ -1,0 +1,8 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ xxd -s 0x800000 -l 16 disk.img
+exit: 0
+--- stdout ---
+00800000: 6d61 6376 6d6d 0a6d 6163 766d 6d0a 6d61  macvmm.macvmm.ma
+
+--- stderr ---

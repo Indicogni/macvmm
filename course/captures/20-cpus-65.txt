@@ -1,0 +1,10 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The rest of err.txt is the usage text.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --cpus 65 --kernel target/guests/aarch64-unknown-none/release/hello 2> err.txt; echo "exit $?"; head -n 1 err.txt
+exit: 0
+--- stdout ---
+exit 2
+macvmm: invalid configuration: --cpus must be between 1 and 64
+
+--- stderr ---

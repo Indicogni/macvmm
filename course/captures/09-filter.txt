@@ -1,0 +1,10 @@
+# scripts/capture-cmd 09: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified, stdout a pipe (not a terminal). The capture tool prints the escape byte 0x1b as \x1b.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/tty-hygiene.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+tty-hygiene: start
+\x1b[?1049h\x1b[?25l\x1b[?2004htty-hygiene: done
+
+--- stderr ---

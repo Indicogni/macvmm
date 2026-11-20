@@ -1,0 +1,5 @@
+"pc":"0x40081234","ipa":"0xb000000","wnr":true,"size":8,"reg":9,"value":"0x1111222233334444","action":"mmio","isv":false
+"pc":"0x80081828"
+"action":"inject_abort","isv":false
+!"action":"stop"
+!trace_truncated

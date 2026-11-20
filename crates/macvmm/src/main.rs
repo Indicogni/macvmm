@@ -128,18 +128,22 @@ fn parse_args(argv: Vec<String>, env_log: Option<String>) -> Result<Args, String
 
 fn dispatch(args: Args) -> ExitCode {
     match args.command.as_deref() {
+        // ANCHOR: main_doctor
         Some("doctor") => {
             if let Some(extra) = args.rest.first() {
                 return usage_error(&format!("doctor: unexpected argument {extra:?}"));
             }
             doctor::run(args.log)
         }
+        // ANCHOR_END: main_doctor
+        // ANCHOR: main_first_exit
         Some("first-exit") => {
             if let Some(extra) = args.rest.first() {
                 return usage_error(&format!("first-exit: unexpected argument {extra:?}"));
             }
             first_exit::run()
         }
+        // ANCHOR_END: main_first_exit
         Some("run") => {
             if args.rest.iter().any(|a| a == "--help" || a == "-h") {
                 out(cli::RUN_USAGE.trim_end());
@@ -163,10 +167,10 @@ fn dispatch(args: Args) -> ExitCode {
     }
 }
 
-// ANCHOR: harden_process
 /// Startup hardening, before anything else runs (module docs; PATH-6, PROC-4). Fails closed:
 /// if the core limit cannot be set, macvmm refuses to run rather than risk a core full of
 /// guest RAM.
+// ANCHOR: harden_process
 fn harden_process() -> std::io::Result<()> {
     hvf::host::set_umask(0o077);
     hvf::host::set_rlimit(hvf::host::RLIMIT_CORE, 0)

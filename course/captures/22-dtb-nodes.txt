@@ -1,0 +1,53 @@
+# scripts/capture-cmd 22: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# .cache/qemu.dtb: qemu-system-aarch64 -machine virt,gic-version=3,dumpdtb=.cache/qemu.dtb -cpu max -smp 2 -m 2G. .cache/ours.dtb: the reference macvmm, run --bios .cache/macvmm/u-boot.bin --disk .cache/f.raw --mem 2G --cpus 2 --dry-run --dtb-out .cache/ours.dtb. Lines with < are nodes only QEMU has; lines with > would be nodes only ours has.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ qemu-system-aarch64 --version | head -1; diff <(fdtget -l .cache/qemu.dtb / | sort) <(fdtget -l .cache/ours.dtb / | sort)
+exit: 1
+--- stdout ---
+QEMU emulator version 11.1.2
+1d0
+< aliases
+5,7d3
+< flash@0
+< fw-cfg@9020000
+< gpio-keys
+10d5
+< pcie@10000000
+13,15d7
+< pl061@9030000
+< platform-bus@c000000
+< pmu
+19,49d10
+< virtio_mmio@a000200
+< virtio_mmio@a000400
+< virtio_mmio@a000600
+< virtio_mmio@a000800
+< virtio_mmio@a000a00
+< virtio_mmio@a000c00
+< virtio_mmio@a000e00
+< virtio_mmio@a001000
+< virtio_mmio@a001200
+< virtio_mmio@a001400
+< virtio_mmio@a001600
+< virtio_mmio@a001800
+< virtio_mmio@a001a00
+< virtio_mmio@a001c00
+< virtio_mmio@a001e00
+< virtio_mmio@a002000
+< virtio_mmio@a002200
+< virtio_mmio@a002400
+< virtio_mmio@a002600
+< virtio_mmio@a002800
+< virtio_mmio@a002a00
+< virtio_mmio@a002c00
+< virtio_mmio@a002e00
+< virtio_mmio@a003000
+< virtio_mmio@a003200
+< virtio_mmio@a003400
+< virtio_mmio@a003600
+< virtio_mmio@a003800
+< virtio_mmio@a003a00
+< virtio_mmio@a003c00
+< virtio_mmio@a003e00
+
+--- stderr ---

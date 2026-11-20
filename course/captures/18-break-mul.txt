@@ -1,0 +1,43 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1, second form: in bounds_check, plain sector * SECTOR_SIZE and offset + len (cargo test builds with overflow checks on).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test virtio_blk_hostile
+exit: 101
+--- stdout ---
+
+running 32 tests
+............... 15/32
+random_requests_match_the_model --- FAILED
+sector_times_512_overflow_is_ioerr_not_a_wrap --- FAILED
+......... 26/32
+sector_past_the_end_is_ioerr_and_never_reaches_the_disk --- FAILED
+.....
+failures:
+
+---- random_requests_match_the_model stdout ----
+
+thread 'random_requests_match_the_model' (124867699) panicked at crates/vmm/src/virtio/blk.rs:447:22:
+attempt to multiply with overflow
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- sector_times_512_overflow_is_ioerr_not_a_wrap stdout ----
+
+thread 'sector_times_512_overflow_is_ioerr_not_a_wrap' (124867704) panicked at crates/vmm/src/virtio/blk.rs:447:22:
+attempt to multiply with overflow
+
+---- sector_past_the_end_is_ioerr_and_never_reaches_the_disk stdout ----
+
+thread 'sector_past_the_end_is_ioerr_and_never_reaches_the_disk' (124867703) panicked at crates/vmm/src/virtio/blk.rs:448:19:
+attempt to add with overflow
+
+
+failures:
+    random_requests_match_the_model
+    sector_past_the_end_is_ioerr_and_never_reaches_the_disk
+    sector_times_512_overflow_is_ioerr_not_a_wrap
+
+test result: FAILED. 29 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.58s
+
+
+--- stderr ---
+error: test failed, to rerun pass `-p vmm --test virtio_blk_hostile`

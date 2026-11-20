@@ -180,6 +180,7 @@ fn spawn_watchdog(watch: Arc<Watch>, epoch: Instant, timeout: Duration, seed: u6
     });
 }
 
+// ANCHOR: fuzz_loop
 /// Fuzz one target; returns the number of failures (0 or 1: the run stops at the first).
 fn fuzz(t: &'static Target, o: &Opts, watch: &Watch, epoch: Instant) -> u64 {
     let deadline = Instant::now() + Duration::from_secs(o.seconds);
@@ -228,6 +229,7 @@ fn fuzz(t: &'static Target, o: &Opts, watch: &Watch, epoch: Instant) -> u64 {
     say(&format!("fuzz {}: {iters} iterations, 0 failures", t.name));
     0
 }
+// ANCHOR_END: fuzz_loop
 
 fn main() -> std::process::ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();

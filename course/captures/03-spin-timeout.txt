@@ -1,0 +1,10 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run with the reference monitor; spin.bin is the four bytes 00 00 00 14 made by the printf command in the lesson.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw spin.bin@0x40080000 --timeout 1; echo "exit status $?"
+exit: 0
+--- stdout ---
+exit status 5
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 1s

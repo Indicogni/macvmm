@@ -1,0 +1,36 @@
+# scripts/capture-cmd 21: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# No --disk. At the prompt a script typed: Enter (to stop the countdown), reset.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --bios .cache/macvmm/u-boot.bin --mem 512M --on-reset exit
+exit: 4
+--- stdout ---
+Bloblist at 0 not found (err=-2)\x0d
+alloc space exhausted ptr 400 limit 0\x0d
+Bloblist at 0 not found (err=-2)\x0d
+\x0d
+\x0d
+U-Boot 2026.04 (Apr 21 2026 - 09:17:42 +0000)\x0d
+\x0d
+DRAM:  512 MiB\x0d
+using memory 0x5e65a000-0x5f69a000 for malloc()\x0d
+Core:  14 devices, 8 uclasses, devicetree: board\x0d
+Flash: 0 Bytes\x0d
+Loading Environment from Flash... *** Warning - bad CRC, using default environment\x0d
+\x0d
+In:    serial,usbkbd\x0d
+Out:   serial,vidconsole\x0d
+Err:   serial,vidconsole\x0d
+No USB controllers found\x0d
+Net:   No ethernet found.\x0d
+\x1b[?25h\x0d
+\x1b[2K\x0dHit any key to stop autoboot: 2\x1b[2K\x0dHit any key to stop autoboot: 0\x0d
+=> reset\x0d
+resetting ...\x0d
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x40000000 at offset 0x12c668 (flash is read-only, write 1 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c670 (flash is read-only, write 2 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c678 (flash is read-only, write 3 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c680 (flash is read-only, write 4 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 4-byte write of 0x1 at offset 0xed4 (flash is read-only, write 5 to this bank)
+macvmm: guest requested a reset (exit code 4)

@@ -1,0 +1,23 @@
+# scripts/capture-cmd 08: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference sysreg-probe; the VMM has one added line in sysreg_trap (crates/vmm/src/vcpu/exit.rs) that prints the raw syndrome and PC of every system-register exit to stderr.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/sysreg-probe.bin@0x40080000 --irqchip none --timeout 10
+exit: 0
+--- stdout ---
+sysreg-probe: undef count=1 ec=0x0
+sysreg-probe: elr ok (the mrs at 0x400811ec; Rt untouched)
+sysreg-probe: lo=1 lorid=0x0 undef count=0
+sysreg-probe: lorid ok
+sysreg-probe: mdccsr undef count=0 ec=0xffffffffffffffff
+sysreg-probe: mdccsr FAILED: elr=0x400811ec want 0x40081048, Rt=0x0
+sysreg-probe: oslsr after lock=0xa after unlock=0x8
+sysreg-probe: oslsr ok
+
+--- stderr ---
+sysreg trap: esr=0x6230e419 pc=0x400811ec
+sysreg trap: esr=0x623e2aa9 pc=0x40081244
+macvmm: warn: [vcpu0] guest: vcpu0: MRS PMCR_EL0 at pc 0x400811ec: injecting UNDEF
+sysreg trap: esr=0x62280520 pc=0x400812ec
+sysreg trap: esr=0x622806a3 pc=0x400812f4
+sysreg trap: esr=0x62280500 pc=0x40081304
+sysreg trap: esr=0x62280683 pc=0x4008131c

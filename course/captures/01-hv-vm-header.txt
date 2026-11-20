@@ -1,0 +1,14 @@
+# scripts/capture-cmd 01: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Reads Apple's SDK header on this Mac.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -n 'Creates a VM\|Destroys the VM\|Pass NULL\|Requires all vCPUs\|hv_vm_create(\|hv_vm_destroy(' "$(xcrun --show-sdk-path)/System/Library/Frameworks/Hypervisor.framework/Headers/hv_vm.h"
+exit: 0
+--- stdout ---
+28: @abstract Creates a VM instance for the current process.
+29: @param config Configuration. Pass NULL for the default configuration.
+33:hv_return_t hv_vm_create(hv_vm_config_t _Nullable config);
+36: @abstract Destroys the VM instance associated with the current process.
+39:    Requires all vCPUs be destroyed.
+42:hv_return_t hv_vm_destroy(void);
+
+--- stderr ---

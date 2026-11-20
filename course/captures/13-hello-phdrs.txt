@@ -1,0 +1,22 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The hello guest's program headers, read with the objdump that ships with Xcode's command-line tools (it is LLVM's).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ objdump -p target/guests/aarch64-unknown-none/release/hello
+exit: 0
+--- stdout ---
+
+target/guests/aarch64-unknown-none/release/hello:	file format elf64-littleaarch64
+
+Program Header:
+    LOAD off    0x0000000000010000 vaddr 0x0000000040080000 paddr 0x0000000040080000 align 2**16
+         filesz 0x0000000000002a28 memsz 0x0000000000002a28 flags r-x
+    LOAD off    0x0000000000012a30 vaddr 0x0000000040082a30 paddr 0x0000000040082a30 align 2**16
+         filesz 0x000000000000036a memsz 0x000000000000036a flags r--
+    LOAD off    0x0000000000012da0 vaddr 0x0000000040082da0 paddr 0x0000000040082da0 align 2**16
+         filesz 0x0000000000000000 memsz 0x0000000000080020 flags rw-
+   STACK off    0x0000000000000000 vaddr 0x0000000000000000 paddr 0x0000000000000000 align 2**64
+         filesz 0x0000000000000000 memsz 0x0000000000000000 flags rw-
+
+Dynamic Section:
+
+--- stderr ---

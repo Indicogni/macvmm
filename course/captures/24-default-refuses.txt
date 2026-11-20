@@ -1,0 +1,76 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run with the default build (no experimental-vmapple feature).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/sign-and-run.sh target/debug/macvmm run --machine vmapple --bios /System/Library/Frameworks/Virtualization.framework/Versions/A/Resources/AVPBooter.vmapple2.bin
+exit: 2
+--- stdout ---
+
+--- stderr ---
+macvmm: --machine vmapple: built without experimental-vmapple (rebuild with `--features experimental-vmapple`)
+usage: macvmm run [options]
+
+options:
+  --mem SIZE               guest RAM, e.g. 64M, 2G (default 512M; 64M..255G, a multiple of 2M)
+  --cpus N                 number of vCPUs, 1..64 and at most what this Mac allows (default 1);
+                           vCPU 0 boots, the others wait for PSCI CPU_ON
+  --kernel FILE            an ELF test guest or an arm64 Linux Image (detected from its
+                           bytes; an EFI zboot vmlinuz is refused: run scripts/fetch.sh linux)
+  --initrd FILE            an initramfs for an Image kernel, placed above the kernel
+  --cmdline STRING         the kernel command line for an Image (at most 2047 bytes; default
+                           console=ttyAMA0 earlycon=pl011,<the PL011 address>)
+  --machine BOARD          virt (default) or vmapple (experimental: AVPBooter's first device
+                           accesses, needs a build with --features experimental-vmapple;
+                           it does not boot macOS; at most two per user, an advisory lock
+                           in $HOME/.cache/macvmm/vmapple-slots)
+  --bios FILE              a firmware ROM image, at most 64 MiB (virt: U-Boot in flash
+                           bank 0, entered at 0x0 instead of --kernel; vmapple: default the
+                           system AVPBooter, read in place and never copied)
+  --dry-run                print the boot plan, memory map and device-tree summary, then exit
+                           0 without creating a VM (needs no entitlement)
+  --raw FILE@0xADDR        load FILE's bytes at guest-physical ADDR (repeatable); the first
+                           one is the entry point when there is no --kernel
+  --timeout SECS           stop the guest after SECS seconds (exit code 5)
+  --unhandled-mmio POLICY  fatal (default: exit code 3) or log (read as zero, ignore writes)
+  --trace exits:FILE[:CATS][,max=SIZE]
+                           write one JSON line per VM exit to FILE (created 0600; never a
+                           symlink). CATS: comma-separated mmio,hvc,sysreg,psci,cancel,all
+                           (default all). SIZE caps the file (default 1G)
+  --testdev                map the 512-register test device at 0x0b000000
+  --disk FILE[,ro]         add a virtio-blk disk backed by the raw image FILE (repeatable;
+                           the first is /dev/vda). ,ro opens it read-only. The image is
+                           locked (flock) while macvmm runs; a locked image is refused
+  --rng                    add a virtio-rng device fed by the host CSPRNG (getentropy)
+  --net unixgram:LOCAL,peer=REMOTE[,mac=XX:XX:XX:XX:XX:XX]
+                           add a virtio-net NIC whose wire is a Unix datagram socket bound
+                           at LOCAL; frames go to, and are accepted only from, the socket at
+                           REMOTE (another macvmm's LOCAL). Both must be in a directory you
+                           own that is not group- or world-writable. A stale socket of yours
+                           at LOCAL is replaced; anything else there is refused. Repeatable
+                           (at most 4). Default MAC 02:6d:76 plus 3 random bytes.
+                           unixgram:LOCAL,learn instead locks the peer to the first sender
+                           (logged). No host network access and no entitlement
+  --on-reset ACTION        reboot (default: rebuild the VM in-process) or exit (exit code 4)
+                           when the guest calls PSCI SYSTEM_RESET
+  --debug-hvc, --no-debug-hvc
+                           force the macvmm debug hypercalls on or off (default: on for ELF
+                           and --raw test guests, off for kernels and firmware)
+  --dtb-out FILE           write the generated device tree to FILE (created 0600; never a
+                           symlink), with its rng-seed and kaslr-seed zeroed
+  --serial SINK[,strict|,raw][,max=SIZE]
+                           where the PL011 console goes: stdio (default; also gets stdin, with
+                           Ctrl-A x quit, Ctrl-A t trace ring, Ctrl-A s stats), file:FILE
+                           (created 0600, never a symlink, capped at SIZE, default 1G) or none.
+                           Guest output is filtered for terminal safety; strict shows every
+                           control visibly, raw disables the filter (not recommended)
+  --console SINK[,strict|,raw][,max=SIZE]
+                           add a virtio-console (Linux /dev/hvc0) whose output goes to stdio
+                           or file:FILE, filtered like --serial. At most one of --serial and
+                           --console may be stdio, and that one gets stdin: --console stdio
+                           needs --serial file:FILE or --serial none
+  --stats                  print the console I/O counters, the exit counts, the vCPU exec and
+                           WFI time and the host CPU time when the VM stops
+  --log LEVEL              error|warn|info|debug|trace (default warn; also MACVMM_LOG)
+  --sandbox[=best-effort]  after opening every file, confine macvmm: no file opened by path, no
+                           network, no new process (macOS sandbox, threat model SBX-2). Exits 1
+                           if the sandbox cannot be applied; best-effort warns and runs anyway.
+                           Not with --net ...,learn

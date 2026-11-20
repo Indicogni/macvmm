@@ -4,6 +4,7 @@
 //! started at `_start` with the boot argument in `x0`, DEBUG_PUTC reaches the host's stdout
 //! through the `AnsiFilter`, and PSCI SYSTEM_OFF ends the VM with exit code 0. It works both as
 //! an ELF (`--kernel hello`) and as a flat binary (`--raw hello.bin@0x40080000`).
+// ANCHOR: guest_hello
 #![no_std]
 #![no_main]
 
@@ -15,3 +16,4 @@ fn main(x0: u64) {
     println!("hello from guest, x0={x0:#x}");
     println!("guest done");
 }
+// ANCHOR_END: guest_hello

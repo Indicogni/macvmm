@@ -1,0 +1,12 @@
+# scripts/capture-cmd 17: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The trace of a repeat of the 4 KiB /dev/hvc0 run (count=1) with --trace exits:hvc0.jsonl:mmio added; the console is in slot 0. Its last four doorbell and interrupt records: the 4 KiB write.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep '"ipa":"0xa0000[56]' hvc0.jsonl | tail -4
+exit: 0
+--- stdout ---
+{"t_ns":2819412708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff80007a2a0034","ipa":"0xa000050","wnr":true,"size":4,"reg":1,"value":"0x1","action":"mmio","isv":true}
+{"t_ns":2819523583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff80007a2a0034","ipa":"0xa000050","wnr":true,"size":4,"reg":1,"value":"0x1","action":"mmio","isv":true}
+{"t_ns":2819581666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff80007a2a0884","ipa":"0xa000060","wnr":false,"size":4,"reg":19,"value":"0x1","action":"mmio","isv":true}
+{"t_ns":2819586500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff80007a2a08a4","ipa":"0xa000064","wnr":true,"size":4,"reg":19,"value":"0x1","action":"mmio","isv":true}
+
+--- stderr ---

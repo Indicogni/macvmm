@@ -450,18 +450,18 @@ fn report_lines_have_the_curriculum_shape() {
     assert_eq!(
         report::level_line(
             Status::Pass,
-            "L1 contract",
+            report::CONTRACT,
             "esr_decode (40 tests), mmio_decode (12 tests)"
         ),
-        "[PASS] L1 contract  esr_decode (40 tests), mmio_decode (12 tests)"
+        "[PASS] contract tests   esr_decode (40 tests), mmio_decode (12 tests)"
     );
     assert_eq!(
-        report::level_line(Status::Pass, "L2 run", "mmio-probe: 3/3 serial markers"),
-        "[PASS] L2 run       mmio-probe: 3/3 serial markers"
+        report::level_line(Status::Pass, report::RUNS, "mmio-probe: 3/3 serial markers"),
+        "[PASS] runs on your Mac mmio-probe: 3/3 serial markers"
     );
     assert_eq!(
-        report::level_line(Status::Info, "L3 journal", "4/4 answered"),
-        "[INFO] L3 journal   4/4 answered"
+        report::level_line(Status::Info, report::JOURNAL, "4/4 answered"),
+        "[INFO] journal          4/4 answered"
     );
     assert_eq!(report::verdict("07", true, &[]), "CHECKPOINT 07 PASS");
     assert_eq!(

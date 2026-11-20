@@ -47,6 +47,6 @@ predict = true
 
 [hints]
 conceptual = "A test guest is a few hundred bytes of your own code; every byte it prints is one HVC exit, so you can count exits before you can measure them."
-spec = "SMCCC (course/primers/smccc.md): the macvmm debug calls DEBUG_PUTC 0xC6000001 and DEBUG_EXIT 0xC6000002 (architecture §8.6)."
+spec = "SMCCC (course/primers/smccc.md): the macvmm debug calls DEBUG_PUTC 0xC600_4D01 and DEBUG_EXIT 0xC600_4D02 (SMCCC owner 6; Hypervisor.framework answers 0xC600_0000 to 0xC600_001F itself, so those never exit). PSCI SYSTEM_OFF is 0x8400_0008."
 pseudocode = "parse F@ADDR, check ADDR+len stays inside RAM with checked_add, copy, set PC=ADDR; in the loop: EC 0x16 -> match x0 -> putc / exit."
 anchor = "crates/vmm/src/loader/raw.rs (parse_spec, check_placement)."

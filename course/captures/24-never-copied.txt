@@ -1,0 +1,9 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run at the repository root (build outputs and .cache included) with AVP set to the system AVPBooter path; grep -c prints 0 and exits 1 when nothing matches.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ find . -type f -size "$(stat -f %z "$AVP")c" -not -path './.git/*' -exec shasum -a 256 {} + | grep -c "$(shasum -a 256 "$AVP" | cut -c1-64)"
+exit: 1
+--- stdout ---
+0
+
+--- stderr ---

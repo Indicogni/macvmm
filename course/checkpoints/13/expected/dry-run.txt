@@ -1,0 +1,5 @@
+dtb     0x40000000
+kernel  0x40200000..0x424a0000
+initrd  0x42600000..
+entry   pc=0x40200000 x0=0x40000000 cpsr=0x3c5
+![stderr] HV_DENIED

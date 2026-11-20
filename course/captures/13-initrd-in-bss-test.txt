@@ -1,0 +1,55 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: the same one-line edit to place() in crates/vmm/src/loader/initrd.rs (the initrd starts 4 MiB below align_up(kernel_end, 2 MiB)).
+# Run in a copy of the reference with that one edit; only the boot-plan suite.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test bootplan
+exit: 101
+--- stdout ---
+
+running 4 tests
+one_gib_window_rule --- FAILED
+property_no_overlap_nothing_outside_ram --- FAILED
+initrd_too_large_for_ram --- FAILED
+alpine_numbers --- FAILED
+
+failures:
+
+---- one_gib_window_rule stdout ----
+
+thread 'one_gib_window_rule' (121125805) panicked at crates/vmm/tests/bootplan.rs:111:5:
+assertion `left == right` failed
+  left: Ok((1109393408, 35429285888))
+ right: Ok((1113587712, 35433480192))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- property_no_overlap_nothing_outside_ram stdout ----
+
+thread 'property_no_overlap_nothing_outside_ram' (121125806) panicked at crates/vmm/tests/bootplan.rs:231:9:
+seed 7881690183168229385 iter 0: ram 0x4000000 text_offset 0x0 image_size 0x1614e67 file 312 initrd 0xaf
+
+---- initrd_too_large_for_ram stdout ----
+
+thread 'initrd_too_large_for_ram' (121125804) panicked at crates/vmm/tests/bootplan.rs:93:9:
+assertion `left == right` failed: 0x1a00001: Ok(BootPlan { entry: 1075838976, cpsr: 965, x0: 1073741824, ram: RamRange { base: 1073741824, size: 67108864 }, dtb: Placement { what: "device tree (reserved)", addr: 1073741824, len: 524288 }, dtb_limit: 2097152, images: [Placement { what: "kernel (arm64 Image)", addr: 1075838976, len: 36306944 }, Placement { what: "initrd", addr: 1109393408, len: 27262977 }], elf: None, image: Some(ArmImage { header: ImageHeader { text_offset: 0, image_size: 36306944, flags: 10, page_size: K4, phys_anywhere: true }, load: 1075838976, end: 1112145920, file_len: 64 }), initrd: Some((1109393408, 1136656385)), bootargs: Some("console=ttyAMA0 earlycon=pl011,0x09000000"), firmware: None })
+  left: true
+ right: false
+
+---- alpine_numbers stdout ----
+
+thread 'alpine_numbers' (121125803) panicked at crates/vmm/tests/bootplan.rs:46:5:
+assertion `left == right` failed
+  left: Some((1109393408, 1118393408))
+ right: Some((1113587712, 1122587712))
+
+
+failures:
+    alpine_numbers
+    initrd_too_large_for_ram
+    one_gib_window_rule
+    property_no_overlap_nothing_outside_ram
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+--- stderr ---
+error: test failed, to rerun pass `-p vmm --test bootplan`

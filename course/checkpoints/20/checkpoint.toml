@@ -1,0 +1,84 @@
+# Checkpoint 20 `smp`: one host thread per vCPU, PSCI CPU_ON, CPU_OFF and AFFINITY_INFO under
+# races, the MPIDR that the device tree, the power table and the redistributor agree on, and Linux
+# on 4 and 64 CPUs. The Linux runs need `scripts/fetch.sh linux` (Image-virt and
+# initramfs-test.img in .cache/macvmm/). The whole checkpoint takes one to three minutes.
+id = "20"
+slug = "smp"
+requires = ["18", "12"]
+
+# Eight threads race CPU_ON at one target and exactly one wins (500 rounds); CPU_OFF then CPU_ON
+# with AFFINITY_INFO right at each step; a CPU_ON storm at a target that keeps turning itself off
+# starts it once per SUCCESS; independent targets; a stop wakes every parked vCPU;
+# mpidr(17) = 0x8000_0101; the 4-CPU, 1 GiB device tree against its golden file (when dtc is
+# installed). Host only.
+[contract]
+tests = ["contract/psci_smp.rs"]
+
+# (a) The bare-metal smp-race guest on 4 vCPUs: CPU_ON twice (the second is refused with -4 or
+# -5), a three-way CPU_ON race with exactly one winner, CPU_OFF then AFFINITY_INFO = 1, CPU_ON
+# again with its context, and the refusals. `--stats` proves, on stderr, that vCPU threads 1
+# and 3 existed: a guest cannot print there.
+[[run]]
+name = "race"
+guest = "smp-race"
+args = ["run", "--cpus", "4", "--mem", "64M", "--stats", "--kernel", "{guest}", "--timeout", "20"]
+expect_exit_code = 0
+serial = "expected/smp-race.txt"
+
+# (b) Linux on 4 vCPUs and 1 GiB: every secondary started through PSCI, timer interrupts and
+# IPIs on all four.
+[[run]]
+name = "linux-4cpu"
+args = ["run", "--kernel", "{repo}/.cache/macvmm/Image-virt", "--initrd", "{repo}/.cache/macvmm/initramfs-test.img", "--cpus", "4", "--mem", "1G", "--on-reset", "exit", "--stats", "--timeout", "60", "--cmdline", "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=smp"]
+expect_exit_code = 0
+serial = "expected/linux-smp.txt"
+
+# (c) Three rounds of every secondary offline (CPU_OFF, polled with AFFINITY_INFO) and online
+# again. Linux prints `psci: CPUn killed (polled …)` only once AFFINITY_INFO reports OFF, so all
+# 9 kills must have that form.
+[[run]]
+name = "hotplug-3x"
+command = ["/bin/sh", "-c", "\"$0\" run --kernel \"$1/.cache/macvmm/Image-virt\" --initrd \"$1/.cache/macvmm/initramfs-test.img\" --cpus 4 --mem 512M --on-reset exit --stats --timeout 60 --cmdline 'console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=smp-hotplug' > \"$2/hotplug.out\"; rc=$?; cat \"$2/hotplug.out\"; n=$(grep -c ' killed (polled ' \"$2/hotplug.out\"); echo \"clean PSCI CPU kills: $n\"; [ \"$n\" -eq 9 ] || exit 1; exit \"$rc\"", "{macvmm}", "{repo}", "{out}"]
+timeout = 70
+expect_exit_code = 0
+serial = "expected/hotplug.txt"
+
+# (d) 30 s of parallel disk reads and console output on all 4 CPUs, from a 64 MiB read-only
+# disk of random bytes: no RCU stall warning, no soft lockup, every worker made at least one
+# pass, and the image is byte-for-byte unchanged afterwards.
+[[run]]
+name = "stress-4cpu"
+command = ["/bin/sh", "-c", "d=\"$2/disk.img\"; head -c 67108864 /dev/urandom > \"$d\"; h=$(shasum -a 256 < \"$d\"); \"$0\" run --kernel \"$1/.cache/macvmm/Image-virt\" --initrd \"$1/.cache/macvmm/initramfs-test.img\" --cpus 4 --mem 512M --disk \"$d,ro\" --on-reset exit --stats --timeout 90 --cmdline 'console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=smp-stress' > \"$2/stress.out\"; rc=$?; cat \"$2/stress.out\"; ok=1; for c in 0 1 2 3; do grep -q \"macvmm-smp: cpu$c pass \" \"$2/stress.out\" || { echo \"stress: worker cpu$c made no pass\"; ok=0; }; done; [ \"$ok\" -eq 1 ] && echo 'stress: every worker made progress'; if [ \"$h\" = \"$(shasum -a 256 < \"$d\")\" ]; then echo 'stress: the read-only image is unchanged'; else echo 'stress: the read-only image changed'; ok=0; fi; [ \"$ok\" -eq 1 ] || exit 1; exit \"$rc\"", "{macvmm}", "{repo}", "{out}"]
+timeout = 100
+expect_exit_code = 0
+serial = "expected/stress.txt"
+
+# (e) 64 vCPUs, the cap (`macvmm doctor` prints what your Mac allows), with 2 GiB: Linux brings
+# up all 64, and the last thread, vCPU 63, existed. It took 8 to 10 s on an idle Apple M5 Pro
+# and 105 s on a busy one, hence the long timeout.
+[[run]]
+name = "linux-64cpu"
+args = ["run", "--kernel", "{repo}/.cache/macvmm/Image-virt", "--initrd", "{repo}/.cache/macvmm/initramfs-test.img", "--cpus", "64", "--mem", "2G", "--on-reset", "exit", "--stats", "--timeout", "240", "--cmdline", "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=smp"]
+timeout = 250
+expect_exit_code = 0
+serial = "expected/linux-smp-64.txt"
+
+# (f) 65 is refused as a usage error, exit code 2, before any input is read or any VM exists.
+[[run]]
+name = "refuse-65"
+guest = "hello"
+args = ["run", "--cpus", "65", "--kernel", "{guest}"]
+timeout = 10
+expect_exit_code = 2
+serial = "expected/cpus-65.txt"
+
+[journal]
+file = "journal/20.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "Create every vCPU at startup, in index order, each on its own host thread: Hypervisor.framework ties a vCPU to the thread that created it, and the redistributors follow creation order. A secondary parks on its own mutex and condition variable until CPU_ON leaves an entry point and a context in its mailbox. Every PSCI answer is decided under that one per-target mutex, so a race has exactly one winner. Every other thread stops a running vCPU only by setting the stop flag and then kicking it."
+spec = "Arm DEN 0022 (PSCI 1.1): 5.1.4 CPU_ON (return codes, and what the new CPU finds in x0), 5.1.3 CPU_OFF, 5.1.5 AFFINITY_INFO (0 ON, 1 OFF, 2 ON_PENDING; level 0 only here). Arm ARM: the MPIDR_EL1 register page (Aff0, Aff1, bit 31). The Devicetree Specification's /cpus node (reg = the affinity). hv_vcpu.h: hv_vcpus_exit and hv_vcpu_run."
+pseudocode = "mpidr(i) = 0x8000_0000 | (i / 16) << 8 | (i % 16). cpu_on(target, entry, ctx): i = index_of(target) else INVALID_PARAMETERS; entry not 4-byte aligned or outside RAM and ROM -> INVALID_ADDRESS; lock state[i]: On -> ALREADY_ON, OnPending -> ON_PENDING, Off -> mailbox = (entry, ctx), state = OnPending, notify, SUCCESS. park(i): lock; while no mailbox: if stop -> None; wait; take mailbox, state = On. cpu_off(i): lock; state = Off, mailbox = none. affinity_info(target, level): level != 0 or unknown target -> INVALID_PARAMETERS; else the state as 0, 1 or 2. Stop: set the flag, then wake_all and kick every vCPU."
+anchor = "crates/vmm/src/psci.rs (Psci::cpu_on, park, cpu_off, affinity_info, wake_all), crates/vmm/src/vcpu/manager.rs (the spawn loop, the rendezvous and the start gate), crates/vmm/src/vcpu/wait.rs (wait_for), crates/vmm/src/arch/regs.rs (mpidr), crates/vmm/src/fdt/machine.rs (the cpu@N nodes), crates/macvmm/src/cli.rs (--cpus)."

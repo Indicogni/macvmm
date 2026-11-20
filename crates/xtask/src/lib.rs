@@ -14,11 +14,14 @@ pub mod anchors;
 // M18: one member out of an Alpine .apk (u-boot.bin).
 pub mod apk;
 pub mod audit;
+// Course kit: the lesson lint and ad-hoc captures (scripts/check-lessons, scripts/capture-cmd).
+pub mod capture;
 pub mod checkpoint;
 pub mod cpio;
 pub mod disk;
 pub mod image_audit;
 pub mod learner;
+pub mod lessons;
 pub mod rootfs;
 pub mod rust_lex;
 // M19: a stream (FreeBSD's `xz -dc`) to a sparse raw image.

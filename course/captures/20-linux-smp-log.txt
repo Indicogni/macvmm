@@ -1,0 +1,26 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# boot.txt is the serial log of the run in 20-linux-smp-run; tr removes the carriage returns the guest sends.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -a -e 'smp:' -e 'psci:' -e 'CPU[0-9]:' -e 'macvmm-smp' boot.txt | tr -d '\r'
+exit: 0
+--- stdout ---
+[    0.000000] psci: probing for conduit method from DT.
+[    0.000000] psci: PSCIv1.1 detected in firmware.
+[    0.000000] psci: Using standard PSCI v0.2 function IDs
+[    0.000000] psci: Trusted OS migration not required
+[    0.000000] psci: SMC Calling Convention v1.1
+[    0.000000] GICv3: CPU0: found redistributor 0 region 0:0x00000000080a0000
+[    0.006726] smp: Bringing up secondary CPUs ...
+[    0.007160] GICv3: CPU1: found redistributor 1 region 0:0x00000000080c0000
+[    0.007192] CPU1: Booted secondary processor 0x0000000001 [0x610f0000]
+[    0.007362] GICv3: CPU2: found redistributor 2 region 0:0x00000000080e0000
+[    0.007390] CPU2: Booted secondary processor 0x0000000002 [0x610f0000]
+[    0.007537] GICv3: CPU3: found redistributor 3 region 0:0x0000000008100000
+[    0.007567] CPU3: Booted secondary processor 0x0000000003 [0x610f0000]
+[    0.007624] smp: Brought up 1 node, 4 CPUs
+macvmm-smp: nproc=4
+macvmm-smp: online=0-3
+macvmm-smp: timer irqs on 4 cpus
+macvmm-smp: ipis on 4 cpus total 1533
+
+--- stderr ---

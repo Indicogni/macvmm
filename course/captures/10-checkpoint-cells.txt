@@ -1,0 +1,16 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1: the root node's #address-cells in crates/vmm/src/fdt/machine.rs changed from 2 to 1; nothing else.
+# Run as scripts/checkpoint.sh 10 --impl . inside a copy of the reference with that edit; your own run targets learner/.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 10
+exit: 1
+--- stdout ---
+[PASS] contract tests   fdt_writer (9 tests)
+[PASS] runs on your Mac dtb-reader: 10/10 serial markers, exit 0 in 0.13s
+[PASS] runs on your Mac hello-x0: 2/2 serial markers, exit 0 in 0.01s
+[FAIL] runs on your Mac dtc-clean: expected/dtc-clean.txt:2: forbidden marker "Warning" appears on stdout (1/1 serial markers matched before it)
+    stderr (last lines):
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 10 FAIL
+
+--- stderr ---

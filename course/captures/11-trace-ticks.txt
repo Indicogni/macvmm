@@ -1,0 +1,15 @@
+# scripts/capture-cmd 11: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified (a copy of it); the guest's printing is sent to /dev/null and the trace's printing exits (DEBUG_PUTC hvc calls) are filtered out, leaving the first seven timer-related exits.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --irqchip none --mem 64M --raw {guests}/timer-nogic.bin@0x40080000 --trace exits:t.jsonl:all --timeout 10 > /dev/null; grep -v DEBUG_PUTC t.jsonl | head -7
+exit: 0
+--- stdout ---
+{"t_ns":1065541,"vcpu":0,"reason":"exception","ec":"0x1","pc":"0x40081188"}
+{"t_ns":106099666,"vcpu":0,"reason":"vtimer","pc":"0x4008118c"}
+{"t_ns":107359083,"vcpu":0,"reason":"canceled","pc":"0x40081044"}
+{"t_ns":107512291,"vcpu":0,"reason":"exception","ec":"0x1","pc":"0x40081188"}
+{"t_ns":212565000,"vcpu":0,"reason":"vtimer","pc":"0x4008118c"}
+{"t_ns":213832875,"vcpu":0,"reason":"canceled","pc":"0x4008118c"}
+{"t_ns":214044250,"vcpu":0,"reason":"exception","ec":"0x1","pc":"0x40081188"}
+
+--- stderr ---

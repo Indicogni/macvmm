@@ -1,0 +1,41 @@
+# scripts/capture-cmd 15: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The trace from 15-probe-rng.txt: every exit at slot 0, in order; fields ipa, wnr (true = a write) and value (the size field is cut).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -o '"ipa":"0xa0000[^}]*' /tmp/ch15/rng.jsonl | cut -d, -f1,2,5
+exit: 0
+--- stdout ---
+"ipa":"0xa000000","wnr":false,"value":"0x74726976"
+"ipa":"0xa000004","wnr":false,"value":"0x2"
+"ipa":"0xa000000","wnr":false,"value":"0x0"
+"ipa":"0xa000000","wnr":false,"value":"0x0"
+"ipa":"0xa000000","wnr":false,"value":"0x0"
+"ipa":"0xa000008","wnr":false,"value":"0x4"
+"ipa":"0xa000070","wnr":true,"value":"0x0"
+"ipa":"0xa000070","wnr":true,"value":"0x1"
+"ipa":"0xa000070","wnr":true,"value":"0x3"
+"ipa":"0xa000014","wnr":true,"value":"0x1"
+"ipa":"0xa000010","wnr":false,"value":"0x1"
+"ipa":"0xa000024","wnr":true,"value":"0x0"
+"ipa":"0xa000020","wnr":true,"value":"0x0"
+"ipa":"0xa000024","wnr":true,"value":"0x1"
+"ipa":"0xa000020","wnr":true,"value":"0x1"
+"ipa":"0xa000070","wnr":true,"value":"0xb"
+"ipa":"0xa000070","wnr":false,"value":"0xb"
+"ipa":"0xa000008","wnr":false,"value":"0x4"
+"ipa":"0xa000030","wnr":true,"value":"0x0"
+"ipa":"0xa000034","wnr":false,"value":"0x40"
+"ipa":"0xa000038","wnr":true,"value":"0x10"
+"ipa":"0xa000080","wnr":true,"value":"0x40085000"
+"ipa":"0xa000084","wnr":true,"value":"0x0"
+"ipa":"0xa000090","wnr":true,"value":"0x40085400"
+"ipa":"0xa000094","wnr":true,"value":"0x0"
+"ipa":"0xa0000a0","wnr":true,"value":"0x40085800"
+"ipa":"0xa0000a4","wnr":true,"value":"0x0"
+"ipa":"0xa000044","wnr":true,"value":"0x1"
+"ipa":"0xa000070","wnr":true,"value":"0xf"
+"ipa":"0xa000070","wnr":false,"value":"0xf"
+"ipa":"0xa000050","wnr":true,"value":"0x0"
+"ipa":"0xa000060","wnr":false,"value":"0x1"
+"ipa":"0xa000064","wnr":true,"value":"0x1"
+
+--- stderr ---

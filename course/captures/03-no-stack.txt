@@ -1,0 +1,11 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: the one instruction mov sp, x10 deleted from _start in guests/common/start.rs (the stack pointer is never set); built in a copy of the guests, run with the unmodified reference monitor from the repository root, every exit traced.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/hello.bin@0x40080000 --trace exits:nosp.jsonl --timeout 2; echo "exit status $?"; cat nosp.jsonl
+exit: 0
+--- stdout ---
+exit status 5
+{"t_ns":2002196583,"vcpu":0,"reason":"canceled","pc":"0x40080a00"}
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 2s

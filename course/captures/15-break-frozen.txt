@@ -1,0 +1,25 @@
+# scripts/capture-cmd 15: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1: in VirtioMmio::selected_writable the 'frozen ||' test is deleted, and in selected_writable_ready the early return after DRIVER_OK is deleted, so queue registers accept writes after DRIVER_OK. The broken copy is built and checked in its own tree.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 15 --impl <tree>
+exit: 1
+--- stdout ---
+checkpoint: implementation <tree>
+[FAIL] L1 contract  virtio_mmio_state: 1 failed: queue_registers_are_frozen_after_driver_ok
+    ---- queue_registers_are_frozen_after_driver_ok stdout ----
+    
+    thread 'queue_registers_are_frozen_after_driver_ok' (123480609) panicked at tests/virtio_mmio_state.rs:292:5:
+    assertion failed: !f.t.queue(1).unwrap().ready()
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+    
+    
+    failures:
+        queue_registers_are_frozen_after_driver_ok
+    
+    test result: FAILED. 23 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+    
+[PASS] L2 run       probe-empty: 4/4 serial markers, exit 0 in 0.20s
+[INFO] L3 journal   not checked (not a learner tree)
+CHECKPOINT 15 FAIL
+
+--- stderr ---

@@ -75,6 +75,7 @@ pub fn parse_spec(s: &str) -> Result<RawSpec, RawSpecError> {
 }
 // ANCHOR_END: raw_parse_spec
 
+// ANCHOR: raw_check_placement
 /// Check that `len` bytes at `addr` fit inside guest RAM, and describe the placement.
 pub fn check_placement(
     ram: RamRange,
@@ -88,6 +89,7 @@ pub fn check_placement(
     }
     Ok(Placement { what, addr, len })
 }
+// ANCHOR_END: raw_check_placement
 
 #[cfg(test)]
 #[allow(

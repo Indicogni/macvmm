@@ -1,0 +1,27 @@
+# scripts/capture-cmd 17: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified, booted to the test initramfs's shell. A script typed this one line at the guest's shell 2 seconds after start: modprobe virtio_mmio; modprobe virtio-rng; sleep 1; dd if=/dev/hwrng bs=1M count=1 | wc -c; poweroff -f
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --rng --on-reset exit --timeout 30 --stats --trace exits:rng.jsonl:mmio --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 quiet"
+exit: 0
+--- stdout ---
+[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x610f0000]\x0d
+[    0.000000] Linux version 6.18.60-0-virt (buildozer@build-3-24-aarch64) (cc (Alpine 15.2.0) 15.2.0, GNU ld (GNU Binutils) 2.45.1) #1-Alpine SMP PREEMPT_DYNAMIC 2026-11-01 07:26:31\x0d
+[    0.000000] random: crng init done\x0d
+[    0.000000] Machine model: macvmm-virt\x0d
+[    0.000000] earlycon: pl11 at MMIO 0x0000000009000000 (options '')\x0d
+[    0.000000] printk: legacy bootconsole [pl11] enabled\x0d
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+/ # modprobe virtio_mmio; modprobe virtio-rng; sleep 1; dd if=/dev/hwrng bs=1M c\x0d\x0d
+ount=1 | wc -c; poweroff -f\x0d
+1+0 records in\x0d
+1+0 records out\x0d
+1048576 bytes (1.0MB) copied, 0.386095 seconds, 2.6MB/s\x0d
+1048576\x0d
+[    3.184179] reboot: Power down\x0d
+
+--- stderr ---
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=753 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=3
+macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 51684: hvc 16, sysreg 2, data abort 51666
+macvmm: stats: vcpu0 time: exec 0.159 s, wfi 2.813 s
+macvmm: stats: host cpu 0.536 s over 3.197 s wall (17%)
+macvmm: stats: rlimit core=0 nofile=1048576

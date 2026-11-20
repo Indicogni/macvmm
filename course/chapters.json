@@ -138,7 +138,9 @@
         "syscall-stepper"
       ],
       "primers": [
-        "os-basics",
+        "os-basics"
+      ],
+      "primers_linked": [
         "codesign-entitlements"
       ],
       "prereqs": [],
@@ -164,6 +166,7 @@
         "codesign-entitlements",
         "os-basics"
       ],
+      "primers_linked": [],
       "prereqs": [
         "00"
       ],
@@ -187,7 +190,9 @@
       ],
       "primers": [
         "aarch64-reading",
-        "os-basics",
+        "os-basics"
+      ],
+      "primers_linked": [
         "page-granules",
         "host-concurrency"
       ],
@@ -212,10 +217,12 @@
         "linker-map"
       ],
       "primers": [
-        "os-basics",
         "bare-metal-rust",
         "smccc",
-        "aarch64-reading",
+        "aarch64-reading"
+      ],
+      "primers_linked": [
+        "os-basics",
         "elf"
       ],
       "prereqs": [
@@ -239,8 +246,10 @@
         "gpa-translator"
       ],
       "primers": [
+        "page-granules"
+      ],
+      "primers_linked": [
         "aarch64-reading",
-        "page-granules",
         "memory-ordering",
         "caches"
       ],
@@ -269,6 +278,7 @@
         "page-granules",
         "os-basics"
       ],
+      "primers_linked": [],
       "prereqs": [
         "04"
       ],
@@ -293,6 +303,7 @@
         "arm64-boot-protocol",
         "page-tables"
       ],
+      "primers_linked": [],
       "prereqs": [
         "05"
       ],
@@ -318,6 +329,7 @@
         "reading-arm-specs",
         "aarch64-reading"
       ],
+      "primers_linked": [],
       "prereqs": [
         "06"
       ],
@@ -344,6 +356,7 @@
         "os-basics",
         "aarch64-reading"
       ],
+      "primers_linked": [],
       "prereqs": [
         "07"
       ],
@@ -374,6 +387,7 @@
         "os-basics",
         "reading-arm-specs"
       ],
+      "primers_linked": [],
       "prereqs": [
         "08"
       ],
@@ -395,9 +409,11 @@
         "dtb-explorer"
       ],
       "primers": [
-        "aarch64-reading",
         "arm64-boot-protocol",
-        "reading-arm-specs",
+        "reading-arm-specs"
+      ],
+      "primers_linked": [
+        "aarch64-reading",
         "linux-boot-sequence"
       ],
       "prereqs": [
@@ -425,6 +441,7 @@
         "os-basics",
         "host-concurrency"
       ],
+      "primers_linked": [],
       "prereqs": [
         "10"
       ],
@@ -448,6 +465,7 @@
       "primers": [
         "reading-arm-specs"
       ],
+      "primers_linked": [],
       "prereqs": [
         "11"
       ],
@@ -477,7 +495,9 @@
         "cpio-initramfs",
         "efi-zboot",
         "caches",
-        "bare-metal-rust",
+        "bare-metal-rust"
+      ],
+      "primers_linked": [
         "uefi"
       ],
       "prereqs": [
@@ -508,6 +528,7 @@
         "tty-termios",
         "cpio-initramfs"
       ],
+      "primers_linked": [],
       "prereqs": [
         "13"
       ],
@@ -532,6 +553,7 @@
       "primers": [
         "reading-arm-specs"
       ],
+      "primers_linked": [],
       "prereqs": [
         "14"
       ],
@@ -556,6 +578,7 @@
       "primers": [
         "memory-ordering"
       ],
+      "primers_linked": [],
       "prereqs": [
         "15"
       ],
@@ -578,6 +601,7 @@
         "memory-ordering",
         "host-concurrency"
       ],
+      "primers_linked": [],
       "prereqs": [
         "16"
       ],
@@ -603,6 +627,7 @@
         "block-storage",
         "linux-boot-sequence"
       ],
+      "primers_linked": [],
       "prereqs": [
         "17"
       ],
@@ -627,6 +652,7 @@
         "unix-sockets",
         "codesign-entitlements"
       ],
+      "primers_linked": [],
       "prereqs": [
         "18"
       ],
@@ -652,6 +678,7 @@
         "host-concurrency",
         "smccc"
       ],
+      "primers_linked": [],
       "prereqs": [
         "18",
         "12"
@@ -680,6 +707,7 @@
         "aarch64-reading",
         "efi-zboot"
       ],
+      "primers_linked": [],
       "prereqs": [
         "18",
         "20"
@@ -706,6 +734,7 @@
         "primecell-ids",
         "linux-boot-sequence"
       ],
+      "primers_linked": [],
       "prereqs": [
         "21",
         "20"
@@ -728,6 +757,7 @@
       "primers": [
         "codesign-entitlements"
       ],
+      "primers_linked": [],
       "prereqs": [
         "14"
       ],
@@ -749,6 +779,7 @@
         "vmapple-map"
       ],
       "primers": [],
+      "primers_linked": [],
       "prereqs": [
         "21",
         "23"
@@ -775,6 +806,7 @@
         "tty-termios",
         "codesign-entitlements"
       ],
+      "primers_linked": [],
       "prereqs": [
         "16"
       ],
@@ -801,6 +833,7 @@
         "page-granules",
         "macos-sandbox"
       ],
+      "primers_linked": [],
       "prereqs": [
         "20",
         "12"
@@ -828,6 +861,7 @@
         "page-tables",
         "elf"
       ],
+      "primers_linked": [],
       "prereqs": [
         "08",
         "18",
@@ -851,6 +885,16 @@
         "09",
         "11"
       ],
+      "required_by": [
+        "00",
+        "01",
+        "02",
+        "05",
+        "08",
+        "09",
+        "11"
+      ],
+      "linked_from": [],
       "minutes": 30,
       "labs": [
         "syscall-stepper"
@@ -861,13 +905,22 @@
     {
       "slug": "codesign-entitlements",
       "title": "Code signing and entitlements",
-      "covers": "**Need to know** (10 minutes): \"macOS will not let an unsigned program use the virtualization hardware; we sign ours ad hoc with one permission, `com.apple.security.hypervisor`, and the kernel checks it when we call\", plus how to read `codesign -d --entitlements :-`. **Going deeper** (optional until ch19 and ch25): ad-hoc signing, entitlements, why `com.apple.security.hypervisor` is checked at run time (AMFI and the kernel, each claim `[V]` or cited), the hardened runtime and why `DYLD_*` injection matters, restricted entitlements and provisioning profiles (`com.apple.vm.networking`), and a plain statement that macvmm needs no SIP change and no sudo, with the reason",
+      "covers": "**Need to know** (10 minutes): \"macOS will not let an unsigned program use the virtualization hardware; we sign ours ad hoc with one permission, `com.apple.security.hypervisor`, and the kernel checks it when we call\", plus how to read `codesign -d --entitlements -`. **Going deeper** (optional until ch19 and ch25): ad-hoc signing, entitlements, why `com.apple.security.hypervisor` is checked at run time (AMFI and the kernel, each claim `[V]` or cited), the hardened runtime and why `DYLD_*` injection matters, restricted entitlements and provisioning profiles (`com.apple.vm.networking`), and a plain statement that macvmm needs no SIP change and no sudo, with the reason",
       "first_required_by": "01",
       "also_used_by": [
         "00",
         "19",
         "23",
         "25"
+      ],
+      "required_by": [
+        "01",
+        "19",
+        "23",
+        "25"
+      ],
+      "linked_from": [
+        "00"
       ],
       "minutes": 20,
       "labs": [],
@@ -885,6 +938,14 @@
         "08",
         "21"
       ],
+      "required_by": [
+        "02",
+        "03",
+        "07",
+        "08",
+        "21"
+      ],
+      "linked_from": [],
       "minutes": 30,
       "labs": [],
       "file": "course/primers/aarch64-reading.md",
@@ -892,13 +953,19 @@
     },
     {
       "slug": "smccc",
-      "title": "The SMC Calling Convention",
+      "title": "SMCCC: the calling convention for calls to a higher level",
       "covers": "SMC Calling Convention: function-ID fields, conduits, registers as the API (builds on AAPCS64 from `aarch64-reading`)",
       "first_required_by": "03",
       "also_used_by": [
         "08",
         "20"
       ],
+      "required_by": [
+        "03",
+        "08",
+        "20"
+      ],
+      "linked_from": [],
       "minutes": 20,
       "labs": [],
       "file": "course/primers/smccc.md",
@@ -912,6 +979,11 @@
       "also_used_by": [
         "13"
       ],
+      "required_by": [
+        "03",
+        "13"
+      ],
+      "linked_from": [],
       "minutes": 25,
       "labs": [
         "linker-map"
@@ -929,6 +1001,14 @@
         "05",
         "26"
       ],
+      "required_by": [
+        "04",
+        "05",
+        "26"
+      ],
+      "linked_from": [
+        "02"
+      ],
       "minutes": 15,
       "labs": [],
       "file": "course/primers/page-granules.md",
@@ -944,6 +1024,13 @@
         "21",
         "27"
       ],
+      "required_by": [
+        "05",
+        "06",
+        "21",
+        "27"
+      ],
+      "linked_from": [],
       "minutes": 30,
       "labs": [],
       "file": "course/primers/page-tables.md",
@@ -957,6 +1044,13 @@
       "also_used_by": [
         "04",
         "27"
+      ],
+      "required_by": [
+        "13",
+        "27"
+      ],
+      "linked_from": [
+        "04"
       ],
       "minutes": 20,
       "labs": [
@@ -974,6 +1068,12 @@
         "10",
         "13"
       ],
+      "required_by": [
+        "06",
+        "10",
+        "13"
+      ],
+      "linked_from": [],
       "minutes": 25,
       "labs": [],
       "file": "course/primers/arm64-boot-protocol.md",
@@ -991,6 +1091,15 @@
         "12",
         "15"
       ],
+      "required_by": [
+        "07",
+        "08",
+        "09",
+        "10",
+        "12",
+        "15"
+      ],
+      "linked_from": [],
       "minutes": 25,
       "labs": [],
       "file": "course/primers/reading-arm-specs.md",
@@ -1008,6 +1117,16 @@
         "20",
         "26"
       ],
+      "required_by": [
+        "09",
+        "11",
+        "17",
+        "20",
+        "26"
+      ],
+      "linked_from": [
+        "02"
+      ],
       "minutes": 30,
       "labs": [
         "lock-order"
@@ -1017,13 +1136,19 @@
     },
     {
       "slug": "unix-signals",
-      "title": "Unix signals and exit codes",
+      "title": "Unix signals: who decides how a program ends",
       "covers": "(new) what a signal is, default actions, exit status `128 + n`, async-signal safety, the self-pipe trick; SIGINT, SIGTERM and SIGUSR1 as macvmm uses them",
       "first_required_by": "09",
       "also_used_by": [
         "14",
         "26"
       ],
+      "required_by": [
+        "09",
+        "14",
+        "26"
+      ],
+      "linked_from": [],
       "minutes": 15,
       "labs": [],
       "file": "course/primers/unix-signals.md",
@@ -1031,13 +1156,19 @@
     },
     {
       "slug": "tty-termios",
-      "title": "TTYs, raw mode and escape sequences",
+      "title": "TTYs, termios and escape sequences: who owns your keystrokes",
       "covers": "(new) TTY, pty and `script`; canonical versus raw mode, echo, how the line discipline turns Ctrl-C into SIGINT, `stty -g`; escape sequences (CSI, OSC, DCS) and why bytes from a guest can change, query or spoof the host terminal",
       "first_required_by": "09",
       "also_used_by": [
         "14",
         "25"
       ],
+      "required_by": [
+        "09",
+        "14",
+        "25"
+      ],
+      "linked_from": [],
       "minutes": 20,
       "labs": [
         "ansi-filter"
@@ -1054,6 +1185,12 @@
         "14",
         "22"
       ],
+      "required_by": [
+        "09",
+        "14",
+        "22"
+      ],
+      "linked_from": [],
       "minutes": 15,
       "labs": [],
       "file": "course/primers/primecell-ids.md",
@@ -1061,12 +1198,19 @@
     },
     {
       "slug": "elf",
-      "title": "ELF64 in 20 minutes",
+      "title": "ELF: the file the linker hands you",
       "covers": "ELF64 headers and program headers, `filesz` versus `memsz`",
       "first_required_by": "13",
       "also_used_by": [
         "03",
         "27"
+      ],
+      "required_by": [
+        "13",
+        "27"
+      ],
+      "linked_from": [
+        "03"
       ],
       "minutes": 20,
       "labs": [
@@ -1083,6 +1227,11 @@
       "also_used_by": [
         "14"
       ],
+      "required_by": [
+        "13",
+        "14"
+      ],
+      "linked_from": [],
       "minutes": 15,
       "labs": [
         "cpio-inspector"
@@ -1092,12 +1241,17 @@
     },
     {
       "slug": "efi-zboot",
-      "title": "EFI zboot kernels",
+      "title": "EFI zboot: the kernel that is also a program",
       "covers": "why Alpine's `vmlinuz-virt` is an EFI zboot wrapper, and how `cargo xtask unzboot` gets the Image; gzip (RFC 1952) as a container; **one page on UEFI applications and the PE/COFF header**, pointing at `uefi` for the rest",
       "first_required_by": "13",
       "also_used_by": [
         "21"
       ],
+      "required_by": [
+        "13",
+        "21"
+      ],
+      "linked_from": [],
       "minutes": 20,
       "labs": [],
       "file": "course/primers/efi-zboot.md",
@@ -1105,13 +1259,21 @@
     },
     {
       "slug": "linux-boot-sequence",
-      "title": "What Linux does from entry to /init",
+      "title": "The Linux boot sequence",
       "covers": "(new) from the first instruction at the Image entry to `/init`: early console, MMU on, DT unflattening, driver binding by `compatible`, clocksource and delay calibration, initcalls, initramfs unpacking, `/init` and BusyBox, `dmesg`; kernel modules and Alpine's `modloop`; each stage mapped to the boot-log lines learners will see",
       "first_required_by": "14",
       "also_used_by": [
         "10",
         "18",
         "22"
+      ],
+      "required_by": [
+        "14",
+        "18",
+        "22"
+      ],
+      "linked_from": [
+        "10"
       ],
       "minutes": 30,
       "labs": [],
@@ -1128,6 +1290,14 @@
         "17",
         "20"
       ],
+      "required_by": [
+        "16",
+        "17",
+        "20"
+      ],
+      "linked_from": [
+        "04"
+      ],
       "minutes": 30,
       "labs": [
         "litmus"
@@ -1143,6 +1313,11 @@
       "also_used_by": [
         "22"
       ],
+      "required_by": [
+        "18",
+        "22"
+      ],
+      "linked_from": [],
       "minutes": 30,
       "labs": [
         "durability-ladder"
@@ -1152,12 +1327,17 @@
     },
     {
       "slug": "unix-sockets",
-      "title": "Unix domain sockets",
+      "title": "Unix domain sockets: a wire between two programs, named by a file",
       "covers": "(new) Unix domain sockets, stream versus datagram (message boundaries), the filesystem path and its permissions (0600, a 0700 directory), stale socket files and why macvmm replaces only a socket it owns, why no entitlement is needed",
       "first_required_by": "19",
       "also_used_by": [
         "27"
       ],
+      "required_by": [
+        "19",
+        "27"
+      ],
+      "linked_from": [],
       "minutes": 15,
       "labs": [],
       "file": "course/primers/unix-sockets.md",
@@ -1165,26 +1345,40 @@
     },
     {
       "slug": "uefi",
-      "title": "UEFI in 25 minutes",
+      "title": "UEFI: the interface between firmware and an OS loader",
       "covers": "(new) UEFI as an interface, not a program: boot services versus runtime services, EFI applications as PE/COFF images, the EFI system partition, configuration tables (how a DTB or ACPI reaches the OS), where U-Boot's `bootefi` and EDK2 fit",
       "first_required_by": "21",
       "also_used_by": [
         "13",
         "22"
       ],
+      "required_by": [
+        "21",
+        "22"
+      ],
+      "linked_from": [
+        "13"
+      ],
       "minutes": 25,
-      "labs": [],
+      "labs": [
+        "boot-chain"
+      ],
       "file": "course/primers/uefi.md",
       "url": "primers/uefi/"
     },
     {
       "slug": "u-boot",
-      "title": "U-Boot",
+      "title": "U-Boot: the firmware we run first",
       "covers": "what U-Boot does, its prompt, `bootefi`, `virtio scan`, its environment; assumes `uefi`",
       "first_required_by": "21",
       "also_used_by": [
         "22"
       ],
+      "required_by": [
+        "21",
+        "22"
+      ],
+      "linked_from": [],
       "minutes": 20,
       "labs": [],
       "file": "course/primers/u-boot.md",
@@ -1192,12 +1386,17 @@
     },
     {
       "slug": "macos-sandbox",
-      "title": "The macOS sandbox and resource limits",
+      "title": "The macOS sandbox, rlimits and other one-way doors",
       "covers": "(new) Seatbelt and SBPL in brief, `sandbox-exec` versus `sandbox_init`, `(deny default)` and the operation classes macvmm denies (file, network, `process-exec`, `mach-lookup`, `iokit-open`); resource limits (`RLIMIT_CORE`, `RLIMIT_NOFILE`) and core dumps; `umask`, `O_CLOEXEC`, and why the run path never uses `fork`/`exec`; which parts are undocumented (`[H]`) and what was observed",
       "first_required_by": "25",
       "also_used_by": [
         "26"
       ],
+      "required_by": [
+        "25",
+        "26"
+      ],
+      "linked_from": [],
       "minutes": 25,
       "labs": [],
       "file": "course/primers/macos-sandbox.md",
@@ -1407,7 +1606,9 @@
       "chapters": [
         "21"
       ],
-      "primers": []
+      "primers": [
+        "uefi"
+      ]
     },
     {
       "name": "vmapple-map",

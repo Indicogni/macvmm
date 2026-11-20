@@ -1,0 +1,10 @@
+# scripts/capture-cmd 17: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The file the console-tx run wrote, against the same 65,536 bytes made on the host.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ shasum -a 256 hvc0.out; yes macvmm | head -c 65536 | shasum -a 256
+exit: 0
+--- stdout ---
+695c42e9ee9cc0a9d666671236dd6b34dac797d238db842219d3d5a2ff48fcab  hvc0.out
+695c42e9ee9cc0a9d666671236dd6b34dac797d238db842219d3d5a2ff48fcab  -
+
+--- stderr ---

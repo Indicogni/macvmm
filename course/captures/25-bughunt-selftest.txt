@@ -1,0 +1,29 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference's planted-bug self-test: plants 1 to 4 of crates/fuzz/planted/, each patched into a private scratch copy (the working tree is never touched), each fuzzed for up to 2 minutes (the default is 10). --allow-concurrent-edits: other files in this checkout were being edited during the run; the script still checks that the files it patches are unchanged.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/bughunt-selftest.sh --minutes 2 --allow-concurrent-edits
+exit: 0
+--- stdout ---
+bughunt-selftest: bug 1 (01-chain-range-no-checked-add.patch): building the fuzzer against the planted copy
+bughunt-selftest: bug 1: fuzzing 'virtqueue' for up to 2 min (seed 1)
+bughunt-selftest: bug 1 FOUND by virtqueue after 0s:
+    fuzz virtqueue: FAILURE at iteration 250 (seed 1): validated buffer 0x4002e6e9+0x5193a is not inside one RAM region (VQ-4)
+bughunt-selftest: bug 2 (02-chain-no-hop-budget.patch): building the fuzzer against the planted copy
+bughunt-selftest: bug 2: fuzzing 'virtqueue' for up to 2 min (seed 1)
+bughunt-selftest: bug 2 FOUND by virtqueue after 0s:
+    fuzz virtqueue: FAILURE at iteration 7 (seed 1): 2838 descriptor reads for one pop of a size-2 queue (VQ-5 hop budget)
+bughunt-selftest: bug 3 (03-used-idx-off-by-one.patch): building the fuzzer against the planted copy
+bughunt-selftest: bug 3: fuzzing 'virtqueue' for up to 2 min (seed 1)
+bughunt-selftest: bug 3 FOUND by virtqueue after 0s:
+    fuzz virtqueue: FAILURE at iteration 22 (seed 1): device wrote 0x40003014+8 outside the writable buffers and the used ring (used ring 0x40003000+0x16; VQ-9)
+bughunt-selftest: bug 4 (04-desc-len-double-fetch.patch): building the fuzzer against the planted copy
+bughunt-selftest: bug 4: fuzzing 'virtqueue' for up to 2 min (seed 1)
+bughunt-selftest: bug 4 FOUND by virtqueue after 0s:
+    fuzz virtqueue: FAILURE at iteration 4 (seed 1): descriptor at 0x4008ff80 read twice in one pop (double fetch, MEM-7)
+bughunt-selftest: bug 4: fuzzing 'virtqueue_race_only' for up to 2 min (seed 1)
+bughunt-selftest: bug 4 FOUND by virtqueue_race_only after 0s:
+    fuzz virtqueue_race_only: FAILURE at iteration 2025 (seed 1): validated buffer 0x400095e0+0xffffffff is not inside one RAM region (VQ-4)
+bughunt-selftest: working tree unchanged (git status --porcelain identical)
+bughunt: 4/4 planted bugs found
+
+--- stderr ---

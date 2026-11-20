@@ -2,11 +2,11 @@
 title: Caches and coherency
 slug: caches
 kind: primer
-minutes: 30
+minutes: 20
 runs: mac+browser
 required_by: [13]
 also_used_by: [04, 27]
-lab: cache-views
+labs: [cache-views]
 objectives:
 - Explain what a cache line is and why a core keeps separate instruction and data caches
 - Define Point of Unification and Point of Coherency, and say which observers meet at each
@@ -48,8 +48,14 @@ has to fix it, and what we measured on real hardware.
 - Explain what `booting.rst` means by "cleaned to PoC" and what macvmm observed on Apple Silicon.
 :::
 
-You should have read `os-basics` and [`aarch64-reading`](/build-your-own/vmm/primers/aarch64-reading/) (exception levels, system registers and
-`mrs` come from there). The [`page-tables`](/build-your-own/vmm/primers/page-tables/) primer helps with one section but is not required.
+:::prereqs
+- The [`os-basics`](/build-your-own/vmm/primers/os-basics/) primer: what a kernel, a process and the MMU are.
+- The [`aarch64-reading`](/build-your-own/vmm/primers/aarch64-reading/) primer: exception levels, system registers and the `mrs`
+  instruction.
+- Helpful but not required: the [`page-tables`](/build-your-own/vmm/primers/page-tables/) primer, for the one section on memory
+  attributes (`MAIR_EL1`).
+- A Mac with the Xcode command-line tools (`cc`) for the experiments; the lab runs in any browser.
+:::
 
 ## Run the puzzle yourself
 
@@ -626,6 +632,8 @@ for the wrong reason, which is why chapter 27's test breaks on a hot instruction
 :::
 
 ## Lab
+
+:::lab cache-views
 
 `cache-views` (built later, embedded here and in chapter 13) shows two observers of one guest RAM
 window: the VMM through a cacheable mapping and the guest with its MMU off, plus a toy cache with a

@@ -1,0 +1,11 @@
+# scripts/capture-cmd 09: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified. macvmm runs in the background; 2 s later this shell sends it SIGTERM, as pkill -TERM -x macvmm from a second window would. $G is the repository's target/guests/aarch64-unknown-none/release.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/uart-echo.bin@0x40080000 --timeout 10 & sleep 2; kill -TERM $!; wait $!; echo rc=$?
+exit: 0
+--- stdout ---
+uart-echo: ready
+rc=130
+
+--- stderr ---
+macvmm: user quit

@@ -1,0 +1,44 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run from the repository root; cargo's progress lines on stderr are shown as they came.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/build-guests.sh; ls target/guests/aarch64-unknown-none/release/*.bin | wc -l
+exit: 0
+--- stdout ---
+built 27 guests
+      27
+
+--- stderr ---
+warning: unknown and unstable feature specified for `-Ctarget-feature`: `strict-align`
+  |
+  = note: it is still passed through to the codegen backend, but use of this feature might be unsound and the behavior of this feature can change in the future
+  = help: consider filing a feature request
+
+warning: `macvmm-guests` (lib) generated 1 warning
+warning: `macvmm-guests` (bin "self-fault") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "regcheck") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "psci-probe") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "mmio-probe") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "mmio-poke") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "memtest") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "isv0-probe") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "hostile-reset") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "irq") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "hostile-mmio") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "hostile-isv0") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "hostile-vq") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "hostile-flood") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "hostile-tty") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "hello") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "hostile-sysreg") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "flood") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "hostile-smp") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "exit-bench") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "dtb-reader") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "virtio-probe") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "uart-echo") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "tty-hygiene") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "timer-nogic") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "timer") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "sysreg-probe") generated 1 warning (1 duplicate)
+warning: `macvmm-guests` (bin "smp-race") generated 1 warning (1 duplicate)
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.01s

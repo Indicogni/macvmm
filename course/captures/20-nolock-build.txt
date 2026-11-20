@@ -1,0 +1,22 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: in crates/vmm/src/bus.rs the device field of Entry and the dev parameter of Bus::insert became Arc<dyn MmioDevice> instead of Arc<Mutex<dyn MmioDevice>>, and Bus::read and Bus::write call e.dev.read(...) and e.dev.write(...) without lock(...). Nothing else changed; the callers still pass devices wrapped in a Mutex.
+# grep keeps the error lines and two of the compiler's help lines; the full output also points at each line involved.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo build -q -p vmm 2>&1 | grep -E '^error|= help: (the trait .Sync|trait .DerefMut)'
+exit: 0
+--- stdout ---
+error[E0277]: the trait bound `std::sync::Mutex<TestDev>: MmioDevice` is not satisfied
+error[E0277]: the trait bound `std::sync::Mutex<VirtioMmio>: MmioDevice` is not satisfied
+error[E0277]: the trait bound `std::sync::Mutex<Pl011>: MmioDevice` is not satisfied
+error[E0277]: the trait bound `std::sync::Mutex<Pl031>: MmioDevice` is not satisfied
+error[E0277]: the trait bound `std::sync::Mutex<RazWi>: MmioDevice` is not satisfied
+error[E0277]: the trait bound `std::sync::Mutex<FlashDevice>: MmioDevice` is not satisfied
+error[E0277]: `(dyn MmioDevice + 'static)` cannot be shared between threads safely
+    = help: the trait `Sync` is not implemented for `(dyn MmioDevice + 'static)`
+error[E0596]: cannot borrow data in an `Arc` as mutable
+    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Arc<dyn MmioDevice>`
+error[E0596]: cannot borrow data in an `Arc` as mutable
+    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Arc<dyn MmioDevice>`
+error: could not compile `vmm` (lib) due to 9 previous errors; 2 warnings emitted
+
+--- stderr ---

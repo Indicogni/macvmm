@@ -51,7 +51,8 @@ pub use vec_mem::{Access, Mutation, VecMemory, VecMemoryError};
 
 use core::fmt;
 
-/// Why a guest-memory access was refused. [frozen ch04]
+// ANCHOR: memory_error
+/// Why a guest-memory access was refused. Frozen from chapter 4 on.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MemoryError {
     /// `addr + len` passes `u64::MAX`.
@@ -61,6 +62,7 @@ pub enum MemoryError {
     /// An ordered accessor was given an address that is not 2-byte aligned.
     Unaligned { addr: u64 },
 }
+// ANCHOR_END: memory_error
 
 impl fmt::Display for MemoryError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -83,16 +85,18 @@ impl fmt::Display for MemoryError {
 
 impl std::error::Error for MemoryError {}
 
+// ANCHOR: from_le_bytes
 /// A value that can be decoded from its little-endian bytes, for [`GuestMemoryExt::read_obj`].
 ///
 /// `Bytes` is the exact-size byte array (`[u8; N]`), so the whole object is read with one copy
-/// (MEM-7). Virtio descriptors and block headers implement it in their own modules.
+/// (validate the copy, never the guest's original). Virtio descriptors and block headers implement it in their own modules.
 pub trait FromLeBytes: Sized {
     /// `[u8; size_of::<Self>()]` (or the wire size, for a structure).
     type Bytes: Default + AsMut<[u8]>;
     /// Decode the copied bytes.
     fn decode_le(bytes: Self::Bytes) -> Self;
 }
+// ANCHOR_END: from_le_bytes
 
 macro_rules! from_le_int {
     ($($t:ty),*) => {$(
@@ -106,6 +110,7 @@ macro_rules! from_le_int {
 }
 from_le_int!(u8, u16, u32, u64);
 
+// ANCHOR: read_obj_from
 /// Copy `T` out of guest memory once and decode it (the body of `read_obj`).
 fn read_obj_from<T: FromLeBytes, M: GuestMemory + ?Sized>(
     mem: &M,
@@ -115,9 +120,10 @@ fn read_obj_from<T: FromLeBytes, M: GuestMemory + ?Sized>(
     mem.read(addr, bytes.as_mut())?;
     Ok(T::decode_le(bytes))
 }
+// ANCHOR_END: read_obj_from
 
 // ANCHOR: guest_memory_trait
-/// Guest-physical RAM, reachable only by bounds-checked copies. [frozen ch04]
+/// Guest-physical RAM, reachable only by bounds-checked copies. Frozen from chapter 4 on.
 pub trait GuestMemory: Send + Sync {
     /// Copy guest bytes out. The whole `[addr, addr + buf.len())` must lie in ONE RAM region;
     /// otherwise nothing is copied and the result is `Err`. An empty `buf` is `Err` too, so
@@ -187,7 +193,7 @@ pub mod prelude {
 // ANCHOR: guest_memory_ordered_trait
 /// The two ordered accessors of the split virtqueue (virtio 1.2 §2.7.13: the driver publishes
 /// `avail.idx` after the ring entries, the device publishes `used.idx` after the used
-/// elements). Frozen at ch16 (PLAN D12).
+/// elements). Frozen from chapter 16 on.
 pub trait GuestMemoryOrdered: GuestMemory {
     /// Acquire-ordered 16-bit LE load (`avail.idx`). `addr` must be 2-aligned: reads that
     /// follow it see everything the guest wrote before publishing the index.
@@ -198,7 +204,7 @@ pub trait GuestMemoryOrdered: GuestMemory {
     fn write_u16_release(&self, addr: GuestAddress, val: u16) -> Result<(), MemoryError>;
 
     /// A full (`SeqCst`) fence between our `used.idx` release store and our later load of
-    /// `avail.flags` (M11, architecture §11.2 item 9, VQ-9). Release/acquire cannot order a
+    /// `avail.flags`. Release/acquire cannot order a
     /// store before a later load; only a full barrier can, and without it the device may read a
     /// stale `NO_INTERRUPT` after the driver re-enabled interrupts and went to sleep (the
     /// lost-wakeup race; Linux's `virtio_mb()` in `virtqueue_enable_cb` is the other half).

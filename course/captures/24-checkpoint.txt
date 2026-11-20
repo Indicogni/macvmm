@@ -1,0 +1,17 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The chapter's checkpoint, run against an unmodified copy of the reference (scripts/checkpoint.sh 24 --impl <tree>): what a finished chapter 24 looks like.
+# The journal line reports "not a learner tree" here; in your own learner/ workspace it checks your journal.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 24
+exit: 0
+--- stdout ---
+checkpoint: implementation <tree>
+[INFO] contract tests   none for this chapter
+[PASS] runs on your Mac refusal: 1/1 serial markers, exit 2 in 0.06s
+[PASS] runs on your Mac no-copy: 1/1 serial markers, exit 0 in 0.15s
+[PASS] runs on your Mac rom-probe: 4/4 serial markers, exit 5 in 20.34s
+[PASS] runs on your Mac isa-denied: 1/1 serial markers, exit 0 in 0.27s
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 24 PASS
+
+--- stderr ---

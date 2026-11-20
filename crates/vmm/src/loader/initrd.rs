@@ -58,7 +58,7 @@ pub fn place(
 // ANCHOR_END: bootplan_place_initrd
 
 // ANCHOR: initrd_window_check
-/// booting.rst §4: the kernel `[kstart, kend)` and the initrd `[istart, iend)` must both lie in
+/// booting.rst section 4: the kernel `[kstart, kend)` and the initrd `[istart, iend)` must both lie in
 /// one 1 GiB-aligned window of at most 32 GiB. The best window starts at the 1 GiB boundary at
 /// or below the lower of the two starts; the rule holds iff the higher end is within 32 GiB of
 /// it.

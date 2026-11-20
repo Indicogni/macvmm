@@ -1,0 +1,19 @@
+# scripts/capture-cmd 04: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run with the reference monitor at the repository root, where G=target/guests/aarch64-unknown-none/release (built by scripts/build-guests.sh).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/memtest.bin@0x40080000 --timeout 10; echo "exit status $?"
+exit: 0
+--- stdout ---
+memtest: pattern 1 ok
+memtest: pattern 2 ok
+memtest: pattern 3 ok
+memtest: pattern 4 ok
+memtest: pattern 5 ok
+memtest: pattern 6 ok
+memtest: pattern 7 ok
+memtest: pattern 8 ok
+memtest: memhash ok
+memtest: memhash rejects overflow ok
+exit status 0
+
+--- stderr ---

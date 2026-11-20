@@ -1,0 +1,18 @@
+# scripts/capture-cmd 17: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: in crates/vmm/src/virtio/rng.rs, process_queue passes u32::try_from(req.readable_len + req.writable_len).unwrap() to add_used instead of written.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --rng --on-reset exit --timeout 60 --cmdline console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 quiet macvmm.test=rng
+exit: 0
+--- stdout ---
+[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x610f0000]\x0d
+[    0.000000] Linux version 6.18.60-0-virt (buildozer@build-3-24-aarch64) (cc (Alpine 15.2.0) 15.2.0, GNU ld (GNU Binutils) 2.45.1) #1-Alpine SMP PREEMPT_DYNAMIC 2026-11-01 07:26:31\x0d
+[    0.000000] random: crng init done\x0d
+[    0.000000] Machine model: macvmm-virt\x0d
+[    0.000000] earlycon: pl11 at MMIO 0x0000000009000000 (options '')\x0d
+[    0.000000] printk: legacy bootconsole [pl11] enabled\x0d
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+macvmm-rng: hw_random=virtio_rng.0\x0d
+macvmm-rng: read 1048576 bytes ok\x0d
+[    0.424842] reboot: Power down\x0d
+
+--- stderr ---

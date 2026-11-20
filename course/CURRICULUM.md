@@ -195,8 +195,8 @@ pointed to:
   "the Exception Syndrome Register for EL2"; `IPA`, "intermediate physical address"). A learner
   arrives from search, a link or a lifeline, not always from the previous page.
 - Every course term links on first use to the **site glossary** (`/build-your-own/vmm/glossary/`),
-  built from `course/CONCEPTS.md` section 4: a one-line plain definition and a link to the page
-  that teaches it. A term not in the glossary is not used.
+  built from `course/GLOSSARY.md` (seeded from the old `course/CONCEPTS.md` section 4, which now
+  only points there): a one-line plain definition and a link to the page that teaches it. A term not in the glossary is not used.
 - **"VM exit" and "exit code" are two words.** "VM exit" (or "exit" after its first use in a
   chapter, when unambiguous) names only the moment the guest stops and our VMM runs. What the
   `macvmm` process returns to the shell is always its "exit code". Neither is ever "exit" alone
@@ -214,7 +214,7 @@ requires. A primer is read *before* the chapter that first requires it.
 | Primer | Covers | First required by | Also used by |
 |---|---|---|---|
 | `os-basics` | process and exit status; privilege (user versus kernel); virtual memory and page faults (a page table as a lookup from virtual to physical page, with a worked two-level example, not only one picture); the syscall **at the hardware level**: the mode switch, the PC jumping to a kernel entry address taken from a table of handler addresses (the **exception vector table**), and the return address saved in a *register*, not on a stack, on Arm (a surprise for x86-trained readers); interrupts; what firmware and a kernel do at boot ("firmware is the program the CPU runs first; it sets up the hardware, then loads and starts the kernel, and stays behind to answer a few requests such as power-off"). | 00 | 01, 02, 05, 08, 09, 11 |
-| `codesign-entitlements` | **Need to know** (10 minutes): "macOS will not let an unsigned program use the virtualization hardware; we sign ours ad hoc with one permission, `com.apple.security.hypervisor`, and the kernel checks it when we call", plus how to read `codesign -d --entitlements :-`. **Going deeper** (optional until ch19 and ch25): ad-hoc signing, entitlements, why `com.apple.security.hypervisor` is checked at run time (AMFI and the kernel, each claim `[V]` or cited), the hardened runtime and why `DYLD_*` injection matters, restricted entitlements and provisioning profiles (`com.apple.vm.networking`), and a plain statement that macvmm needs no SIP change and no sudo, with the reason | 01 | 00 (doctor line), 19, 23, 25 |
+| `codesign-entitlements` | **Need to know** (10 minutes): "macOS will not let an unsigned program use the virtualization hardware; we sign ours ad hoc with one permission, `com.apple.security.hypervisor`, and the kernel checks it when we call", plus how to read `codesign -d --entitlements -`. **Going deeper** (optional until ch19 and ch25): ad-hoc signing, entitlements, why `com.apple.security.hypervisor` is checked at run time (AMFI and the kernel, each claim `[V]` or cited), the hardened runtime and why `DYLD_*` injection matters, restricted entitlements and provisioning profiles (`com.apple.vm.networking`), and a plain statement that macvmm needs no SIP change and no sudo, with the reason | 01 | 00 (doctor line), 19, 23, 25 |
 | `aarch64-reading` | (v2's Appendix B, now required) general registers, `xN`/`wN`, register 31 as `xzr` or `sp`, `pc`, `lr`; the AAPCS64 argument and result registers (`x0` to `x7`, `x0`); system-register naming (`MRS`/`MSR`, `_ELn`); fixed 32-bit instruction words and their fields; the dozen instructions in our traces; reading a disassembly; byte order | 02 | 03, 07, 08, 21 |
 | `smccc` | SMC Calling Convention: function-ID fields, conduits, registers as the API (builds on AAPCS64 from `aarch64-reading`) | 03 | 08, 20 |
 | `bare-metal-rust` | (new) what `no_std` and `no_main` remove; target triples and `rustup target add`; the sections a linker produces (`.text`, `.rodata`, `.data`, `.bss`); a linker script that puts `_start` at `0x4008_0000`; load versus run address; BSS and stack; ELF to flat binary with `objcopy` | 03 | 13 |
@@ -285,7 +285,7 @@ macvmm/                          (the repo learners clone)
     breaks/NN/<name>/            deliberate-break definitions (section 3.7)
     scaffolds/NN/                starter files for the learner workspace (section 3.4)
     journal/NN.md                journal prompt templates and rubrics
-    retrieval/NN.toml            warm-up question banks (section 6.2)
+    retrieval/NN.md              warm-up question banks (section 6.2)
     bughunts/<part>/             planted faults for bug hunts (section 6.4)
   scripts/
     setup.sh  doctor.sh  fetch.sh  learner  checkpoint.sh  capture.sh  bughunt.sh
@@ -400,9 +400,11 @@ requirements; risk K1):
   config error; 3 guest fatal (unhandled MMIO, instruction abort, undecodable ISV=0 before ch21,
   reset storm); 4 reset with `--on-reset exit`; 5 timeout; 6 DEBUG_EXIT with a non-zero code;
   130 user quit.
-- **Test guests** print through DEBUG_PUTC (`hvc #0`, `x0 = 0xC600_0001`, `x1 = byte`) until the
-  PL011 exists (ch09), then through the PL011. They end with DEBUG_EXIT(0) (`0xC600_0002`) until
-  ch08, then PSCI `SYSTEM_OFF`. A guest panic calls DEBUG_EXIT with a non-zero code (exit 6).
+- **Test guests** print through DEBUG_PUTC (`hvc #0`, `x0 = 0xC600_4D01`, `x1 = byte`) until the
+  PL011 exists (ch09), then through the PL011. DEBUG_EXIT is `0xC600_4D02` and ch04's
+  DEBUG_MEMHASH is `0xC600_4D03`; the IDs avoid `0xC600_0000..=0xC600_001F`, which
+  Hypervisor.framework answers itself. A guest that returns from `main` ends with PSCI
+  `SYSTEM_OFF` from ch03 on (`_start` calls it; ch03 forward-defines it, ch08 teaches it). A guest panic calls DEBUG_EXIT with a non-zero code (exit 6).
   (v1 said "SYSTEM_RESET with a code in x1"; PSCI SYSTEM_RESET takes no argument.)
 
 ### 3.4 The fading schedule
@@ -418,7 +420,8 @@ Within each stage the first instance of a pattern is worked and the second is fa
 worked, PL031 is completion; virtio-rng is worked, virtio-console is faded; the Image loader is
 worked, the ELF loader is a spec exercise. Abstractions arrive with their need (first-principles
 R8): `GuestRam` is built before the `GuestMemory` trait is extracted (ch04), a `match` on one IPA
-comes before the `Bus` (ch09), and the `VirtioDevice` trait is extracted from rng in ch17.
+comes before the `Bus` (ch09), and the `VirtioDevice` trait, shown whole in ch15 with the null
+device, gets its first real bodies from rng in ch17.
 
 ### 3.5 Lifelines (getting unstuck without losing the thread)
 
@@ -480,7 +483,13 @@ Two breaks do not reliably fail on a laptop (the ch16 missing fence, the ch18 FL
 lessons say so, and use a litmus-test lab and a latency measurement instead. A course that claims a
 bug appears when it does not teaches the wrong lesson about evidence.
 
-The mechanics in this section are new harness scope for PLAN M27 (risk K10).
+The mechanics in this section are new harness scope for PLAN M27 (risk K10). **Status (Phase 3):**
+`scripts/learner break` and `unbreak` are not implemented yet. Every written chapter therefore
+gives its breaks as hand edits to the learner's own tree (or a provided command line), has the
+learner predict in the journal, and stops hangs with `--timeout` or Ctrl-C. Two observed
+exceptions to the watchdog rule above: a lock-order deadlock (ch20) and the virtio-net RX deadlock
+(ch19) block vCPU threads on a mutex that no kick reaches, so the VMM's own `--timeout` cannot end
+them; only an external timeout (the harness's or the capture's) does.
 
 ---
 
@@ -519,8 +528,8 @@ is at most half a page and contains only this (prose per STYLE.md; no author voc
 | Step | What happens | Checkpoint | Time (cumulative) |
 |------|--------------|------------|-------------------|
 | 1 | `git clone`, then `scripts/setup.sh`: checks Apple Silicon, the macOS version, Xcode CLT and rustup, adds `aarch64-unknown-none`, ends `setup: OK` | none | 0.5 h |
-| 2 | Primer `os-basics`, then ch00: what a virtual machine is, the problem ledger, every strategy run on the `toy-vmm` toy machine in the browser, and a readiness check (`scripts/doctor.sh`, provided) | 00 | 4.5 h |
-| 3 | `scripts/learner init` creates the learner's own workspace | none | 4.5 h |
+| 2 | `scripts/learner init` creates the learner's own workspace, then `scripts/learner start 00` (ch00's journal lives in it, and the checkpoint's journal level reads it; ch00's "Before you start" runs both) | none | 0.5 h |
+| 3 | Primer `os-basics`, then ch00: what a virtual machine is, the problem ledger, every strategy run on the `toy-vmm` toy machine in the browser, and a readiness check (`scripts/doctor.sh`, provided) | 00 | 4.5 h |
 | 4 | Primer `codesign-entitlements`, then ch01: where our VMM sits on a Mac (the stack, the two supervisors, `trap-or-not`), the entitlement gate, and the first FFI (`hv_vm_create` and `hv_vm_destroy` only), so `hv_vm_create` works from *your* crate | 01 | 9 h |
 | 5 | Primer `aarch64-reading`, then Part I: the exception model (ch02 sitting A, no Rust) and the first VM exit (sitting B), then your own bare-metal guest prints "hello" and measures an exit | 02, 03 | 19 h |
 | 6 | Part II: guest memory and the address-space map (with the page primers) | 04, 05 | 27.5 h |
@@ -715,12 +724,14 @@ check at the end.
      instruction set architecture, the rulebook every Arm chip follows, since the version called
      ARMv8-A that your Mac's chip implements." Then memory: a **second translation stage**
      removes shadow page tables (ch05). Devices stay the VMM's job, as **emulated devices**
-     (ch09) or **paravirtual devices** (ch15). `toy-vmm` mode H. **History in prose is four
-     anchors only** (v3.1, novice review 2.0.4): an emulator (QEMU), binary translation (VMware),
-     paravirtualization (Xen), hardware assist (VT-x and Arm EL2). The one-screen timeline figure
-     that closes the section carries the rest (CP-40, CP-67 and VM/370; Denali; AMD-V; ARMv7-A's
-     Virtualization Extensions; Intel EPT and AMD NPT as the memory step), each with its date and
-     source, and an Aside says "you do not need to remember these names".
+     (ch09) or **paravirtual devices** (ch15). `toy-vmm` mode H. **History in prose is five
+     anchors only, one per strategy** (v3.1, novice review 2.0.4; five since the lesson was
+     written): an emulator (QEMU), trap-and-emulate (IBM VM/370, the product of the CP-40 and
+     CP-67 work), binary translation (VMware), paravirtualization (Xen), hardware assist (VT-x
+     and Arm EL2). The one-screen timeline that closes the section carries the rest (CP-40 and
+     CP-67; Popek and Goldberg; Robin and Irvine; Denali; AMD-V; the second translation stage;
+     ARMv7-A's Virtualization Extensions; ARMv8-A), each with its date and source, and an Aside
+     says "you do not need to remember these names".
   9. *What is left for a VMM.* From the learner's own lab runs: set up memory, set the first
      registers, describe the machine, answer device accesses and requests, decide what each stop
      means. That list is the course. ch01 asks who owns the privileged level on a Mac.
@@ -740,8 +751,8 @@ check at the end.
   output matches bare metal; explain every difference. (4) State Popek and Goldberg's condition
   in one sentence, name the toy ISA's sensitive but unprivileged instruction, and explain from it
   why a CPU with such instructions needs binary translation or paravirtualization. (5) Place the
-  four strategies on a timeline with one real system each (QEMU, VMware, Xen, VT-x or Arm EL2),
-  saying which problem each solved and what it cost. (6) Run
+  five strategies on a timeline with one real system each (QEMU, IBM VM/370, VMware, Xen, Intel
+  VT-x or Arm EL2), saying which problem each solved and what it cost. (6) Run
   `scripts/setup.sh` and `scripts/doctor.sh` and say what `hv_vm_create: OK` means in this
   chapter's terms.
 - **Concepts you'll need.**
@@ -988,9 +999,12 @@ refers to, and only then writes the first Rust against it.
      had declared the return type as `u64`. Which results would still look right, and when would
      it first go wrong, silently? (v3.1: the `hv_vcpu_t` version of this question moved to ch02
      with the vCPU declarations.)
-  3. *Mechanism.* What does the borrow checker see when you call `hv_vcpu_run`, and what does it
-     not see? Name one thing `unsafe` leaves switched on. (The retained exit-struct pointer,
-     thread affinity, VM-outlives-vCPU; the borrow checker and type checks stay on.)
+  3. *Mechanism (evidence: your `Drop` for `Vm`).* When your `Drop` calls `hv_vm_destroy()`
+     inside `unsafe`, what does the compiler check, and what can it not see? Name one check that
+     `unsafe` leaves switched on. (Types, borrows and the call's signature are still checked; it
+     cannot see that a VM exists, that this is the only destroy, or HVF's one-VM-per-process
+     state. v3.1 moved the vCPU declarations to ch02, so the `hv_vcpu_run` version of this
+     question, with the retained exit-struct pointer and thread affinity, belongs to ch02.)
   4. *Park, answered in ch05 (evidence: doctor output).* Doctor printed a maximum IPA size. Why
      might a VM have a limit on its *physical* addresses when the host has plenty of memory? A
      thread to hold until then (novice review 2.5.6): "every guest physical address is looked up
@@ -1197,9 +1211,14 @@ where it runs) before any guest code appears, and every later code block is capt
 - **Ledger.** Row 8 (measured, not yet solved). Step 4.
 - **Objectives.** (1) Build a `no_std`, `no_main` Rust program for `aarch64-unknown-none` with a
   linker script that puts `_start` at `0x4008_0000`, and turn it into a flat binary. (2) Explain
-  each line of a 15-line `_start`: set the stack, zero BSS, call `main`. (3) Implement the debug
-  hypercalls DEBUG_PUTC (`x0 = 0xC600_0001`, `x1 = byte`) and DEBUG_EXIT (`0xC600_0002`,
-  `x1 = code`) and recognise their IDs as SMCCC vendor-hypervisor fast calls. (4) Write a run loop
+  each group of lines of the reference `_start` (about 33 lines, walked in five groups): pick a
+  stack by `MPIDR_EL1`, enable floating point (`CPACR_EL1`), zero BSS, install the vectors, call
+  `main`, then power off. (3) Implement the debug hypercalls DEBUG_PUTC (`x0 = 0xC600_4D01`,
+  `x1 = byte`) and DEBUG_EXIT (`0xC600_4D02`, `x1 = code`) and recognise their IDs as SMCCC
+  vendor-hypervisor fast calls. (Not `0xC600_0001`/`0002`: Hypervisor.framework answers
+  `0xC600_0000..=0xC600_001F` itself, so those never reach the VMM; the lesson shows the
+  swallowed `0xC600_0001` as a Try it.) A `hello` that returns from `main` ends with PSCI
+  `SYSTEM_OFF` (`0x8400_0008`), forward-defined here and taught in ch08. (4) Write a run loop
   that handles exits repeatedly, a `--timeout` that stops a hung guest (exit 5), and the first
   version of the exit trace (`hvc` records with `t_ns`, `pc`, `ec`, `imm`). (5) Measure the cost of
   one HVC round trip including VMM handling with `guests/exit-bench`, record the number in your
@@ -1214,12 +1233,15 @@ where it runs) before any guest code appears, and every later code block is capt
     versus run address, `objcopy`); `smccc`.
   - *Pointers (Aside plus link):* the `aarch64-unknown-none` target docs.
   - *Forward definitions:* ELF, "the linker writes an ELF file, a container of segments with
-    their load addresses; we strip it to raw bytes until ch13 (the ELF primer)".
+    their load addresses; we strip it to raw bytes until ch13 (the ELF primer)"; PSCI and its
+    `SYSTEM_OFF` call (ch08); the device tree (ch10); `MPIDR_EL1` (ch06); `CPACR_EL1` (the
+    floating-point enable); `wfe`; `CNTVCT_EL0` (ch11); the kick that stops a running vCPU
+    (ch09); an address size fault (the stack break).
 - **Novice repairs (v3.1; the lesson must contain these).**
-  - *The hypercall ID in three lines* (novice review 2.3.2): "`0xC600_0001` means: fast
+  - *The hypercall ID in three lines* (novice review 2.3.2): "`0xC600_4D01` means: fast
     call (bit 31: it runs to completion and cannot be interrupted part-way, the opposite of a
     'yielding' call), 64-bit convention (bit 30), owner `0x06`,
-    'vendor-specific hypervisor service' (bits 29 to 24), function 1. We could have used any
+    'vendor-specific hypervisor service' (bits 29 to 24), function `0x4D01`. We could have used any
     number; this convention means a real kernel, which uses the same calling convention for its
     own requests, will never mistake our call for one of its own."
   - *BSS made concrete* (novice review 2.3.5): the lesson shows `static COUNTER: AtomicU32 = AtomicU32::new(0);`,
@@ -1239,7 +1261,8 @@ where it runs) before any guest code appears, and every later code block is capt
   of unknown flags. L2: (a) `run --mem 64M --raw <hello.bin>@0x40080000 --timeout 10` matches
   `hello from guest, x0=0x*` · `guest done` · `!unhandled`, exit 0; (b) the same with
   `--trace exits:{out}/h.jsonl:hvc`: the number of `"ec":"0x16"` records equals the printed
-  characters plus 1 (the DEBUG_EXIT), the first time learners *count* exits; (c) a 4-byte `b .`
+  characters plus 1 (the PSCI `SYSTEM_OFF` that ends `hello`, traced as
+  `"fn":"PSCI_SYSTEM_OFF","action":"psci"`), the first time learners *count* exits; (c) a 4-byte `b .`
   blob with `--timeout 1` gives `[stderr] timeout`, exit 5; (d) `exit-bench` prints
   `exit-bench: * hvc round trips, * ns each`, exit 0 (format only; the number is journal data).
 - **Lab.** `linker-map` (in the `bare-metal-rust` primer): drag sections, see load addresses,
@@ -1248,24 +1271,31 @@ where it runs) before any guest code appears, and every later code block is capt
 - **Predict fork.** Before running `exit-bench`, write your estimate for one HVC round trip:
   nanoseconds (it is a function call) or microseconds (it is a world switch)? Anchor: the spike
   measured about 1.0 to 1.6 µs from `hv_vcpu_run` entry to return *before any VMM work* `[V]`
-  (that is a lower bound, not the round trip). Then compute the ratio to a `str` to RAM (roughly
-  1,000×). That ratio is the argument of Part VII. How the store is measured is shown, not
-  assumed (novice review 2.3.4): the guest's counter (`CNTVCT_EL0`) ticks at 24 MHz, about
-  41.7 ns per tick, so one store (well under a nanosecond) cannot be timed alone; `exit-bench`
-  times a loop of 1,000,000 stores and 1,000,000 `hvc` calls with the same counter, divides each
-  by the count, and prints both. The lesson walks this arithmetic once. (The store-loop line is
-  added to `guests/exit-bench` and its marker file with PLAN M3's `exit-bench` e2e, risk K10.)
+  (that is a lower bound, not the round trip). Then compute the ratio to a `str` (measured on
+  the reference Mac: about 1.4 µs per exit against about 233 ps per store, a ratio of roughly
+  6,000 to 7,000). That ratio is the argument of Part VII. How the store is measured is shown,
+  not assumed (novice review 2.3.4): the guest's counter (`CNTVCT_EL0`) ticks at 24 MHz, about
+  41.7 ns per tick, so one store (well under a nanosecond) cannot be timed alone. The reference
+  `exit-bench` times 100,000 `hvc` calls (to an unimplemented ID above HVF's block, so each is a
+  real exit) with that counter and divides by the count; it has no store loop. The lesson adds a
+  1,000,000-store loop as a learner "Try it" edit (captured) and walks the arithmetic once.
+  (Adding the store loop to `guests/exit-bench` itself and its marker file is still open,
+  risk K10.)
 - **Journal questions.**
   1. *Observe (evidence: trace timestamps and your `exit-bench` number).* Estimate, then measure,
      printing 4 KiB through DEBUG_PUTC. What does the number suggest about how real devices should
      accept data?
   2. *Mechanism (evidence: a run).* Delete the stack-pointer setup from `_start`. What does `sp`
-     hold, and what do you see? (Nothing in the CPU provides a stack.)
+     hold, and what do you see? (`sp` is 0; nothing in the CPU provides a stack. The first
+     `sub sp` wraps to `0xffff_ffff_ffff_ffe0`, an address size fault taken at the guest's own
+     EL1 vector, which faults again forever with no VM exit; only `--timeout` ends it.)
   3. *Transfer, open question.* A guest sends a million bytes through DEBUG_PUTC. What does the
      VMM do with them, and which limit would you add? (The first hostile-guest thought.)
 - **Breaks.** O edit: delete the BSS-zeroing loop, then have the VMM fill RAM with `0xA5` before
   loading; a `static` counter prints garbage. (Fresh RAM is zero-filled, which made the bug
-  invisible.) O edit: delete the stack setup (data abort near address 0).
+  invisible.) O edit: delete the stack setup (observed: `sp` = 0 wraps on the first `sub sp`, an
+  address size fault taken at the guest's own vector `0x40080a00`, looping there with no VM exit;
+  `--timeout` ends it with exit code 5 and the trace's last record shows the PC).
 - **Misconception.** "A bare-metal program needs an OS underneath, or at least a C runtime." (It
   needs a stack, zeroed BSS and an entry point, which `_start` provides.)
 - **Time.** 3.5 h.
@@ -1323,8 +1353,10 @@ where it runs) before any guest code appears, and every later code block is capt
     through a `:::code anchor=` to the reference, with no reference to "architecture §6.1" in
     learner text.
 - **Prereqs.** 03.
-- **Build.** First a `GuestRam` struct, used directly; then show the ch03 raw loader's unchecked
-  out-of-range write; then the checked API; then extract the `GuestMemory` trait, justified in one
+- **Build.** First a `GuestRam` struct, used directly; then compute, by hand, the host address
+  an unchecked `addr + len` would form for a wrapped placement, and show the real raw loader
+  refusing that placement and a past-the-end one (the reference has no unchecked loader to show);
+  then the checked API; then extract the `GuestMemory` trait, justified in one
   sentence by its two real needs: `VecMemory` as a host test double (L1 needs it) and lifelines.
   `GuestAddress` newtype. All `unsafe` lives in `memory/host.rs` and `hvf`. The raw loader is
   rewritten on `GuestMemory`.
@@ -1353,9 +1385,10 @@ where it runs) before any guest code appears, and every later code block is capt
   2. *Mechanism (evidence: the trait as the lesson shows it).* Is the promise of a Rust `&[u8]` into guest memory
      true? What does the contract offer instead, and why does it copy with volatile accesses
      rather than `copy_nonoverlapping`?
-  3. *Park, answered in ch16 and ch17.* Today one vCPU stops while we handle its exit. When could
+  3. *Park, answered in ch16 and ch20.* Today one vCPU stops while we handle its exit. When could
      the guest change memory *while* we look at it? Write down the first chapter where you expect
-     it to become possible. (Not yet: TOCTOU becomes real with worker threads and SMP.)
+     it to become possible. (Not yet: TOCTOU becomes real with device worker threads, ch16, and
+     several vCPUs, ch20.)
   4. *Mechanism (evidence: the Predict run).* Why 16 KiB? Where else will the host page size come
      back (layout, flash, dirty tracking in ch26)?
   5. *Transfer, open question.* You cap guest RAM at the host's free memory. Which other guest
@@ -1544,7 +1577,12 @@ where it runs) before any guest code appears, and every later code block is capt
   4. *Transfer, open question.* Your dump is the only window into a crashed guest. Which five
      registers would you add, and what question does each answer?
 - **Breaks.** M guest: run `self-fault` (second-order fault; first in `ESR_EL1`). O edit: wrong
-  CPSR (`0x3c4`, or `0x3c9` with EL2 off; `[U]`, capture), and `regcheck` shows the difference.
+  CPSR. Observed (captured): `0x3c4` (EL1t) is not harmless. `regcheck` prints its
+  first five lines, then its `svc` vector test runs on `SP_EL1`, which is 0, faults on its own
+  stack again and again (no VM exit), and hangs until `--timeout` (exit code 5); giving `SP_EL1`
+  a valid value at reset makes it pass, which confirms the chain. `0x3c9` (EL2h) with EL2 off is
+  refused by `hv_vcpu_run` with `HV_ILLEGAL_GUEST_STATE` before the guest runs (a VMM error,
+  exit code 1), not a VM exit.
 - **Misconception.** "Every guest exception becomes a VM exit." (Exceptions routed to EL1 are
   handled by the guest's own vector table. Only what is routed to EL2, and forwarded by HVF,
   reaches us.)
@@ -1589,7 +1627,8 @@ where it runs) before any guest code appears, and every later code block is capt
     frozen `Exit` enum; the PC-advance table; SRT=31 as `xzr`.
   - *Core, from earlier:* ESR's EC (ch02); stage-2 holes (ch05); the dump (ch06).
   - *Primers (read first):* `reading-arm-specs` (a register page, the ESR ISS tables, the
-    vocabulary used from here on).
+    vocabulary used from here on); `aarch64-reading` (review, read before ch02: the load and
+    store forms and register 31 that the decoder relies on).
   - *Pointers (Aside plus link):* the ARM ARM register page for `ESR_EL2` (ISS encoding for data
     aborts); exclusives, LSE atomics, SIMD loads and `DC ZVA`, which give ISV=0 (named here,
     handled in ch21).
@@ -1654,10 +1693,15 @@ where it runs) before any guest code appears, and every later code block is capt
   - *Injection as a worked example with real numbers* (2.8.3). First why: "HVF delivered this
     exception to us instead of to the guest's EL1 vector, but the guest expects exactly what the
     hardware would have done, so our code does the hardware's job." Then the same table as ch02's
-    exception entry, filled in for one real trap: the guest at EL1h reads `PMCR_EL0` at PC
-    `0x4008_0124` with CPSR `0x3c5` and `VBAR_EL1 = 0x4008_1000`; after injection `ELR_EL1 =
-    0x4008_0124`, `SPSR_EL1 = 0x3c5`, `ESR_EL1 = 0x0200_0000` (EC 0, "unknown reason", IL = 1,
-    ISS = 0), CPSR `0x3c5`, PC `0x4008_1000 + 0x200 = 0x4008_1200`. And the **whole 16-entry
+    exception entry, filled in for one real trap, with measured numbers (captured from an
+    instrumented copy of `sysreg-probe` run with `--irqchip none`, because with the in-kernel GIC
+    every macvmm machine has, HVF injects the `PMCR_EL0` UNDEF itself and the VMM never sees
+    it): the guest at EL1h reads `PMCR_EL0` at PC `0x4008_12e8` with CPSR `0x6000_03c5` and
+    `VBAR_EL1 = 0x4008_0800`; after injection `ELR_EL1 = 0x4008_12e8`, `SPSR_EL1 =
+    0x6000_03c5`, `ESR_EL1 = 0x0200_0000` (EC 0, "unknown reason", IL = 1, ISS = 0), CPSR
+    `0x6040_03c5` (flags kept, EL1h with DAIF, plus PAN), PC `0x4008_0800 + 0x200 =
+    0x4008_0a00`. The default-configuration run is shown next to it: the guest cannot tell
+    whether HVF or the VMM raised its UNDEF. And the **whole 16-entry
     vector table drawn once**: four groups by where the exception came from (current EL with
     `SP_EL0`, `+0x000`; current EL with `SP_ELx`, `+0x200`; lower EL in AArch64, `+0x400`; lower
     EL in AArch32, `+0x600`, which we never use), each with four kinds (synchronous `+0x0`, IRQ
@@ -1707,7 +1751,8 @@ where it runs) before any guest code appears, and every later code block is capt
   function of architecture §8.6 that this chapter implements; `hvc` with `imm ≠ 0` returns -1; the
   exit-code table. L2: (a) `run --kernel <sysreg-probe> --trace exits:{out}/s.jsonl:sysreg` matches
   `sysreg-probe: undef count=1 ec=0x0` · `sysreg-probe: oslsr ok`, trace markers
-  `"sysreg":"PMCR_EL0"` then `"action":"inject_undef"`, exit 0; (b) `run --kernel <psci-probe>`
+  `"sysreg":"MDCCSR_EL0"` with `"action":"inject_undef"` (not `PMCR_EL0`: with the in-kernel GIC
+  HVF raises that UNDEF itself and never forwards it), exit 0; (b) `run --kernel <psci-probe>`
   matches `psci-probe: version=0x10001` · `psci-probe: boot 0` · `psci-probe: boot 1`, exit 0;
   (c) with `--on-reset exit`: `psci-probe: boot 0` · `!psci-probe: boot 1`, exit **4**.
 - **Lab.** `sysreg-smccc`: decode an `mrs`/`msr` encoding into a register name, and build an SMCCC
@@ -1721,7 +1766,7 @@ where it runs) before any guest code appears, and every later code block is capt
      carries the function ID, and which the result? ("The registers are the API".)
   2. *Mechanism.* Return 0 or inject UNDEFINED for a register we do not emulate: who does each
      choice hurt? Why does PMU get UNDEF when the guest sees `PMUVer = 0`?
-  3. *Mechanism (evidence: spike RESULTS #5, #6).* We accept PSCI over both `hvc` and `smc`. Why
+  3. *Mechanism (evidence: the `hvc` and `smc` conduit captures, and ch02's `smc` run).* We accept PSCI over both `hvc` and `smc`. Why
      must the PC be advanced for SMC but not for HVC, and what does the DTB's `method = "hvc"`
      promise the guest?
   4. *Transfer, open question.* Why is PSCI a *standard*? What would Linux need if every VMM
@@ -1842,7 +1887,8 @@ where it runs) before any guest code appears, and every later code block is capt
 - **Checkpoint.** `scripts/checkpoint.sh 10`. L1: header fields; alignment; one strings entry for
   two `compatible` properties; a property after a child is an error; unbalanced `end_node`,
   NUL in a name and a blob over 2 MiB are errors; a round trip through the harness's independent
-  reader preserves the tree; every expected node exists with its unit address matching `reg`. L2:
+  reader preserves the tree. (Planned, not yet in the frozen contract `fdt_writer.rs`: every
+  expected node exists with its unit address matching `reg`.) L2:
   (a) `run --mem 64M --kernel <dtb-reader>` matches `dtb-reader: magic ok` ·
   `dtb-reader: model=macvmm-virt` · `dtb-reader: memory@40000000 reg=0x40000000+0x4000000` ·
   `dtb-reader: pl011@9000000 compatible=arm,pl011` · `dtb-reader: cpus=1`, exit 0;
@@ -1853,8 +1899,13 @@ where it runs) before any guest code appears, and every later code block is capt
   (parsed locally, never uploaded) and click a node to highlight its bytes; the `reg` interpreter
   flags cell-count mismatches.
 - **Predict fork.** Change the root's `#address-cells` from 2 to 1 and run `dtb-reader`. Will it
-  print the same memory size? Tempting: "yes, the values did not change". Expected: garbage or a
-  parse error; the cells are read at the wrong offsets. The DTB is parsed, not read.
+  print the same memory size? Tempting: "yes, the values did not change". Observed on the
+  reference: `dtb-reader` prints the *same* size, because it hardcodes two address and two size
+  cells and never reads the counts, so a reader that shares your assumption cannot catch your bug.
+  `dtc` does (a 16-byte `reg` is not a multiple of the new 12-byte range), the checkpoint fails
+  through `dtc`, and Linux, booted with the same edit, takes `0x0` as the address and a 4.6 EB
+  size, then panics and hangs until `--timeout`. The DTB is parsed, not read; the lesson uses this
+  outcome. (Alternative, not done: make `dtb-reader` honour the parent's cell counts.)
 - **Journal questions.**
   1. *Observe (evidence: `--dtb-out` hex).* With `<2>` and `<2>`, how many bytes is the PL011's
      `reg`? With `<1>` and `<1>`?
@@ -1865,7 +1916,8 @@ where it runs) before any guest code appears, and every later code block is capt
      firmware edits its own copy)?
   4. *Transfer, open question.* The DTB and the device models come from one `layout.rs`. Which
      class of bug does that remove, and which does it not?
-- **Breaks.** M edit: change `#address-cells` on the root (garbage sizes). O edit: a DTB node for
+- **Breaks.** M edit: change `#address-cells` on the root (`dtb-reader` unchanged, `dtc` warns,
+  Linux panics; see the Predict fork). O edit: a DTB node for
   a device the bus lacks (the guest's access hits the unhandled-MMIO path).
 - **Misconception.** "The DTB is configuration the guest may ignore." (For Linux on arm64 it is
   the only source of truth about the machine.)
@@ -1895,8 +1947,14 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   condition gone. Observe level semantics: the exit fires even with `PSTATE.I` masked, and
   unmasking while `ISTATUS = 1` exits again at once `[V]` (#12). (3) Handle WFI exits (EC `0x01`
   `[V]` #10) by sleeping the vCPU thread on a condvar until the `CVAL` deadline or a kick, PC + 4,
-  and show idle host CPU stays under 10%. (4) Count exits per second for a 10 Hz and a 250 Hz tick
-  and turn them into host CPU cost with your ch03 number. (5) Explain why a level line is *state*
+  and show idle host CPU stays under 10%. With no interrupt controller nothing marks a taken
+  interrupt *active*, so the guest re-takes the stale pending IRQ until our line drops; the
+  reference bounds this with a 1 ms line kick (`LineKicker`: `hv_vcpus_exit`, so one `CANCELED`
+  exit per tick), and the guest's handler counts the stale re-takes. (4) Count exits per second
+  for a 10 Hz and a 250 Hz tick and turn them into host CPU cost with your ch03 number, then
+  compare with the measured cost (at 250 Hz the measured 23% of a core is dominated by guest
+  time, the stale re-takes, not by the 750 exits per second, and the guest falls behind its
+  4 ms tick). (5) Explain why a level line is *state*
   that cannot be lost while masked, and an edge is an *event* that needs latching.
 - **Concepts you'll need.**
   - *Core, taught here:* interrupts as state (pending, mask, vector); level versus edge; the
@@ -1927,14 +1985,17 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   WFI sleep on one timeline. `irq-lifecycle` (level mode): a line that stays high while masked.
 - **Predict fork.** How many exits will ten 100 ms sleeps produce: (a) about zero, the timer is
   hardware; (b) about 20 to 30 (a VTIMER and a WFI per tick, plus re-exits); (c) thousands?
-  Tempting: (a). Expected: (b) (`[U]` exact count; capture). Then predict the count at 250 Hz.
+  Tempting: (a). Expected: (b); measured exactly 30, a VTIMER, a WFI and a kick `CANCELED` per
+  tick. Then predict the count at 250 Hz (750 per second) and whether the guest keeps time (it
+  does not).
 - **Journal questions.**
   1. *Observe (evidence: a run with the offset forced to 0).* What `CNTVCT` does the guest read at
      start? What does that leak about the host, and what would a fresh machine show?
   2. *Mechanism (evidence: the break below).* The timer fired once, you made the IRQ pending, the
      guest handled it, and the timer never fires again. What did you forget?
-  3. *Mechanism (evidence: RESULTS #12).* The VTIMER exit arrived while the guest had `PSTATE.I`
-     set. When does the handler run, and where does the interrupt wait meanwhile?
+  3. *Mechanism (evidence: the captured run where the guest spins with IRQs masked).* The VTIMER
+     exit arrived while the guest had `PSTATE.I` set. When does the handler run, and where does
+     the interrupt wait meanwhile?
   4. *Mechanism (evidence: `--stats` and `top`).* If WFI returns at once, what still works, and
      what is the cost? (WFI may wake spuriously, so everything is correct; a core is pinned.)
   5. *Transfer, open question.* The UART also wants to interrupt. With one IRQ line, how does the
@@ -1957,8 +2018,11 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   PL011 level rule is tested on the host with `TestIrq`); add the GIC node, `interrupt-parent` and
   3-cell `interrupts` properties to the DTB, including the SPI offset (DT SPI *n* = INTID 32 + *n*)
   and the timer PPIs. (4) Run the ch11 workload with the GIC and **measure**: zero VTIMER and WFI
-  exits `[V]` (#13), idle CPU near 0%, and timer wake-ups 2 to 4 ms late `[V]` (#25). State the
-  trade: fewer exits, less control of wake-up latency.
+  exits `[V]` (#13), idle CPU near 0%, and the wake-up lateness of both modes side by side
+  (six repeated runs on the reference Mac: 0 to 5 ms late with the GIC and with `--irqchip none`,
+  no visible difference for 100 ms sleeps; the spike's 2 to 4 ms penalty in #25 was for a 15.6 ms
+  timer, idle WFI against busy-loop). State the trade: fewer exits, less *control* (the tick, the
+  wake-up and the delivery happen where none of our code runs), not measurably later wake-ups.
 - **Concepts you'll need.**
   - *Core, taught here:* GICv3 (distributor, redistributor, CPU interface `ICC_*`, INTIDs,
     SGI, PPI, SPI, IAR and EOI, affinity routing); the DT interrupt binding (`interrupt-parent`,
@@ -1987,7 +2051,8 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
 - **Predict fork.** Run the same ten 100 ms sleeps with the GIC. Exit count: (a) the same as
   ch11, (b) about half, (c) zero? Tempting: (a) or (b), "the VMM must see every interrupt".
   Expected: (c) for VTIMER and WFI. Then predict whether the intervals got *more* or *less*
-  accurate. (Less: 2 to 4 ms late.)
+  accurate. (Measured: neither, visibly; both modes 0 to 5 ms late. The lesson says so honestly
+  and frames the trade as control, not lateness.)
 - **Journal questions.**
   1. *Observe (evidence: both traces and `--stats`).* Compare the ch11 and ch12 runs exit by exit.
      What did the in-kernel GIC remove, and what did we give up?
@@ -2000,8 +2065,9 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   5. *Transfer, open question (evidence: RESULTS #14).* Who wakes a vCPU sleeping in WFI when a
      UART byte arrives now, and why does it no longer need a kick from us?
 - **Breaks.** M edit: never lower the level line (interrupt storm, no progress). O edit: create the
-  GIC after a vCPU (an API error). O edit: DTB SPI cell `1` written as a PPI type (a different
-  INTID arrives).
+  GIC after a vCPU (an API error). O edit: DTB SPI cell `1` written as a PPI type (observed: the
+  guest that believes the tree enables INTID 17 while the device drives 33, so *nothing* arrives;
+  silence until `--timeout`).
 - **Misconception.** "The VMM must see every interrupt." (With the in-kernel GIC and vtimer, the
   timer path and idle never exit; our job is set-up and device lines.)
 - **Time.** 4.5 h.
@@ -2070,9 +2136,12 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
      and why do we unwrap it on the host rather than in the VMM at boot?
   4. *Transfer, open question.* An ELF program header says `filesz = 4096, memsz = 2^40`. What is
      the rule, and which two numbers do you compare it with?
-- **Breaks.** M input: place the initrd inside the kernel's BSS range via a crafted plan (boot gets
-  far, then a bad-cpio panic). O input: flip the magic byte (a clear error with your parser; a
-  silent hang without it).
+- **Breaks.** M input: place the initrd inside the kernel's BSS range via a crafted plan
+  (observed, 2 of 2 runs: no panic; the boot stops silently after `IP idents hash table entries`
+  and `--timeout` ends it, exit code 5; another overlap would change the last line). O input: flip
+  the magic byte (a clear error with your parser; without it, through `--raw`, Linux *boots*,
+  because the kernel never checks its own magic, then panics `VFS: Unable to mount root fs` with
+  no initramfs and spins until `--timeout`: a misleading panic far from the cause).
 - **Misconception.** "Loading a kernel means copying the file to the start of RAM." (Placement is a
   contract: alignment, `text_offset`, BSS not in the file, where the DTB and initrd go.)
 - **Time.** 4.5 h (plus about 1 h 50 min of primers, with `caches`; risk K18 applies).
@@ -2099,21 +2168,23 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   `linux_timer_latency`).
 - **Checkpoint.** `scripts/checkpoint.sh 14`. L2: (a) `macvmm.test=boot`, `--timeout 30` matches
   in order `Booting Linux on physical CPU 0x0000000000` · `Machine model: macvmm-virt` ·
-  `psci: PSCIv1.1 detected in firmware.` · `arch_timer: cp15 timer(s) running at 24.00MHz (virt).` ·
+  `psci: PSCIv1.1 detected in firmware.` · `arch_timer: cp15 timer running at 24.00MHz (virt).` ·
   `ttyAMA0 at MMIO 0x9000000` · `rtc-pl031 9010000.pl031: registered as rtc0` ·
   `Run /init as init process` · `macvmm-initramfs: ready 6.18.60-0-virt` · `reboot: Power down`,
   and none of `Kernel panic`, `[stderr] unhandled MMIO`, `[stderr] unknown SMCCC`; exit 0 in under
   30 s; (b) `macvmm.test=shell`: wait for `/ # `, send `echo macvmm-shell: $((6*7))`, expect
   `macvmm-shell: 42`, send `poweroff -f`, exit 0; (c) `macvmm.test=panic` gives
-  `Kernel panic - not syncing`, exit **4**; (d) SIGINT at the prompt exits within 2 s, exit
-  **130**; (e) `macvmm.test=timer-latency` prints `macvmm-timer: 100x usleep(10ms) took *`
+  `Kernel panic - not syncing`, exit **4**; (d) SIGINT (from `kill -INT` or a script; at an
+  interactive prompt raw mode makes Ctrl-C a byte for the guest's shell, and `Ctrl-A x` quits)
+  at the prompt exits within 2 s, exit **130**; (e) `macvmm.test=timer-latency` prints `macvmm-timer: 100x usleep(10ms) took *`
   (recorded; passes under 2.0 s). Linux strings come from 6.18 sources and are corrected to the
   captured text, never weakened.
 - **Lab.** `boot-log-annotator`: paste a boot log, each line links to the chapter and DTB node
   that explains it. `boot-timeline` (DESIGN.md §8.6) on the learner's own trace.
 - **Predict fork.** Remove the `/timer` node and boot. Predict the last line of serial output.
-  Tempting: "a clean error about the timer". Expected: output stops around clocksource and delay
-  calibration, with no error (`[U]`; capture to `course/captures/`).
+  Tempting: "output just stops, with no error". Observed (captured): a named panic,
+  `timer_probe: no matching timers found`, then `Kernel panic - not syncing: Unable to initialise
+  architected timer.` from `time_init`, then a hang that `--timeout` ends (exit code 5).
 - **Journal questions.**
   1. *Observe (evidence: trace, `--dtb-out`, the dump).* The kernel printed nothing. List the
      first three things you check, ordered by cost, and the evidence each needs.
@@ -2123,9 +2194,9 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
      Linux use that the test guests never did? Check your ch09 guess about the ID registers.
   4. *Transfer, open question.* Linux booted. List three things a useful VM must do that this one
      cannot, and defend the order you would build them in.
-- **Breaks.** M input (via `learner break`, which passes DTB-override flags to the reference-built
-  DTB, or an edit for learner trees): remove `/timer`; wrong GICR base; missing PL011 ID registers.
-  Three distinct fingerprints.
+- **Breaks.** M input, as one-line edits to the learner's own `learner/` tree, each undone before
+  the next (`learner break` and DTB-override flags do not exist; see section 3.7): remove
+  `/timer`; wrong GICR base; missing PL011 ID registers. Three distinct fingerprints.
 - **Misconception.** "If Linux boots, the devices are correct." (Linux tolerates many device bugs
   until a workload hits them. Booting is the start of testing.)
 - **Milestone.** End of the core path; PLAN Gate G1; course milestone "It boots" (section 6.5).
@@ -2139,7 +2210,8 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
 
 - **Ledger.** Row 8. Step 12.
 - **Objectives.** (1) Derive the design before any register (first-principles R7): the ch14
-  measurement (one exit per PL011 byte) and the ch03 exit cost make per-byte I/O unaffordable; put
+  measurement (about 2.4 to 2.7 exits per PL011 byte: a flag-register read and the data-register
+  write, and in earlycon a second read) and the ch03 exit cost make per-byte I/O unaffordable; put
   the data in RAM the guest already owns and let the device read and write it there, which real
   hardware calls **DMA** (bus mastering), exit only to say "look now" (a doorbell) and interrupt
   only to say "done". Compare honestly with emulated NVMe, which also uses rings and doorbells:
@@ -2167,7 +2239,8 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
 - **Build.** `virtio/mmio.rs` (transport implementing `MmioDevice`), `virtio/null.rs` (the empty
   slot), `virtio/interrupt.rs`, DTB `virtio_mmio@` nodes for populated slots. The transport holds
   its device through a minimal `VirtioDevice` trait named here with its need (the null device and
-  rng are two implementations within two chapters); ch17 completes the trait by extraction.
+  rng are two implementations within two chapters). The lesson shows the full trait here, so
+  ch17 gives its methods real bodies for rng rather than extracting it.
 - **Modules.** `crates/vmm/src/virtio/{mod.rs, mmio.rs, null.rs, interrupt.rs}`,
   `crates/vmm/src/fdt/machine.rs`.
 - **PLAN.** M11 (`virtio_mmio_state` ≥ 20; `virtio_probe_empty`).
@@ -2242,8 +2315,10 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   65535 (positive case); exact `used.len`; release ordering of `used.idx` and the `SeqCst` fence
   before `avail.flags` visible in the access log; each descriptor read exactly once under the
   mutation hook. Every hostile case returns `Err` or sets `NEEDS_RESET`; none panics, hangs or
-  reads out of bounds. A differential test runs the learner's queue and the reference's on 10,000
-  random valid workloads and compares the used rings (harness feature, risk K10).
+  reads out of bounds. (Planned, not built: a differential test running the learner's queue and
+  the reference's on 10,000 random valid workloads, risk K10. What exists and the lesson shows is
+  `queue_pop_model`: 10,000 seeded random rings, each verdict compared with an independent plain
+  model of the same rules.)
 - **Lab.** `virtqueue-visualizer` (DESIGN.md §8.4) with hostile mode, including a "flip `len`
   after the check" toggle. `litmus` (in the `memory-ordering` primer): message passing with and
   without acquire and release.
@@ -2275,14 +2350,15 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
 - **Objectives.** (1) Implement virtio-rng (DeviceID 4, §5.4) end to end on a **device worker
   thread**: notify wakes the worker through a mutex and condvar (the doorbell's happens-before
   chain), fill only writable descriptors from `getentropy` in chunks, at most 64 KiB per request,
-  report the exact `used.len`, interrupt. (2) Extract the `VirtioDevice` trait from rng, now that
-  a second device is coming. (3) As a faded exercise, implement virtio-console (DeviceID 3, §5.3),
-  one port, no multiport, backed by a sink, and make it the Linux console `hvc0`. (4) Measure exits
+  report the exact `used.len`, interrupt. (2) Give the `VirtioDevice` trait (shown whole in ch15)
+  real bodies for rng, now that a second device is coming. (3) As a faded exercise, implement
+  virtio-console (DeviceID 3, §5.3), one port, no multiport, backed by a sink, which Linux shows
+  as `/dev/hvc0` (the lesson writes to it; booting with `console=hvc0` is not required). (4) Measure exits
   per KiB for PL011 against virtio-console with `--stats`, and explain the ratio with ch03's
   number. (5) Notice that the ch04 park is now real: a worker reads rings while vCPUs run.
 - **Concepts you'll need.**
-  - *Core, taught here:* device worker threads; the doorbell's happens-before chain; extracting
-    the `VirtioDevice` trait; virtio-rng and virtio-console semantics.
+  - *Core, taught here:* device worker threads; the doorbell's happens-before chain; real
+    `VirtioDevice` bodies; virtio-rng and virtio-console semantics.
   - *Core, from earlier:* virtqueues (ch16).
   - *Primers (read first):* `memory-ordering` (the doorbell chain); `host-concurrency` (review:
     mutex, condvar, joining a worker).
@@ -2302,7 +2378,7 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   `--console file:{out}/hvc0.out`, `macvmm.test=console-tx` gives `macvmm-console: tx done` and the
   file's sha256 equals that of the 65,536 expected bytes; `--console stdio --serial stdio` is
   refused, exit 2.
-- **Lab.** None new; the ch16 visualizer has an rng preset.
+- **Lab.** None new.
 - **Predict fork.** In the guest, `dd if=/dev/hwrng bs=1M count=1 | wc -c`. Do notifications scale
   with bytes or with buffers posted? Tempting: bytes. Expected: buffers.
 - **Journal questions.**
@@ -2313,9 +2389,11 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   3. *Mechanism.* Why does a console want two queues when a UART needs none?
   4. *Transfer, open question.* The guest posts a zero-length writable buffer. What does rng do,
      and what does it report?
-- **Breaks.** O edit: report `used.len = buffer length` regardless (the guest consumes
-  uninitialised bytes as entropy). O guest: TEST-7 phase 5 (`scripts/test-e2e.sh hostile`) against
-  rng, the live-TOCTOU attack from a second vCPU (available after ch20).
+- **Breaks.** M edit: forget to ring the bell (keep the pending bit, drop the condvar
+  `notify_one`), which teaches the doorbell chain. O edit: report `used.len = buffer length`
+  regardless (the guest consumes uninitialised bytes as entropy). The single-vCPU hostile-queue
+  run is shown; TEST-7 phase 5 (`scripts/test-e2e.sh hostile`), the live-TOCTOU attack from a
+  second vCPU, needs ch20 and is only pointed forward to.
 - **Misconception.** "A paravirtual device is faster because its code is faster." (It is faster
   because it needs far fewer exits.)
 - **Time.** 4.5 h.
@@ -2423,15 +2501,23 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
 - **Predict fork.** Send a frame with a 10-byte (legacy) header instead of 12. Valid packet,
   corrupted packet, or nothing? Tempting: valid. Expected: every field shifted by two bytes.
 - **Journal questions.**
-  1. *Mechanism.* RX buffers are posted by the guest, packets arrive whenever. Where does a packet
-     wait, and what do we do when no buffer is posted?
-  2. *Observe (evidence: `--stats` drop counters, `ip -s link`).* Blast 10,000 small datagrams at
-     VM B. Where did the missing ones go, and which counter says so?
+  1. *Observe (evidence: the `--stats` lines of an interface-down run, the guest's
+     `/sys/class/net/eth0/statistics/rx_packets`, and the break's run).* VM A sends frames while
+     B's `eth0` is down. How many reach B's guest, where did the rest go, and which counter says
+     so? (Not "blast 10,000 datagrams with `ip -s link`": Alpine's busybox `ip` has no `-s`, macOS
+     `nc` refuses Unix datagram sockets, and a sender that is not the peer is dropped as foreign.)
+  2. *Mechanism (evidence: `Net::receive`, the RX thread and the `sample` of the hung VM).* RX
+     buffers are posted by the guest, packets arrive whenever. Where does a packet wait, what do
+     we do when no buffer is posted, and whose thread would block if the device waited?
   3. *Mechanism.* Why does `unixgram:` need no entitlement, and what can it not do? (Treat Apple's
      reasons for gating vmnet as inference, not fact.)
   4. *Transfer, open question.* Which offload (checksum, TSO, mergeable buffers) would you add
      first for speed, and what new parsing risk does each bring?
-- **Breaks.** M edit: block the worker when no RX buffer is posted (the guest stalls under load).
+- **Breaks.** M edit: wait (poll and sleep) for an RX buffer instead of dropping the frame.
+  Observed: not a stall but a deadlock. RX runs on its own thread, which holds the device mutex
+  while it waits; the guest's power-off resets the device from the vCPU thread, which waits on
+  that mutex, so the VM freezes mid-power-off; `--timeout` and a first SIGTERM cannot end it (the
+  second quit signal does). `sample` of the hung process shows the two waiting threads.
 - **Misconception.** "A network device needs a network." (It moves frames between rings and a
   backend; what sits behind the backend is a separate decision.)
 - **Time.** 6 h.
@@ -2489,7 +2575,9 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
      the PSCI return show? (Answers ch06's park.)
   4. *Transfer, open question.* Why does `CPU_ON` take a context ID, and where does it land?
 - **Breaks.** M edit: duplicate MPIDR, or one that disagrees with the DTB (`nproc` 1, `CPU_ON`
-  error). O edit: take two locks in opposite orders (hang under stress, caught by the watchdog).
+  error). O edit: take two locks in opposite orders (hang under stress; observed: even the VMM's
+  own `--timeout 20` cannot end it, because both vCPU threads are blocked on a mutex that no kick
+  reaches; only an external timeout or a second quit signal does; `sample` shows the cycle).
 - **Misconception.** "More vCPUs is more threads doing the same thing." (Every device becomes a
   concurrent data structure.)
 - **Milestone.** Course milestone "It scales" (with ch19).
@@ -2528,7 +2616,8 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   `arch/stage1_walk.rs`, the ISV=0 path in `vcpu/mmio.rs`, `inject::data_abort`.
 - **Modules.** `crates/vmm/src/devices/flash.rs`, `crates/vmm/src/loader/firmware.rs`,
   `crates/vmm/src/arch/{insn.rs, stage1_walk.rs, inject.rs}`, `crates/vmm/src/vcpu/mmio.rs`,
-  `docs/adr/` (the learner's own ADR).
+  `learner/docs/adr/0001-first-firmware.md` (the learner's own ADR; the ch21 scaffold should
+  create `learner/docs/adr/` if the workspace has none).
 - **PLAN.** M17 (`insn_decode` ≥ 60, `check-insn-corpus.sh`, `stage1_walk`, `isv0_probe`), M18
   (`firmware` and `flash` host tests; `uboot_prompt`, `uboot_reset`, `uboot_no_disk`).
 - **Checkpoint.** `scripts/checkpoint.sh 21`. L1: decoder vectors for every class × writeback ×
@@ -2561,9 +2650,14 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
      boot does not.
   5. *Transfer, open question.* Who owns the DTB in firmware boot, and what if the firmware edits
      it?
-- **Breaks.** O edit: map flash read-write RAM (`saveenv` appears to work, then nothing persists).
-  M guest: `isv0-probe` against the ch07 refusal (above). O edit: recompute the IPA from the walk
-  instead of trusting the exit (a TEST-7 phase 2 case catches it).
+- **Breaks.** O edit: map flash read-write RAM. Observed: `mw.l`/`md.l` writes to flash read back,
+  even the firmware's own image changes, and after `reset` nothing persists. (`saveenv` is not the
+  demonstration: it fails in both the reference and the broken build, `not on sector boundary`,
+  because there is no flash table and U-Boot reports `Flash: 0 Bytes`.) M guest: `isv0-probe`
+  against the ch07 refusal (above). O edit: recompute the IPA from the walk instead of trusting
+  the exit. Observed: no guest catches it (the hostile-isv0 guest still prints `phase 2 ok`, and
+  `isv0-probe` passes 16/16); only the host test `isv0_ipa_mismatch_aborts` in
+  `crates/vmm/tests/insn_decode.rs` fails.
 - **Misconception.** "Firmware is a black box that works." (Firmware is a guest with stricter
   expectations than Linux, and it reaches paths Linux never takes.)
 - **Time.** 8 h. This is the longest Open chapter; if it exceeds the word budget, ISV=0 becomes its
@@ -2651,7 +2745,7 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   `hvc0` rather than `ttyAMA0`? Tempting: "the same PL011". Expected: VZ offers virtio-console,
   not a PL011; the machine differs even when the kernel is identical.
 - **Journal questions.**
-  1. *Observe (evidence: `codesign -d --entitlements :-` on both binaries).* What does each right
+  1. *Observe (evidence: `codesign -d --entitlements -` on both binaries).* What does each right
      allow, and whose code defines the devices in each case?
   2. *Mechanism (evidence: the VZ configuration class names).* Which of VZ's devices are standard
      virtio and which are Apple-specific?
@@ -2659,7 +2753,8 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
      take the low road? Give both sides.
   4. *Transfer, open question.* From your inventory, which three pieces will be hardest for a
      low-level VMM, and is each hard because it is complex or because it is undocumented?
-- **Breaks.** O guest: run `vz-mac` without its entitlement (fails at run time, as in ch01).
+- **Breaks.** O guest: run `vz-mac` without its entitlement (fails at run time, as in ch01). It is
+  the chapter's only break, so the lesson presents it as Deliberate breakage 1 with a full debrief.
 - **Misconception.** "Virtualization.framework is a wrapper around Hypervisor.framework that we
   could reimplement in a weekend." (VZ supplies a whole machine definition, firmware and devices,
   much of it undocumented.)
@@ -2668,17 +2763,20 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
 #### 24 `vmapple`: macOS guests, the low road: vmapple and AVPBooter (capstone, STRETCH)
 
 - **Ledger.** Beyond the ledger. Step 15.
-- **Objectives.** (1) Summarise, with citations verified against a pinned QEMU commit, how QEMU's
+- **Objectives.** (1) Summarise, with citations verified against a pinned QEMU tag (the lesson pins
+  `v10.0.0`, the first release with vmapple, checked 2026-11-20), how QEMU's
   `vmapple` machine boots macOS on HVF: AVPBooter loaded from the host's Virtualization.framework
   resources (never copied), the configuration, backdoor and AES devices, `apple-gfx` through
   ParavirtualizedGraphics.framework, disk and auxiliary images from a VZ install. (2) Add
   observable increments behind `--features experimental-vmapple`: load AVPBooter, run it, and
-  produce an annotated exit trace to the first unhandled device access; implement the next device
-  the trace asks for, and repeat. (3) Write a design record (ADR plus `docs/macos/design.md`) that
+  produce an annotated exit trace to the first unhandled device access. Implementing the next
+  device the trace asks for is optional capstone option A: the reference never got past the
+  unmodelled cfg block (ADR-0008 decision 7 makes that post-v1), so the lesson says so and offers
+  no "implement" step in sitting B. (3) Write a design record (ADR plus `docs/macos/design.md`) that
   separates *observed*, *inferred* and *unknown*.
 - **Concepts you'll need.**
   - *Core, from earlier:* all of Parts III to IX.
-  - *Pointers (Aside plus link):* QEMU `hw/vmapple/` docs at a pinned commit;
+  - *Pointers (Aside plus link):* QEMU `hw/vmapple/` docs at the pinned tag `v10.0.0`;
     ParavirtualizedGraphics.framework; Apple's macOS boot chain for VMs (AVPBooter, later stages,
     the kernelcache), one Aside that separates observed, inferred and unknown and cites only QEMU's
     documentation and our own traces (PLAN D4).
@@ -2727,10 +2825,11 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
 - **Objectives.** (1) Write a STRIDE-style threat model for your VMM: assets, every trust boundary
   (guest to VMM, host files, other local users), attacker capabilities; cross-check against
   `docs/security/threat-model.md`. (2) Build a dependency-free fuzz harness (seeded PRNG,
-  structure-aware mutation of descriptor chains, MMIO sequences, Image and DTB headers) that runs
-  device models on the host with no HVF, and point it at a planted copy of the reference's queue
-  and blk modules (through the frozen APIs) until it finds all three planted bugs; minimise each
-  reproducer. (3) Run the hostile guest (TEST-7: MMIO sweep, ISV=0 garbage, sysreg sweep, SMCCC
+  structure-aware mutation of descriptor chains) that runs device models on the host with no HVF,
+  and point it at a planted copy of the reference's queue module (through the frozen APIs) until
+  it finds all three assessed planted bugs; minimise each reproducer. (Narrowed in the lesson: the
+  MMIO-sequence target, `fuzz_mmio_sequence`, is shown as an optional exercise and not assessed;
+  Image and DTB header targets and blk plants are not part of v1.) (3) Run the hostile guest (TEST-7: MMIO sweep, ISV=0 garbage, sysreg sweep, SMCCC
   garbage, virtqueue attacks including live TOCTOU, terminal attack strings, a reset storm, an
   output flood) and explain each expected outcome. (4) Confine the process after set-up with
   `--sandbox` (`sandbox_init`), set `RLIMIT_CORE = 0`, and measure what the sandbox denies.
@@ -2752,7 +2851,9 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   rlimits); threat model TEST-7 (`scripts/test-e2e.sh hostile`).
 - **Checkpoint.** `scripts/checkpoint.sh 25`. L1: the learner's fuzzer finds each planted bug (a
   missing `checked_add`, a missing hop budget, an off-by-one in a ring index) within 10 minutes;
-  reference equivalent `scripts/bughunt-selftest.sh` prints `bughunt: 3/3 planted bugs found`.
+  the reference self-test `scripts/bughunt-selftest.sh` also runs a fourth plant (a `desc.len`
+  double fetch) and prints `bughunt: 4/4 planted bugs found`; the learner's checkpoint assesses
+  plants 1 to 3.
   L2: (a) `run --sandbox-selftest --kernel <hello>` prints `sandbox: open denied, socket denied,
   spawn denied`, then the hello markers, exit 0 (if `sandbox_init` proves incompatible with HVF,
   PLAN M22 records the evidence and the checkpoint follows that record); (b) `--stats` shows
@@ -2765,12 +2866,13 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   10 s, 10 min, never. Then plant a bug that needs a specific three-descriptor sequence and predict
   again. Record both actual times.
 - **Journal questions.**
-  1. *Mechanism (evidence: your threat model).* An attacker fully compromises the VMM process.
-     What can they do next, and which specific mechanism guards each asset?
-  2. *Mechanism (evidence: your own code).* Name a bug class Rust's memory safety does not prevent
-     here, and show an instance in your VMM.
-  3. *Observe (evidence: your fuzzer's findings).* Rank the three planted bugs by exploitability,
+  (Order per STYLE appendix A.7, observe first.)
+  1. *Observe (evidence: your fuzzer's findings).* Rank the three planted bugs by exploitability,
      using what the attacker controls and what breaks.
+  2. *Mechanism (evidence: your threat model).* An attacker fully compromises the VMM process.
+     What can they do next, and which specific mechanism guards each asset?
+  3. *Mechanism (evidence: your own code).* Name a bug class Rust's memory safety does not prevent
+     here, and show an instance in your VMM.
   4. *Transfer, open question.* Your fuzzer is structure-aware. Which input shape does it never
      generate, and what bug could hide there?
 - **Breaks.** M input: the planted bugs (the checkpoint itself).
@@ -2915,7 +3017,7 @@ question (follow-ups go in the rubric); the closing open question is always the 
 
 Each lesson opens with three short questions (about 3 minutes): one from chapter N-1, one from
 N-3 and one from N-7, where those exist. They are answered before reading and checked at once.
-Banks live in `course/retrieval/NN.toml`, 6 to 10 items per chapter, so repeat visits rotate.
+Banks live in `course/retrieval/NN.md`, 6 to 10 items per chapter, so repeat visits rotate.
 Items test *use*, not recall of names. Examples: "This ESR is `0x93C08047`. What size is the
 access, and which register?"; "Which DTB property tells Linux how to call PSCI?"; "Your
 `exit-bench` number is X. How much of a core does a 250 Hz tick cost in ch11's mode?"
@@ -3199,7 +3301,7 @@ ch00 before meeting a real CPU. It must stay small enough to read in full.
   ship before every primer in its *Primers (read first)* group. Each new primer lab is v1
   optional; its static figure is the fallback.
 - **K19, novice-review items that need other owners (v3.1).** The plan now assumes: a site
-  glossary page and term links built from `course/CONCEPTS.md` section 4, the Start here page and
+  glossary page and term links built from `course/GLOSSARY.md`, the Start here page and
   the learner reference card (section 4.0), and "good place to stop" markers for two-sitting
   chapters (site builder, DESIGN.md); a pre-worked example and a three-level toy mode in
   `two-stage-walker`, labelled bit fields on `a64-encoder`'s first screen, an unscored mode for
@@ -3215,6 +3317,29 @@ ch00 before meeting a real CPU. It must stay small enough to read in full.
 ---
 
 ## 10. Changes
+
+### 10.0 Phase 3 sync (2026-11-20, from v3.1)
+
+Source: the written lessons of chapters 00 to 25 and the captures they cite. Where a lesson and
+this plan disagreed and the lesson followed what a run on a real Mac showed, this plan now
+follows the lesson. Chapter IDs, slugs, parts, times and labs are unchanged.
+
+| Change | Where |
+|---|---|
+| Retrieval banks are `course/retrieval/NN.md`; the glossary source is `course/GLOSSARY.md` | 2, 3.1, 6.2, K19 |
+| `learner init` and `learner start 00` come before ch00; `learner break` marked not yet implemented, breaks are hand edits | 3.7, 4.1 |
+| Debug-call IDs `0xC600_4D01`/`02`/`03` (HVF answers `0xC600_0000..=001F` itself); `hello` ends with PSCI `SYSTEM_OFF` | 3.3, ch03, ch04 |
+| ch00: five strategies with IBM VM/370 | ch00 objective 5, outline item 8 |
+| ch01 journal Q3 is about `hv_vm_destroy` in `Drop` | ch01 |
+| ch03: the 33-line `_start`, `exit-bench` makes 100,000 calls with no store loop (the store loop is a Try it), the no-stack break is an address size fault looping in the guest | ch03 |
+| ch04: wrapped placement shown on the real loader; journal Q3 parks to ch16 and ch20 | ch04 |
+| ch06: `0x3c4` hangs (SP_EL1 = 0), `0x3c9` gives `HV_ILLEGAL_GUEST_STATE` | ch06 |
+| ch08: injection worked example uses measured `--irqchip none` numbers; L2 marker is `MDCCSR_EL0` | ch08 |
+| ch10, ch11, ch12, ch13, ch14: Predict forks and breaks corrected to the captured outcomes (dtb-reader hardcodes cells; 30 timer exits with the line kick; no measured GIC lateness; PPI break is silence; bad magic boots via `--raw`; initrd overlap stops silently; no `/timer` is a named panic; `cp15 timer running`) | those entries |
+| ch15 to ch17: about 2.4 to 2.7 exits per PL011 byte; the `VirtioDevice` trait is shown whole in ch15 and given bodies in ch17; `hvc0` is written, not made the console; the differential test is replaced by `queue_pop_model` | those entries, 3.4 |
+| ch19, ch20: the RX-wait and lock-order breaks are deadlocks that `--timeout` cannot end; ch19 Q1/Q2 evidence that works on Alpine and macOS | those entries |
+| ch21: flash break shown with `mw.l`/`md.l`; the IPA-recompute break is caught only by a host test; the learner ADR lives in `learner/docs/adr/` | ch21 |
+| ch23 to ch25: `codesign -d --entitlements -`; vmapple pinned at QEMU `v10.0.0`, "implement the next device" is optional; fuzzing narrowed to descriptor chains, self-test prints `4/4`; journal order observe first | those entries |
 
 ### 10.1a Changes in v3.1 (from v3)
 
@@ -3232,7 +3357,7 @@ mappings and checkpoint markers are unchanged except where noted; 28 chapters.
 | ch00: optional VM-app warm-up; puzzle names the speed tension; "hypervisor" used narrowly and said so, with the wider usage; scaffolded thought experiment, coarse answers accepted, ledger shown as boxes not an answer key (objective 2 lowered to three); concrete sentence before Popek and Goldberg; x86 and `POPF` to an Aside; history cut to four anchors; EL2 and ARMv8-A in one sentence; doctor output pre-warned | 00 | N 1.4, 2.0.1 to 2.0.8 |
 | ch01: type 1 and type 2 become an Aside; EL legend before and under the stack figure, no vGIC or vtimer labels; HVF as a user-space library; XNU and Mach glossed; plain-word evidence; VZ versus HVF in learner terms; `trap-or-not` unscored, objective is "explain three"; FFI cut to `hv_vm_create`/`hv_vm_destroy` (vCPU and map declarations and the `hv_vcpu_exit_t` layout check move to ch02) | 01, 1.4 | N 2.1.1 to 2.1.9 |
 | ch02: two sittings (exceptions without Rust, then the first run), lab first, names after need; toy-to-Arm table; vector table defined; call-versus-retry rule; guided ESR table walk; `0x3c5` field table with SP_EL1, EL1h, DAIF glossed; `0x4000_0000` and thread affinity explained; `a64-encoder` exploratory with fields shown; park Q4 rewritten; 5.5 h | 02 | N 2.2.1 to 2.2.10, 2.7.2 |
-| ch03: "the guest" and "the monitor" named and laid out; `0xC600_0001` explained; BSS example; how a store is timed | 03 | N 2.3.1 to 2.3.5 |
+| ch03: "the guest" and "the monitor" named and laid out; the debug-call ID (`0xC600_4D01` since the lesson) explained; BSS example; how a store is timed | 03 | N 2.3.1 to 2.3.5 |
 | ch04: aliasing shown with a hoisted read; "not a bug today"; what volatile does not give; why 16 KiB; trait reproduced in the lesson; DMA forward note | 04, CONCEPTS | N 2.4.1 to 2.4.4, 3.6 |
 | ch05: two-stage picture before the problem; UART intro; HPFAR reasoning in prose; every checkpoint constant explained (`ipa_bits_needed == 36` floor, virtio INTID `48 + i`); scaffolded walk objective | 05 | N 2.5.1 to 2.5.6 |
 | ch06: opens with a question; `MPIDR_EL1` motivated; two meanings of reset; the six-link self-fault trace | 06 | N 2.6.1 to 2.6.5 |

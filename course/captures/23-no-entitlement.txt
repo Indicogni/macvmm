@@ -1,0 +1,9 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: a copy of target/vz-mac/signed/vz-mac in target/scratch/, re-signed with codesign -s - -f -o runtime -i vz-mac target/scratch/vz-mac, that is, with the hardened runtime and no entitlement; the tool itself is unchanged.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ target/scratch/vz-mac linux --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --cmdline "console=hvc0 macvmm.test=boot"
+exit: 1
+--- stdout ---
+
+--- stderr ---
+vz-mac: configuration rejected by Virtualization.framework: "Invalid virtual machine configuration. The process doesn’t have the “com.apple.security.virtualization” entitlement. [VZErrorDomain 2]"

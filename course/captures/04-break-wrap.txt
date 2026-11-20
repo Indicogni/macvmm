@@ -1,0 +1,39 @@
+# scripts/capture-cmd 04: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1 again (a + len in RegionTable::locate), now with overflow checks turned off, Rust's default for release builds, so the sum wraps instead of panicking.
+# Run against the same edited copy of the reference (scripts/checkpoint.sh 04 --impl <tree>) with the two environment variables shown.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ CARGO_PROFILE_DEV_OVERFLOW_CHECKS=false CARGO_PROFILE_TEST_OVERFLOW_CHECKS=false scripts/checkpoint.sh 04
+exit: 1
+--- stdout ---
+checkpoint: implementation <tree>
+[FAIL] L1 contract  memory_hostile: 5 failed: check_range_at_u64_max_minus_3_len_8_is_false, read_u64_wrapping_into_ram_is_refused, read_at_u64_max_minus_3_len_8_overflows, u64_max_len_1_overflows, write_at_u64_max_minus_3_len_8_overflows
+    ---- check_range_at_u64_max_minus_3_len_8_is_false stdout ----
+    
+    thread 'check_range_at_u64_max_minus_3_len_8_is_false' (122690210) panicked at tests/memory_hostile.rs:79:5:
+    assertion failed: !mem().check_range(ga(u64::MAX - 3), 8)
+    
+    ---- read_u64_wrapping_into_ram_is_refused stdout ----
+    
+    thread 'read_u64_wrapping_into_ram_is_refused' (122690227) panicked at tests/memory_hostile.rs:94:5:
+    assertion failed: !mem().check_range(ga(R0), u64::MAX)
+    
+    ---- read_at_u64_max_minus_3_len_8_overflows stdout ----
+    
+[PASS] L2 run       memtest: 10/10 serial markers, exit 0 in 0.17s
+[FAIL] L2 run       guest-ram: guest_ram_hostile: 1 failed: guest_ram_refuses_hostile_ranges
+    ---- guest_ram_refuses_hostile_ranges stdout ----
+    
+    thread 'guest_ram_refuses_hostile_ranges' (122691975) panicked at tests/guest_ram_hostile.rs:42:5:
+    assertion failed: !ram.check_range(ga(u64::MAX - 3), 8)
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+    
+    
+    failures:
+        guest_ram_refuses_hostile_ranges
+    
+    test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+    
+[INFO] L3 journal   not checked (not a learner tree)
+CHECKPOINT 04 FAIL
+
+--- stderr ---

@@ -1,0 +1,10 @@
+# scripts/capture.sh 25: run "bughunt-2" of course/checkpoints/25, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+$ course/checkpoints/25/bughunt.sh <repo> <repo> {out} 2 540
+exit: 0
+--- stdout ---
+bughunt: plant 2 (missing hop budget) found after 0s
+    fuzz virtqueue: FAILURE at iteration 7 (seed 1): 2838 descriptor reads for one pop of a size-2 queue (VQ-5 hop budget)
+
+--- stderr ---
+

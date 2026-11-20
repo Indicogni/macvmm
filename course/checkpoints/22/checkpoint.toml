@@ -1,0 +1,31 @@
+# Checkpoint 22 `freebsd`: stock FreeBSD 15.1-RELEASE through stock U-Boot's EFI path, on
+# virtio-blk with two vCPUs, to a root login, `uname -sr`, and a clean power-off.
+# Needs `scripts/fetch.sh uboot freebsd` (u-boot.bin and freebsd-15.1-ufs.raw in .cache/macvmm/).
+id = "22"
+slug = "freebsd"
+requires = ["21"]
+
+# The cached image is never booted: each run boots an APFS clone (cp -c) in its own {out}
+# directory, removed afterwards. U-Boot's EFI text console follows every character with
+# escape sequences (show cursor, colours, save and restore), so the console goes through a
+# small perl filter that removes them and the carriage returns; it reads with sysread so a
+# prompt without a newline (`login: `) still reaches the harness at once. `pipefail` keeps
+# macvmm's own exit code. The steps are the reference's e2e test `freebsd_login`.
+[[run]]
+name = "freebsd-login"
+command = ["/bin/bash", "-c", "set -euo pipefail; cp -c \"{repo}/.cache/macvmm/freebsd-15.1-ufs.raw\" \"{out}/f.raw\"; \"{macvmm}\" run --bios \"{repo}/.cache/macvmm/u-boot.bin\" --disk \"{out}/f.raw\" --mem 2G --cpus 2 --timeout 240 --on-reset exit | /usr/bin/perl -e '$|=1; my $c=q(); while (sysread(STDIN, my $b, 4096)) { $b = $c . $b; $c = ($b =~ s/(\\e(\\[[0-9;?]*)?)\\z//) ? $1 : q(); $b =~ s/\\e\\[[0-9;?]*[A-Za-z]|\\e[78]|\\r//g; print $b }'"]
+steps = ["wait:login: ", "send:root\n", "wait:root@freebsd:~ # ", "send:uname -sr\n", "wait:\nFreeBSD 15.1-RELEASE\n", "send:shutdown -p now\n"]
+timeout = 240
+expect_exit_code = 0
+serial = "expected/freebsd-login.txt"
+
+[journal]
+file = "journal/22.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "Find which program spoke last. The console names each link in turn: U-Boot 2026.04, then the FreeBSD/arm64 EFI loader, then the FreeBSD kernel's attach lines, then login:. Standard error says whether the VMM refused an exit (unhandled MMIO, unknown SMCCC, not emulated, guest fatal) or nothing went wrong on our side and the guest itself gave up."
+spec = "An unhandled MMIO address: compare it with your DTB (--dtb-out) and the memory map (chapters 07, 10). An unknown SMCCC function: your PSCI and SMCCC dispatch (chapter 08, the smccc primer). Stuck after 'Starting CPU 1': CPU_ON and the per-vCPU thread (chapter 20). 'not emulated' or 'guest fatal' with an instruction word: the ISV = 0 decoder (chapter 21). 'vtblk0: host requires ...': your virtio-blk feature offer (chapter 18; virtio 1.2 section 5.2.3)."
+pseudocode = "cp -c the cached image to a scratch clone; run --bios u-boot.bin --disk CLONE --mem 2G --cpus 2; read the last ten console lines and all of stderr; if stderr names an exit, fix that handler; if not, grep the guest's message in its own source (FreeBSD sys/, U-Boot drivers/) and compare what it wanted with your DTB and feature bits and with QEMU virt's."
+anchor = "crates/vmm/src/fdt/machine.rs (the PL011 node and the SPI cells), crates/vmm/src/virtio/blk.rs (device_features), crates/vmm/src/vcpu/ (PSCI CPU_ON), crates/macvmm/tests/e2e_freebsd.rs (freebsd_login, the reference's own test)."

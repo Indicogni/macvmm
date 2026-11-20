@@ -45,9 +45,11 @@ use core::fmt;
 /// `virt` board's two banks) still takes at most this much image ([`load_rom`]).
 pub const MAX_FIRMWARE: u64 = 64 << 20;
 
+// ANCHOR: avpbooter_path
 /// Where macOS keeps the vmapple boot ROM (Virtualization.framework, macOS 12 and later). The
 /// `--machine vmapple` default for `--bios`. Read in place; never copied (module docs).
 pub const AVPBOOTER_VMAPPLE2: &str = "/System/Library/Frameworks/Virtualization.framework/Versions/A/Resources/AVPBooter.vmapple2.bin";
+// ANCHOR_END: avpbooter_path
 
 /// Why a firmware image cannot go into its ROM. A usage error (exit code 2).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -122,11 +124,13 @@ const PAD_CHUNK: usize = 1 << 20;
 /// [`MAX_FIRMWARE`]), so a bad image changes nothing. The host copy goes into the ROM's own
 /// allocation, the only place the bytes ever live besides `HostIo`'s buffer; the guest can
 /// read and execute it, never write it (MEM-3).
+// ANCHOR: firmware_load_rom_check
 pub fn load_rom(rom: &dyn RomTarget, image: &[u8]) -> Result<(), FirmwareError> {
     let size = rom.size();
     check_rom_image(image, size.min(MAX_FIRMWARE))?;
     let fresh = rom.is_fresh();
     rom.load(0, image).map_err(FirmwareError::Load)?;
+    // ANCHOR_END: firmware_load_rom_check
     if fresh {
         return Ok(()); // already zero past the image (MEM-10)
     }

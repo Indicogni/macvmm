@@ -1,0 +1,9 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified. The same corrupted kernel as the bad-magic run (byte 0x38 changed from 'A' to 'B'), this time without --initrd; the copy lived in a private scratch directory, shown as .cache/ch13.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/ch13/Image-badmagic --mem 512M --timeout 10
+exit: 2
+--- stdout ---
+
+--- stderr ---
+macvmm: cannot load the guest: --kernel is not an ELF file; load a flat binary with --raw F@ADDR

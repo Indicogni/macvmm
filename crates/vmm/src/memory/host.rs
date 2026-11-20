@@ -82,6 +82,7 @@ const MAPPED: u8 = 1;
 /// `hv_vm_unmap` failed: the block may still be mapped, so it must never be freed.
 const UNMAP_FAILED: u8 = 2;
 
+// ANCHOR: guest_ram_block_struct
 /// One `hv_vm_allocate` block and where it is (or will be) mapped.
 #[derive(Debug)]
 struct Block {
@@ -92,8 +93,10 @@ struct Block {
     len: usize,
     state: AtomicU8,
 }
+// ANCHOR_END: guest_ram_block_struct
 
 impl Block {
+    // ANCHOR: guest_ram_block_new
     fn new(ipa: u64, size: u64) -> Result<Block> {
         let len = usize::try_from(size).map_err(|_| Error::Config(format!("{size:#x} bytes")))?;
         let alloc = hvf::host::allocate(len).map_err(|err| Error::Hv {
@@ -107,7 +110,9 @@ impl Block {
             state: AtomicU8::new(NOT_MAPPED),
         })
     }
+    // ANCHOR_END: guest_ram_block_new
 
+    // ANCHOR: guest_ram_block_ptr
     /// Host address of byte `offset`, if `[offset, offset + len)` is inside the block. This
     /// re-checks what `RegionTable::locate` already proved, so a bug in a caller cannot turn
     /// into an out-of-bounds pointer.
@@ -124,7 +129,9 @@ impl Block {
         Some(unsafe { alloc.as_ptr().add(start) })
         // LEARNER_END: block_ptr_bounds
     }
+    // ANCHOR_END: guest_ram_block_ptr
 
+    // ANCHOR: guest_ram_block_map
     /// Map the block at its IPA with `flags`. A block maps at most once at a time.
     fn map(&self, vm: &Vm, flags: MemFlags) -> Result<()> {
         if self
@@ -142,8 +149,8 @@ impl Block {
         // SAFETY: (the `Vm::map` contract) `ptr..ptr+len` is one live `hv_vm_allocate` block owned
         // by this `Block`. It stays allocated until the mapping is gone, because `Drop` frees a
         // block only in state NOT_MAPPED (reached again only after a successful unmap) and
-        // otherwise leaks it (MEM-9, MEM-11). No Rust reference to it is ever created: all
-        // access is through the volatile copies and the atomic accessors below (MEM-5, MEM-6).
+        // otherwise leaks it. No Rust reference to it is ever created: all access is through the
+        // volatile copies and the atomic accessors below.
         // The block is never handed out as ordinary Rust memory.
         let mapped = unsafe { vm.map(ptr, self.ipa, self.len, flags) };
         if let Err(err) = mapped {
@@ -155,6 +162,7 @@ impl Block {
         }
         Ok(())
     }
+    // ANCHOR_END: guest_ram_block_map
 
     /// Remove the mapping, if there is one. A failure is remembered: the block is then leaked.
     fn unmap(&self, vm: &Vm) -> core::result::Result<(), CallError> {
@@ -192,6 +200,7 @@ impl Block {
 }
 
 // ANCHOR: guest_ram_volatile_copy
+// ANCHOR: guest_ram_volatile_read
 /// Copy `buf.len()` bytes from guest-shared memory at `src` into `buf`: `u8` loads up to the
 /// first 8-aligned address, `u64` loads for the middle, `u8` loads for the tail. Every load is
 /// volatile, so each guest byte is read exactly once and the compiler cannot re-read it.
@@ -224,6 +233,7 @@ unsafe fn volatile_read(src: *const u8, buf: &mut [u8]) {
         p = p.wrapping_add(1);
     }
 }
+// ANCHOR_END: guest_ram_volatile_read
 
 /// The mirror of [`volatile_read`]: copy `data` into guest-shared memory at `dst`.
 ///
@@ -286,8 +296,9 @@ const _: () = {
 };
 
 impl GuestRam {
+    // ANCHOR: guest_ram_new
     /// Allocate (but do not map) RAM for `regions` in a VM with `ipa_bits` of IPA space. The
-    /// table rules of MEM-8 are checked first, so nothing is allocated for a bad layout.
+    /// region-table rules (no overlap, no zero size, 16 KiB alignment) are checked first, so nothing is allocated for a bad layout.
     pub fn new(regions: &[(GuestAddress, u64)], ipa_bits: u32) -> Result<GuestRam> {
         let table = RegionTable::new(regions, ipa_bits)?;
         let mut blocks = Vec::with_capacity(table.spans().len());
@@ -300,6 +311,7 @@ impl GuestRam {
             leak_on_drop: AtomicBool::new(false),
         })
     }
+    // ANCHOR_END: guest_ram_new
 
     /// The validated region table.
     pub fn table(&self) -> &RegionTable {
@@ -361,6 +373,7 @@ impl GuestRam {
         }
     }
 
+    // ANCHOR: guest_ram_host_ptr
     /// The block and in-block pointer for an accepted access.
     fn host_ptr(
         &self,
@@ -380,6 +393,7 @@ impl GuestRam {
                 len: len64,
             })
     }
+    // ANCHOR_END: guest_ram_host_ptr
 }
 
 impl Drop for GuestRam {
@@ -391,6 +405,7 @@ impl Drop for GuestRam {
     }
 }
 
+// ANCHOR: guest_ram_access
 impl GuestMemory for GuestRam {
     fn read(&self, addr: GuestAddress, buf: &mut [u8]) -> core::result::Result<(), MemoryError> {
         let src = self.host_ptr(addr, buf.len())?;
@@ -411,12 +426,14 @@ impl GuestMemory for GuestRam {
         self.table.contains(addr, len)
     }
 }
+// ANCHOR_END: guest_ram_access
 
+// ANCHOR: guest_ram_ordered
 impl GuestMemoryOrdered for GuestRam {
     fn read_u16_acquire(&self, addr: GuestAddress) -> core::result::Result<u16, MemoryError> {
         check_aligned_u16(addr)?;
         let p = self.host_ptr(addr, 2)?;
-        // SAFETY: (MEM-6) `p` is inside a live block (checked) and 2-aligned (the IPA is
+        // SAFETY: `p` is inside a live block (checked) and 2-aligned (the IPA is
         // 2-aligned and blocks are page-aligned, so the host address is too). `AtomicU16` has
         // the size and alignment of `u16`. The guest is not Rust: its accesses, including
         // mixed-size ones, are outside the Rust memory model, and we only ever use the value we
@@ -432,12 +449,13 @@ impl GuestMemoryOrdered for GuestRam {
     ) -> core::result::Result<(), MemoryError> {
         check_aligned_u16(addr)?;
         let p = self.host_ptr(addr, 2)?;
-        // SAFETY: (MEM-6) as in `read_u16_acquire`; the store publishes the VMM's earlier
+        // SAFETY: as in `read_u16_acquire`; the store publishes the VMM's earlier
         // writes (the used ring elements) to the guest.
         unsafe { AtomicU16::from_ptr(p.cast::<u16>()) }.store(val.to_le(), Ordering::Release);
         Ok(())
     }
 }
+// ANCHOR_END: guest_ram_ordered
 
 /// Firmware flash: written by the host at load time, mapped **read+execute** for the guest, and
 /// deliberately **not** a [`GuestMemory`] (MEM-3): no device can DMA into firmware through the
@@ -515,11 +533,13 @@ impl RomRegion {
         Ok(())
     }
 
+    // ANCHOR: rom_read_only
     /// M18: the little-endian 32-bit word at guest-physical `ipa`, if `ipa` is 4-byte aligned
     /// and the word lies inside the ROM. Read-only and bounds-checked (`locate` + the block
     /// check): the ISV = 0 path's instruction fetch from execute-in-place firmware
     /// (`arch::stage1_walk::fetch_insn_rom`). This is the only guest-driven read of the ROM;
     /// nothing guest-driven ever writes it (MEM-3).
+    // ANCHOR: rom_read_u32
     pub fn read_u32(&self, ipa: GuestAddress) -> Option<u32> {
         if !ipa.0.is_multiple_of(4) {
             return None;
@@ -529,11 +549,15 @@ impl RomRegion {
         self.read(offset, &mut b).ok()?;
         Some(u32::from_le_bytes(b))
     }
+    // ANCHOR_END: rom_read_u32
 
     /// Map into `vm` read+execute for the guest (PLAN §1: flash bank 0 is READ+EXEC).
+    // ANCHOR: rom_map
     pub fn map(&self, vm: &Vm) -> Result<()> {
         self.block.map(vm, MemFlags::RX)
     }
+    // ANCHOR_END: rom_map
+    // ANCHOR_END: rom_read_only
 
     /// Remove the mapping (a failure makes the drop leak).
     pub fn unmap(&self, vm: &Vm) -> core::result::Result<(), CallError> {

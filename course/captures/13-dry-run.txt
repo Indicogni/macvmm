@@ -1,0 +1,38 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified, run as the unentitled copy target/ch13/macvmm-noent (made in the capture 13-noent-sign), so any VM creation would fail.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ target/ch13/macvmm-noent run --dry-run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M
+exit: 0
+--- stdout ---
+macvmm boot plan (dry run, no VM created)
+ram     0x40000000..0x60000000  512 MiB
+dtb     0x40000000..0x40000724  device tree (1828 bytes)
+kernel  0x40200000..0x424a0000  kernel (arm64 Image) (36306944 bytes)
+initrd  0x42600000..0x42efd8fc  initrd (9427196 bytes)
+header  text_offset=0x0 image_size=0x22a0000 file=0x22a0000 page_size=K4
+cmdline "console=ttyAMA0 earlycon=pl011,0x09000000"
+entry   pc=0x40200000 x0=0x40000000 cpsr=0x3c5
+memory map (Virt):
+  0x00000000..0x04000000  flash0       Rom
+  0x04000000..0x08000000  flash1       Rom
+  0x08000000..0x08010000  gicd         GicDist
+  0x08010000..0x08020000  gicv2-cpu    Reserved
+  0x08020000..0x08030000  gic-v2m      GicMsi
+  0x08080000..0x080a0000  gic-its      Reserved
+  0x080a0000..0x09000000  gicr         GicRedist
+  0x09000000..0x09001000  pl011        Mmio intid 33
+  0x09010000..0x09011000  pl031        Mmio intid 34
+  0x09020000..0x09020018  fw-cfg       Reserved
+  0x09030000..0x09031000  pl061        Reserved intid 39
+  0x0a000000..0x0a004000  virtio-mmio  Mmio
+  0x0b000000..0x0b001000  testdev      Mmio
+  0x0c000000..0x0e000000  probe-hole   Reserved
+  0x10000000..0x3eff0000  pcie-mmio    Reserved
+  0x3eff0000..0x3f000000  pcie-pio     Reserved
+  0x3f000000..0x40000000  pcie-ecam    Reserved
+  0x40000000..0x60000000  ram          Ram
+device tree: 1828 bytes at 0x40000000 (limit 2097152), 1 vCPU(s), irqchip InKernelGicV3, rng-seed 64 bytes and kaslr-seed (values not shown)
+  /chosen linux,initrd-start 0x42600000 linux,initrd-end 0x42efd8fc
+debug hypercalls: off
+
+--- stderr ---

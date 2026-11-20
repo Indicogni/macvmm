@@ -1,0 +1,14 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The edit of 20-mpidr-mismatch-run (every vCPU's MPIDR_EL1 is 0x80000000), run again with --trace; grep hides the PSCI_FEATURES probes.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --cpus 2 --mem 1G --serial file:boot.txt --on-reset exit --timeout 60 --trace exits:t.jsonl:psci,cancel --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=smp"; grep -v FEATURES t.jsonl
+exit: 0
+--- stdout ---
+{"t_ns":11662958,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_VERSION","action":"psci"}
+{"t_ns":12360791,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_MIGRATE_INFO_TYPE","action":"psci"}
+{"t_ns":41407291,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_CPU_ON","action":"psci"}
+{"t_ns":1046895583,"vcpu":1,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_SYSTEM_RESET","action":"psci"}
+{"t_ns":1046934458,"vcpu":0,"reason":"canceled","pc":"0xffff800080ce0a28"}
+
+--- stderr ---
+macvmm: guest requested a reset (exit code 4)

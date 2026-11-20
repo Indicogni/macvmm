@@ -1,0 +1,15 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Disassembly of the guest built for 03-no-stack.txt; LLVM is the rustup llvm-tools directory from the bare-metal-rust primer.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ "$LLVM/llvm-objdump" -d $G/hello | grep -A2 -e "<guest_main>:" -e "^40080a00"
+exit: 0
+--- stdout ---
+40080a00: d10483ff     	sub	sp, sp, #0x120
+40080a04: a90007e0     	stp	x0, x1, [sp]
+40080a08: d2800080     	mov	x0, #0x4                // =4
+--
+0000000040081040 <guest_main>:
+40081040: d10083ff     	sub	sp, sp, #0x20
+40081044: a90103fe     	stp	x30, x0, [sp, #0x10]
+
+--- stderr ---

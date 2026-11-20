@@ -135,6 +135,7 @@ pub fn ram() -> Result<Arc<VecMemory>, String> {
     .map_err(|e| format!("VecMemory: {e:?}"))
 }
 
+// ANCHOR: fuzz_in_one_region
 /// True if `[addr, addr + len)` lies inside a single region, computed in `u128` so that the
 /// check itself cannot overflow (the reference model the code under test is compared with).
 pub fn in_one_region(addr: u64, len: u64) -> bool {
@@ -144,6 +145,7 @@ pub fn in_one_region(addr: u64, len: u64) -> bool {
         l > 0 && a >= b && a + l <= b + s
     })
 }
+// ANCHOR_END: fuzz_in_one_region
 
 /// True if `[a, a + alen)` and `[b, b + blen)` overlap (`u128`, no overflow).
 pub fn overlap(a: u64, alen: u64, b: u64, blen: u64) -> bool {

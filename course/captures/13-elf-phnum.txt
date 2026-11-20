@@ -1,0 +1,9 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified. The kernel is a copy of the hello ELF with e_phnum (2 bytes at offset 0x38) set to ff ff, 65535; the copy lived in a private scratch directory, shown as .cache/ch13.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --kernel .cache/ch13/hello-phnum --timeout 10
+exit: 2
+--- stdout ---
+
+--- stderr ---
+macvmm: cannot load the guest: ELF has 65535 program headers (at most 64)

@@ -91,6 +91,7 @@ pub struct BootInputs<'a> {
     pub cmdline: Option<&'a str>,
 }
 
+// ANCHOR: bootplan_struct
 /// The complete, validated boot plan.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BootPlan {
@@ -100,7 +101,7 @@ pub struct BootPlan {
     /// The guest RAM this plan was checked against.
     pub ram: RamRange,
     /// The device-tree slot: reserved by [`plan`], sized to the blob by
-    /// [`BootPlan::set_dtb_len`] (M7).
+    /// [`BootPlan::set_dtb_len`] once the tree is built.
     pub dtb: Placement,
     /// The largest blob that fits: `min(DTB_MAX, RAM size, lowest image - RAM base)`.
     pub dtb_limit: u64,
@@ -108,15 +109,17 @@ pub struct BootPlan {
     pub images: Vec<Placement>,
     /// The parsed kernel ELF, if `--kernel` was an ELF.
     pub elf: Option<elf::ElfImage>,
-    /// The placed arm64 Image, if `--kernel` was one (M9).
+    /// The placed arm64 Image, if `--kernel` was one.
     pub image: Option<image::ArmImage>,
-    /// The initrd `[start, end)` (M9), for `/chosen/linux,initrd-{start,end}`.
+    /// The initrd `[start, end)`, for `/chosen/linux,initrd-{start,end}`.
     pub initrd: Option<(u64, u64)>,
-    /// `/chosen/bootargs` (M9): `--cmdline`, or [`default_cmdline`] for an Image.
+    /// `/chosen/bootargs`: `--cmdline`, or [`default_cmdline`] for an Image.
     pub bootargs: Option<String>,
-    /// M18: the `--bios` image in flash bank 0 (outside RAM: not one of `images`).
+    /// The `--bios` firmware image in flash bank 0 (chapter 21; outside RAM, so not one of
+    /// `images`).
     pub firmware: Option<Placement>,
 }
+// ANCHOR_END: bootplan_struct
 
 /// The row label of a placement in the printed plan.
 fn label(what: &str) -> &'static str {
@@ -199,11 +202,13 @@ pub fn check_cmdline(s: &str) -> Result<(), LoaderError> {
 /// Plan a boot into `ram` (module docs). Every overlap and bound is checked here. Pure: no
 /// I/O, no HVF, deterministic (LDR-5).
 pub fn plan(ram: RamRange, inputs: &BootInputs<'_>) -> Result<BootPlan, LoaderError> {
+    // ANCHOR: plan_dtb_slot
     let dtb = Placement {
         what: "device tree (reserved)".into(),
         addr: ram.base,
         len: DTB_MAX_TEST_GUEST.min(ram.size),
     };
+    // ANCHOR_END: plan_dtb_slot
     let mut images: Vec<Placement> = Vec::new();
     let mut entry = None;
     let mut parsed = None;
@@ -234,13 +239,14 @@ pub fn plan(ram: RamRange, inputs: &BootInputs<'_>) -> Result<BootPlan, LoaderEr
                 }));
                 parsed = Some(img);
             }
+            // ANCHOR: bootplan_plan_image
             ImageKind::ArmImage => {
                 let img = image::place(bytes, ram)?;
                 let p = img.placement();
                 if overlaps(p.addr, p.len, dtb.addr, DTB_MAX.min(ram.size)) {
                     return Err(LoaderError::OverlapsDtb { what: p.what });
                 }
-                // booting.rst §4: PC = the kernel's first byte (the Image header's `code0`).
+                // booting.rst section 4: PC = the kernel's first byte (the header's `code0`).
                 entry = Some(img.load);
                 images.push(p);
                 if let Some(rd) = inputs.initrd {
@@ -256,10 +262,12 @@ pub fn plan(ram: RamRange, inputs: &BootInputs<'_>) -> Result<BootPlan, LoaderEr
                 bootargs = Some(inputs.cmdline.map_or_else(default_cmdline, str::to_owned));
                 arm_image = Some(img);
             }
+            // ANCHOR_END: bootplan_plan_image
             ImageKind::EfiZboot => return Err(LoaderError::EfiZboot),
             ImageKind::Raw => return Err(LoaderError::NotAKernel),
         }
     }
+    // ANCHOR: plan_raw_blobs
     for (index, (addr, bytes)) in inputs.raw.iter().enumerate() {
         let len = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
         let p = raw::check_placement(ram, index, *addr, len)?;
@@ -279,6 +287,7 @@ pub fn plan(ram: RamRange, inputs: &BootInputs<'_>) -> Result<BootPlan, LoaderEr
         images.push(p);
     }
     let entry = entry.ok_or(LoaderError::NoImage)?;
+    // ANCHOR_END: plan_raw_blobs
     // ANCHOR: plan_dtb_limit
     // The DTB may grow up to 2 MiB, but never into the lowest image (images above RAM are
     // impossible here: every placement was checked against `ram` above).
@@ -305,6 +314,7 @@ pub fn plan(ram: RamRange, inputs: &BootInputs<'_>) -> Result<BootPlan, LoaderEr
 /// Plan a firmware boot (M18, module docs): `image` goes into the flash bank `rom`
 /// (`(base, size)`, checked here against LDR-1), RAM holds only the device tree, and the
 /// vCPU starts at the bottom of flash with `x0` = the DTB. Pure, like [`plan`].
+// ANCHOR: bootplan_firmware_body
 pub fn plan_firmware(
     ram: RamRange,
     rom: (u64, u64),
@@ -336,6 +346,7 @@ pub fn plan_firmware(
         }),
     })
 }
+// ANCHOR_END: bootplan_firmware_body
 // ANCHOR_END: bootplan_firmware
 
 impl BootPlan {
@@ -393,9 +404,11 @@ pub fn load(
         }
         mem.write(GuestAddress(start), bytes)?;
     }
+    // ANCHOR: loader_load_raw
     for (addr, bytes) in inputs.raw {
         mem.write(GuestAddress(*addr), bytes)?;
     }
+    // ANCHOR_END: loader_load_raw
     Ok(())
 }
 

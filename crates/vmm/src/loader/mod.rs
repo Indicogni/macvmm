@@ -53,6 +53,7 @@ pub const ELF_MAGIC: &[u8; 4] = b"\x7fELF";
 pub const ARM64_IMAGE_MAGIC: &[u8; 4] = b"ARM\x64";
 pub const ARM64_IMAGE_MAGIC_OFFSET: usize = 56;
 
+// ANCHOR: loader_detect
 /// Classify `bytes` by their magic numbers. Total: any input, including an empty one, gets an
 /// answer.
 pub fn detect(bytes: &[u8]) -> ImageKind {
@@ -68,7 +69,9 @@ pub fn detect(bytes: &[u8]) -> ImageKind {
         ImageKind::Raw
     }
 }
+// ANCHOR_END: loader_detect
 
+// ANCHOR: loader_ram_range
 /// The guest RAM the loaders may write: `[base, base + size)`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RamRange {
@@ -86,7 +89,9 @@ impl RamRange {
         len > 0 && addr >= self.base && end <= ram_end
     }
 }
+// ANCHOR_END: loader_ram_range
 
+// ANCHOR: loader_overlaps
 /// Half-open ranges `[a, a + alen)` and `[b, b + blen)` intersect (both assumed in RAM, so
 /// the ends do not overflow; an overflowing end is treated as reaching `u64::MAX`).
 pub fn overlaps(a: u64, alen: u64, b: u64, blen: u64) -> bool {
@@ -94,11 +99,13 @@ pub fn overlaps(a: u64, alen: u64, b: u64, blen: u64) -> bool {
     let b_end = b.saturating_add(blen);
     a < b_end && b < a_end
 }
+// ANCHOR_END: loader_overlaps
 
+// ANCHOR: loader_error
 /// Why a boot input cannot be loaded. Each is a configuration error (exit code 2).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LoaderError {
-    /// The Image is shorter than its 64-byte header (LDR-3).
+    /// The Image is shorter than its 64-byte header.
     ImageTooShort { len: u64 },
     /// The Image magic `ARM\x64` is missing at offset 56.
     ImageBadMagic,
@@ -114,14 +121,13 @@ pub enum LoaderError {
     ImageFileTooLong { file_len: u64, image_size: u64 },
     /// `--initrd` was given with an empty file.
     InitrdEmpty,
-    /// The initrd and the kernel do not fit one 1 GiB-aligned 32 GiB window (booting.rst §4).
+    /// The initrd and the kernel do not fit one 1 GiB-aligned 32 GiB window (booting.rst section 4).
     InitrdWindow { start: u64, end: u64 },
     /// `--initrd` or `--cmdline` without an arm64 Image `--kernel` (they are Linux only).
     LinuxOnly { what: &'static str },
-    /// The kernel command line is longer than [`plan::MAX_CMDLINE`] bytes or contains NUL
-    /// (FDT-2).
+    /// The kernel command line is longer than [`plan::MAX_CMDLINE`] bytes or contains NUL.
     BadCmdline { len: usize },
-    /// `--kernel` is an EFI zboot wrapper (LDR-4).
+    /// `--kernel` is an EFI zboot wrapper.
     EfiZboot,
     /// `--kernel` is neither ELF nor Image.
     NotAKernel,
@@ -152,13 +158,14 @@ pub enum LoaderError {
     OverlapsDtb { what: String },
     /// The device tree does not fit its slot: `len` is 0, above `limit` (the least of 2 MiB,
     /// the RAM size and the space below the lowest image), or not the size the slot was
-    /// planned for (M7).
+    /// planned for.
     DtbTooLarge { len: u64, limit: u64 },
     /// Nothing to boot.
     NoImage,
+    // ANCHOR_END: loader_error
     /// A guest-memory write was refused (cannot happen after planning; kept total).
     Memory(MemoryError),
-    /// M18: the `--bios` image does not fit its flash bank (LDR-1).
+    /// The `--bios` image does not fit its flash bank (chapter 21).
     Firmware(firmware::FirmwareError),
 }
 

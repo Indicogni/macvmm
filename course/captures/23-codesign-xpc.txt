@@ -1,0 +1,43 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Read-only: prints the entitlements in the signature of Apple's own helper; nothing is changed.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ codesign -d --entitlements - /System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc | grep -F '[Key]'
+exit: 0
+--- stdout ---
+	[Key] adi-client
+	[Key] com.apple.ane.iokit-user-access
+	[Key] com.apple.aned.private.adapterWeight.allow
+	[Key] com.apple.aned.private.allow
+	[Key] com.apple.developer.kernel.increased-memory-limit
+	[Key] com.apple.private.AppleVirtualPlatformIdentity
+	[Key] com.apple.private.FairPlayIOKitUserClient.Virtual.access
+	[Key] com.apple.private.PCIPassthrough.access
+	[Key] com.apple.private.amber.client
+	[Key] com.apple.private.ane.mappingMutableWeightsBuffer.allow
+	[Key] com.apple.private.ane.privileged-vm-client
+	[Key] com.apple.private.apfs.no-padding
+	[Key] com.apple.private.biometrickit.allow-match
+	[Key] com.apple.private.debug-usb.access
+	[Key] com.apple.private.fpsd.client
+	[Key] com.apple.private.ggdsw.GPUProcessProtectedContent
+	[Key] com.apple.private.hypervisor
+	[Key] com.apple.private.proreshw
+	[Key] com.apple.private.security.message-filter
+	[Key] com.apple.private.system-keychain
+	[Key] com.apple.private.tcc.check-allow-on-responsible-process
+	[Key] com.apple.private.vfs.open-by-id
+	[Key] com.apple.private.virtualization
+	[Key] com.apple.private.virtualization.linux-gpu-support
+	[Key] com.apple.private.virtualization.plugin-loader
+	[Key] com.apple.private.xpc.domain-extension
+	[Key] com.apple.security.hardened-process
+	[Key] com.apple.security.hardened-process.checked-allocations
+	[Key] com.apple.security.hardened-process.no-guard-objects
+	[Key] com.apple.security.hypervisor
+	[Key] com.apple.security.private.Virtualization.VzDevicesMonitor.register
+	[Key] com.apple.usb.hostcontrollerinterface
+	[Key] com.apple.vm.networking
+	[Key] keychain-access-groups
+	[Key] lskdd-client
+
+--- stderr ---

@@ -1,0 +1,58 @@
+# Checkpoint 24 `vmapple`: Apple's vmapple boot ROM (AVPBooter) run on a second, feature-gated
+# board, read in place and never copied. Nothing here asserts that macOS boots: it does not.
+# The feature build goes to its own target directory (target/vmapple-feature), so this
+# checkpoint never relinks the default target/debug/macvmm the other chapters use.
+# The vmapple run holds one of the two per-user slots in ~/.cache/macvmm/vmapple-slots.
+id = "24"
+slug = "vmapple"
+requires = ["21", "23"]
+
+# (a) A default build refuses `--machine vmapple` before creating anything: usage error, exit 2.
+[[run]]
+name = "refusal"
+args = ["run", "--machine", "vmapple", "--bios", "/System/Library/Frameworks/Virtualization.framework/Versions/A/Resources/AVPBooter.vmapple2.bin"]
+timeout = 30
+expect_exit_code = 2
+serial = "expected/refusal.txt"
+
+# No file in the tree or in either cache is AVPBooter: only files of exactly the ROM's size are
+# hashed, so this is quick. target/ and .git/ are skipped (build output and history).
+[[run]]
+name = "no-copy"
+command = ["/bin/sh", "-c", "avp=/System/Library/Frameworks/Virtualization.framework/Versions/A/Resources/AVPBooter.vmapple2.bin; size=$(stat -f %z \"$avp\") || exit 1; want=$(shasum -a 256 \"$avp\" | cut -c1-64); n=0; for d in \"{impl}\" \"{repo}/.cache\" \"$HOME/.cache/macvmm\"; do [ -d \"$d\" ] || continue; c=$(find \"$d\" \\( -name .git -o -name target \\) -prune -o -type f -size \"${size}c\" -print0 | xargs -0 shasum -a 256 2>/dev/null | grep -c \"$want\"); n=$((n + c)); done; echo \"files that are AVPBooter: $n\"; [ \"$n\" -eq 0 ]"]
+timeout = 120
+expect_exit_code = 0
+serial = "expected/no-copy.txt"
+
+# (b) The feature build runs AVPBooter until --timeout: the first exit is inside the ROM window,
+# and the unknown-MMIO summary is printed: the milestone `unknown-mmio-logged` recorded in
+# milestones.toml. The timeout covers the feature build. The per-access lines and the trace stay
+# in {out} and are never shown or recorded (scripts/capture.sh copies only this run's filtered
+# output): the course publishes counts and how runs ended, not a trace of Apple's ROM. The
+# script prints only the first trace record's kind and PC.
+[[run]]
+name = "rom-probe"
+command = ["/bin/sh", "-c", "CARGO_TARGET_DIR=\"{impl}/target/vmapple-feature\" cargo run -q -p macvmm --features experimental-vmapple -- run --machine vmapple --bios /System/Library/Frameworks/Virtualization.framework/Versions/A/Resources/AVPBooter.vmapple2.bin --mem 4G --unhandled-mmio log --trace \"exits:{out}/avp.jsonl\" --timeout 20 2>\"{out}/stderr.txt\"; rc=$?; grep -v 'unknown MMIO #' \"{out}/stderr.txt\" >&2; first=$(head -n 1 \"{out}/avp.jsonl\" 2>/dev/null | sed -n 's/.*\"reason\":\"\\([a-z_]*\\)\",\"ec\":\"\\(0x[0-9a-f]*\\)\",\"pc\":\"\\(0x[0-9a-f]*\\)\".*/\\1 ec=\\2 pc=\\3/p'); echo \"trace: first record: ${first:-none}\"; exit $rc"]
+timeout = 600
+expect_exit_code = 5
+serial = "expected/rom-probe.txt"
+
+# (c) The private CPU mode VZ's helper uses is refused to an ad-hoc signed program: HV_DENIED.
+[[run]]
+name = "isa-denied"
+command = ["tools/hv-denied-probe/run.sh"]
+cwd = "repo"
+timeout = 120
+expect_exit_code = 0
+serial = "expected/isa-denied.txt"
+
+[journal]
+file = "journal/24.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "This checkpoint does not ask for a macOS boot; it asks for an honest instrument. A second board stays behind a cargo feature, so a default build refuses it before creating anything. The feature build starts the CPU at the ROM's first byte, reads the ROM in place from the system path, answers every access no device claims as read-as-zero, writes-ignored, records it up to a cap and ends with one summary line. The private CPU mode is refused to an ad-hoc signed program, and HV_DENIED is the correct answer."
+spec = "QEMU at tag v10.0.0: hw/vmapple/vmapple.c (the memory map), hw/vmapple/cfg.c (the cfg fields) and docs/system/arm/vmapple.rst. Chapter 02 for the reset state (PSTATE 0x3c5, EL1h, everything masked), chapter 07 for the data-abort syndrome fields, and man 2 flock for the two lock files."
+pseudocode = "parse --machine vmapple: without the feature, usage error, exit 2. build: take one of two lock slots; map RAM and the ROM read+execute where it is (never copy it); GIC distributor, one redistributor frame and the PL011; PC = ROM base, x0..x3 = 0. run: unclaimed access -> logger.record (reads get 0) until the cap, then stop with the summary; an ISV = 0 access or a hypercall with no designed answer -> stop. on any end, including --timeout: print the summary line."
+anchor = "crates/vmm/src/machine/vmapple/mod.rs (validate, Watch, boot), crates/vmm/src/machine/vmapple/unknown.rs (record, finish), crates/vmm/src/machine/vmapple/layout.rs, crates/vmm/src/vcpu/mmio.rs (anchor mmio_unclaimed), crates/vmm/src/backend/hostio.rs (take_slot), crates/macvmm/src/cli.rs (parse_machine), tools/hv-denied-probe/probe.c."

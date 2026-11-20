@@ -71,6 +71,7 @@ pub struct VcpuSetup<'a> {
     pub stats: &'a Mutex<Vec<VcpuStats>>,
 }
 
+// ANCHOR: vcpu_stop_on_exit
 /// Posts a stop if the vCPU thread ends without one (a panic, or a missing verdict).
 struct StopOnExit<'a>(&'a VmControl);
 
@@ -86,6 +87,7 @@ impl Drop for StopOnExit<'_> {
         }
     }
 }
+// ANCHOR_END: vcpu_stop_on_exit
 
 /// The redistributor frame HVF must have given vCPU `index` when the region starts at `base`:
 /// `base + index × 128 KiB` (architecture §8.1 step 2; GICv3 IHI 0069 §12.10: RD_base +
@@ -103,6 +105,7 @@ fn create_vcpu<'vm>(
     index: usize,
     setup: &VcpuSetup<'_>,
 ) -> crate::error::Result<Vcpu<'vm>> {
+    // ANCHOR: vcpu_redistributor_check
     let mut vcpu = Vcpu::create(vm, index)?;
     if let Some(base) = setup.redistributors {
         let got = vcpu.redistributor_base()?;
@@ -115,6 +118,7 @@ fn create_vcpu<'vm>(
             )));
         }
     }
+    // ANCHOR_END: vcpu_redistributor_check
     // ANCHOR: vcpu_apply_vtimer_offset
     vcpu.reset(setup.boot, setup.vtimer_offset)?;
     if setup.irqchip == IrqChip::None {
@@ -133,6 +137,8 @@ fn vcpu_thread(
     gate: &StartGate,
     created: SyncSender<bool>,
 ) {
+    // ANCHOR: vcpu_thread_start
+    // ANCHOR: vcpu_thread_create
     let (setup, env, obs) = (run.setup, run.env, run.obs);
     let ctl = env.ctl;
     let _guard = StopOnExit(ctl);
@@ -151,11 +157,15 @@ fn vcpu_thread(
     let _ = created.send(true);
     drop(created);
     gate.wait();
+    // ANCHOR_END: vcpu_thread_create
+    // ANCHOR: vcpu_register_ring
     let mut log = VcpuLog::default();
     if let Some(host) = obs.host {
-        host.register_ring(index, &log.ring); // M6: Ctrl-A t / SIGUSR1 (LOG-6)
+        host.register_ring(index, &log.ring); // Ctrl-A t and SIGUSR1 can dump it now
     }
+    // ANCHOR_END: vcpu_register_ring
     // A secondary starts PSCI-off (architecture §8.1 step 4): park until its CPU_ON.
+    // ANCHOR: vcpu_thread_park
     let started = index == 0
         || match ctl.park(index) {
             Some(on) => match vcpu.power_on(&on) {
@@ -170,11 +180,16 @@ fn vcpu_thread(
     if started {
         run_loop::run(&mut vcpu, env, obs, &mut log);
     }
+    // ANCHOR_END: vcpu_thread_park
+    // ANCHOR_END: vcpu_thread_start
+    // ANCHOR: vcpu_unregister_ring
     if let Some(host) = obs.host {
         host.unregister_ring(index);
     }
+    // ANCHOR_END: vcpu_unregister_ring
     ctl.unregister(handle);
     crate::debug!("vcpu{index} exits: {}", log.stats.summary());
+    // ANCHOR: vcpu_file_stats
     let to_ns = |ticks: u64| hvf::host::timebase().map(|tb| tb.ticks_to_nanos(ticks));
     lock(setup.stats).push(VcpuStats {
         index,
@@ -182,6 +197,7 @@ fn vcpu_thread(
         exec_ns: vcpu.exec_time().ok().and_then(to_ns),
         wfi_ns: vcpu.wfi_time().and_then(to_ns),
     });
+    // ANCHOR_END: vcpu_file_stats
     // `vcpu` drops here, on its own thread (`hv_vcpu_destroy`).
 }
 
@@ -232,9 +248,11 @@ pub fn run_vcpus(
         // Every vCPU exists (or the VM is already stopping): let vCPU 0 enter the guest.
         gate.open();
         // ANCHOR_END: vcpu_sequential_create
+        // ANCHOR: run_vcpus_timeout
         if !ctl.wait_until(deadline) {
             ctl.request_stop(StopReason::Timeout);
         }
+        // ANCHOR_END: run_vcpus_timeout
         // Join every thread, even after the first panic, so all vCPUs are destroyed.
         let panics: Vec<bool> = threads.into_iter().map(|t| t.join().is_err()).collect();
         panics.contains(&true)

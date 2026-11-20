@@ -31,7 +31,8 @@ use exit::VcpuRegs;
 use hvf::{Reg, SysReg, Vm};
 use regs::RegDump;
 
-/// The architectural state a vCPU starts from (architecture §6.5).
+// ANCHOR: boot_params
+/// The architectural state a vCPU starts from: its entry point, boot arguments and mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BootParams {
     pub pc: u64,
@@ -44,11 +45,13 @@ pub struct BootParams {
 /// (bit 12, instruction cache) (ARM ARM D19.2.118 SCTLR_EL1; booting.rst §4 "MMU off").
 pub const SCTLR_MMU_CACHES: u64 = sctlr::M | sctlr::C | sctlr::I;
 
-/// MPIDR_EL1 for vCPU `index` (architecture §8.1; `arch::regs::mpidr`).
+/// `MPIDR_EL1` for vCPU `index` (the rule lives in `arch::regs::mpidr`).
 pub fn mpidr_for(index: usize) -> u64 {
     crate::arch::regs::mpidr(index)
 }
+// ANCHOR_END: boot_params
 
+// ANCHOR: vmm_vcpu_struct
 fn hv(op: &'static str) -> impl FnOnce(hvf::CallError) -> Error {
     move |err| Error::Hv { op, err }
 }
@@ -61,17 +64,21 @@ pub struct Vcpu<'vm> {
     inner: hvf::Vcpu<'vm>,
     pub index: usize,
     pub mpidr: u64,
-    /// The emulated OS-lock registers (M5, `arch::sysreg`; per vCPU, HC-6).
+    /// The emulated OS-lock registers (`arch::sysreg`), one set per vCPU.
     sysregs: SysRegState,
-    /// The VMM-side timer interrupt line, only in the `--irqchip none` teaching mode (M8,
-    /// architecture §9.1, `timer.rs`). `None` with the in-kernel GIC.
+    /// The VMM-side timer interrupt line, only in the `--irqchip none` teaching mode
+    /// (`timer.rs`). `None` with the in-kernel GIC.
     nogic: Option<NoGicTimer>,
 }
+// ANCHOR_END: vmm_vcpu_struct
 
 impl<'vm> Vcpu<'vm> {
+    // ANCHOR: vmm_vcpu_create
     /// Create vCPU `index` on the calling thread and give it its MPIDR. The MPIDR must be
-    /// written explicitly: the framework's default reads 0, and the GIC redistributor lookup
-    /// fails until it is set (spike finding 17).
+    /// written explicitly: HVF's own copy reads 0 until we do (the guest still reads
+    /// `0x80000000` on vCPU 0), and `hv_gic_get_redistributor_base` (chapter 12) refuses
+    /// until the vCPU's affinity has been set by this write (`hv_gic.h`). The redistributor
+    /// slot it returns follows creation order, not the value written.
     pub fn create(vm: &'vm Vm, index: usize) -> Result<Vcpu<'vm>> {
         let inner = hvf::Vcpu::create(vm).map_err(hv("create vCPU"))?;
         let mpidr = mpidr_for(index);
@@ -87,7 +94,9 @@ impl<'vm> Vcpu<'vm> {
             nogic: None,
         })
     }
+    // ANCHOR_END: vmm_vcpu_create
 
+    // ANCHOR: vcpu_enable_nogic
     /// Switch this vCPU to the no-GIC teaching mode (`--irqchip none`): the VMM delivers the
     /// timer interrupt itself (`timer.rs` module docs). Call before the first run. Starts the
     /// helper thread that bounds a stale pending IRQ (`timer::LineKicker`).
@@ -103,6 +112,7 @@ impl<'vm> Vcpu<'vm> {
         self.nogic = Some(NoGicTimer::new(offset, hvf::host::timebase()));
         Ok(())
     }
+    // ANCHOR_END: vcpu_enable_nogic
 
     /// This vCPU's GIC redistributor base (`hv_gic_get_redistributor_base`). Only valid once
     /// MPIDR_EL1 was written (spike finding 17), which [`Vcpu::create`] does; `vcpu::manager`
@@ -125,12 +135,11 @@ impl<'vm> Vcpu<'vm> {
     }
 
     // ANCHOR: nogic_before_entry
-    /// The no-GIC before-entry rule (architecture §9.1): drop the line and unmask the vtimer
-    /// once the guest handled or disarmed it; while the line is up, assert the IRQ for this run
-    /// (the framework clears it after every run, `hv_vcpu.h`) and arm the kick that ends the
-    /// run within `timer::NOGIC_LINE_RECHECK`: the guest silences the timer without an exit,
-    /// and the pending IRQ would otherwise outlive it for the whole run (`timer.rs`, "Why the
-    /// kick").
+    /// The no-GIC before-entry rule: drop the line and unmask the vtimer once the guest handled
+    /// or disarmed it; while the line is up, assert the IRQ for this run (the framework clears
+    /// it after every run, `hv_vcpu.h`) and arm the kick that ends the run within
+    /// `timer::NOGIC_LINE_RECHECK`: the guest silences the timer without an exit, and the
+    /// pending IRQ would otherwise outlive it for the whole run.
     fn nogic_before_entry(&mut self) -> Result<()> {
         let Some(t) = self.nogic.as_mut() else {
             return Ok(());
@@ -150,7 +159,7 @@ impl<'vm> Vcpu<'vm> {
                 .map_err(hv("unmask vtimer"))?;
         }
         if action.assert_irq {
-            // Risk R19 (M8 Part A): verified on this machine to succeed without a GIC.
+            // Verified on a real Mac: this call succeeds when there is no GIC.
             self.inner
                 .set_pending_interrupt(false, true)
                 .map_err(hv("set pending IRQ"))?;
@@ -167,15 +176,20 @@ impl<'vm> Vcpu<'vm> {
     // ANCHOR_END: nogic_before_entry
 
     // ANCHOR: vcpu_reset
-    /// Put the vCPU in its boot state (course ch06: the CPU's *reset state*, as opposed to a
+    /// Put the vCPU in its boot state (chapter 06: the CPU's *reset state*, as opposed to a
     /// system reset the guest asks for through PSCI). Only what a guest relies on is set:
-    /// - `PC` = the entry point and `x0..x3` = the boot arguments (booting.rst §4: x0 = DTB);
+    /// - `PC` = the entry point and `x0..x3` = the boot arguments (booting.rst section 4:
+    ///   x0 = the device tree address);
     /// - `CPSR` = `0x3c5` by default: EL1h, D/A/I/F masked (`arch::regs::Pstate`);
     /// - `SCTLR_EL1.{M,C,I} = 0`: translation and caches off, the state booting.rst requires;
-    /// - the VM-wide virtual-counter offset (architecture §8.1 step 5: the same value on every
-    ///   vCPU, so the guest's counter starts near 0 and is coherent across CPUs).
+    /// - the VM-wide virtual-counter offset (chapter 11: the same value on every vCPU, so the
+    ///   guest's counter starts near 0 and agrees across CPUs).
     ///
-    /// `MPIDR_EL1` was set by [`Vcpu::create`]. Every other register of a fresh vCPU reads 0.
+    /// `MPIDR_EL1` was set by [`Vcpu::create`]. Every other register keeps HVF's default,
+    /// which reads 0 through the API, `SCTLR_EL1` included. A dump still shows `SCTLR_EL1 =
+    /// 0x30000180`: its RES1 bits (7, 8, 28, 29 on this CPU) read as 1 whatever is written
+    /// (verified on a real Mac). Clearing only M, C and I is a defensive habit: change only
+    /// the bits you mean to change.
     pub fn reset(&self, boot: &BootParams, vtimer_offset: u64) -> Result<()> {
         let v = &self.inner;
         v.set_reg(Reg::PC, boot.pc).map_err(hv("set PC"))?;
@@ -198,9 +212,11 @@ impl<'vm> Vcpu<'vm> {
     }
     // ANCHOR_END: vcpu_reset
 
+    // ANCHOR: vcpu_power_on
     /// Start this vCPU at a PSCI CPU_ON entry point (DEN 0022 §5.1.4, architecture §8.6):
     /// `PC = entry`, `x0 = ctx`, `x1..x3 = 0`, `CPSR = 0x3c5`, MMU and caches off. The vtimer
     /// offset was set at creation and stays the VM-wide one. The OS lock is a cold-reset value.
+    // ANCHOR: vcpu_power_on_fn
     pub fn power_on(&mut self, on: &crate::psci::PowerOn) -> Result<()> {
         let v = &self.inner;
         v.set_reg(Reg::PC, on.entry).map_err(hv("set PC"))?;
@@ -218,6 +234,8 @@ impl<'vm> Vcpu<'vm> {
         self.sysregs = SysRegState::default();
         Ok(())
     }
+    // ANCHOR_END: vcpu_power_on_fn
+    // ANCHOR_END: vcpu_power_on
 
     /// Snapshot every register the fatal dump prints (`vcpu::regs`).
     pub fn regs_dump(&self) -> Result<RegDump> {
@@ -229,12 +247,15 @@ impl<'vm> Vcpu<'vm> {
         self.inner.handle()
     }
 
+    // ANCHOR: vcpu_run_nogic
     /// Enter the guest until the next exit (in the no-GIC mode, after the before-entry rule).
     pub fn run(&mut self) -> Result<hvf::VcpuExit> {
         self.nogic_before_entry()?;
         self.inner.run().map_err(hv("run vCPU"))
     }
+    // ANCHOR_END: vcpu_run_nogic
 
+    // ANCHOR: vcpu_advance_pc
     /// Advance the PC by one instruction (A64 instructions are 4 bytes).
     pub fn advance_pc(&mut self) -> Result<()> {
         let pc = self.pc()?;
@@ -242,12 +263,14 @@ impl<'vm> Vcpu<'vm> {
             .set_reg(Reg::PC, pc.wrapping_add(4))
             .map_err(hv("set PC"))
     }
+    // ANCHOR_END: vcpu_advance_pc
 }
 
 impl VcpuRegs for Vcpu<'_> {
     fn index(&self) -> usize {
         self.index
     }
+    // ANCHOR: vcpu_regs_xzr
     fn x(&self, n: u8) -> Result<u64> {
         match Reg::x(n) {
             Some(r) => self.inner.get_reg(r).map_err(hv("get Xn")),
@@ -260,6 +283,7 @@ impl VcpuRegs for Vcpu<'_> {
             None => Ok(()), // writes to XZR are discarded
         }
     }
+    // ANCHOR_END: vcpu_regs_xzr
     fn pc(&self) -> Result<u64> {
         self.inner.get_reg(Reg::PC).map_err(hv("get PC"))
     }

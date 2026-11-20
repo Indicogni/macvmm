@@ -1,0 +1,10 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference's unwrapped Alpine kernel: the 16 bytes around its last non-zero byte (offset 0x1972807), then a comparison of everything after it with zeros. cmp reaching EOF on its input means every remaining byte, up to image_size (0x22a0000), is zero.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ xxd -s 0x1972800 -l 16 .cache/macvmm/Image-virt; tail -c +26683401 .cache/macvmm/Image-virt | cmp - /dev/zero
+exit: 1
+--- stdout ---
+01972800: ffff ffff ffff ffff 0000 0000 0000 0000  ................
+
+--- stderr ---
+cmp: EOF on stdin

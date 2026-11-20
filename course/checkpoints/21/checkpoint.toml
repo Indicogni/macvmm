@@ -1,0 +1,61 @@
+# Checkpoint 21 `firmware`: ISV = 0 emulation through the guest's own page tables, flash as
+# read-and-execute memory with writes ignored, and stock U-Boot booted by the firmware protocol.
+# The U-Boot runs need `scripts/fetch.sh uboot` (u-boot.bin in .cache/macvmm/).
+id = "21"
+slug = "firmware"
+requires = ["20"]
+
+# The decoder corpus (clang-assembled words), the refusals and 10,000 random words; the stage-1
+# walker; the instruction fetch from flash; the firmware boot plan; flash unreachable by device
+# DMA; the injected synchronous external abort. Host only: no Hypervisor.framework call.
+[contract]
+tests = ["contract/insn_decode.rs", "contract/stage1_walk.rs", "contract/fetch_insn_rom.rs", "contract/firmware_boot.rs", "contract/rom_dma.rs", "contract/inject.rs"]
+
+# (a) Sixteen pair and writeback accesses with the guest's MMU on, emulated; the SIMD store
+# refused with an injected abort the guest checks. The trace must hold the first emulated stp,
+# the access whose PC is the stage-1 code alias, and the injection.
+[[run]]
+name = "isv0-run"
+guest = "isv0-probe"
+args = ["run", "--mem", "64M", "--testdev", "--kernel", "{guest}", "--trace", "exits:{out}/t.jsonl:mmio", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/isv0-run.txt"
+trace = "expected/isv0-run.trace.txt"
+
+# (b) U-Boot from flash to its prompt with an empty 16 MiB virtio-blk disk: stop the countdown,
+# `version`, `virtio scan; virtio info`, `poweroff`. Its first two stores (ISV = 0 pairs whose
+# PC is in flash) must reach the write-ignore flash device.
+[[run]]
+name = "uboot-disk"
+command = ["/bin/sh", "-c", "truncate -s 16M {out}/disk.img && exec {macvmm} run --bios {repo}/.cache/macvmm/u-boot.bin --mem 512M --disk {out}/disk.img --on-reset exit --timeout 60"]
+steps = ["wait:Hit any key to stop autoboot", "send:\n", "wait:=> ", "send:version\n", "wait:gcc (", "send:virtio scan; virtio info\n", "wait:Device 0", "send:poweroff\n"]
+timeout = 60
+expect_exit_code = 0
+serial = "expected/uboot-disk.txt"
+
+# (c) No disk: the prompt is still reached, and `poweroff` exits 0.
+[[run]]
+name = "uboot-nodisk"
+args = ["run", "--bios", "{repo}/.cache/macvmm/u-boot.bin", "--mem", "512M", "--timeout", "60"]
+steps = ["wait:Hit any key to stop autoboot", "send:\n", "wait:=> ", "send:poweroff\n"]
+expect_exit_code = 0
+serial = "expected/uboot-nodisk.txt"
+
+# (d) `reset` is PSCI SYSTEM_RESET, which `--on-reset exit` turns into exit code 4.
+[[run]]
+name = "reset-exit"
+args = ["run", "--bios", "{repo}/.cache/macvmm/u-boot.bin", "--mem", "512M", "--on-reset", "exit", "--timeout", "60"]
+steps = ["wait:Hit any key to stop autoboot", "send:\n", "wait:=> ", "send:reset\n"]
+expect_exit_code = 4
+serial = "expected/reset-exit.txt"
+
+[journal]
+file = "journal/21.md"
+questions = 5
+predict = true
+
+[hints]
+conceptual = "The exit's IPA is the truth; the instruction only says what kind of access it was. Fetch the word at the PC through the guest's own tables, decode it or refuse it, check every way it could disagree with the exit, perform the accesses on the exit IPA, and only then change registers. Anything refused becomes an injected abort, never a VMM error."
+spec = "ARM ARM: the ESR_EL2 register page (ISS for a Data Abort, ISV); 'Loads and stores' in the A64 instruction set encoding chapter (load/store pair and single register forms); chapter D8 (VMSAv8-64 translation: TCR_EL1, TTBR0/1_EL1, descriptor formats). U-Boot board/emulation/qemu-arm (save_boot_params)."
+pseudocode = "isv0: pc_word = walk(pc) else rom.read_u32(pc_ipa); insn = decode(word)?; ops = read base/index/rt/rt2 (31 = SP by PSTATE); va = address(ops); require walk(va).ipa == exit.ipa, store == WnR, access inside the faulting mapping, pair: walk(va+n).ipa == exit.ipa+n and same device; do accesses on exit.ipa (and +n); then write loads, then base, then pc += 4. Refusal -> inject data abort, DFSC 0x10."
+anchor = "crates/vmm/src/arch/insn.rs (decode, decode_single, decode_pair, plan_isv0, execute), crates/vmm/src/arch/stage1_walk.rs (translate, fetch_insn_rom), crates/vmm/src/vcpu/mmio.rs (isv0), crates/vmm/src/arch/inject.rs (data_abort), crates/vmm/src/loader/firmware.rs (load_rom), crates/vmm/src/devices/flash.rs."

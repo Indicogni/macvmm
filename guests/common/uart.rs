@@ -18,9 +18,11 @@
 
 use crate::console::{self, Backend};
 
-/// PL011 UART0 and PL031 RTC in the QEMU `virt` map (PLAN §1).
+// ANCHOR: guest_uart_base
+/// PL011 UART0 and PL031 RTC in the QEMU `virt` map, baked into the guest at build time.
 pub const PL011_BASE: usize = 0x0900_0000;
 pub const PL031_BASE: usize = 0x0901_0000;
+// ANCHOR_END: guest_uart_base
 
 const DR: usize = 0x000;
 const FR: usize = 0x018;
@@ -48,6 +50,7 @@ pub fn enable_console() {
     console::set_backend(Backend::Pl011);
 }
 
+// ANCHOR: guest_uart_poll
 /// Transmit one byte (waits while the TX FIFO is full; macvmm's never is).
 pub fn putc(byte: u8) {
     while read(PL011_BASE, FR) & FR_TXFF != 0 {}
@@ -72,6 +75,7 @@ pub fn getc_blocking() -> u8 {
         core::hint::spin_loop();
     }
 }
+// ANCHOR_END: guest_uart_poll
 
 /// Read one line (up to CR or LF) into `buf`, without the terminator; bytes past the buffer
 /// are dropped. Returns the line's length.

@@ -1,0 +1,9 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# A first macvmm was already running on disk.img (the shell case, at its prompt) in another terminal, started with the command shown in the lesson.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 512M --kernel ../.cache/macvmm/Image-virt --disk disk.img --timeout 10
+exit: 2
+--- stdout ---
+
+--- stderr ---
+macvmm: disk image is locked: "disk.img" is in use by another process (macvmm takes an advisory flock on every --disk; BLK-8)

@@ -1,0 +1,17 @@
+A: macvmm-initramfs: ready *
+A: macvmm-net: eth0 10.0.0.1 up
+A: macvmm-net: ping 5/5 ok
+A: macvmm-net: sent 33554432 bytes sha256=*
+[stderr] A: macvmm: stats: net0 slot 0: tx_packets=*
+B: macvmm-initramfs: ready *
+B: macvmm-net: eth0 10.0.0.2 up
+B: macvmm-net: listening
+B: macvmm-net: received 33554432 bytes sha256=*
+[stderr] B: macvmm: stats: net0 slot 0: tx_packets=*
+check: exit codes A=0 B=0
+check: A sent and B received the same sha256
+!macvmm-net: FAILED
+!check: FAILED
+![stderr] needs reset
+![stderr] unhandled MMIO
+![stderr] panicked

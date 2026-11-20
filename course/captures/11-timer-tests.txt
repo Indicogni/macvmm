@@ -1,0 +1,22 @@
+# scripts/capture-cmd 11: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run in a copy of the reference whose crates/ are unmodified (only one test guest differs, for the 250 Hz experiment), so the shared target/ was not touched. Learners run it from inside learner/.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -p vmm --lib timer::
+exit: 0
+--- stdout ---
+
+running 5 tests
+test timer::tests::boot_counter_starts_near_zero ... ok
+test timer::tests::nogic_line_follows_the_table ... ok
+test timer::tests::restore_offset_keeps_the_counter_monotonic ... ok
+test timer::tests::nogic_wfi_deadline ... ok
+test timer::tests::line_kicker_fires_once_and_disarms ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 145 filtered out; finished in 0.29s
+
+
+--- stderr ---
+    Blocking waiting for file lock on package cache
+   Compiling vmm v0.1.0 (<tree>/crates/vmm)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.88s
+     Running unittests src/lib.rs (target/debug/deps/vmm-53adcdad9026fed4)

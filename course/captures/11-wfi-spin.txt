@@ -1,0 +1,28 @@
+# scripts/capture-cmd 11: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: nogic_wfi in crates/vmm/src/vcpu/exit.rs returns Resume { advance_pc: true } at once, without sleeping until the CNTV_CVAL deadline.
+# Run in a copy of the reference with that one edit.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --irqchip none --mem 64M --raw {guests}/timer-nogic.bin@0x40080000 --stats --timeout 10
+exit: 0
+--- stdout ---
+timer-nogic: cntfrq=24000000
+timer-nogic: pfr0.gic=0
+timer-nogic: interval 0 = 100 ms ok
+timer-nogic: interval 1 = 100 ms ok
+timer-nogic: interval 2 = 100 ms ok
+timer-nogic: interval 3 = 100 ms ok
+timer-nogic: interval 4 = 100 ms ok
+timer-nogic: interval 5 = 100 ms ok
+timer-nogic: interval 6 = 100 ms ok
+timer-nogic: interval 7 = 100 ms ok
+timer-nogic: interval 8 = 100 ms ok
+timer-nogic: interval 9 = 100 ms ok
+timer-nogic: irqs=10 stale=301944
+timer-nogic: 10/10 intervals within 95..150 ms
+
+--- stderr ---
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=494 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 10, wfx 900973, total 901488: canceled 10, vtimer 10, wfx 900973, hvc 495
+macvmm: stats: vcpu0 time: exec 0.310 s, wfi n/a
+macvmm: stats: host cpu 0.909 s over 1.021 s wall (90%)
+macvmm: stats: rlimit core=0 nofile=1048576

@@ -24,7 +24,9 @@
 
 use hvf::{CallError, Reg, SysReg};
 
-/// The register snapshot (module docs). Numbers only (LOG-5).
+// ANCHOR: regdump_struct
+/// The register snapshot (module docs). Numbers only, so nothing a guest wrote can reach the
+/// terminal as text.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RegDump {
     /// `X0..X30` (X30 is the link register).
@@ -43,8 +45,10 @@ pub struct RegDump {
     pub ttbr0_el1: u64,
     pub ttbr1_el1: u64,
 }
+// ANCHOR_END: regdump_struct
 
 impl RegDump {
+    // ANCHOR: regdump_capture
     /// Read every register of `v` (module docs). Called on the vCPU's thread.
     pub fn capture(v: &hvf::Vcpu<'_>) -> Result<RegDump, CallError> {
         let mut d = RegDump::default();
@@ -69,4 +73,5 @@ impl RegDump {
         d.ttbr1_el1 = sys(SysReg::TTBR1_EL1)?;
         Ok(d)
     }
+    // ANCHOR_END: regdump_capture
 }

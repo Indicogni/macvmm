@@ -1,0 +1,56 @@
+# Checkpoint 18 `virtio-blk`: the request parser and its six rules, the bounce-buffer data paths,
+# FLUSH and write-through, the image lock, and a persistent ext4 root.
+# The Linux runs need `scripts/fetch.sh linux rootfs` (Image-virt, initramfs-test.img and
+# modloop-virt in .cache/macvmm/), and the root filesystem run needs an image built with
+# `cargo xtask mkrootfs` (learner/rootfs.img, else .cache/macvmm/rootfs.img) and Homebrew's
+# e2fsprogs for the e2fsck at the end.
+id = "18"
+slug = "virtio-blk"
+requires = ["17"]
+
+# The three host suites the lesson's "Your turn" step 4 copies: every hostile request rule, short
+# reads and I/O errors, and a full ring of slow requests that must not hold the device for long.
+# Host only.
+[contract]
+tests = ["contract/virtio_blk_hostile.rs", "contract/blk_short_read.rs", "contract/blk_budget.rs"]
+
+# (a) A 64 MiB disk of random bytes: the guest's hash equals the host's (vda); 1 MiB of
+# `macvmm` lands at 8 MiB and nothing else changes (vda-write, a FLUSH); with `,ro` the write
+# is refused and the image is unchanged (vda-ro).
+[[run]]
+name = "disk-vda"
+command = ["/bin/sh", "-c", "k=\"$1/.cache/macvmm/Image-virt\"; i=\"$1/.cache/macvmm/initramfs-test.img\"; d=\"$2/disk.img\"; c='console=ttyAMA0 panic=-1 quiet macvmm.test='; head -c 67108864 /dev/urandom > \"$d\"; h=$(shasum -a 256 < \"$d\" | cut -c1-64); \"$0\" run --mem 512M --kernel \"$k\" --initrd \"$i\" --disk \"$d\" --on-reset exit --timeout 60 --cmdline \"${c}vda\" > \"$2/vda.out\"; echo \"vda rc=$?\"; cat \"$2/vda.out\"; if grep -q \"sha256=$h\" \"$2/vda.out\"; then echo 'vda: the guest hash equals the host hash'; else echo 'vda: hash differs'; fi; a=$(head -c 8388608 \"$d\" | shasum -a 256); b=$(tail -c +9437185 \"$d\" | shasum -a 256); \"$0\" run --mem 512M --kernel \"$k\" --initrd \"$i\" --disk \"$d\" --on-reset exit --timeout 60 --cmdline \"${c}vda-write\"; echo \"vda-write rc=$?\"; p=$(dd if=\"$d\" bs=1048576 skip=8 count=1 2>/dev/null | shasum -a 256); q=$(yes macvmm | head -c 1048576 | shasum -a 256); if [ \"$p\" = \"$q\" ]; then echo 'vda-write: 1 MiB of macvmm at 8 MiB'; else echo 'vda-write: pattern differs'; fi; if [ \"$a\" = \"$(head -c 8388608 \"$d\" | shasum -a 256)\" ] && [ \"$b\" = \"$(tail -c +9437185 \"$d\" | shasum -a 256)\" ]; then echo 'vda-write: nothing else changed'; else echo 'vda-write: other bytes changed'; fi; w=$(shasum -a 256 < \"$d\"); \"$0\" run --mem 512M --kernel \"$k\" --initrd \"$i\" --disk \"$d,ro\" --on-reset exit --timeout 60 --cmdline \"${c}vda-ro\"; echo \"vda-ro rc=$?\"; if [ \"$w\" = \"$(shasum -a 256 < \"$d\")\" ]; then echo 'vda-ro: image unchanged'; else echo 'vda-ro: image changed'; fi", "{macvmm}", "{repo}", "{out}"]
+timeout = 240
+expect_exit_code = 0
+serial = "expected/disk-vda.txt"
+
+# (b) The image lock: while one macvmm holds disk.img, a second one is refused with exit code
+# 2, read-write or `,ro`, before any virtual machine exists.
+[[run]]
+name = "disk-lock"
+command = ["/bin/sh", "-c", "k=\"$1/.cache/macvmm/Image-virt\"; d=\"$2/disk.img\"; truncate -s 64M \"$d\"; \"$0\" run --mem 512M --kernel \"$k\" --disk \"$d\" --timeout 60 --cmdline 'console=ttyAMA0' < /dev/null > \"$2/first.out\" 2>&1 & f=$!; n=0; while ! grep -q 'Linux version' \"$2/first.out\" && [ \"$n\" -lt 200 ]; do sleep 0.1; n=$((n+1)); done; echo 'first macvmm: running on disk.img'; \"$0\" run --mem 512M --kernel \"$k\" --disk \"$d\" --timeout 10; echo \"second macvmm rc=$?\"; \"$0\" run --mem 512M --kernel \"$k\" --disk \"$d,ro\" --timeout 10; echo \"second macvmm ,ro rc=$?\"; kill \"$f\"; wait \"$f\"; echo 'first macvmm: stopped'", "{macvmm}", "{repo}", "{out}"]
+timeout = 90
+expect_exit_code = 0
+serial = "expected/disk-lock.txt"
+
+# (c) An APFS clone of the ext4 root: boot 1 writes /persist.bin, a PSCI reset reboots inside
+# the same process (the VMM's own stderr proves it), boot 2 finds the same hash, and a read-only
+# e2fsck of the clone is clean.
+[[run]]
+name = "disk-rootfs"
+command = ["/bin/sh", "-c", "img=\"$PWD/rootfs.img\"; [ -f \"$img\" ] || img=\"$1/.cache/macvmm/rootfs.img\"; cp -c \"$img\" \"$2/root.img\" || exit 1; echo 'cloned rootfs.img'; \"$0\" run --mem 512M --kernel \"$1/.cache/macvmm/Image-virt\" --initrd \"$1/.cache/macvmm/initramfs-test.img\" --disk \"$2/root.img\" --disk \"$1/.cache/macvmm/modloop-virt,ro\" --log info --timeout 120 --cmdline 'console=ttyAMA0 panic=-1 quiet root=/dev/vda macvmm.test=rootfs'; echo \"rootfs rc=$?\"; e=/opt/homebrew/opt/e2fsprogs/sbin/e2fsck; [ -x \"$e\" ] || e=/usr/local/opt/e2fsprogs/sbin/e2fsck; \"$e\" -fn \"$2/root.img\"; echo \"e2fsck rc=$?\"", "{macvmm}", "{repo}", "{out}"]
+timeout = 200
+expect_exit_code = 0
+serial = "expected/disk-rootfs.txt"
+
+[journal]
+file = "journal/18.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "A request is one chain: a 16-byte header the device reads, data buffers, and a status byte it writes last. A bad request gets a status (IOERR or UNSUPP) and the queue carries on; a chain with no writable byte for the status breaks the protocol and resets the device. FLUSH answers OK only once the data would survive a power cut, and without FLUSH every write is synced before it completes."
+spec = "virtio 1.2 (virtio-v1.2-cs01): 5.2 Block Device (5.2.3 Feature bits, 5.2.4 Device configuration layout, 5.2.6 Device Operation), 2.7.4 Message Framing. man fsync and man fcntl (F_FULLFSYNC) on macOS; man flock."
+pseudocode = "execute(chain): no writable byte -> NEEDS_RESET. parse: copy 16 readable bytes once (else IOERR); data buffers <= 126 (else IOERR); match type: unknown -> UNSUPP, wrong direction -> IOERR; OUT on ro -> IOERR. bounds: len % 512 == 0, len <= max, off = sector.checked_mul(512)?, end = off.checked_add(len)?, end <= capacity * 512, else IOERR before any file access. IN/OUT in 64 KiB zeroed bounce buffers via pread/pwrite; short -> IOERR, used len = bytes really written to the guest + 1. FLUSH: backend.sync() (sync_all = F_FULLFSYNC); no FLUSH negotiated -> sync after every OUT."
+anchor = "crates/vmm/src/virtio/blk.rs (parse, execute, bounds_check, the read and write paths, features), crates/vmm/src/backend/file.rs (BlockBackend, DiskFile::new, read_at, write_at, sync), crates/macvmm/src/cli.rs (--disk)."
+

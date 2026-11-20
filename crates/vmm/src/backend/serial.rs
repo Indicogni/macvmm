@@ -346,7 +346,7 @@ impl Sink {
         if f.buf.is_empty() {
             return;
         }
-        // LOG-4: a file sink stops at its cap; the guest is not told, nor stopped.
+        // A file sink stops at its cap (`,max=`); the guest is not told, nor stopped.
         let n = f.buf.len();
         let room = usize::try_from(f.max.saturating_sub(f.accepted)).unwrap_or(usize::MAX);
         let take = n.min(room);
@@ -357,7 +357,7 @@ impl Sink {
         if data.is_empty() {
             return;
         }
-        // LOG-4 counts what was actually queued (or written), not what SINK-1 dropped.
+        // The cap counts what was actually queued (or written), not what a full queue dropped.
         let queued = match f.inline.as_mut() {
             Some(w) => self.write_inline(w, data),
             None => self.enqueue(data, wait),

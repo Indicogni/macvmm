@@ -130,6 +130,12 @@ fn parse_marker(line: &str, syntax: Syntax) -> Option<Marker> {
     None
 }
 
+/// True if `line` is an `ANCHOR`/`LEARNER` start or end marker in `syntax` (a lesson never
+/// shows these lines).
+pub fn is_marker(line: &str, syntax: Syntax) -> bool {
+    parse_marker(line, syntax).is_some()
+}
+
 /// `^[a-z][a-z0-9_]*$`
 pub fn valid_name(name: &str) -> bool {
     let mut chars = name.chars();

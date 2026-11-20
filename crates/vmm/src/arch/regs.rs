@@ -31,6 +31,7 @@
 
 use core::fmt;
 
+// ANCHOR: pstate_bits
 /// PSTATE bits (SPSR format, module docs).
 pub mod pstate {
     pub const N: u64 = 1 << 31;
@@ -48,7 +49,9 @@ pub mod pstate {
     /// The boot state: EL1h, DAIF masked (`0x3c5`).
     pub const EL1H_MASKED: u64 = DAIF | (1 << 2) | SP;
 }
+// ANCHOR_END: pstate_bits
 
+// ANCHOR: sctlr_bits
 /// `SCTLR_EL1` bits used by the VMM and its test guests (ARM ARM D19.2.118 `SCTLR_EL1`).
 pub mod sctlr {
     /// Stage-1 MMU enable.
@@ -60,7 +63,9 @@ pub mod sctlr {
     /// Instruction cache enable.
     pub const I: u64 = 1 << 12;
 }
+// ANCHOR_END: sctlr_bits
 
+// ANCHOR: pstate_decode
 /// A PSTATE value in SPSR format, with decoders for the dump.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Pstate(pub u64);
@@ -102,6 +107,7 @@ impl Pstate {
         }
     }
 }
+// ANCHOR_END: pstate_decode
 
 /// Upper-case letter when the bit is set, lower-case when clear (`DAIF`, `dAif`, `nZcv`).
 fn flags(f: &mut fmt::Formatter<'_>, v: u64, letters: &[(u64, char)]) -> fmt::Result {
@@ -150,10 +156,11 @@ pub const fn current_el_value(el: u8) -> u64 {
 }
 
 // ANCHOR: mpidr_for_index
-/// MPIDR_EL1 for vCPU `index` (architecture §8.1; ARM ARM D19.2.101 `MPIDR_EL1`): bit 31 is
-/// RES1, Aff1 = index / 16, Aff0 = index % 16. Sixteen CPUs per cluster, like QEMU `virt`,
-/// because GICv3 SGIs target at most 16 Aff0 values per cluster (IHI 0069, §12.11.31
-/// `ICC_SGI1R_EL1.TargetList`).
+/// `MPIDR_EL1` for vCPU `index` (ARM ARM, register page `MPIDR_EL1`): bit 31 is RES1,
+/// Aff1 (the cluster) = index / 16, Aff0 (the CPU in the cluster) = index % 16. Sixteen CPUs
+/// per cluster, like QEMU `virt`, because the interrupt controller's CPU-to-CPU interrupt
+/// message names at most 16 CPUs of one cluster (GICv3 spec, register `ICC_SGI1R_EL1`,
+/// field `TargetList`; chapter 12).
 pub fn mpidr(index: usize) -> u64 {
     let i = u64::try_from(index).unwrap_or(u64::MAX);
     (1 << 31) | (((i / 16) & 0xff) << 8) | (i % 16)

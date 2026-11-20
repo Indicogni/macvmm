@@ -152,7 +152,7 @@ func makeLinuxConfiguration(_ r: LinuxRequest, console: VZSerialPortAttachment)
     config.cpuCount = r.cpus
     config.memorySize = r.memory
     config.serialPorts = [serial]
-    config.entropyDevices = [VZVirtioEntropyDeviceConfiguration()]  // virtio-rng, like M12
+    config.entropyDevices = [VZVirtioEntropyDeviceConfiguration()]  // virtio-rng, as in chapter 17
     return config
 }
 // ANCHOR_END: vz_linux_config

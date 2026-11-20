@@ -1,0 +1,11 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# boot.txt is the serial log of the run in 20-mpidr-mismatch-run; tr removes the carriage returns the guest sends.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ tail -n 3 boot.txt | tr -d '\r'
+exit: 0
+--- stdout ---
+[    0.005769] Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+[    0.006374] EFI services will not be available.
+[    0.006684] smp: Bringing up secondary CPUs ...
+
+--- stderr ---

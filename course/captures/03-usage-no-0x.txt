@@ -1,0 +1,10 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run with the reference monitor at the repository root, G=target/guests/aarch64-unknown-none/release, in zsh, the default macOS shell; bash gives the same output. An address without 0x. The usage text after the first line of standard error is cut by head -n 1.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/hello.bin@40080000 2>err.txt; echo "exit status $?"; head -n 1 err.txt
+exit: 0
+--- stdout ---
+exit status 2
+macvmm: --raw FILE@ADDR: ADDR needs a 0x prefix
+
+--- stderr ---

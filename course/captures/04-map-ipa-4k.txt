@@ -1,0 +1,9 @@
+# scripts/capture-cmd 04: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Try it, first half: a whole 16 KiB page, but at the 4 KiB-aligned IPA 0x40001000. One edit in a copy of the reference: first_exit.rs maps (RAM_BASE + 0x1000, PAGE).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- first-exit
+exit: 1
+--- stdout ---
+
+--- stderr ---
+first-exit: hv_vm_map: HV_BAD_ARGUMENT (0xfae94003)

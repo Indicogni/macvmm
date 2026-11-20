@@ -2,10 +2,10 @@
 title: UEFI: the interface between firmware and an OS loader
 slug: uefi
 kind: primer
-minutes: 30
+minutes: 25
 required_by: [21]
 also_used_by: [13, 22]
-lab: boot-chain
+labs: [boot-chain]
 runs: mac+browser
 command: objdump -p .cache/macvmm/vmlinuz-virt | grep -o '(EFI application)'
 expect: (EFI application)
@@ -386,7 +386,6 @@ Image underneath.
 ## Lab
 
 :::lab boot-chain
-:::
 
 In the `boot-chain` lab you step through two boots side by side: direct boot (VMM, kernel) and
 firmware boot (VMM, U-Boot, `bootefi`, `loader.efi` or the Linux stub, kernel). At each step the

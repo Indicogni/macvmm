@@ -1,0 +1,10 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Edit: the root node's #address-cells in crates/vmm/src/fdt/machine.rs changed from 2 to 1; nothing else.
+# Run in a copy of the reference with that edit; $C is .cache/macvmm (the Linux kernel and initramfs chapter 13 fetches). boot.txt is removed first.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 512M --kernel $C/Image-virt --initrd $C/initramfs-test.img --serial file:boot.txt --timeout 15
+exit: 5
+--- stdout ---
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 15s

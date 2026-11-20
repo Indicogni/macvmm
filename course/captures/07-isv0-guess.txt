@@ -1,0 +1,28 @@
+# scripts/capture-cmd 07: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: an ISV=0 data abort is "emulated" by guessing. In crates/vmm/src/vcpu/mmio.rs the ISV=0 path (chapter 21) is replaced by treating the syndrome as if ISV were 1, SAS 3 (8 bytes) and SF 1, with whatever SRT field it holds.
+# Run in a copy of the reference with that one edit. The guest is the chapter 21 probe, which turns its MMU on first.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --testdev --raw target/guests/aarch64-unknown-none/release/isv0-probe.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+isv0-probe: mmu on
+isv0-probe: FAILED: stp x: got [0, 0], want [1111222233334444, 5555666677778888]
+isv0-probe: FAILED: ldp x: got [0, 0], want [a1, a2]
+isv0-probe: FAILED: stp w: got [0], want [123456780badf00d]
+isv0-probe: FAILED: ldp w: got [ffffffffffffffff, ffffffffffffffff], want [cafebabe, 87654321]
+isv0-probe: FAILED: ldpsw: got [0, 0], want [ffffffff80000001, 7fffffff]
+isv0-probe: FAILED: stp x pre-index: got [0, 0, b000000], want [5555666677778888, 1111222233334444, b000040]
+isv0-probe: FAILED: ldp x post-index: got [0, 0, b000050], want [b1, b2, b000040]
+isv0-probe: FAILED: stp w post-index: got [0, 0, b000060], want [c1, c2, b000068]
+isv0-probe: FAILED: ldp w pre-index: got [0, 0, b000068], want [d1, d2, b000070]
+isv0-probe: FAILED: ldpsw pre-index: got [0, 0, b000088], want [fffffffffffffffe, ffffffff80000000, b000080]
+isv0-probe: FAILED: str x pre-index: got [40098f7c, b000088], want [e1e2e3e4e5e6e7e8, b000090]
+isv0-probe: FAILED: ldrsh x post-index: got [0, b000098], want [ffffffffffff8001, b00009a]
+isv0-probe: FAILED: ldp x via stage-1 alias: got [0, 0], want [f1, f2]
+isv0-probe: FAILED: stp x [sp]! at EL1t: got [0, 0, b0000c0], want [5151, 5252, b0000b0]
+isv0-probe: FAILED: ldp x [sp], #16 at EL1h: got [b0000d8, 62, b0000d0], want [6161, 6262, b0000e0]
+isv0-probe: FAILED: ldp x with pc via stage-1 code alias: got [7272, b0000e8], want [7171, 7272]
+isv0-probe: 0/16 ok
+isv0-probe: FAILED: simd store: esr 0x0 far 0x0 value 0x40081040
+
+--- stderr ---

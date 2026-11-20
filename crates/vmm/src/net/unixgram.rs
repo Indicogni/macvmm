@@ -143,7 +143,7 @@ pub enum Probe {
 
 // ANCHOR: unixgram_probe
 /// Is the socket at `path` live? A datagram `connect` to a bound socket succeeds; to a socket
-/// file whose owner is gone it fails with `ECONNREFUSED` `[V]`. Only `Stale` may be replaced.
+/// file whose owner is gone it fails with `ECONNREFUSED` (checked on a real Mac). Only `Stale` may be replaced.
 pub fn probe(path: &Path) -> Probe {
     let sock = match UnixDatagram::unbound() {
         Ok(s) => s,
@@ -168,17 +168,18 @@ pub struct UnixgramBackend {
 
 impl UnixgramBackend {
     // ANCHOR: unixgram_bind
-    /// Bind `local` (already checked and, if stale, removed by `HostIo`: NET-3, NET-4), raise
+    /// Bind `local` (already checked and, if stale, removed by `HostIo`), raise
     /// both buffers to [`SOCKET_BUFFER`], and set the timeouts: reads wait at most
-    /// [`RECV_TIMEOUT`] so the RX thread sees its stop flag. The socket file is 0600 because of
-    /// the startup `umask(0o077)` (PATH-6); the umask is never changed around `bind`, which
-    /// would race with every other thread creating a file.
+    /// [`RECV_TIMEOUT`] so the RX thread sees its stop flag. `bind` creates the socket file with
+    /// mode 0777 minus the startup `umask(0o077)`, so it is `srwx------`: only its owner can
+    /// connect. The umask is never changed around `bind`, which would race with every other
+    /// thread creating a file.
     pub fn bind(local: &Path, peer: PeerSpec) -> Result<UnixgramBackend, SetupError> {
         let sock = UnixDatagram::bind(local).map_err(SetupError::Bind)?;
         hvf::host::set_socket_buffers(sock.as_raw_fd(), SOCKET_BUFFER, SOCKET_BUFFER)
             .map_err(SetupError::Buffers)?;
         // Blocking mode on purpose: `O_NONBLOCK` is a property of the open file, shared by
-        // the RX thread's `recv` and the worker's `send` (PLAN M24 design notes).
+        // the RX thread's `recv` and the worker's `send`, so the timeouts below bound both instead.
         sock.set_read_timeout(Some(RECV_TIMEOUT))
             .map_err(SetupError::Timeouts)?;
         sock.set_write_timeout(Some(SEND_TIMEOUT))
@@ -221,6 +222,7 @@ impl UnixgramBackend {
     /// first sender with an absolute path is locked in as the peer and logged (NET-2); only the
     /// RX thread calls this, so there is no race between two "first" senders inside the process.
     /// `Err` carries why a datagram was refused, for the warning.
+    // ANCHOR: unixgram_peer_fixed
     fn accepts(&self, source: Option<&Path>) -> Result<(), &'static str> {
         let Some(src) = source else {
             return Err("unnamed sender");
@@ -230,6 +232,7 @@ impl UnixgramBackend {
         }
         let ok = match &self.peer {
             Peer::Fixed { accept, .. } => accept.iter().any(|a| a.as_os_str() == src.as_os_str()),
+            // ANCHOR_END: unixgram_peer_fixed
             Peer::Learn(learned) => {
                 if let Some(p) = learned.get() {
                     return if p.as_os_str() == src.as_os_str() {
@@ -256,6 +259,7 @@ impl UnixgramBackend {
 }
 
 impl NetBackend for UnixgramBackend {
+    // ANCHOR: unixgram_send
     fn send(&self, frame: &[u8]) -> io::Result<()> {
         let Some(target) = self.peer() else {
             return Err(io::Error::from(io::ErrorKind::NotConnected));
@@ -276,7 +280,9 @@ impl NetBackend for UnixgramBackend {
             }
         }
     }
+    // ANCHOR_END: unixgram_send
 
+    // ANCHOR: unixgram_recv
     fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         let (n, from) = self.sock.recv_from(buf)?;
         match self.accepts(from.as_pathname()) {
@@ -288,6 +294,7 @@ impl NetBackend for UnixgramBackend {
             }
         }
     }
+    // ANCHOR_END: unixgram_recv
 
     fn rx_dropped_foreign(&self) -> u64 {
         self.foreign.load(Ordering::Relaxed)

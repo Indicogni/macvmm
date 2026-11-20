@@ -1,0 +1,10 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# v.dtb is the file the run in 10-dtb-out-run wrote.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -obUa 'pl011@9000000' v.dtb
+exit: 0
+--- stdout ---
+189:pl011@9000000
+788:pl011@9000000
+
+--- stderr ---

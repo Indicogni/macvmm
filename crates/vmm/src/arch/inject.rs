@@ -137,8 +137,10 @@ impl fmt::Display for InjectError {
     }
 }
 
+// ANCHOR: inject_vector_offset
 /// The synchronous-exception vector offset for an exception taken from `cpsr` (module docs
-/// table). Total over every `u64` (HC-7).
+/// table). Total over every `u64`: no
+/// guest-controlled CPSR can make it panic.
 pub const fn vector_offset(cpsr: u64) -> Result<u64, InjectError> {
     match cpsr & pstate_ext::MODE {
         0b00100 => Ok(offset::CURRENT_SP0),
@@ -167,6 +169,7 @@ pub const fn entry_pstate(old: u64, sctlr_el1: u64) -> u64 {
     }
     p
 }
+// ANCHOR_END: inject_vector_offset
 
 // ANCHOR: inject_sync_exception
 /// Compute the register writes that make the guest take a synchronous exception with
@@ -197,16 +200,19 @@ pub fn sync_exception(
 }
 // ANCHOR_END: inject_sync_exception
 
+// ANCHOR: inject_undef
 /// An UNDEFINED-instruction exception: EC `0x00` ("unknown reason"), ISS 0, IL 1, so
 /// `ESR_EL1 = 0x0200_0000`. What a guest sees for a register that does not exist.
 pub fn undef(st: &VcpuState) -> Result<Injection, InjectError> {
     sync_exception(st, ec::UNKNOWN, 0, None)
 }
+// ANCHOR_END: inject_undef
 
 // ANCHOR: inject_data_abort
 /// A synchronous external data abort at virtual address `far` (DFSC `0x10`): EC `0x25` from
 /// EL1, `0x24` from EL0, with `WnR` for a write and ISV = 0 (no instruction syndrome). Used
 /// for MMIO the VMM refuses to emulate (M17, MMIO-4/MMIO-6).
+// ANCHOR: inject_data_abort_body
 pub fn data_abort(st: &VcpuState, far: u64, is_write: bool) -> Result<Injection, InjectError> {
     // Validate the mode first, so an unsupported mode is reported as such.
     vector_offset(st.cpsr)?;
@@ -218,6 +224,7 @@ pub fn data_abort(st: &VcpuState, far: u64, is_write: bool) -> Result<Injection,
     let iss = DFSC_SYNC_EXTERNAL | if is_write { ISS_WNR } else { 0 };
     sync_exception(st, ec, iss, Some(far))
 }
+// ANCHOR_END: inject_data_abort_body
 // ANCHOR_END: inject_data_abort
 
 #[cfg(test)]

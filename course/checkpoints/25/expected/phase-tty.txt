@@ -1,0 +1,6 @@
+hostile-tty: begin
+hostile-tty: 22 attack strings sent
+hostile-tty: end
+!guest exception
+check: forbidden sequences in stdout: 0
+!check: FAILED

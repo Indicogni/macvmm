@@ -1,0 +1,23 @@
+# Checkpoint 16 `virtqueues`: the split ring against a hostile driver, and against one that
+# rewrites ring memory while the device walks it.
+id = "16"
+slug = "virtqueues"
+requires = ["15"]
+
+# The hostile-ring suite (every hostile shape, the index wrap, the exact used.len, the ordering
+# check in the access log, the 10,000-ring comparison with a plain model, the shared corpus in
+# data/) and the TOCTOU suite (the mutation hook and the racing len flip). Host only: no
+# Hypervisor.framework call, no guest run (the queue's first guest is chapter 17's rng device).
+[contract]
+tests = ["contract/virtqueue_hostile.rs", "contract/virtqueue_toctou.rs"]
+
+[journal]
+file = "journal/16.md"
+questions = 5
+predict = true
+
+[hints]
+conceptual = "Everything in the three rings is guest memory the guest may rewrite at any moment: copy each index, ring entry and descriptor out once, check only the copy, use only the copy, and bound every walk (N hops per chain, len / 16 inside an indirect table) instead of remembering where you have been."
+spec = "Virtio 1.2 section 2.7 (the split-ring alignment and size table), 2.7.4 (message framing: readable before writable), 2.7.5 (descriptors, indirect rules), 2.7.6 to 2.7.8 (available ring, used ring, used.len) and 2.7.13 (the ordering of index updates)."
+pseudocode = "pop: avail_idx = acquire load; pending = avail_idx - next_avail (wrapping u16); if pending > N: error; if 0: None; head = copy of ring[next_avail & (N-1)]; if head >= N: error; next_avail += 1. step: budget -= 1 or ChainTooLong; d = read_obj(table + 16*index); indirect? switch table; len != 0; addr + len checked and in one RAM region; NEXT? next < table_len. add_used: copy {id, len}; release store used.idx. should_interrupt: SeqCst fence, then read avail.flags."
+anchor = "crates/vmm/src/virtio/queue.rs (validate, pop, add_used, should_interrupt), virtio/chain.rs (read_desc, step, enter_indirect, into_validated, write_writable), memory/mod.rs (GuestMemoryOrdered)."

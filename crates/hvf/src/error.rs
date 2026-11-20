@@ -13,6 +13,7 @@
 use crate::ffi;
 use core::fmt;
 
+// ANCHOR: hv_error_enum
 /// A non-success `hv_return_t`, decoded.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum HvError {
@@ -37,6 +38,7 @@ pub enum HvError {
     /// Any other value, kept exactly as returned.
     Unknown(u32),
 }
+// ANCHOR_END: hv_error_enum
 
 // ANCHOR: hv_error_from_code
 impl HvError {
@@ -105,15 +107,18 @@ impl HvError {
     }
 }
 
+// ANCHOR: hv_error_display
 impl fmt::Display for HvError {
     /// `HV_DENIED (0xfae94007)`: name and exact code, so logs are greppable either way.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} ({:#010x})", self.name(), self.code())
     }
 }
+// ANCHOR_END: hv_error_display
 
 impl std::error::Error for HvError {}
 
+// ANCHOR: call_error
 /// A failed framework call: which function, and what it returned.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CallError {
@@ -128,6 +133,7 @@ impl fmt::Display for CallError {
         write!(f, "{}: {}", self.call, self.error)
     }
 }
+// ANCHOR_END: call_error
 
 impl std::error::Error for CallError {}
 

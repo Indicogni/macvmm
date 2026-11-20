@@ -1,0 +1,50 @@
+# scripts/capture-cmd 04: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The optimised machine code for course/examples/04-hoist.rs (rustc 1.99.0), with assembler directives filtered out; labels starting LBB are branch targets. The compiler emits the three functions in name order.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ rustc --edition 2024 -O --crate-type=lib --emit=asm=- course/examples/04-hoist.rs | grep -E '^(_wait|LBB|[[:space:]]+[a-z])' | grep -vE '^[[:space:]]+[.]' | expand -t 8
+exit: 0
+--- stdout ---
+_wait_raw:
+        cbz     w1, LBB0_3
+        ldrb    w8, [x0]
+        cmp     w8, #0
+        csel    w0, w1, wzr, eq
+        ret
+LBB0_3:
+        mov     w0, #0
+        ret
+_wait_slice:
+        cbz     w2, LBB1_4
+        cbz     x1, LBB1_5
+        ldrb    w8, [x0]
+        cmp     w8, #0
+        csel    w0, w2, wzr, eq
+        ret
+LBB1_4:
+        mov     w0, #0
+        ret
+LBB1_5:
+        stp     x29, x30, [sp, #-16]!
+        mov     x29, sp
+        adrp    x2, l_anon.7dec077bfb117661c9e36bf72ccc71ec.1@PAGE
+        add     x2, x2, l_anon.7dec077bfb117661c9e36bf72ccc71ec.1@PAGEOFF
+        mov     x0, #0
+        bl      __RNvNtCsjIpoRzUjyHQ_4core9panicking18panic_bounds_check
+_wait_volatile:
+        cbz     w1, LBB2_6
+        mov     x8, x0
+        mov     w0, #0
+LBB2_2:
+        ldrb    w9, [x8]
+        cbnz    w9, LBB2_5
+        add     w0, w0, #1
+        cmp     w1, w0
+        b.ne    LBB2_2
+        mov     x0, x1
+LBB2_5:
+        ret
+LBB2_6:
+        mov     w0, #0
+        ret
+
+--- stderr ---

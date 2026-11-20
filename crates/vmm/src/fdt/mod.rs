@@ -15,6 +15,7 @@
     clippy::cast_possible_truncation
 )]
 
+// ANCHOR: fdt_mod
 pub mod machine;
 #[cfg(any(test, feature = "test-util"))]
 pub mod reader;
@@ -22,3 +23,4 @@ pub mod writer;
 
 pub use machine::{MachineDesc, build_dtb, build_dtb_with, redact_seeds};
 pub use writer::{FdtError, FdtWriter, NodeId};
+// ANCHOR_END: fdt_mod

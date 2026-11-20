@@ -130,6 +130,7 @@ fn main(_x0: u64) {
     }
     wait_up(2);
 
+    // ANCHOR: smp_race_three_way
     // 3. Three CPUs race CPU_ON(3).
     GO.store(1, Ordering::SeqCst);
     let r0 = psci::cpu_on(3, entry, 3);
@@ -147,6 +148,7 @@ fn main(_x0: u64) {
     if wins != 1 || refused != 2 {
         fail("the CPU_ON race did not have exactly one winner");
     }
+    // ANCHOR_END: smp_race_three_way
     wait_up(3);
 
     // 4. CPU 3 turns itself off; AFFINITY_INFO(3) must reach OFF.

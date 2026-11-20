@@ -2,10 +2,10 @@
 title: SMCCC: the calling convention for calls to a higher level
 slug: smccc
 kind: primer
-minutes: 25
+minutes: 20
 required_by: [03]
 also_used_by: [08, 10, 20, 25]
-lab: sysreg-smccc
+labs: [sysreg-smccc]
 runs: mac+browser
 command: printf '0x%08X\n' $(( (1<<31) | (1<<30) | (6<<24) | 0x4D01 ))
 expect: 0xC6004D01
@@ -420,7 +420,6 @@ question without risking its life.
 ## Lab
 
 :::lab sysreg-smccc
-:::
 
 In the `sysreg-smccc` lab you work SMCCC function IDs in both directions. Toggle the fast and
 64-bit bits, pick an owner from a list and type a function number, and watch the 32-bit ID and its

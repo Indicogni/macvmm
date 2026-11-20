@@ -1,0 +1,15 @@
+# scripts/capture-cmd 19: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The chapter's checkpoint, run against the reference with --ref: what a finished chapter 19 looks like. In your own workspace you run it without --ref, and it checks learner/.
+# The journal line reports "not a learner tree" here; in your own learner/ workspace it checks your journal.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 19 --ref
+exit: 0
+--- stdout ---
+[PASS] contract tests   virtio_net_hostile (18 tests), unixgram (12 tests)
+[PASS] runs on your Mac two-vms: 12/12 serial markers, exit 0 in 2.56s
+[PASS] runs on your Mac bind-file: 2/2 serial markers, exit 2 in 0.03s
+[PASS] runs on your Mac probe-net: 6/6 serial markers, exit 0 in 0.13s
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 19 PASS
+
+--- stderr ---

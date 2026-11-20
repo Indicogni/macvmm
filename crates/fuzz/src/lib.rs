@@ -27,6 +27,7 @@ pub mod rng;
 #[allow(clippy::ptr_arg)]
 pub mod targets;
 
+// ANCHOR: fuzz_target_struct
 /// `Ok` if every invariant held, else a description of the first violation.
 pub type Verdict = Result<(), String>;
 
@@ -43,6 +44,7 @@ pub struct Target {
     /// Inputs are truncated to this length.
     pub max_len: usize,
 }
+// ANCHOR_END: fuzz_target_struct
 
 /// Every target, in the order `all` runs them.
 pub fn targets() -> &'static [Target] {

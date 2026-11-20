@@ -1,0 +1,8 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ shasum -a 256 disk.img
+exit: 0
+--- stdout ---
+4ae50b0ecaa3f91bdcfe84f5a2e20706045ea6f3387c6c45238200cf50ea7859  disk.img
+
+--- stderr ---

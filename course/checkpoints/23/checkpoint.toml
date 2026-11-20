@@ -1,0 +1,28 @@
+# Checkpoint 23 `vz-macos` (CURRICULUM §5 ch23; format: course/checkpoints/README.md).
+# No Rust changes in this chapter: the run is the vz-mac tool's own acceptance test, from the
+# repository (cwd = "repo"), so it never builds or relinks macvmm. It needs Xcode's `swift` and
+# the fetched Linux artifacts in .cache/macvmm/ (scripts/fetch.sh linux).
+id = "23"
+slug = "vz-macos"
+requires = ["14"]
+
+# swift test (host-only), the exact entitlement set of both programs, the refusal without the
+# entitlement, a validated Linux configuration, and the test initramfs booted under VZ on hvc0.
+[[run]]
+name = "vz-acceptance"
+command = ["tools/vz-mac/test.sh"]
+cwd = "repo"
+timeout = 300
+expect_exit_code = 0
+serial = "expected/vz-acceptance.txt"
+
+[journal]
+file = "journal/23.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "VZ is a machine you configure, not one you build: a boot loader, a platform and a device list. Its serial port is a virtio-console, which Linux calls hvc0, so the command line must name console=hvc0."
+spec = "Read tools/vz-mac/test.sh top to bottom (its five steps), tools/vz-mac/run.sh (build, sign, check the signature) and LinuxBoot.swift (the whole Linux machine definition)."
+pseudocode = "If step 2 fails, read the signature with codesign -d --entitlements - target/vz-mac/signed/vz-mac; if step 5 fails with a missing artifact, run scripts/fetch.sh linux; if swift is missing, install Xcode."
+anchor = "tools/vz-mac/Sources/vz-mac/LinuxBoot.swift (makeLinuxConfiguration) and tools/vz-mac/run.sh (build_and_sign, check_signature)."

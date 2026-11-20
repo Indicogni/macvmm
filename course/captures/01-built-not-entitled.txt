@@ -1,0 +1,10 @@
+# scripts/capture-cmd 01: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified, built in a copy of the repository; your own binary is target/learner/debug/macvmm instead.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo build -q -p macvmm && otool -L target/debug/macvmm | grep Hypervisor && codesign -d --entitlements - target/debug/macvmm
+exit: 0
+--- stdout ---
+	/System/Library/Frameworks/Hypervisor.framework/Versions/A/Hypervisor (compatibility version 1.0.0, current version 308.2.7)
+
+--- stderr ---
+Executable=<tree>/target/debug/macvmm

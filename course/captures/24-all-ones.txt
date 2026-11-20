@@ -1,0 +1,70 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: in crates/vmm/src/vcpu/mmio.rs, the read-as-zero branch for an access to no device writes all ones of the access size (0xff..ff) into the destination register instead of 0; nothing else changed.
+# The per-access lines (vmapple: unknown MMIO #n: ...) were removed with grep -v before recording, as in 24-first-probe.txt; stderr is merged into stdout by that filter.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm --features experimental-vmapple -- run --machine vmapple --bios /System/Library/Frameworks/Virtualization.framework/Versions/A/Resources/AVPBooter.vmapple2.bin --mem 4G --unhandled-mmio log --trace exits:.cache/vmapple/avp.jsonl --timeout 20 --stats
+exit: 3
+--- stdout ---
+macvmm: warn: [vcpu0] vmapple: first exit at pc=0x103478: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=27 SF=0 AR=0 FnV=0 S1PTW=0 WnR=1 DFSC=0x7 (translation fault)
+macvmm: warn: [main] vmapple: 63 unknown MMIO accesses logged
+macvmm: warn: [main] vmapple:   60 in cfg
+macvmm: warn: [main] vmapple:   1 in pvpanic
+macvmm: warn: [main] vmapple:   2 in bdif
+macvmm: warn: [vcpu0] vmapple: first exit at pc=0x103478: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=27 SF=0 AR=0 FnV=0 S1PTW=0 WnR=1 DFSC=0x7 (translation fault)
+macvmm: warn: [main] vmapple: 63 unknown MMIO accesses logged
+macvmm: warn: [main] vmapple:   60 in cfg
+macvmm: warn: [main] vmapple:   1 in pvpanic
+macvmm: warn: [main] vmapple:   2 in bdif
+macvmm: warn: [vcpu0] vmapple: first exit at pc=0x103478: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=27 SF=0 AR=0 FnV=0 S1PTW=0 WnR=1 DFSC=0x7 (translation fault)
+macvmm: warn: [main] vmapple: 63 unknown MMIO accesses logged
+macvmm: warn: [main] vmapple:   60 in cfg
+macvmm: warn: [main] vmapple:   1 in pvpanic
+macvmm: warn: [main] vmapple:   2 in bdif
+macvmm: warn: [vcpu0] vmapple: first exit at pc=0x103478: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=27 SF=0 AR=0 FnV=0 S1PTW=0 WnR=1 DFSC=0x7 (translation fault)
+macvmm: warn: [main] vmapple: 63 unknown MMIO accesses logged
+macvmm: warn: [main] vmapple:   60 in cfg
+macvmm: warn: [main] vmapple:   1 in pvpanic
+macvmm: warn: [main] vmapple:   2 in bdif
+macvmm: warn: [vcpu0] vmapple: first exit at pc=0x103478: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=27 SF=0 AR=0 FnV=0 S1PTW=0 WnR=1 DFSC=0x7 (translation fault)
+macvmm: warn: [main] vmapple: 63 unknown MMIO accesses logged
+macvmm: warn: [main] vmapple:   60 in cfg
+macvmm: warn: [main] vmapple:   1 in pvpanic
+macvmm: warn: [main] vmapple:   2 in bdif
+macvmm: warn: [vcpu0] vmapple: first exit at pc=0x103478: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=27 SF=0 AR=0 FnV=0 S1PTW=0 WnR=1 DFSC=0x7 (translation fault)
+macvmm: warn: [main] vmapple: 63 unknown MMIO accesses logged
+macvmm: warn: [main] vmapple:   60 in cfg
+macvmm: warn: [main] vmapple:   1 in pvpanic
+macvmm: warn: [main] vmapple:   2 in bdif
+macvmm: warn: [vcpu0] vmapple: first exit at pc=0x103478: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=27 SF=0 AR=0 FnV=0 S1PTW=0 WnR=1 DFSC=0x7 (translation fault)
+macvmm: warn: [main] vmapple: 63 unknown MMIO accesses logged
+macvmm: warn: [main] vmapple:   60 in cfg
+macvmm: warn: [main] vmapple:   1 in pvpanic
+macvmm: warn: [main] vmapple:   2 in bdif
+macvmm: warn: [vcpu0] vmapple: first exit at pc=0x103478: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=27 SF=0 AR=0 FnV=0 S1PTW=0 WnR=1 DFSC=0x7 (translation fault)
+macvmm: warn: [main] vmapple: 63 unknown MMIO accesses logged
+macvmm: warn: [main] vmapple:   60 in cfg
+macvmm: warn: [main] vmapple:   1 in pvpanic
+macvmm: warn: [main] vmapple:   2 in bdif
+macvmm: warn: [vcpu0] vmapple: first exit at pc=0x103478: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=27 SF=0 AR=0 FnV=0 S1PTW=0 WnR=1 DFSC=0x7 (translation fault)
+macvmm: warn: [main] vmapple: 63 unknown MMIO accesses logged
+macvmm: warn: [main] vmapple:   60 in cfg
+macvmm: warn: [main] vmapple:   1 in pvpanic
+macvmm: warn: [main] vmapple:   2 in bdif
+macvmm: warn: [vcpu0] vmapple: first exit at pc=0x103478: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=27 SF=0 AR=0 FnV=0 S1PTW=0 WnR=1 DFSC=0x7 (translation fault)
+macvmm: warn: [main] vmapple: 63 unknown MMIO accesses logged
+macvmm: warn: [main] vmapple:   60 in cfg
+macvmm: warn: [main] vmapple:   1 in pvpanic
+macvmm: warn: [main] vmapple:   2 in bdif
+macvmm: warn: [vcpu0] vmapple: first exit at pc=0x103478: data abort (EC 0x24): ISV=1 SAS=2 (4 bytes) SSE=0 SRT=27 SF=0 AR=0 FnV=0 S1PTW=0 WnR=1 DFSC=0x7 (translation fault)
+macvmm: warn: [main] vmapple: 63 unknown MMIO accesses logged
+macvmm: warn: [main] vmapple:   60 in cfg
+macvmm: warn: [main] vmapple:   1 in pvpanic
+macvmm: warn: [main] vmapple:   2 in bdif
+macvmm: guest fatal: reset storm: more than 10 resets within 10 s
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=0 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 65: hvc 2, data abort 63
+macvmm: stats: vcpu0 time: exec 0.000 s, wfi 0.000 s
+macvmm: stats: host cpu 0.000 s over 0.000 s wall (132%)
+macvmm: stats: rlimit core=0 nofile=1048576
+
+--- stderr ---

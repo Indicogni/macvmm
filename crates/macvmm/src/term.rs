@@ -92,6 +92,7 @@ pub const CTRL_A: u8 = 0x01;
 const HELP: &str = "macvmm: escapes: Ctrl-A x quit, Ctrl-A t trace ring, Ctrl-A s stats, \
                     Ctrl-A Ctrl-A send Ctrl-A";
 
+// ANCHOR: restore_saved
 /// The termios to put back, shared with the panic hook and the signal path. `None` when the
 /// terminal was not changed or is already restored.
 static SAVED: Mutex<Option<hvf::host::Termios>> = Mutex::new(None);
@@ -109,6 +110,7 @@ fn restore_saved() -> bool {
     let _ = hvf::host::tcflush_input(hvf::host::STDIN_FILENO);
     true
 }
+// ANCHOR_END: restore_saved
 
 /// The terminal state of one `macvmm run`.
 #[derive(Debug)]
@@ -121,8 +123,8 @@ pub struct Terminal {
 impl Terminal {
     // ANCHOR: term_raw_mode
     /// Enter raw mode if `interactive` (the serial or the console sink is `stdio`, so stdin is
-    /// bound to the guest: `HostIo::stdin` is not `Unbound`) and stdin is a TTY (PROC-1). Installs the panic hook first, so the terminal is
-    /// never raw without a way back.
+    /// bound to the guest: `HostIo::stdin` is not `Unbound`) and stdin is a TTY. Installs the
+    /// panic hook first, so the terminal is never raw without a way back.
     pub fn setup(interactive: bool) -> Terminal {
         install_panic_hook();
         let stdin_tty = hvf::host::isatty(hvf::host::STDIN_FILENO);
@@ -208,8 +210,9 @@ pub fn write_reset_fallback() -> bool {
         })
 }
 
+// ANCHOR: panic_hook
 /// Install (once) a panic hook that restores the terminal before the default hook prints the
-/// panic (PROC-1, TTY-6).
+/// panic.
 pub fn install_panic_hook() {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {
@@ -220,6 +223,7 @@ pub fn install_panic_hook() {
         }));
     });
 }
+// ANCHOR_END: panic_hook
 
 /// A host command typed after Ctrl-A.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -233,6 +237,7 @@ pub enum Command {
 // ANCHOR: stdin_escape
 /// The Ctrl-A escape state machine (TTY-9): pure, so it is unit-tested; state survives across
 /// `feed` calls, so an escape split across two reads still works.
+// ANCHOR: stdin_escape_parser
 #[derive(Debug, Default)]
 pub struct EscapeParser {
     after_ctrl_a: bool,
@@ -266,8 +271,10 @@ impl EscapeParser {
         }
     }
 }
+// ANCHOR_END: stdin_escape_parser
 // ANCHOR_END: stdin_escape
 
+// ANCHOR: stdin_loop
 /// Run the stdin thread (detached; it ends at EOF, on a read error, or after Ctrl-A x).
 pub fn spawn_stdin(host: Arc<HostIo>) -> io::Result<()> {
     std::thread::Builder::new()
@@ -292,8 +299,8 @@ fn stdin_loop(host: &HostIo) {
         to_guest.clear();
         parser.feed(buf.get(..n).unwrap_or(&[]), &mut to_guest, &mut cmds);
         if !to_guest.is_empty() {
-            // M13: the PL011's or the console's queue, whichever sink is stdio (§14.4).
-            host.stdin_queue().push(&to_guest); // never blocks (TTY-10)
+            // The PL011's queue (or, from chapter 17, the console's: whichever sink is stdio).
+            host.stdin_queue().push(&to_guest); // never waits for room
         }
         for cmd in cmds.drain(..) {
             match cmd {
@@ -308,6 +315,7 @@ fn stdin_loop(host: &HostIo) {
         }
     }
 }
+// ANCHOR_END: stdin_loop
 
 #[cfg(test)]
 mod tests {

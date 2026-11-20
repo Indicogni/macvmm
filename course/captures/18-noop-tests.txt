@@ -1,0 +1,24 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 2 build: DiskFile::sync (crates/vmm/src/backend/file.rs) returns Ok(()) without syncing anything.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test virtio_blk_hostile --test blk_short_read --test blk_budget
+exit: 0
+--- stdout ---
+
+running 1 test
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.58s
+
+
+running 7 tests
+.......
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 32 tests
+................................
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+
+
+--- stderr ---
+blk_budget: 21 batches, 107 requests posted, 22 syncs, max 2 requests and 77.582ms per batch, observer took the device mutex 3 times (worst wait 1.508571s), stop took 74.535417ms

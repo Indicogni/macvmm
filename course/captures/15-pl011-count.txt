@@ -1,0 +1,41 @@
+# scripts/capture-cmd 15: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The trace from 15-pl011-boot.txt: every MMIO exit at the PL011 (0x0900_0000) and the PL031 (0x0901_0000).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -o '"ipa":"0x90[0-9a-f]*","wnr":[a-z]*' /tmp/ch15/boot.jsonl | sort | uniq -c | sort -rn
+exit: 0
+--- stdout ---
+20490 "ipa":"0x9000018","wnr":false
+12093 "ipa":"0x9000000","wnr":true
+ 123 "ipa":"0x9000030","wnr":true
+  65 "ipa":"0x9000030","wnr":false
+   5 "ipa":"0x9000038","wnr":true
+   3 "ipa":"0x9010000","wnr":false
+   3 "ipa":"0x9000044","wnr":true
+   2 "ipa":"0x900002c","wnr":true
+   2 "ipa":"0x9000028","wnr":true
+   2 "ipa":"0x9000024","wnr":true
+   1 "ipa":"0x9010ffc","wnr":false
+   1 "ipa":"0x9010ff8","wnr":false
+   1 "ipa":"0x9010ff4","wnr":false
+   1 "ipa":"0x9010ff0","wnr":false
+   1 "ipa":"0x9010fec","wnr":false
+   1 "ipa":"0x9010fe8","wnr":false
+   1 "ipa":"0x9010fe4","wnr":false
+   1 "ipa":"0x9010fe0","wnr":false
+   1 "ipa":"0x9010014","wnr":false
+   1 "ipa":"0x9010010","wnr":false
+   1 "ipa":"0x901000c","wnr":true
+   1 "ipa":"0x901000c","wnr":false
+   1 "ipa":"0x9010004","wnr":false
+   1 "ipa":"0x9000ffc","wnr":false
+   1 "ipa":"0x9000ff8","wnr":false
+   1 "ipa":"0x9000ff4","wnr":false
+   1 "ipa":"0x9000ff0","wnr":false
+   1 "ipa":"0x9000fec","wnr":false
+   1 "ipa":"0x9000fe8","wnr":false
+   1 "ipa":"0x9000fe4","wnr":false
+   1 "ipa":"0x9000fe0","wnr":false
+   1 "ipa":"0x9000038","wnr":false
+   1 "ipa":"0x9000034","wnr":true
+
+--- stderr ---

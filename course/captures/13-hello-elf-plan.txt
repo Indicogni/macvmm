@@ -1,0 +1,36 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified: the plan for chapter 03's hello guest as an ELF file.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --dry-run --mem 64M --kernel target/guests/aarch64-unknown-none/release/hello
+exit: 0
+--- stdout ---
+macvmm boot plan (dry run, no VM created)
+ram     0x40000000..0x44000000  64 MiB
+dtb     0x40000000..0x40000697  device tree (1687 bytes)
+elf     0x40080000..0x40082a28  ELF segment 0 (10792 bytes)
+elf     0x40082a30..0x40082d9a  ELF segment 1 (874 bytes)
+elf     0x40082da0..0x40102dc0  ELF segment 2 (524320 bytes)
+entry   pc=0x40080000 x0=0x40000000 cpsr=0x3c5
+memory map (Virt):
+  0x00000000..0x04000000  flash0       Rom
+  0x04000000..0x08000000  flash1       Rom
+  0x08000000..0x08010000  gicd         GicDist
+  0x08010000..0x08020000  gicv2-cpu    Reserved
+  0x08020000..0x08030000  gic-v2m      GicMsi
+  0x08080000..0x080a0000  gic-its      Reserved
+  0x080a0000..0x09000000  gicr         GicRedist
+  0x09000000..0x09001000  pl011        Mmio intid 33
+  0x09010000..0x09011000  pl031        Mmio intid 34
+  0x09020000..0x09020018  fw-cfg       Reserved
+  0x09030000..0x09031000  pl061        Reserved intid 39
+  0x0a000000..0x0a004000  virtio-mmio  Mmio
+  0x0b000000..0x0b001000  testdev      Mmio
+  0x0c000000..0x0e000000  probe-hole   Reserved
+  0x10000000..0x3eff0000  pcie-mmio    Reserved
+  0x3eff0000..0x3f000000  pcie-pio     Reserved
+  0x3f000000..0x40000000  pcie-ecam    Reserved
+  0x40000000..0x44000000  ram          Ram
+device tree: 1687 bytes at 0x40000000 (limit 524288), 1 vCPU(s), irqchip InKernelGicV3, rng-seed 64 bytes and kaslr-seed (values not shown)
+debug hypercalls: on
+
+--- stderr ---

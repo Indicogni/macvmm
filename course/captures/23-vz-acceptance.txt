@@ -1,0 +1,38 @@
+# scripts/capture.sh 23: run "vz-acceptance" of course/checkpoints/23, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 23; never edit by hand (CURRICULUM §3.6).
+$ tools/vz-mac/test.sh
+exit: 0
+--- stdout ---
+
+== 1. swift test (host-only)
+Test run with 72 tests in 16 suites passed after 0.131 seconds.
+PASS swift_test
+
+== 2. vz_entitlements_exact
+binary: <repo>/target/vz-mac/signed/vz-mac
+entitlement: com.apple.security.virtualization
+CodeDirectory v=20500 size=935 flags=0x10002(adhoc,runtime) hashes=19+7 location=embedded
+PASS vz_entitlements_exact
+
+== 3. vz_breaks_without_entitlement
+vz-mac: configuration rejected by Virtualization.framework: "Invalid virtual machine configuration. The process doesn’t have the “com.apple.security.virtualization” entitlement. [VZErrorDomain 2]"
+PASS vz_breaks_without_entitlement (exit 1)
+
+== 4. vz_linux_dry_run
+vz-mac: configuration valid: linux, 2 vCPUs, 512 MiB, console hvc0
+PASS vz_linux_dry_run
+
+== 5. vz_linux_boot
+macvmm-initramfs: ready 6.18.60-0-virt\r
+VZ guest state: starting
+VZ guest state: running
+VZ guest state: stopped (guest)
+vz-mac: guest powered off (exit 0)
+PASS vz_linux_boot (exit 0, 0s)
+
+VZ TESTS OK
+
+--- stderr ---
+Building for production...
+Build complete! (0.15 sec)
+

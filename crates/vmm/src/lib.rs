@@ -102,7 +102,7 @@ pub fn run_with(
     let mut storm = control::ResetStorm::new();
     let mut generation: u64 = 0;
     loop {
-        let reason = boot(cfg, host, generation, deadline)?; // Err: never reboot (MEM-11)
+        let reason = boot(cfg, host, generation, deadline)?; // Err: never reboot (teardown may have failed)
         match reason {
             StopReason::Reset if cfg.on_reset == config::ResetAction::Reboot => {
                 let at = now();

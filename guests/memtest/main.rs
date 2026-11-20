@@ -65,6 +65,7 @@ fn fnv1a_window() -> u64 {
     h
 }
 
+// ANCHOR: memtest_main
 fn main(_x0: u64) {
     for p in 1..=8u32 {
         for i in 0..WORDS {
@@ -107,3 +108,4 @@ fn main(_x0: u64) {
         }
     }
 }
+// ANCHOR_END: memtest_main

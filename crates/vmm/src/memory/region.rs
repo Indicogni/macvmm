@@ -33,12 +33,14 @@
 use super::{GuestAddress, MemoryError};
 use core::fmt;
 
+// ANCHOR: region_consts
 /// Alignment of every region base and size: the default 16 KiB stage-2 granule.
 pub const REGION_ALIGN: u64 = 16 * 1024;
 
-/// The most regions one table may hold (RUST-4: a named cap). The `virt` machine uses one RAM
+/// The most regions one table may hold (a named cap, never a guest value). The `virt` machine uses one RAM
 /// region; the rest is headroom (high RAM, hotplug experiments).
 pub const MAX_REGIONS: usize = 16;
+// ANCHOR_END: region_consts
 
 /// Smallest accepted IPA width: ID_AA64MMFR0_EL1.PARange 0b0000 is 32 bits (ARM ARM,
 /// ID_AA64MMFR0_EL1 register description).
@@ -132,6 +134,8 @@ pub struct RegionTable {
 }
 
 impl RegionTable {
+    // ANCHOR: region_table_new
+    // ANCHOR: region_table_per_region
     /// Validate `regions` (`(base, size)` pairs, any order) for a VM with `ipa_bits` of IPA
     /// space. The result is sorted by base.
     pub fn new(regions: &[(GuestAddress, u64)], ipa_bits: u32) -> Result<RegionTable, RegionError> {
@@ -172,6 +176,8 @@ impl RegionTable {
             }
             spans.push(Span { base, size, end });
         }
+        // ANCHOR_END: region_table_per_region
+        // ANCHOR: region_table_overlap
         spans.sort_by_key(|s| s.base);
         for pair in spans.windows(2) {
             if let [a, b] = pair
@@ -184,7 +190,9 @@ impl RegionTable {
             }
         }
         Ok(RegionTable { spans })
+        // ANCHOR_END: region_table_overlap
     }
+    // ANCHOR_END: region_table_new
 
     /// The regions, sorted by base.
     pub fn spans(&self) -> &[Span] {

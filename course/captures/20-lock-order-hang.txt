@@ -1,0 +1,9 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: crates/vmm/src/bus.rs gained an MMIO access counter, a Mutex<u64> field of Bus. Bus::read locks the counter, then the device; Bus::write locks the device, then the counter.
+# Run in a copy of the reference with that one edit; disk.img is a 64 MiB test disk (cargo xtask mkdisk --size 64M --seed 1). The capture tool stopped the run after 45 s.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --cpus 4 --mem 512M --disk disk.img,ro --stats --serial file:boot.txt --on-reset exit --timeout 20 --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=smp-stress"
+exit: none (stopped by --timeout 45 s: still running)
+--- stdout ---
+
+--- stderr ---

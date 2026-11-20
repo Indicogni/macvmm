@@ -1,0 +1,12 @@
+# scripts/capture-cmd 09: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified, with the console sent to the file s.txt. Then: the exit code, the file, and how many lines of stdout mention the guest's greeting. $G is the repository's target/guests/aarch64-unknown-none/release.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/hello.bin@0x40080000 --serial file:s.txt --timeout 10 > stdout.txt; echo rc=$?; cat s.txt; grep -c 'hello from guest' stdout.txt
+exit: 1
+--- stdout ---
+rc=0
+hello from guest, x0=0x40000000
+guest done
+0
+
+--- stderr ---

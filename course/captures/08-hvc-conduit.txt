@@ -1,0 +1,23 @@
+# scripts/capture-cmd 08: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference psci-probe and VMM (calls through hvc #0), for comparison with 08-smc-conduit.txt.
+# The first three trace records are printed after the run; the exit status is macvmm's.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/psci-probe.bin@0x40080000 --on-reset exit --trace exits:/tmp/h.jsonl:psci --timeout 10; head -n 3 /tmp/h.jsonl
+exit: 4
+--- stdout ---
+psci-probe: version=0x10001 ok
+psci-probe: smccc_version=0x10001 ok
+psci-probe: features(CPU_ON)=0 ok
+psci-probe: features(0x84000099)=-1 ok
+psci-probe: sip(0x82000000)=-1 ok
+psci-probe: affinity_info(0,0)=0 ok
+psci-probe: cpu_on(1)=-2 ok
+psci-probe: migrate_info_type=2 ok
+psci-probe: boot 0
+{"t_ns":197583,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x4008137c","imm":0,"fn":"PSCI_VERSION","action":"psci"}
+{"t_ns":402708,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081398","imm":0,"fn":"PSCI_FEATURES","action":"psci"}
+{"t_ns":519958,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081398","imm":0,"fn":"PSCI_FEATURES","action":"psci"}
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: unknown SMCCC function 0x82000000; returning -1
+macvmm: guest requested a reset (exit code 4)

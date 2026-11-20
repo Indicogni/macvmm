@@ -1,0 +1,30 @@
+# scripts/capture-cmd 22: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1, same build as 22-noapb-linux.txt: the PL011 node has no apb_pclk.
+# .cache/f.raw is a fresh cp -c clone of .cache/macvmm/freebsd-15.1-ufs.raw. A script typed root, uname -sr and shutdown -p now (after 40, 44 and 47 s).
+# Escape sequences and carriage returns removed; stdout filtered with grep -E to the lines matching uart|pl031|U-Boot 20|EFI loader|login|uname|^FreeBSD 15|Uptime.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --bios .cache/macvmm/u-boot.bin --disk .cache/f.raw --mem 2G --cpus 2 --timeout 240 --on-reset exit
+exit: 0
+--- stdout ---
+U-Boot 2026.04 (Apr 21 2026 - 09:17:42 +0000)
+FreeBSD/arm64 EFI loader, Revision 3.0
+FreeBSD 15.1-RELEASE releng/15.1-n283562-96841ea08dcf GENERIC arm64
+uart0: <PrimeCell UART (PL011)> mem 0x9000000-0x9000fff irq 4 on ofwbus0
+uart0: console (115200,n,8,1)
+pl0310: <PL031 RTC> mem 0x9010000-0x9010fff irq 5 on ofwbus0
+pl0310: registered as a time-of-day clock, resolution 1.000000s
+login: root
+Nov 20 10:04:21 freebsd login[1057]: ROOT LOGIN (root) ON ttyu0
+FreeBSD 15.1-RELEASE (GENERIC) releng/15.1-n283562-96841ea08dcf
+Show the version of FreeBSD installed:  freebsd-version ; uname -a
+To change this login announcement, see motd(5).
+root@freebsd:~ # uname -sr
+FreeBSD 15.1-RELEASE
+Uptime: 37s
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x40000000 at offset 0x12c668 (flash is read-only, write 1 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c670 (flash is read-only, write 2 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c678 (flash is read-only, write 3 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c680 (flash is read-only, write 4 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 4-byte write of 0x1 at offset 0xed4 (flash is read-only, write 5 to this bank)

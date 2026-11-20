@@ -179,6 +179,7 @@ pub fn descriptor(rng: &mut Rng, buf: &mut [u8], table: usize, n: usize, ram: &R
             let flags = get_le(buf, rec + FLAGS, 2) ^ bit;
             put_le(buf, rec + FLAGS, 2, flags);
         }
+        // ANCHOR: fuzz_mutate_shapes
         1 => {
             // A back edge: next = some j <= i, with NEXT set.
             let j = rng.index(i + 1);
@@ -203,6 +204,8 @@ pub fn descriptor(rng: &mut Rng, buf: &mut [u8], table: usize, n: usize, ram: &R
             };
             put_le(buf, rec + LEN, 4, len);
         }
+        // ANCHOR_END: fuzz_mutate_shapes
+        // ANCHOR: fuzz_mutate_aim
         3 => {
             let addr = match rng.below(4) {
                 // The last few bytes of a region.
@@ -226,6 +229,7 @@ pub fn descriptor(rng: &mut Rng, buf: &mut [u8], table: usize, n: usize, ram: &R
             };
             put_le(buf, rec + ADDR, 8, addr);
         }
+        // ANCHOR_END: fuzz_mutate_aim
         4 => {
             // A long forward chain: NEXT to i + 1 (walks the whole table).
             put_le(buf, rec + NEXT, 2, ((i + 1) % n) as u64);

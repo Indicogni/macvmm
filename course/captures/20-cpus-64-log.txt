@@ -1,0 +1,15 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# boot64.txt is the serial log of the run in 20-cpus-64-run; tr removes the carriage returns the guest sends.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -a -e 'Brought up' -e 'CPU63:' -e 'macvmm-smp' boot64.txt | tr -d '\r'
+exit: 0
+--- stdout ---
+[    0.023525] GICv3: CPU63: found redistributor 30f region 0:0x0000000008880000
+[    0.023554] CPU63: Booted secondary processor 0x000000030f [0x610f0000]
+[    0.023589] smp: Brought up 1 node, 64 CPUs
+macvmm-smp: nproc=64
+macvmm-smp: online=0-63
+macvmm-smp: timer irqs on 64 cpus
+macvmm-smp: ipis on 64 cpus total 49183
+
+--- stderr ---

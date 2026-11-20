@@ -1,0 +1,6 @@
+first macvmm: running on disk.img
+[stderr] disk image is locked
+second macvmm rc=2
+[stderr] disk image is locked
+second macvmm ,ro rc=2
+first macvmm: stopped

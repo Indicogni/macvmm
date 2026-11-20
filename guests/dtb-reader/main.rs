@@ -45,6 +45,7 @@ fn main(x0: u64) {
     let model = fdt.prop("/", "model").unwrap_or_else(|| fail("no /model"));
     println!("dtb-reader: model={}", first_str(model));
 
+    // ANCHOR: dtb_reader_memory
     let mut mem_name = "";
     fdt.children("/", "memory@", |n| mem_name = n);
     let mut path = [0u8; 64];
@@ -57,6 +58,7 @@ fn main(x0: u64) {
         _ => fail("memory reg is not one <u64 u64> pair"),
     };
     println!("dtb-reader: {mem_name} reg={base:#x}+{size:#x}");
+    // ANCHOR_END: dtb_reader_memory
 
     let mut uart = "";
     fdt.children("/", "pl011@", |n| uart = n);

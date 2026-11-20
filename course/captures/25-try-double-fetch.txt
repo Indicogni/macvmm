@@ -1,0 +1,11 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Try it: crates/fuzz/planted/04-desc-len-double-fetch.patch applied to a copy (chain.rs reads the descriptor again after validating it and keeps the second len). virtqueue_race_only is the hidden variant with a racing thread and no access log.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q --release -p fuzz -- virtqueue_race_only --seconds 600
+exit: 1
+--- stdout ---
+fuzz virtqueue_race_only: FAILURE at iteration 87420 (seed 1): validated buffer 0x4001e29b+0x80000000 is not inside one RAM region (VQ-4)
+fuzz virtqueue_race_only: input saved to <tree>/crates/fuzz/../../target/fuzz/crashes/virtqueue_race_only-seed1-iter87420-0.bin (replay: cargo run -p fuzz --release -- virtqueue_race_only --replay FILE)
+fuzz virtqueue_race_only: 87421 iterations, 1 failures
+
+--- stderr ---

@@ -107,14 +107,14 @@ impl Shared {
 }
 
 // ANCHOR: worker_companion
-/// Another host thread that belongs to the same device (M24: a NIC's RX thread). It is
+/// Another host thread that belongs to the same device (a NIC's RX thread, for example). It is
 /// attached to the device's worker ([`Worker::attach`]) so the machine needs no second list:
-/// stopping the worker stops and joins its companions too (MEM-9: before guest RAM is freed),
+/// stopping the worker stops and joins its companions too (before guest RAM is freed),
 /// and their `--stats` lines come out with the worker's ([`Worker::companion_stats`]).
 pub trait Companion: Send + Sync {
-    /// Stop the thread and join it. Idempotent. Returns true if it panicked (RUST-7).
+    /// Stop the thread and join it. Idempotent. Returns true if it panicked.
     fn stop(&self) -> bool;
-    /// One `--stats` line (numbers and static names only, LOG-5), if it has counters.
+    /// One `--stats` line (numbers and static names only, never guest text), if it has counters.
     fn stats(&self) -> Option<String> {
         None
     }
@@ -273,8 +273,9 @@ impl Worker {
     }
     // ANCHOR_END: worker_notify
 
+    // ANCHOR: worker_stop
     /// Stop the thread and wait for it: it finishes the batch in progress (at most `N` chains,
-    /// VQ-12) and exits. Idempotent. Returns true if the thread panicked (RUST-7).
+    /// its budget) and exits. Idempotent. Returns true if the thread panicked.
     pub fn stop(&self) -> bool {
         {
             let mut s = lock(&self.shared.state);
@@ -288,7 +289,7 @@ impl Worker {
         {
             self.shared.panicked.store(true, Ordering::SeqCst);
         }
-        // M24: the companions (a NIC's RX thread) go with the worker. Every one is stopped,
+        // The companions (a NIC's RX thread) go with the worker. Every one is stopped,
         // even after one reports a panic.
         let companions: Vec<Arc<dyn Companion>> = lock(&self.companions).clone();
         let companion_panicked = companions.iter().fold(false, |any, c| c.stop() | any);
@@ -297,6 +298,7 @@ impl Worker {
         }
         self.panicked()
     }
+    // ANCHOR_END: worker_stop
 
     /// True if the worker thread panicked.
     pub fn panicked(&self) -> bool {
@@ -361,7 +363,7 @@ impl Job {
                 };
                 if self.interrupt.needs_reset() {
                     // The device already failed; nothing is processed until Status = 0
-                    // (VQ-10). The doorbell is dropped, not kept.
+                    // resets it. The doorbell is dropped, not kept.
                     continue;
                 }
                 // The device mutex is held for exactly one batch of at most `budget` chains,
@@ -384,6 +386,7 @@ impl Job {
         // ANCHOR_END: worker_loop
     }
 
+    // ANCHOR: worker_wait
     /// Sleep until a queue is pending (and not paused); take every pending bit. `None` on stop.
     fn wait_for_work(&self) -> Option<u64> {
         let mut s = lock(&self.shared.state);
@@ -407,6 +410,7 @@ impl Job {
         s.busy = false;
         self.shared.idle.notify_all();
     }
+    // ANCHOR_END: worker_wait
 }
 
 #[cfg(test)]

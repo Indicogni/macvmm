@@ -1,0 +1,60 @@
+# scripts/capture-cmd 17: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified: the host-only contract tests for the worker, virtio-rng and virtio-console (no Hypervisor.framework needed).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test virtio_rng --test virtio_worker --test worker_budget --test virtio_console
+exit: 0
+--- stdout ---
+
+running 20 tests
+....................
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+
+running 14 tests
+..............
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 9 tests
+.........
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+
+running 1 test
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s
+
+
+--- stderr ---
+macvmm: warn: [virtio-console-test] guest: virtio: queue 1 failed, device needs reset: virtqueue: TooLarge { total: 65537, max: 65536 }
+macvmm: warn: [rx_without_buffers_holds_the_input_bounded] console input: the guest is not reading its virtio-console (/dev/hvc0); typed bytes are being dropped (see console_input_dropped in --stats). Ctrl-A x still quits.
+macvmm: warn: [a_hostile_chain_means_needs_reset_and_the_vmm_keeps_running] guest: virtio-mmio: QueueNotify 1 ignored in status 79
+macvmm: warn: [console_file_cap_through_hostio] console file sink reached its cap of 1024 bytes; further guest output to it is dropped (the guest keeps running)
+macvmm: warn: [tx_never_blocks_on_a_stalled_sink] stalled sink: the reader is not keeping up; guest output is being dropped (see sink_dropped in --stats)
+stalled sink: 64 x 64 KiB batch took 44.545584ms (copy cost 31.89725ms, waiting ~12.648334ms)
+macvmm: warn: [virtio-rng-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+macvmm: warn: [rings_out_of_ram_are_refused_at_driver_ok] guest: virtio-mmio: queue 0 refused at DRIVER_OK: virtqueue: RingOutOfRam { ring: Used, addr: 1074790396, len: 134 }
+macvmm: warn: [rings_out_of_ram_are_refused_at_driver_ok] guest: virtio-mmio: QueueNotify 0 ignored in status 79
+macvmm: warn: [a_hostile_chain_means_needs_reset_and_the_vmm_keeps_running] guest: virtio-mmio: QueueNotify 0 ignored in status 79
+macvmm: warn: [end_to_end_through_the_transport_and_the_worker] guest: virtio-mmio: config access of 4 bytes at 0x0 outside the 0-byte config space (RAZ/WI)
+macvmm: warn: [worker_panic_stops_vm] guest: virtio-mmio: access to a device that panicked ignored (RAZ/WI, RUST-7)
+macvmm: warn: [worker_panic_stops_vm] guest: virtio-mmio: access to a device that panicked ignored (RAZ/WI, RUST-7)
+macvmm: warn: [worker_panic_stops_vm] guest: virtio-mmio: access to a device that panicked ignored (RAZ/WI, RUST-7)
+macvmm: warn: [worker_panic_stops_vm] guest: virtio-mmio: access to a device that panicked ignored (RAZ/WI, RUST-7)
+macvmm: warn: [worker_panic_stops_vm] guest: virtio-mmio: access to a device that panicked ignored (RAZ/WI, RUST-7)
+macvmm: warn: [worker_panic_stops_vm] guest: virtio-mmio: access to a device that panicked ignored (RAZ/WI, RUST-7)
+macvmm: warn: [worker_panic_stops_vm] guest: virtio-mmio: access to a device that panicked ignored (RAZ/WI, RUST-7)
+macvmm: warn: [virtio-probe-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+coalescing: 10 notifies -> 1 process_queue calls
+macvmm: warn: [virtio-probe-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+macvmm: warn: [virtio-probe-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+macvmm: warn: [virtio-probe-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+macvmm: warn: [virtio-probe-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+macvmm: warn: [virtio-probe-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+macvmm: warn: [virtio-probe-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+macvmm: warn: [virtio-probe-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+macvmm: warn: [virtio-probe-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+macvmm: warn: [virtio-probe-test] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong { budget: 16 }
+pause returned 49.364459ms after the mid-batch panic
+reset waited 53.795084ms for the batch
+worker_budget: 8964 batches, 142695 buffers posted, max 16 chains per batch, observer took the device mutex 795 times, stop took 54.792µs

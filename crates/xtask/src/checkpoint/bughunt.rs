@@ -312,10 +312,10 @@ mod tests {
         assert!(valid_part("iii") && valid_part("vii") && !valid_part("../x") && !valid_part(""));
         let lines: Vec<String> = [
             "checkpoint: implementation /tmp/x",
-            "[PASS] L1 contract  a (3 tests)",
-            "[FAIL] L2 run       probe: exit 5 (want 0)",
+            "[PASS] contract tests   a (3 tests)",
+            "[FAIL] runs on your Mac probe: exit 5 (want 0)",
             "    last 20 trace records:",
-            "[INFO] L3 journal   not checked",
+            "[INFO] journal          not checked",
             "CHECKPOINT 07 FAIL",
         ]
         .iter()
@@ -324,7 +324,7 @@ mod tests {
         assert_eq!(
             symptom_lines(&lines),
             [
-                "[FAIL] L2 run       probe: exit 5 (want 0)",
+                "[FAIL] runs on your Mac probe: exit 5 (want 0)",
                 "    last 20 trace records:",
                 "CHECKPOINT 07 FAIL"
             ]

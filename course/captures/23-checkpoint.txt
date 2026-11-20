@@ -1,0 +1,13 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The chapter's checkpoint against the reference: it runs tools/vz-mac/test.sh from the repository root, then would check your journal.
+# The journal line reports "not a learner tree" here; in your own learner/ workspace it checks your journal.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 23
+exit: 0
+--- stdout ---
+[INFO] contract tests   none for this chapter
+[PASS] runs on your Mac vz-acceptance: 10/10 serial markers, exit 0 in 8.55s
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 23 PASS
+
+--- stderr ---

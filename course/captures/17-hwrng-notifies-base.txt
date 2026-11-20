@@ -1,0 +1,10 @@
+# scripts/capture-cmd 17: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# A baseline repeat of the dd run with count=0 (the same line typed at the shell, so the driver loads and the device registers, but dd reads nothing), traced with --trace exits:rng-0.jsonl:mmio; --stats reported 2,498 exits in total.
+# Counts its QueueNotify writes (guest-physical 0x0a000050).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -c '"ipa":"0xa000050"' rng-0.jsonl
+exit: 0
+--- stdout ---
+2
+
+--- stderr ---

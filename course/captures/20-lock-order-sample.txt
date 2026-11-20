@@ -1,0 +1,18 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Same edit and command as 20-lock-order-hang (serial log to boot2.txt), started in the background; 30 s later, 10 s after its own --timeout, a script ran this sample on it, then killed it.
+# grep keeps each vCPU thread's name and the frames that matter; the Rust names are printed in their mangled form (3Bus5write is Bus::write, 4sync4lock is our lock helper).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ sample macvmm 1 | grep -E 'Thread_[0-9]+: vcpu|3Bus(4read|5write)|4sync4lock|__psynch_mutexwait'
+exit: 0
+--- stdout ---
+    874 Thread_121879728: vcpu0
+    +                                 874 _RNvMs2_NtCs2rxmOgGCNRe_3vmm3busNtB5_3Bus4read  (in macvmm) + 284  [0x10079d32c]
+    +                                   874 _RINvNtCs2rxmOgGCNRe_3vmm4sync4lockDNtNtB4_3bus10MmioDeviceEL_EB4_  (in macvmm) + 44  [0x1007d7c4c]
+    +                                             874 __psynch_mutexwait  (in libsystem_kernel.dylib) + 8  [0x1914e69dc]
+    874 Thread_121879732: vcpu3
+                                      874 _RNvMs2_NtCs2rxmOgGCNRe_3vmm3busNtB5_3Bus5write  (in macvmm) + 332  [0x10079d714]
+                                        874 _RINvNtCs2rxmOgGCNRe_3vmm4sync4lockyEB4_  (in macvmm) + 32  [0x1007d8218]
+                                                  874 __psynch_mutexwait  (in libsystem_kernel.dylib) + 8  [0x1914e69dc]
+        __psynch_mutexwait  (in libsystem_kernel.dylib)        1748
+
+--- stderr ---

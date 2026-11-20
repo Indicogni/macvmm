@@ -23,6 +23,7 @@
 use crate::ffi;
 use core::fmt;
 
+// ANCHOR: reg_ids
 /// A general-purpose or special register for `hv_vcpu_{get,set}_reg` (`hv_reg_t`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Reg(pub ffi::hv_reg_t);
@@ -41,13 +42,15 @@ impl Reg {
     /// Link register (X30).
     pub const LR: Reg = Reg(ffi::HV_REG_LR);
     /// The program counter. After an HVC exit it already points past the HVC; after SMC, data
-    /// abort and sysreg traps it points *at* the instruction (spike findings 5–7).
+    /// abort and sysreg traps it points *at* the instruction (checked on a real Mac).
     pub const PC: Reg = Reg(ffi::HV_REG_PC);
     pub const FPCR: Reg = Reg(ffi::HV_REG_FPCR);
     pub const FPSR: Reg = Reg(ffi::HV_REG_FPSR);
     /// PSTATE as SPSR-format bits (`0x3c5` = EL1h with DAIF masked).
     pub const CPSR: Reg = Reg(ffi::HV_REG_CPSR);
+    // ANCHOR_END: reg_ids
 
+    // ANCHOR: reg_x_xzr
     /// `Xn` for `n` in 0..=30. `n = 31` is not a register here: in a load/store or MRS it means
     /// XZR (or SP), so the caller must decide, and this returns `None`.
     pub const fn x(n: u8) -> Option<Reg> {
@@ -57,6 +60,7 @@ impl Reg {
             None
         }
     }
+    // ANCHOR_END: reg_x_xzr
 }
 
 /// An A64 system register id as `hv_sys_reg_t` (`op0<<14 | op1<<11 | CRn<<7 | CRm<<3 | op2`).
@@ -65,6 +69,7 @@ pub struct SysReg(pub ffi::hv_sys_reg_t);
 
 // ANCHOR: sysreg_encoding
 impl SysReg {
+    // ANCHOR: sysreg_new
     /// Pack ARM ARM coordinates. Out-of-range fields are masked to their architectural widths
     /// (op0 2 bits, op1 3, CRn 4, CRm 4, op2 3), so the result is always a 16-bit encoding.
     pub const fn new(op0: u8, op1: u8, crn: u8, crm: u8, op2: u8) -> SysReg {
@@ -75,6 +80,7 @@ impl SysReg {
             | (op2 as u16 & 0x7);
         SysReg(v)
     }
+    // ANCHOR_END: sysreg_new
 
     /// `(op0, op1, CRn, CRm, op2)`.
     pub const fn fields(self) -> (u8, u8, u8, u8, u8) {

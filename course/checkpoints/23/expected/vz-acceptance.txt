@@ -1,0 +1,10 @@
+PASS swift_test
+entitlement: com.apple.security.virtualization
+PASS vz_entitlements_exact
+PASS vz_breaks_without_entitlement (exit 1)
+vz-mac: configuration valid: linux, * vCPUs, * MiB, console hvc0
+PASS vz_linux_dry_run
+macvmm-initramfs: ready
+VZ guest state: stopped (guest)
+PASS vz_linux_boot (exit 0, *)
+VZ TESTS OK

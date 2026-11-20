@@ -1,0 +1,29 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 512M --kernel ../.cache/macvmm/Image-virt --initrd ../.cache/macvmm/initramfs-test.img --disk root.img --disk ../.cache/macvmm/modloop-virt,ro --log info --timeout 120 --cmdline "console=ttyAMA0 panic=-1 quiet root=/dev/vda macvmm.test=rootfs"
+exit: 0
+--- stdout ---
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+macvmm-rootfs: insmod jbd2\x0d
+macvmm-rootfs: insmod mbcache\x0d
+macvmm-rootfs: insmod crc16\x0d
+macvmm-rootfs: insmod ext4\x0d
+macvmm-rootfs: mounted ext4 /dev/vda\x0d
+macvmm-rootfs: applied 181 modes\x0d
+macvmm-rootfs: boot 1\x0d
+macvmm-rootfs: ownership fixed\x0d
+macvmm-rootfs: wrote /persist.bin sha256=628f16360487442a2919951f0958f476a62e17b89badf337fe670922a45104ca\x0d
+macvmm-rootfs: rebooting\x0d
+[    0.657453] reboot: Restarting system\x0d
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+macvmm-rootfs: insmod jbd2\x0d
+macvmm-rootfs: insmod mbcache\x0d
+macvmm-rootfs: insmod crc16\x0d
+macvmm-rootfs: insmod ext4\x0d
+macvmm-rootfs: mounted ext4 /dev/vda\x0d
+macvmm-rootfs: boot 2\x0d
+macvmm-rootfs: persist ok sha256=628f16360487442a2919951f0958f476a62e17b89badf337fe670922a45104ca\x0d
+[    0.453170] reboot: Power down\x0d
+
+--- stderr ---
+macvmm: info: [main] guest reset: rebooting (boot 1)

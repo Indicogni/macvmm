@@ -84,6 +84,7 @@ pub fn run(log: LogLevel) -> ExitCode {
 }
 // ANCHOR_END: doctor_checks
 
+// ANCHOR: doctor_vm_create
 /// Check 2: create and destroy a default VM. `HV_DENIED` means the entitlement is missing.
 fn check_vm_create(d: &mut Doctor) -> bool {
     match hvf::VmBuilder::new()
@@ -108,6 +109,7 @@ fn check_vm_create(d: &mut Doctor) -> bool {
         }
     }
 }
+// ANCHOR_END: doctor_vm_create
 
 /// Checks 3-5: what the hypervisor supports (no VM needed).
 fn check_capabilities(d: &mut Doctor) {
@@ -156,6 +158,7 @@ fn check_create_destroy(d: &mut Doctor) {
     }
 }
 
+// ANCHOR: doctor_create_destroy
 fn create_destroy_loop(rounds: u32) -> Result<(), (u32, hvf::CallError)> {
     for round in 1..=rounds {
         hvf::VmBuilder::new()
@@ -165,6 +168,7 @@ fn create_destroy_loop(rounds: u32) -> Result<(), (u32, hvf::CallError)> {
     }
     Ok(())
 }
+// ANCHOR_END: doctor_create_destroy
 
 /// Check 1: entitlements (SIGN-1) and the hardened-runtime flag (SIGN-3).
 fn check_signature(d: &mut Doctor) {

@@ -1,0 +1,12 @@
+# scripts/capture-cmd 22: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Everything was already in the cache, so each file's sha256 was checked against scripts/fetch-manifest.txt and nothing was downloaded. A first run downloads about 600 MB and takes longer.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/fetch.sh uboot freebsd
+exit: 0
+--- stdout ---
+fetch: cached u-boot-qemu-2026.04-r1.apk
+fetch: cached u-boot.bin
+fetch: cached FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.raw.xz
+fetch: cached freebsd-15.1-ufs.raw
+
+--- stderr ---

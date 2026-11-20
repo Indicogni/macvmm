@@ -1,0 +1,16 @@
+# scripts/capture-cmd 05: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Predict experiment, not the reference: the VMM maps one extra 16 KiB page of RAM at 0x0900_0000 (an extra region passed to GuestRam::new in machine/mod.rs).
+# uart-ram is a small experiment guest, not in the repository: it stores the bytes of "hi\n" one by one to 0x0900_0000 (32-bit volatile stores), loads the same address back and prints the value with the debug hypercall.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw {guests}/uart-ram.bin@0x40080000 --timeout 10 --stats
+exit: 0
+--- stdout ---
+uart-ram: storing 'h', 'i', '\n' to 0x9000000
+uart-ram: read back 0xa
+
+--- stderr ---
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=70 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 71: hvc 71
+macvmm: stats: vcpu0 time: exec 0.000 s, wfi 0.000 s
+macvmm: stats: host cpu 0.000 s over 0.000 s wall (109%)
+macvmm: stats: rlimit core=0 nofile=1048576

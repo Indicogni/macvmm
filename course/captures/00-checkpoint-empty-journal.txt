@@ -1,0 +1,14 @@
+# scripts/capture-cmd 00: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run in a fresh clone after scripts/learner init and start 00, before any journal answer is written.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 00
+exit: 1
+--- stdout ---
+checkpoint: implementation <tree>/learner
+[INFO] contract tests   none for this chapter
+[PASS] runs on your Mac setup: 2/2 serial markers, exit 0 in 0.59s
+[PASS] runs on your Mac doctor: 5/5 serial markers, exit 0 in 0.37s
+[FAIL] journal          journal/00.md: 0/5 answered, the `## Predict` guess is missing
+CHECKPOINT 00 FAIL
+
+--- stderr ---

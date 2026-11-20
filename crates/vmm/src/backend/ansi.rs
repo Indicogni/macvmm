@@ -172,6 +172,7 @@ impl AnsiFilter {
         self.dropped
     }
 
+    // ANCHOR: ansi_filter_push
     /// Filter `input`, appending what may reach the terminal to `out`.
     pub fn push(&mut self, input: &[u8], out: &mut Vec<u8>) {
         self.push_at(input, out, Instant::now());
@@ -193,6 +194,7 @@ impl AnsiFilter {
             FilterPolicy::Raw => out.extend_from_slice(input),
         }
     }
+    // ANCHOR_END: ansi_filter_push
 
     /// The policy this filter applies.
     pub fn policy(&self) -> FilterPolicy {

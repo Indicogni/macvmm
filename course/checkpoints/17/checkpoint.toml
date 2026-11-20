@@ -1,0 +1,53 @@
+# Checkpoint 17 `virtio-rng-console`: the device worker thread, virtio-rng and virtio-console.
+# The Linux runs need `scripts/fetch.sh linux` (Image-virt and initramfs-test.img in .cache/macvmm/).
+id = "17"
+slug = "virtio-rng-console"
+requires = ["16"]
+
+# The worker (coalescing, budget, stop), virtio-rng (writable-only fills, the 64 KiB cap, the
+# exact used length, hostile chains) and virtio-console (both queues, the sink, the input).
+# Host only.
+[contract]
+tests = ["contract/virtio_rng.rs", "contract/virtio_worker.rs", "contract/worker_budget.rs", "contract/virtio_console.rs"]
+
+# (a) The bare-metal probe finds the entropy device in slot 0 and reads 32 random bytes.
+[[run]]
+name = "probe-rng"
+guest = "virtio-probe"
+args = ["run", "--mem", "64M", "--rng", "--kernel", "{guest}", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/probe-rng.txt"
+
+# (b) Linux's own virtio-rng driver reads 1 MiB from /dev/hwrng.
+[[run]]
+name = "linux-rng"
+args = ["run", "--kernel", "{repo}/.cache/macvmm/Image-virt", "--initrd", "{repo}/.cache/macvmm/initramfs-test.img", "--mem", "512M", "--rng", "--on-reset", "exit", "--cmdline", "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 quiet macvmm.test=rng", "--timeout", "60"]
+expect_exit_code = 0
+serial = "expected/linux-rng.txt"
+
+# (c) 64 KiB through /dev/hvc0 into a file sink, byte-exact against the same bytes made on the host.
+[[run]]
+name = "console-tx"
+command = ["/bin/sh", "-c", "\"$0\" run --kernel \"$1/.cache/macvmm/Image-virt\" --initrd \"$1/.cache/macvmm/initramfs-test.img\" --mem 512M --console \"file:$2/hvc0.out\" --on-reset exit --timeout 60 --cmdline 'console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 quiet macvmm.test=console-tx'; echo \"rc=$?\"; a=$(shasum -a 256 <\"$2/hvc0.out\"); b=$(yes macvmm | head -c 65536 | shasum -a 256); if [ \"$a\" = \"$b\" ]; then echo 'hvc0.out sha256 matches 65536 bytes of yes macvmm'; else echo 'hvc0.out sha256 differs'; fi", "{macvmm}", "{repo}", "{out}"]
+timeout = 60
+expect_exit_code = 0
+serial = "expected/console-tx.txt"
+
+# (d) Only one sink may own the terminal: --console stdio with --serial stdio is refused (exit 2).
+[[run]]
+name = "both-stdio"
+guest = "hello"
+args = ["run", "--mem", "64M", "--kernel", "{guest}", "--console", "stdio", "--serial", "stdio", "--timeout", "10"]
+expect_exit_code = 2
+serial = "expected/both-stdio.txt"
+
+[journal]
+file = "journal/17.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "Move the queue work off the vCPU thread: the doorbell only sets a bit under a mutex and wakes the device's worker, which takes every pending bit at once and works in batches of at most one ring. A device reports in used.len exactly what it wrote, and a console needs one queue per direction because the device can only write into buffers the guest posted beforehand."
+spec = "virtio 1.2 (virtio-v1.2-cs01): 5.4 Entropy Device (5.4.6 Device Operation), 5.3 Console Device (5.3.2 virtqueues, 5.3.6 Device Operation), 2.7.8 The Virtqueue Used Ring (len)."
+pseudocode = "notify(q): lock; pending |= 1<<q; notify_one. Worker: wait while pending == 0 && !stop; mask = take(pending); for each q in mask: lock device; process_queue(q, budget); MoreWork -> requeue; error -> DEVICE_NEEDS_RESET. Rng: pop; into_validated(64 KiB); fresh zeroed buf; getentropy in 256-byte chunks; written = write_writable; add_used(head, written); interrupt if should_interrupt. Console tx: copy readable bytes once, sink.write, add_used(head, 0). Console rx: pop only while input is waiting; fill min(writable, queued); remove input only after the write succeeded."
+anchor = "crates/vmm/src/virtio/worker.rs (notify, wait_for_work, the run loop, stop), crates/vmm/src/virtio/rng.rs (process_queue), crates/vmm/src/backend/entropy.rs (fill), crates/vmm/src/virtio/console.rs (process_tx, process_rx), crates/vmm/src/machine/virt.rs (populated_slot, connect_console_input), crates/macvmm/src/cli.rs (--rng, --console)."

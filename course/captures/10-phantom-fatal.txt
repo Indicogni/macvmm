@@ -1,0 +1,20 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Try it: a second node "pl031@9050000" (compatible arm,pl031 and arm,primecell, reg 0x0905_0000 size 0x1000) added to build_dtb_with in crates/vmm/src/fdt/machine.rs; the bus is unchanged, so no device answers there.
+# Run in a copy of the reference with that edit; $C is .cache/macvmm. stderr cut to its first line and its last 10 lines (sed); the exit code is macvmm's.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 512M --kernel $C/Image-virt --initrd $C/initramfs-test.img --serial file:boot.txt --timeout 20
+exit: 3
+--- stdout ---
+
+--- stderr ---
+macvmm: guest fatal: unhandled MMIO read at 0x9050fe0 size 4 pc 0xffff800080859098
+  {"t_ns":54709916,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":54746916,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9010fe0","wnr":false,"size":4,"reg":2,"value":"0x31","action":"mmio","isv":true}
+  {"t_ns":54753625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9010fe4","wnr":false,"size":4,"reg":2,"value":"0x10","action":"mmio","isv":true}
+  {"t_ns":54755291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9010fe8","wnr":false,"size":4,"reg":2,"value":"0x14","action":"mmio","isv":true}
+  {"t_ns":54756875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9010fec","wnr":false,"size":4,"reg":2,"value":"0x0","action":"mmio","isv":true}
+  {"t_ns":54758458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9010ff0","wnr":false,"size":4,"reg":2,"value":"0xd","action":"mmio","isv":true}
+  {"t_ns":54760000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9010ff4","wnr":false,"size":4,"reg":2,"value":"0xf0","action":"mmio","isv":true}
+  {"t_ns":54761541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9010ff8","wnr":false,"size":4,"reg":2,"value":"0x5","action":"mmio","isv":true}
+  {"t_ns":54763083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808590d8","ipa":"0x9010ffc","wnr":false,"size":4,"reg":2,"value":"0xb1","action":"mmio","isv":true}
+  {"t_ns":54776000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff800080859098","ipa":"0x9050fe0","wnr":false,"size":4,"reg":2,"action":"stop","isv":true}

@@ -1,0 +1,15 @@
+psci: PSCIv1.1 detected in firmware.
+GICv3: CPU1: found redistributor 1 region 0:0x00000000080c0000
+CPU3: Booted secondary processor 0x0000000003
+smp: Brought up 1 node, 4 CPUs
+macvmm-initramfs: ready
+macvmm-smp: nproc=4
+macvmm-smp: online=0-3
+macvmm-smp: timer irqs on 4 cpus
+macvmm-smp: ipis on 4 cpus total *
+[stderr] macvmm: stats: vcpu3 exits:
+!FAILED
+!Kernel panic
+!rcu: INFO
+!unknown SMCCC
+!unhandled MMIO

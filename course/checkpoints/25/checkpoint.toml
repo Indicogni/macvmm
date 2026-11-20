@@ -1,0 +1,175 @@
+# Checkpoint 25 `security`: the learner's fuzzer finds the planted bugs, the hostile guest's
+# phases end with their defined exit codes, and the process is confined after set-up.
+#
+# No L1 contract: the fuzzer is checked by what it finds. bughunt.sh copies the reference's
+# crates into the run's {out}, puts the implementation's crates/fuzz in place of the
+# reference's, applies one plant from crates/fuzz/planted/ to that copy and fuzzes it. The
+# reference's patches cannot apply to a learner's own walker, so the learner's fuzzer is brought
+# to the planted reference instead, through the same public queue API it already drives.
+# Each plant gets one run of at most ten minutes, the build included (540 s of fuzzing).
+id = "25"
+slug = "security"
+requires = ["16", "21"]
+
+# The control: on the unplanted reference the fuzzer must report nothing (no false positive).
+[[run]]
+name = "bughunt-control"
+command = ["course/checkpoints/25/bughunt.sh", "{repo}", "{impl}", "{out}", "0", "20"]
+cwd = "repo"
+timeout = 300
+expect_exit_code = 0
+serial = "expected/bughunt-control.txt"
+
+# Plant 1: a buffer judged by its first and last byte separately, with wrapping arithmetic.
+[[run]]
+name = "bughunt-1"
+command = ["course/checkpoints/25/bughunt.sh", "{repo}", "{impl}", "{out}", "1", "540"]
+cwd = "repo"
+timeout = 600
+expect_exit_code = 0
+serial = "expected/bughunt-1.txt"
+
+# Plant 2: the hop-budget decrement deleted.
+[[run]]
+name = "bughunt-2"
+command = ["course/checkpoints/25/bughunt.sh", "{repo}", "{impl}", "{out}", "2", "540"]
+cwd = "repo"
+timeout = 600
+expect_exit_code = 0
+serial = "expected/bughunt-2.txt"
+
+# Plant 3: the used-ring slot taken modulo N + 1.
+[[run]]
+name = "bughunt-3"
+command = ["course/checkpoints/25/bughunt.sh", "{repo}", "{impl}", "{out}", "3", "540"]
+cwd = "repo"
+timeout = 600
+expect_exit_code = 0
+serial = "expected/bughunt-3.txt"
+
+# The sandbox self-test: after the lockdown an open, a socket connect and a spawn are each
+# refused, then the guest runs to completion. --stats shows the core-dump limit.
+[[run]]
+name = "sandbox-check"
+guest = "hello"
+args = ["run", "--mem", "64M", "--sandbox", "--sandbox-selftest", "--stats", "--kernel", "{guest}", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/sandbox-check.txt"
+
+# RLIMIT_CORE is 0 without --sandbox too: it is set first thing in main.
+[[run]]
+name = "rlimit-check"
+guest = "hello"
+args = ["run", "--mem", "64M", "--stats", "--kernel", "{guest}", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/rlimit-check.txt"
+
+# The hostile guest, one run per phase. Each must end with its defined exit code: 0, or 3 for
+# the reset storm. Exit 1 (a VMM error) caused by a guest is always a bug.
+
+# MMIO sweep: every trapped device window, every width and offset, then random accesses.
+[[run]]
+name = "phase-mmio"
+guest = "hostile-mmio"
+args = ["run", "--mem", "64M", "--testdev", "--unhandled-mmio", "log", "--kernel", "{guest}", "--timeout", "60"]
+expect_exit_code = 0
+serial = "expected/phase-mmio.txt"
+
+# ISV = 0 garbage: pairs across a device boundary and SIMD accesses, answered with aborts.
+[[run]]
+name = "phase-isv0"
+guest = "hostile-isv0"
+args = ["run", "--mem", "64M", "--testdev", "--kernel", "{guest}", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/phase-isv0.txt"
+
+# System-register sweep: all 16,384 encodings read, the undefined ones written.
+[[run]]
+name = "phase-sysreg"
+guest = "hostile-sysreg"
+args = ["run", "--mem", "64M", "--stats", "--kernel", "{guest}", "--timeout", "60"]
+expect_exit_code = 0
+serial = "expected/phase-sysreg.txt"
+
+# SMCCC garbage from four vCPUs at once, then a CPU_ON storm.
+[[run]]
+name = "phase-smccc"
+guest = "hostile-smp"
+args = ["run", "--cpus", "4", "--mem", "64M", "--stats", "--kernel", "{guest}", "--timeout", "60"]
+expect_exit_code = 0
+serial = "expected/phase-smccc.txt"
+
+# Virtqueue attacks on the 32 empty virtio slots (no device behind them).
+[[run]]
+name = "phase-vq-empty"
+guest = "hostile-vq"
+args = ["run", "--mem", "64M", "--kernel", "{guest}", "--timeout", "30"]
+expect_exit_code = 0
+serial = "expected/phase-vq-empty.txt"
+
+# Virtqueue attacks on virtio-rng: each ends in DEVICE_NEEDS_RESET, and the device recovers.
+[[run]]
+name = "phase-vq-rng"
+guest = "hostile-vq"
+args = ["run", "--mem", "64M", "--rng", "--kernel", "{guest}", "--timeout", "30"]
+expect_exit_code = 0
+serial = "expected/phase-vq-rng.txt"
+
+# Virtqueue attacks on a read-only virtio-blk disk; the image must not change.
+[[run]]
+name = "phase-vq-blk"
+guest = "hostile-vq"
+command = ["course/checkpoints/25/hostile.sh", "blk", "{macvmm}", "{guest}", "{out}"]
+cwd = "repo"
+timeout = 60
+expect_exit_code = 0
+serial = "expected/phase-vq-blk.txt"
+
+# Live TOCTOU: vCPU 1 rewrites descriptors while vCPU 0 notifies, 10 s per device.
+[[run]]
+name = "phase-toctou"
+guest = "hostile-smp"
+command = ["course/checkpoints/25/hostile.sh", "toctou", "{macvmm}", "{guest}", "{out}"]
+cwd = "repo"
+timeout = 120
+expect_exit_code = 0
+serial = "expected/phase-toctou.txt"
+
+# Terminal attack strings: none of the forbidden escape sequences may reach stdout.
+[[run]]
+name = "phase-tty"
+guest = "hostile-tty"
+command = ["course/checkpoints/25/hostile.sh", "tty", "{macvmm}", "{guest}", "{out}"]
+cwd = "repo"
+timeout = 30
+expect_exit_code = 0
+serial = "expected/phase-tty.txt"
+
+# Reset storm: SYSTEM_RESET on every boot; the eleventh reset within 10 s stops the VMM.
+[[run]]
+name = "phase-reset"
+guest = "hostile-reset"
+args = ["run", "--mem", "64M", "--kernel", "{guest}", "--timeout", "30"]
+expect_exit_code = 3
+serial = "expected/phase-reset.txt"
+
+# Output flood: 4 MiB into a serial file capped at 1 MiB; the guest still powers off.
+[[run]]
+name = "phase-flood"
+guest = "hostile-flood"
+command = ["course/checkpoints/25/hostile.sh", "flood", "{macvmm}", "{guest}", "{out}"]
+cwd = "repo"
+timeout = 90
+expect_exit_code = 0
+serial = "expected/phase-flood.txt"
+
+[journal]
+file = "journal/25.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "Three questions, three tools. The fuzzer asks whether the parsers have a bug: it needs replayable randomness (a seeded PRNG), mutations that know the ring's shape, and invariants that judge every input, not only panics. The hostile guest asks whether the whole VMM survives a guest attacking on purpose: every misdeed must become a guest-visible answer or a defined stop, never exit 1. The sandbox asks what an attacker gets if both missed: after set-up, no new file, socket or process."
+spec = "virtio 1.2 section 2.7 (the split ring the virtqueue target builds and damages) and 2.7.5.3 (indirect descriptors); ECMA-48 section 5.6 (control strings) for the output filter; man 2 setrlimit (RLIMIT_CORE, soft and hard limits); the macos-sandbox primer for sandbox_init and the deny-default profile."
+pseudocode = "fuzz loop: for i in 0..: rng = derive(seed, i); input = target.seed(rng); repeat 1..8 times: if rng.coin() then structural mutation else byte flip; verdict = target.run(input); if a panic or an invariant fails: save input (0600, never overwrite), print FAILURE with i and the seed, exit 1. Watchdog thread: an iteration over 2 s saves the input, prints HANG, exits 1. Virtqueue invariants: reads per pop <= 2N + 1; each descriptor read once; every validated buffer inside one region (u128 sum); every device write inside a writable buffer or the used ring. main: setrlimit(CORE, 0/0) first; set-up; then sandbox_init(profile) if --sandbox; never fork or exec."
+anchor = "crates/fuzz/src/main.rs (anchor fuzz_loop), crates/fuzz/src/rng.rs (fuzz_rng_next, fuzz_rng_derive), crates/fuzz/src/targets/virtqueue.rs (fuzz_virtqueue_target, fuzz_read_once), crates/fuzz/src/targets/mod.rs (fuzz_in_one_region), crates/macvmm/src/sandbox.rs (sandbox_selftest)."

@@ -58,7 +58,8 @@ use crate::trace::{Action, ExitRecord};
 use core::fmt;
 use hvf::SysReg;
 
-/// One decoded MMIO access (architecture §6.4). [frozen ch07]
+// ANCHOR: mmio_access_struct
+/// One decoded MMIO access. Frozen: later chapters use this shape.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MmioAccess {
     pub ipa: u64,
@@ -72,10 +73,11 @@ pub struct MmioAccess {
     /// SF: the register is an X register (64-bit), not W.
     pub sixty_four: bool,
 }
+// ANCHOR_END: mmio_access_struct
 
 // ANCHOR: mmio_sign_extend
 /// Extend a `size`-byte value loaded from a device into what the instruction puts in its
-/// register (MMIO-3): with SSE, sign-extend from `size * 8` bits; then, for a W register
+/// register: with SSE, sign-extend from `size * 8` bits; then, for a W register
 /// (SF = 0), keep 32 bits, because writing `Wt` zeroes the upper half of `Xt`. So `ldrsh w`
 /// of `0x8001` gives `0xffff_8001` and `ldrsh x` gives `0xffff_ffff_ffff_8001`.
 pub fn sign_extend(value: u64, size: AccessSize, sse: bool, sixty_four: bool) -> u64 {
@@ -95,9 +97,9 @@ pub fn sign_extend(value: u64, size: AccessSize, sse: bool, sixty_four: bool) ->
 
 impl MmioAccess {
     // ANCHOR: mmio_from_data_abort
-    /// The access a data abort with ISV = 1 describes, or `None` when ISV = 0 (the syndrome
-    /// fields are then UNKNOWN and must not be used). For a store the source register is read
-    /// now: XZR (SRT = 31) reads as 0, and the value is masked to the access size (MMIO-3).
+    /// The access a data abort with ISV = 1 describes, or `None` when ISV = 0 (bits 23:14 are
+    /// then RES0: they describe nothing and must not be used). For a store the source register
+    /// is read now: XZR (SRT = 31) reads as 0, and the value is masked to the access size.
     pub fn from_data_abort(
         ipa: u64,
         da: &DataAbort,
@@ -131,7 +133,8 @@ impl MmioAccess {
     }
 }
 
-/// What an IPA is, by our own map (step 2).
+// ANCHOR: mmio_ipa_class
+/// What an IPA is, by our own map.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IpaClass {
     /// Guest RAM (always mapped: a fault here is a VMM bug).
@@ -143,9 +146,10 @@ pub enum IpaClass {
     /// Nothing: a reserved region (named) or a hole.
     Unmapped { region: Option<&'static str> },
 }
+// ANCHOR_END: mmio_ipa_class
 
 // ANCHOR: mmio_classify_ipa
-/// Classify `ipa` against RAM, the bus and the board layout, in that order (MMIO-2). DFSC is
+/// Classify `ipa` against RAM, the bus and the board layout, in that order. DFSC is
 /// never consulted: it says *how* stage 2 failed, not *what* lives at the address.
 pub fn classify_ipa(ipa: u64, mem: &dyn GuestMemory, bus: &Bus) -> IpaClass {
     if mem.check_range(GuestAddress(ipa), 1) {
@@ -176,8 +180,10 @@ pub enum MmioOutcome {
     Abort { far: u64, write: bool },
 }
 
-/// Emulate the data abort `da` reported by `raw` (module docs, steps 1–5), filling the trace
-/// fields of `rec`. `pc` is the PC of the faulting instruction.
+// ANCHOR: mmio_handle
+/// Emulate the data abort `da` reported by `raw`: walk check, classify, build the access,
+/// route it to the bus, write a load's result. Fills the trace fields of `rec`. `pc` is
+/// the PC of the faulting instruction.
 pub fn handle(
     regs: &mut dyn VcpuRegs,
     env: &ExitEnv<'_>,
@@ -223,9 +229,11 @@ pub fn handle(
             }
             rec.value = Some(value);
             Ok(MmioOutcome::Done)
+            // ANCHOR_END: mmio_handle
         }
+        // ANCHOR: mmio_unclaimed
         Err(BusError::Unmapped { .. } | BusError::Straddle { .. }) => {
-            // M21: a machine profile's watch may take the access instead of the policy.
+            // A machine profile's watch may take the access instead of the policy.
             let unclaimed = UnclaimedAccess {
                 pc,
                 ipa,
@@ -248,6 +256,7 @@ pub fn handle(
                 }
             }
         }
+        // ANCHOR_END: mmio_unclaimed
         // `insert`-time errors cannot come from a lookup; treat them as unmapped too.
         Err(BusError::Overlap { .. } | BusError::InvalidRange { .. }) => Ok(MmioOutcome::Fatal(
             format!("MMIO bus refused the access at {ipa:#x} pc {pc:#x}"),
@@ -484,6 +493,7 @@ const NOT_EL1_CONTEXT: &str = "not an AArch64 EL1&0 context";
 /// A data abort with ISV = 0 (module docs, step 3; M17). The exit IPA is authoritative: the
 /// instruction is only read to learn *what* the access was, and every way it can disagree
 /// with the exit is a refusal (MMIO-4). No register changes until every bus access succeeded.
+// ANCHOR: isv0_emulate_decode
 fn isv0(
     regs: &mut dyn VcpuRegs,
     env: &ExitEnv<'_>,
@@ -505,6 +515,8 @@ fn isv0(
         return Ok(refuse(env, vcpu, raw, da, pc, &NOT_EL1_CONTEXT));
     };
     let ops = Operands::gather(&m, |g| read_gpr(&*regs, g, sp))?;
+    // ANCHOR_END: isv0_emulate_decode
+    // ANCHOR: isv0_emulate_commit
     // 4. Check against the exit, then perform the accesses on the exit IPA.
     let exit = ExitFacts {
         ipa: raw.ipa,
@@ -541,6 +553,7 @@ fn isv0(
     rec.action = Some(Action::Mmio);
     Ok(MmioOutcome::Done)
 }
+// ANCHOR_END: isv0_emulate_commit
 // ANCHOR_END: isv0_emulate
 
 #[cfg(test)]

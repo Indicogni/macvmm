@@ -2,10 +2,10 @@
 title: Unix signals: who decides how a program ends
 slug: unix-signals
 kind: primer
-minutes: 30
+minutes: 15
 required_by: [09]
 also_used_by: [14, 26]
-lab: none
+labs: []
 runs: mac
 command: zsh -c 'sleep 30 & kill -TERM $!; wait $!; echo $?'
 expect: 143
@@ -42,14 +42,14 @@ odd mechanism macvmm uses so that a signal never catches it off guard.
 
 :::objectives
 - Say what a signal is, the default action of the signals macvmm meets, and which two no program can catch.
-- Predict the exit status `128 + n`, and tell death by signal apart from a chosen exit code.
+- Predict the exit status `128 + n`, and tell death by signal apart from a chosen exit status.
 - Predict which thread runs a signal handler, and check it with a short C program.
 - Explain async-signal safety, and why a handler saves `errno`.
 - Build the self-pipe trick, and trace it through macvmm's signal thread.
 :::
 
 :::prereqs
-The [`os-basics`](/build-your-own/vmm/primers/os-basics/) primer (processes, the kernel, exit codes and `$?`) and the [`host-concurrency`](/build-your-own/vmm/primers/host-concurrency/)
+The [`os-basics`](/build-your-own/vmm/primers/os-basics/) primer (processes, the kernel, exit statuses and `$?`) and the [`host-concurrency`](/build-your-own/vmm/primers/host-concurrency/)
 primer (threads, file descriptors, pipes). You need a Mac with Terminal and `clang` (from the
 Xcode command line tools); nothing else to install.
 :::
@@ -172,7 +172,7 @@ number, which is why it is worth recognising.
 ## Choosing a disposition
 
 A shell script can change dispositions with `trap`. Catch SIGTERM, do something, and choose your
-own exit code:
+own exit status:
 
 ```sh
 zsh -c "sh -c 'trap \"echo caught TERM; exit 7\" TERM; kill -TERM \$\$; echo after'; echo \$?"
@@ -495,7 +495,7 @@ exit 130
 ```
 
 The pid will differ. Compare with the opening: the same SIGTERM that made `sleep` report 143 now
-produces a cleanup message and the exit code we chose. You have reproduced macvmm's behaviour in
+produces a cleanup message and the exit status we chose. You have reproduced macvmm's behaviour in
 thirty lines.
 
 Notice also what the handler does *not* care about: which thread runs it. Whether the kernel
@@ -566,7 +566,7 @@ signal and never called `exit`.
 :::
 
 :::predict macvmm is running a guest. You send it `kill -TERM`. What does `$?` show, and does `WIFSIGNALED` agree with the shell's guess?
-`130`, and no: `WIFEXITED` is true with exit code 130. macvmm caught SIGTERM, cleaned up and
+`130`, and no: `WIFEXITED` is true with exit status 130. macvmm caught SIGTERM, cleaned up and
 chose 130 as its "user quit" code. `$?` cannot tell the two stories apart; the wait status can.
 :::
 
@@ -625,7 +625,7 @@ rarely, typically under load, which is exactly when someone presses Ctrl-C.
 
 - **What you can do now.** Run
   `zsh -c 'sleep 30 & kill -TERM $!; wait $!; echo $?'` and see `143`, and say why it is 143.
-  You can predict the exit status for any signal, tell a death by signal from a chosen exit code,
+  You can predict the exit status for any signal, tell a death by signal from a chosen exit status,
   say which thread a signal goes to, and build a handler that does only safe work. `who.c` and
   `selfpipe.c` run on your Mac.
 - **What's next.** Chapter 09 gives macvmm its first real device, a UART wired to your keyboard

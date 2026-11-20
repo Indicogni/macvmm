@@ -1,0 +1,37 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 2 build: DiskFile::sync (crates/vmm/src/backend/file.rs) returns Ok(()) without syncing anything.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cp -c rootfs.img root.img && cargo run -q -p macvmm -- run --mem 512M --kernel ../.cache/macvmm/Image-virt --initrd ../.cache/macvmm/initramfs-test.img --disk root.img --disk ../.cache/macvmm/modloop-virt,ro --log info --timeout 120 --cmdline "console=ttyAMA0 panic=-1 quiet root=/dev/vda macvmm.test=rootfs" && "$(brew --prefix e2fsprogs)/sbin/e2fsck" -fn root.img
+exit: 0
+--- stdout ---
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+macvmm-rootfs: insmod jbd2\x0d
+macvmm-rootfs: insmod mbcache\x0d
+macvmm-rootfs: insmod crc16\x0d
+macvmm-rootfs: insmod ext4\x0d
+macvmm-rootfs: mounted ext4 /dev/vda\x0d
+macvmm-rootfs: applied 181 modes\x0d
+macvmm-rootfs: boot 1\x0d
+macvmm-rootfs: ownership fixed\x0d
+macvmm-rootfs: wrote /persist.bin sha256=c84a791a9b9dc00a0682de0d62c1fc9bfc2bce771897e167bbe23c5daa85399a\x0d
+macvmm-rootfs: rebooting\x0d
+[    0.403864] reboot: Restarting system\x0d
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+macvmm-rootfs: insmod jbd2\x0d
+macvmm-rootfs: insmod mbcache\x0d
+macvmm-rootfs: insmod crc16\x0d
+macvmm-rootfs: insmod ext4\x0d
+macvmm-rootfs: mounted ext4 /dev/vda\x0d
+macvmm-rootfs: boot 2\x0d
+macvmm-rootfs: persist ok sha256=c84a791a9b9dc00a0682de0d62c1fc9bfc2bce771897e167bbe23c5daa85399a\x0d
+[    0.329637] reboot: Power down\x0d
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+root: 530/65536 files (0.9% non-contiguous), 51291/262144 blocks
+
+--- stderr ---
+macvmm: info: [main] guest reset: rebooting (boot 1)
+e2fsck 1.47.4 (6-Mar-2025)

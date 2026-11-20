@@ -1,0 +1,22 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The same smp-race run with --trace added and its console output discarded; grep hides the AFFINITY_INFO polls.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --cpus 4 --mem 64M --kernel target/guests/aarch64-unknown-none/release/smp-race --timeout 20 --trace exits:race.jsonl:psci,cancel > /dev/null && grep -v AFFINITY race.jsonl
+exit: 0
+--- stdout ---
+{"t_ns":522500,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081870","imm":0,"fn":"PSCI_CPU_ON","action":"psci"}
+{"t_ns":528250,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081870","imm":0,"fn":"PSCI_CPU_ON","action":"psci"}
+{"t_ns":812166,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081870","imm":0,"fn":"PSCI_CPU_ON","action":"psci"}
+{"t_ns":966708,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081870","imm":0,"fn":"PSCI_CPU_ON","action":"psci"}
+{"t_ns":967083,"vcpu":1,"reason":"exception","ec":"0x16","pc":"0x40081870","imm":0,"fn":"PSCI_CPU_ON","action":"psci"}
+{"t_ns":972041,"vcpu":2,"reason":"exception","ec":"0x16","pc":"0x40081870","imm":0,"fn":"PSCI_CPU_ON","action":"psci"}
+{"t_ns":1354333,"vcpu":3,"reason":"exception","ec":"0x16","pc":"0x40081c30","imm":0,"fn":"PSCI_CPU_OFF","action":"psci"}
+{"t_ns":1454208,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081870","imm":0,"fn":"PSCI_CPU_ON","action":"psci"}
+{"t_ns":1560875,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081870","imm":0,"fn":"PSCI_CPU_ON","action":"psci"}
+{"t_ns":1563916,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081870","imm":0,"fn":"PSCI_CPU_ON","action":"psci"}
+{"t_ns":1744875,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x4008188c","imm":0,"fn":"PSCI_SYSTEM_OFF","action":"psci"}
+{"t_ns":1762625,"vcpu":2,"reason":"canceled","pc":"0x400811dc"}
+{"t_ns":1764583,"vcpu":3,"reason":"canceled","pc":"0x40081210"}
+{"t_ns":1763208,"vcpu":1,"reason":"canceled","pc":"0x400811dc"}
+
+--- stderr ---

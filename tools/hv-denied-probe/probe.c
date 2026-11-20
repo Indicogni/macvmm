@@ -9,6 +9,7 @@
 
 typedef hv_return_t (*set_isa_fn)(hv_vm_config_t config, uint32_t isa); /* signature: a guess */
 
+// ANCHOR: hv_denied_probe
 int main(void) {
   /* Mach-O symbol `__hv_vm_config_set_isa`; dlsym takes the C name (one underscore fewer). */
   set_isa_fn set_isa = (set_isa_fn)dlsym(RTLD_DEFAULT, "_hv_vm_config_set_isa");
@@ -22,3 +23,4 @@ int main(void) {
   if (ret == HV_SUCCESS) hv_vm_destroy();
   return ret == HV_DENIED ? 0 : 1;
 }
+// ANCHOR_END: hv_denied_probe

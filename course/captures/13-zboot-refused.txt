@@ -1,0 +1,9 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified, given the Alpine kernel exactly as downloaded.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/vmlinuz-virt
+exit: 2
+--- stdout ---
+
+--- stderr ---
+macvmm: cannot load the guest: EFI zboot image; run scripts/fetch.sh linux (unwraps it) or pass the raw Image

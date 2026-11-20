@@ -1,0 +1,11 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: the BSS-zeroing loop (the eight lines from adrp x10, __bss_start to b 1b) deleted from _start in guests/common/start.rs, and hello given the COUNTER static of 03-bss-nm.txt; built in a copy of the guests, run with the unmodified reference monitor.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/hello.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+hello from guest, x0=0x40000000
+hello: COUNTER = 0x0
+guest done
+
+--- stderr ---

@@ -1,0 +1,13 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# v.dtb is the file the run in 10-dtb-out-run wrote; 784 is the second offset grep printed (788) minus 4, the FDT_BEGIN_NODE token before the name.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ xxd -s 784 -l 80 v.dtb
+exit: 0
+--- stdout ---
+00000310: 0000 0001 706c 3031 3140 3930 3030 3030  ....pl011@900000
+00000320: 3000 0000 0000 0003 0000 0018 0000 0000  0...............
+00000330: 6172 6d2c 706c 3031 3100 6172 6d2c 7072  arm,pl011.arm,pr
+00000340: 696d 6563 656c 6c00 0000 0003 0000 0010  imecell.........
+00000350: 0000 0065 0000 0000 0900 0000 0000 0000  ...e............
+
+--- stderr ---

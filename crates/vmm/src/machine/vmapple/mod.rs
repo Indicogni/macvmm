@@ -79,7 +79,7 @@ use unknown::UnknownMmio;
 pub fn validate(cfg: &VmConfig) -> Result<()> {
     let refuse = |what: &str| {
         Err(Error::Config(format!(
-            "--machine vmapple: {what} (the vmapple board boots only its ROM, PLAN M21)"
+            "--machine vmapple: {what} (the vmapple board boots only its ROM)"
         )))
     };
     if cfg.boot.bios.is_none() {
@@ -103,7 +103,7 @@ pub fn validate(cfg: &VmConfig) -> Result<()> {
         return refuse("--irqchip none is for test guests");
     }
     if cfg.debug_hvc == DebugHvc::On {
-        return refuse("--debug-hvc is never offered to firmware (HC-2)");
+        return refuse("--debug-hvc is never offered to firmware");
     }
     if cfg.vmapple_slots.is_none() {
         return refuse(
@@ -143,6 +143,7 @@ pub fn hvc_supported(x0: u64) -> bool {
     crate::smccc::function_name(x0).is_some_and(|name| !name.starts_with("DEBUG_"))
 }
 
+// ANCHOR: vmapple_watch
 impl ExitWatch for Watch {
     fn before_exit(&self, regs: &dyn VcpuRegs, exit: &Exit) -> Result<Option<String>> {
         let pc = regs.pc()?;
@@ -185,6 +186,7 @@ impl ExitWatch for Watch {
         ))
     }
 }
+// ANCHOR_END: vmapple_watch
 
 /// `--dry-run --machine vmapple`: describe the board; no HVF call, no lock beyond `HostIo`'s.
 pub fn dry_run(cfg: &VmConfig, host: &HostIo) -> Result<String> {
@@ -237,7 +239,7 @@ pub fn dry_run(cfg: &VmConfig, host: &HostIo) -> Result<String> {
     );
     let _ = write!(
         out,
-        "unknown MMIO: {} (cap {}); debug hypercalls: off (HC-2)",
+        "unknown MMIO: {} (cap {}); debug hypercalls: off",
         if cfg.unhandled_mmio == MmioPolicy::Log {
             "logged, read as zero"
         } else {
@@ -386,11 +388,13 @@ impl VmApple {
             watch: Some(&watch),
             rom: None, // M18: the ISV = 0 ROM fetch hook is the virt machine's
         };
+        // ANCHOR: vmapple_reset_state
         let boot = BootParams {
             pc: layout::ROM_BASE,
             x: [0; 4],
             cpsr: CPSR_EL1H_DAIF_MASKED,
         };
+        // ANCHOR_END: vmapple_reset_state
         let vtimer_offset = crate::timer::boot_offset();
         let obs = Observe {
             trace: host.trace.as_deref(),

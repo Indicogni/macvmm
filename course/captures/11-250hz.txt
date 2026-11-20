@@ -1,0 +1,21 @@
+# scripts/capture-cmd 11: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Experiment: the guest changed to arm its timer 250 times for 4 ms (freq / 250) instead of 10 times for 100 ms, and to print one summary: total time, achieved ticks per second, the mean, smallest and largest interval in microseconds, and how many intervals fell within 3..5 ms. The VMM is the unmodified reference binary.
+# The guest was built in a copy of the reference with that one edit; {guests} is that copy's guest directory.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --irqchip none --mem 64M --raw {guests}/timer-nogic.bin@0x40080000 --stats --timeout 10
+exit: 6
+--- stdout ---
+timer-nogic: cntfrq=24000000
+timer-nogic: pfr0.gic=0
+timer-nogic: 250 Hz asked: 250 ticks took 1656 ms, 150 ticks per second
+timer-nogic: interval mean 5138 us, min 4031 us, max 12355 us
+timer-nogic: irqs=250 stale=8580120
+timer-nogic: 64/250 intervals within 3..5 ms
+
+--- stderr ---
+macvmm: guest exit code 1
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=268 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 250, wfx 250, total 1019: canceled 250, vtimer 250, wfx 250, hvc 269
+macvmm: stats: vcpu0 time: exec 0.358 s, wfi n/a
+macvmm: stats: host cpu 0.369 s over 1.660 s wall (23%)
+macvmm: stats: rlimit core=0 nofile=1048576

@@ -1,0 +1,69 @@
+# Checkpoint 14 `linux-boot`: the stock Alpine kernel boots to a shell on the reference machine.
+# Every run needs `scripts/fetch.sh linux` (Image-virt and initramfs-test.img in .cache/macvmm/).
+id = "14"
+slug = "linux-boot"
+requires = ["13"]
+
+# The comma-separated trace categories and the ring registry's weak references. Host only.
+[contract]
+tests = ["contract/trace_cats.rs"]
+
+# (a) The boot log in order, a clean PSCI power-off, no panic and no VMM warning. The trace,
+# filtered to `hvc,sysreg`, must hold the PSCI calls and no data abort.
+[[run]]
+name = "boot"
+args = ["run", "--kernel", "{repo}/.cache/macvmm/Image-virt", "--initrd", "{repo}/.cache/macvmm/initramfs-test.img", "--mem", "512M", "--on-reset", "exit", "--cmdline", "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=boot", "--trace", "exits:{out}/t.jsonl:hvc,sysreg", "--timeout", "30"]
+expect_exit_code = 0
+serial = "expected/boot.txt"
+trace = "expected/boot.trace.txt"
+
+# (b) Type at the BusyBox shell on the PL011, then power off from it.
+[[run]]
+name = "shell"
+args = ["run", "--kernel", "{repo}/.cache/macvmm/Image-virt", "--initrd", "{repo}/.cache/macvmm/initramfs-test.img", "--mem", "512M", "--on-reset", "exit", "--cmdline", "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=shell", "--timeout", "30"]
+steps = ["wait:/ # ", "send:echo macvmm-shell: $((6*7))\n", "wait:macvmm-shell: 42", "send:poweroff -f\n"]
+expect_exit_code = 0
+serial = "expected/shell.txt"
+
+# (c) A deliberate kernel panic: panic=-1 reboots at once, a PSCI SYSTEM_RESET, and
+# `--on-reset exit` turns it into exit code 4.
+[[run]]
+name = "panic"
+args = ["run", "--kernel", "{repo}/.cache/macvmm/Image-virt", "--initrd", "{repo}/.cache/macvmm/initramfs-test.img", "--mem", "512M", "--on-reset", "exit", "--cmdline", "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=panic", "--timeout", "30"]
+expect_exit_code = 4
+serial = "expected/panic.txt"
+
+# (d) SIGINT at the shell prompt stops the VM: exit 130.
+[[run]]
+name = "sigint"
+args = ["run", "--kernel", "{repo}/.cache/macvmm/Image-virt", "--initrd", "{repo}/.cache/macvmm/initramfs-test.img", "--mem", "512M", "--on-reset", "exit", "--cmdline", "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=shell", "--timeout", "30"]
+steps = ["wait:/ # ", "signal:INT"]
+expect_exit_code = 130
+serial = "expected/sigint.txt"
+
+# (e) 100 sleeps of 10 ms through the virtual timer and the in-kernel GIC: the marker
+# `took 1.* s` accepts 1.00 to 1.99 s only.
+[[run]]
+name = "timer-latency"
+args = ["run", "--kernel", "{repo}/.cache/macvmm/Image-virt", "--initrd", "{repo}/.cache/macvmm/initramfs-test.img", "--mem", "512M", "--on-reset", "exit", "--cmdline", "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=timer-latency", "--timeout", "30"]
+expect_exit_code = 0
+serial = "expected/timer-latency.txt"
+
+# (f) The ring dump on demand, from SIGUSR1 and from Ctrl-A t, while the guest keeps running.
+[[run]]
+name = "ring-dump"
+args = ["run", "--kernel", "{repo}/.cache/macvmm/Image-virt", "--initrd", "{repo}/.cache/macvmm/initramfs-test.img", "--mem", "512M", "--on-reset", "exit", "--cmdline", "console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=shell", "--timeout", "30"]
+steps = ["wait:/ # ", "signal:USR1", "sleep:300", "send:\u0001t", "sleep:300", "send:echo macvmm-shell: $((6*7))\n", "wait:macvmm-shell: 42", "send:poweroff -f\n"]
+expect_exit_code = 0
+serial = "expected/ring-dump.txt"
+
+[journal]
+file = "journal/14.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "Almost nothing here is new code: Linux exercises the machine you already built. When it fails, read the log by stage (the linux-boot-sequence primer): the last milestone line tells you which part of the machine to look at, and a missing line is as much evidence as a wrong one."
+spec = "Linux Documentation/arch/arm64/booting.rst (entry state); the device-tree bindings arm,arch_timer.yaml, arm,gic-v3.yaml and arm,pl011.yaml; the PL011 TRM's identification registers (the primecell-ids primer)."
+pseudocode = "TraceCats::parse: split on ',', map each name to a bit (all = every bit), unknown name or empty list -> None; selects(rec) = any chosen category matches rec. Ring dump: register_ring(index, Arc::downgrade(ring)) when a vCPU starts, unregister when it stops; dump = upgrade each Weak, skip the dead ones, copy each ring under its lock, format outside it, write to stderr."
+anchor = "crates/vmm/src/trace.rs (TraceCats, dump_rings), crates/vmm/src/hostctl.rs (register_ring, dump_rings), crates/vmm/src/vcpu/manager.rs (the register and unregister calls), crates/macvmm/src/term.rs (EscapeParser, stdin_loop), crates/macvmm/src/signals.rs (the SIGUSR1 arm)."

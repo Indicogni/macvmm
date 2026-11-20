@@ -745,6 +745,7 @@ fn a_broken_queue_stays_broken_until_reset() {
     assert_eq!(q.add_used(&*mem, 0, 0), Err(QueueError::Broken));
 }
 
+// ANCHOR: hostile_index_wrap
 #[test]
 fn avail_and_used_idx_wrap_at_65535() {
     let mem = mem();
@@ -771,6 +772,7 @@ fn avail_and_used_idx_wrap_at_65535() {
     assert_eq!(ring.used_elem(1).0, 0);
     assert_eq!(ring.used_elem(0).0, 3);
 }
+// ANCHOR_END: hostile_index_wrap
 
 #[test]
 fn add_used_writes_the_exact_len() {
@@ -797,6 +799,7 @@ fn add_used_writes_the_exact_len() {
     assert!(q.add_used(&*mem, 8, 0).is_err(), "head ≥ N");
 }
 
+// ANCHOR: hostile_release_order
 #[test]
 fn used_idx_release_order() {
     let mem = mem();
@@ -829,6 +832,7 @@ fn used_idx_release_order() {
         .expect("avail.flags read");
     assert!(elem < idx && idx < fence && fence < flags, "{log:?}");
 }
+// ANCHOR_END: hostile_release_order
 
 #[test]
 fn no_interrupt_is_respected() {

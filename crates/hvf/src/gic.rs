@@ -213,8 +213,9 @@ pub struct Gic {
     generation: u64,
 }
 
+// ANCHOR: gic_handle_queries
 impl Gic {
-    /// A copyable handle for device threads (used by `vmm::irq::GicSpi`, M8), bound to the same
+    /// A copyable handle for device threads (used by `vmm::irq::GicSpi`), bound to the same
     /// VM as `self`.
     pub fn handle(&self) -> GicHandle {
         GicHandle {
@@ -251,6 +252,7 @@ impl Gic {
         })?;
         Ok(base..end)
     }
+    // ANCHOR_END: gic_handle_queries
 
     /// The INTID the framework assigned to one of its fixed interrupts.
     pub fn intid(&self, which: GicInterrupt) -> Result<u32, CallError> {
@@ -364,6 +366,7 @@ fn save_state() -> Result<Vec<u8>, CallError> {
     Ok(buf)
 }
 
+// ANCHOR: gic_handle_set_spi
 /// `Copy + Send + Sync` capability to drive interrupt lines from any thread.
 ///
 /// It holds no pointer (the framework's GIC is per process), only the generation of the VM it
@@ -377,8 +380,8 @@ pub struct GicHandle {
 
 impl GicHandle {
     /// Assert (`level = true`) or deassert an SPI. Any thread; wakes a vCPU sitting in
-    /// in-kernel WFI (spike finding 18). An INTID outside the SPI range, or inside the MSI
-    /// range, returns `HV_BAD_ARGUMENT` (`hv_gic.h`); `vmm::irq::GicSpi` validates first (M8).
+    /// in-kernel WFI (checked on a real Mac). An INTID outside the SPI range, or inside the MSI
+    /// range, returns `HV_BAD_ARGUMENT` (`hv_gic.h`); `vmm::irq::GicSpi` validates first.
     pub fn set_spi(&self, intid: u32, level: bool) -> Result<(), CallError> {
         with_live_vm(self.generation, "hv_gic_set_spi", || {
             // SAFETY: plain values; the framework validates `intid`.
@@ -387,6 +390,7 @@ impl GicHandle {
             })
         })
     }
+    // ANCHOR_END: gic_handle_set_spi
 
     /// Signal an MSI as if a device wrote `intid` to the frame's `GICM_SETSPI_NSR` at `address`.
     pub fn send_msi(&self, address: u64, intid: u32) -> Result<(), CallError> {

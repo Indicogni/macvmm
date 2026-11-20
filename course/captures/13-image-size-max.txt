@@ -1,0 +1,9 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified. The kernel is a copy of .cache/macvmm/Image-virt with the 8 bytes at offset 0x10 (image_size) set to ff (the dd command in the lesson).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/ch13/Image-huge --initrd .cache/macvmm/initramfs-test.img --mem 512M --timeout 10
+exit: 2
+--- stdout ---
+
+--- stderr ---
+macvmm: cannot load the guest: kernel (arm64 Image) (0xffffffffffffffff bytes at 0x40200000) does not fit inside guest RAM

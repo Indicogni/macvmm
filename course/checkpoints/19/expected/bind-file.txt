@@ -1,0 +1,4 @@
+[stderr] refusing to replace non-socket path
+check: the file at LOCAL is unchanged
+!check: FAILED
+![stderr] panicked

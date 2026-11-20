@@ -1,17 +1,19 @@
 //! Target `virtqueue`: the split-ring device side (`vmm::virtio::queue`, `chain`) against
 //! arbitrary rings (virtio 1.2 §2.7; architecture §11.2; threat model VQ-2..VQ-10, MEM-7).
 //!
+// ANCHOR: fuzz_vq_input
 //! **Input** (fixed offsets, so the structural mutators know where descriptors are):
 //!
 //! | Bytes | Field |
 //! |---|---|
 //! | 0 | queue size: `1 << (b % 9)`, 1..=256 |
 //! | 1 | bit 0 `INDIRECT_DESC` negotiated, bit 1 rings packed at the end of region B, bit 2 `avail.flags = NO_INTERRUPT` |
-//! | 2..4 | avail entries published per round (more than the size is an index jump, VQ-2) |
-//! | 4 | `max_total` (VQ-8): 64 KiB, 4 KiB, 1 MiB or 4 GiB |
+//! | 2..4 | avail entries published per round (more than the size is an index jump, which must reset the queue) |
+//! | 4 | `max_total` (the per-direction byte cap): 64 KiB, 4 KiB, 1 MiB or 4 GiB |
 //! | 5 | rounds: the driver republishes `1 + b % 4` times, so `used.idx` wraps the ring |
 //! | 8..520 | the 256 avail-ring entries |
 //! | 520.. | the descriptor table (256 × 16 bytes), then a 64-entry indirect table |
+// ANCHOR_END: fuzz_vq_input
 //!
 //! **Invariants** (threat model §9.3 "virtqueue"):
 //! 1. no panic, and a ring error latches the queue as broken (VQ-10);
@@ -170,6 +172,7 @@ pub fn descriptor_reads(log: &[Access]) -> Vec<u64> {
         .collect()
 }
 
+// ANCHOR: fuzz_read_once
 /// Invariant 3: no address appears twice.
 pub fn read_once(reads: &[u64]) -> Result<(), String> {
     let mut seen = reads.to_vec();
@@ -182,6 +185,7 @@ pub fn read_once(reads: &[u64]) -> Result<(), String> {
         None => Ok(()),
     }
 }
+// ANCHOR_END: fuzz_read_once
 
 /// Invariant 4 on one validated chain.
 pub fn chain_in_ram(v: &vmm::virtio::ValidatedChain, max_total: u64) -> Result<(), String> {
@@ -226,7 +230,7 @@ pub fn run(data: &[u8]) -> crate::Verdict {
             let chain = match q.pop(&*mem) {
                 Ok(None) => break,
                 Ok(Some(c)) => c,
-                Err(_) if q.is_broken() && q.pop(&*mem).is_err() => return Ok(()), // VQ-10
+                Err(_) if q.is_broken() && q.pop(&*mem).is_err() => return Ok(()), // latched: stays broken until reset
                 Err(_) => return Err("a ring error did not latch the queue as broken".into()),
             };
             let validated = chain.into_validated(spec.max_total);
@@ -241,8 +245,8 @@ pub fn run(data: &[u8]) -> crate::Verdict {
             let Ok(v) = validated else {
                 return Ok(()); // the device would set NEEDS_RESET here
             };
-            read_once(&reads)?; // invariant 3 (MEM-7)
-            chain_in_ram(&v, spec.max_total)?; // invariant 4 (VQ-4, VQ-8)
+            read_once(&reads)?; // invariant 3: each descriptor read once
+            chain_in_ram(&v, spec.max_total)?; // invariant 4: in RAM, under the cap
             match complete(&spec, &mem, &mut q, &v, completed)? {
                 Some(c) => completed = c,
                 None => return Ok(()),

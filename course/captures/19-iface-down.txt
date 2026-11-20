@@ -1,0 +1,30 @@
+# scripts/capture-cmd 19: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Terminal 1: the unmodified reference. The guest loads the virtio-net driver but never brings eth0 up, so it posts no receive buffers.
+# Terminal 2 meanwhile ran the reference VM A (macvmm.test=net-a, as in the main run), started 3 s later; it pings 10.0.0.2 for about 20 s.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ (sleep 2; echo 'modprobe virtio_mmio; modprobe virtio_net; sleep 8; cat /sys/class/net/eth0/statistics/rx_packets; poweroff -f') | cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --timeout 20 --stats --net unixgram:$T/b.sock,peer=$T/a.sock,mac=02:6d:76:00:00:02 --cmdline "console=ttyAMA0 quiet"
+exit: 0
+--- stdout ---
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+/ # modprobe virtio_mmio; modprobe virtio_net; sleep 8; cat /sys/class/net/eth0/\x0d\x0d
+statistics/rx_packets; poweroff -f\x0d
+0\x0d
+[    9.685516] reboot: Power down\x0d
+
+--- stderr ---
+macvmm: warn: [virtio-net-rx-0] guest: virtio-net: RX frame dropped: no receive buffer posted
+macvmm: warn: [virtio-net-rx-0] guest: virtio-net: RX frame dropped: no receive buffer posted
+macvmm: warn: [virtio-net-rx-0] guest: virtio-net: RX frame dropped: no receive buffer posted
+macvmm: warn: [virtio-net-rx-0] guest: virtio-net: RX frame dropped: no receive buffer posted
+macvmm: warn: [virtio-net-rx-0] guest: virtio-net: RX frame dropped: no receive buffer posted
+macvmm: warn: [virtio-net-rx-0] guest: virtio-net: RX frame dropped: no receive buffer posted
+macvmm: warn: [virtio-net-rx-0] guest: virtio-net: RX frame dropped: no receive buffer posted
+macvmm: warn: [virtio-net-rx-0] guest: virtio-net: RX frame dropped: no receive buffer posted
+macvmm: warn: [virtio-net-rx-0] guest: virtio-net: RX frame dropped: no receive buffer posted
+macvmm: warn: [virtio-net-rx-0] guest: virtio-net: RX frame dropped: no receive buffer posted
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=197 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=3
+macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 988: hvc 16, sysreg 2, data abort 970
+macvmm: stats: vcpu0 time: exec 0.114 s, wfi 9.552 s
+macvmm: stats: host cpu 0.133 s over 9.710 s wall (2%)
+macvmm: stats: net0 slot 0: tx_packets=0 tx_bytes=0 tx_dropped=0 rx_packets=0 rx_bytes=0 rx_dropped_no_buffer=13 rx_dropped_small=0 rx_dropped_len=0 rx_dropped_foreign=0
+macvmm: stats: rlimit core=0 nofile=1048576

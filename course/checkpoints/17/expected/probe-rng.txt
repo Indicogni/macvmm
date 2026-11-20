@@ -1,0 +1,6 @@
+virtio-probe: slot 0 device 4 features ok
+virtio-probe: slot 0 device id 4 status 0xf
+virtio-probe: rng 32 bytes nonzero
+virtio-probe: dt lists 1 virtio_mmio nodes ok
+![stderr] needs reset
+![stderr] panicked

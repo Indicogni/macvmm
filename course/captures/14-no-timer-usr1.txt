@@ -1,0 +1,341 @@
+# scripts/capture-cmd 14: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1 again (no /timer node in crates/vmm/src/fdt/machine.rs).
+# Three seconds after the start, a second terminal ran: kill -USR1 <the macvmm process id>. The dump is on stderr.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=boot" --timeout 6
+exit: 5
+--- stdout ---
+[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x610f0000]\x0d
+[    0.000000] Linux version 6.18.60-0-virt (buildozer@build-3-24-aarch64) (cc (Alpine 15.2.0) 15.2.0, GNU ld (GNU Binutils) 2.45.1) #1-Alpine SMP PREEMPT_DYNAMIC 2026-11-01 07:26:31\x0d
+[    0.000000] random: crng init done\x0d
+[    0.000000] Machine model: macvmm-virt\x0d
+[    0.000000] earlycon: pl11 at MMIO 0x0000000009000000 (options '')\x0d
+[    0.000000] printk: legacy bootconsole [pl11] enabled\x0d
+[    0.000000] efi: UEFI not found.\x0d
+[    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT\x0d
+[    0.000000] NUMA: Faking a node at [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000] NODE_DATA(0) allocated [mem 0x5fd03a00-0x5fd05ebf]\x0d
+[    0.000000] Zone ranges:\x0d
+[    0.000000]   DMA      [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000]   DMA32    empty\x0d
+[    0.000000]   Normal   empty\x0d
+[    0.000000] Movable zone start for each node\x0d
+[    0.000000] Early memory node ranges\x0d
+[    0.000000]   node   0: [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000] Initmem setup node 0 [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000] psci: probing for conduit method from DT.\x0d
+[    0.000000] psci: PSCIv1.1 detected in firmware.\x0d
+[    0.000000] psci: Using standard PSCI v0.2 function IDs\x0d
+[    0.000000] psci: Trusted OS migration not required\x0d
+[    0.000000] psci: SMC Calling Convention v1.1\x0d
+[    0.000000] percpu: Embedded 34 pages/cpu s99608 r8192 d31464 u139264\x0d
+[    0.000000] Detected PIPT I-cache on CPU0\x0d
+[    0.000000] CPU features: detected: Address authentication (IMP DEF algorithm)\x0d
+[    0.000000] CPU features: detected: GICv3 CPU interface\x0d
+[    0.000000] CPU features: detected: Spectre-v4\x0d
+[    0.000000] CPU features: detected: Spectre-BHB\x0d
+[    0.000000] alternatives: applying boot alternatives\x0d
+[    0.000000] Kernel command line: console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=boot\x0d
+[    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes\x0d
+[    0.000000] Dentry cache hash table entries: 65536 (order: 7, 524288 bytes, linear)\x0d
+[    0.000000] Inode-cache hash table entries: 32768 (order: 6, 262144 bytes, linear)\x0d
+[    0.000000] software IO TLB: SWIOTLB bounce buffer size adjusted to 0MB\x0d
+[    0.000000] software IO TLB: area num 1.\x0d
+[    0.000000] software IO TLB: mapped [mem 0x000000005f380000-0x000000005f400000] (0MB)\x0d
+[    0.000000] Fallback order for Node 0: 0 \x0d
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 131072\x0d
+[    0.000000] Policy zone: DMA\x0d
+[    0.000000] mem auto-init: stack:all(zero), heap alloc:on, heap free:off\x0d
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1\x0d
+[    0.000000] Dynamic Preempt: none\x0d
+[    0.000000] rcu: Preemptible hierarchical RCU implementation.\x0d
+[    0.000000] rcu: 	RCU restricting CPUs from NR_CPUS=4096 to nr_cpu_ids=1.\x0d
+[    0.000000] 	Trampoline variant of Tasks RCU enabled.\x0d
+[    0.000000] 	Tracing variant of Tasks RCU enabled.\x0d
+[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 100 jiffies.\x0d
+[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=1\x0d
+[    0.000000] RCU Tasks: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.\x0d
+[    0.000000] RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.\x0d
+[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0\x0d
+[    0.000000] GICv3: 988 SPIs implemented\x0d
+[    0.000000] GICv3: 0 Extended SPIs implemented\x0d
+[    0.000000] Root IRQ handler: gic_handle_irq\x0d
+[    0.000000] GICv3: GICv3 features: 16 PPIs, RSS\x0d
+[    0.000000] GICv3: GICD_CTLR.DS=1, SCR_EL3.FIQ=0\x0d
+[    0.000000] GICv3: CPU0: found redistributor 0 region 0:0x00000000080a0000\x0d
+[    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.\x0d
+[    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 1911260446275000 ns\x0d
+[    0.000000] timer_probe: no matching timers found\x0d
+[    0.000000] Kernel panic - not syncing: Unable to initialise architected timer.\x0d
+[    0.000000] CPU: 0 UID: 0 PID: 0 Comm: swapper/0 Not tainted 6.18.60-0-virt #1-Alpine PREEMPT(none) \x0d
+[    0.000000] Hardware name: macvmm-virt (DT)\x0d
+[    0.000000] Call trace:\x0d
+[    0.000000]  show_stack+0x28/0xbc (C)\x0d
+[    0.000000]  dump_stack_lvl+0x60/0x94\x0d
+[    0.000000]  dump_stack+0x18/0x30\x0d
+[    0.000000]  vpanic+0xf8/0x2e4\x0d
+[    0.000000]  trace_suspend_resume+0x0/0xcc\x0d
+[    0.000000]  time_init+0x54/0x94\x0d
+[    0.000000]  start_kernel+0x598/0x758\x0d
+[    0.000000]  __primary_switched+0x88/0x90\x0d
+[    0.000000] ---[ end Kernel panic - not syncing: Unable to initialise architected timer. ]---\x0d
+
+--- stderr ---
+vcpu0: last 256 exits, oldest first:
+  {"t_ns":36131083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36132625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36134291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x5d","action":"mmio","isv":true}
+  {"t_ns":36136375,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36138375,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36139958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36142416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36144041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36145583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x2d","action":"mmio","isv":true}
+  {"t_ns":36155750,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36157458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36159250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x2d","action":"mmio","isv":true}
+  {"t_ns":36161416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36163500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36165083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x2d","action":"mmio","isv":true}
+  {"t_ns":36167750,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36169291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36171000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x5b","action":"mmio","isv":true}
+  {"t_ns":36173958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36175625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36177208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36180083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36181666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36183208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x65","action":"mmio","isv":true}
+  {"t_ns":36185041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36186625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36188208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6e","action":"mmio","isv":true}
+  {"t_ns":36191000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36192666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36194250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x64","action":"mmio","isv":true}
+  {"t_ns":36198083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36199666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36201208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36204000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36205625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36207208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x4b","action":"mmio","isv":true}
+  {"t_ns":36210208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36211750,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36213333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x65","action":"mmio","isv":true}
+  {"t_ns":36215583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36217208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36219166,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x72","action":"mmio","isv":true}
+  {"t_ns":36222333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36223875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36225416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6e","action":"mmio","isv":true}
+  {"t_ns":36235083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36237208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36239375,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x65","action":"mmio","isv":true}
+  {"t_ns":36242041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36243625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36245333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6c","action":"mmio","isv":true}
+  {"t_ns":36248166,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36250208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36251833,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36254625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36256166,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36257875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x70","action":"mmio","isv":true}
+  {"t_ns":36260000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36262041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36263583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x61","action":"mmio","isv":true}
+  {"t_ns":36266041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36267583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36269291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6e","action":"mmio","isv":true}
+  {"t_ns":36273583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36275250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36276875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x69","action":"mmio","isv":true}
+  {"t_ns":36279208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36280875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36282458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x63","action":"mmio","isv":true}
+  {"t_ns":36285458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36287000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36288583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36291500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36293166,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36294791,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x2d","action":"mmio","isv":true}
+  {"t_ns":36297666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36299291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36300875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36303875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36305500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36307083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6e","action":"mmio","isv":true}
+  {"t_ns":36310041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36311583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36313166,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6f","action":"mmio","isv":true}
+  {"t_ns":36317583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36319250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36320875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x74","action":"mmio","isv":true}
+  {"t_ns":36324750,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36326291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36327958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36330250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36331791,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36333333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x73","action":"mmio","isv":true}
+  {"t_ns":36336208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36337833,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36339458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x79","action":"mmio","isv":true}
+  {"t_ns":36342375,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36343916,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36345458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6e","action":"mmio","isv":true}
+  {"t_ns":36347416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36349333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36351416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x63","action":"mmio","isv":true}
+  {"t_ns":36354875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36356416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36357958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x69","action":"mmio","isv":true}
+  {"t_ns":36360875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36362416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36363958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6e","action":"mmio","isv":true}
+  {"t_ns":36367416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36368916,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36370458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x67","action":"mmio","isv":true}
+  {"t_ns":36373166,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36374708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36376250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x3a","action":"mmio","isv":true}
+  {"t_ns":36378500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36380541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36382333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36384916,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36386458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36388125,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x55","action":"mmio","isv":true}
+  {"t_ns":36391083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36392708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36394291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6e","action":"mmio","isv":true}
+  {"t_ns":36397291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36398875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36400541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x61","action":"mmio","isv":true}
+  {"t_ns":36403375,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36404916,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36406500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x62","action":"mmio","isv":true}
+  {"t_ns":36409375,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36411083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36412708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6c","action":"mmio","isv":true}
+  {"t_ns":36415583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36417208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36418750,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x65","action":"mmio","isv":true}
+  {"t_ns":36421666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36423208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36424791,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36427708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36429250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36430750,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x74","action":"mmio","isv":true}
+  {"t_ns":36432583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36434125,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36435625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6f","action":"mmio","isv":true}
+  {"t_ns":36438166,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36439708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36441375,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36444291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36446000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36447541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x69","action":"mmio","isv":true}
+  {"t_ns":36450333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36451875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36453541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6e","action":"mmio","isv":true}
+  {"t_ns":36455583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36457625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36459208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x69","action":"mmio","isv":true}
+  {"t_ns":36461666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36463208,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36464875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x74","action":"mmio","isv":true}
+  {"t_ns":36467000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36469083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36470625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x69","action":"mmio","isv":true}
+  {"t_ns":36474083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36475625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36477291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x61","action":"mmio","isv":true}
+  {"t_ns":36479416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36481458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36483000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6c","action":"mmio","isv":true}
+  {"t_ns":36485500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36487041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36488708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x69","action":"mmio","isv":true}
+  {"t_ns":36491666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36493291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36494833,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x73","action":"mmio","isv":true}
+  {"t_ns":36497583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36499125,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36500625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x65","action":"mmio","isv":true}
+  {"t_ns":36509875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36511583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36513250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36516125,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36517791,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36519416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x61","action":"mmio","isv":true}
+  {"t_ns":36522458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36524041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36525625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x72","action":"mmio","isv":true}
+  {"t_ns":36528541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36530083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36531666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x63","action":"mmio","isv":true}
+  {"t_ns":36534375,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36535958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36537500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x68","action":"mmio","isv":true}
+  {"t_ns":36539791,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36541500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36543500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x69","action":"mmio","isv":true}
+  {"t_ns":36546416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36548000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36549583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x74","action":"mmio","isv":true}
+  {"t_ns":36551958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36553541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36555125,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x65","action":"mmio","isv":true}
+  {"t_ns":36558083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36559750,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36561416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x63","action":"mmio","isv":true}
+  {"t_ns":36564333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36565916,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36567500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x74","action":"mmio","isv":true}
+  {"t_ns":36569375,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36570958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36572541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x65","action":"mmio","isv":true}
+  {"t_ns":36575291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36576875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36578583,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x64","action":"mmio","isv":true}
+  {"t_ns":36580666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36582708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36584291,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36586750,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36588333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36590000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x74","action":"mmio","isv":true}
+  {"t_ns":36593000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36594666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36596250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x69","action":"mmio","isv":true}
+  {"t_ns":36598541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36600041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36601625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x6d","action":"mmio","isv":true}
+  {"t_ns":36604500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36606083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36607625,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x65","action":"mmio","isv":true}
+  {"t_ns":36610500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36612083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36613666,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x72","action":"mmio","isv":true}
+  {"t_ns":36615958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36617500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36619083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x2e","action":"mmio","isv":true}
+  {"t_ns":36622000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36623500,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36625125,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x20","action":"mmio","isv":true}
+  {"t_ns":36627041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36629000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36631041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x5d","action":"mmio","isv":true}
+  {"t_ns":36633708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36635250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36636958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x2d","action":"mmio","isv":true}
+  {"t_ns":36639041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36641125,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36642708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x2d","action":"mmio","isv":true}
+  {"t_ns":36645458,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36647000,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36648708,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0x2d","action":"mmio","isv":true}
+  {"t_ns":36650416,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36652333,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36654250,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0xd","action":"mmio","isv":true}
+  {"t_ns":36657041,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36658541,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e64","ipa":"0x9000018","wnr":false,"size":4,"reg":2,"value":"0x90","action":"mmio","isv":true}
+  {"t_ns":36660083,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0e90","ipa":"0x9000000","wnr":true,"size":1,"reg":1,"value":"0xa","action":"mmio","isv":true}
+  {"t_ns":36662875,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff8000808d0ea4","ipa":"0x9000018","wnr":false,"size":4,"reg":1,"value":"0x90","action":"mmio","isv":true}
+macvmm: timeout: the guest was still running after --timeout 6s

@@ -1,0 +1,14 @@
+# scripts/capture-cmd 01: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Reads Apple's SDK headers on this Mac: the chain from hv_return_t down to a C int, one error code, and what hv_vm_config_t is.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cd "$(xcrun --show-sdk-path)" && grep -Hn "typedef mach_error_t hv_return_t\|HV_DENIED " usr/include/arm64/hv/hv_kern_types.h && grep -Hn "typedef kern_return_t *mach_error_t" usr/include/mach/error.h && grep -Hn "typedef int *kern_return_t" usr/include/mach/arm/kern_return.h && grep -Hn "hv_vm_config" System/Library/Frameworks/Hypervisor.framework/Headers/hv_vm_types.h
+exit: 0
+--- stdout ---
+usr/include/arm64/hv/hv_kern_types.h:58:	HV_DENIED              = err_common_hypervisor | 0x07, /* (0xfae94007) */
+usr/include/arm64/hv/hv_kern_types.h:63:typedef mach_error_t hv_return_t;
+usr/include/mach/error.h:114:typedef kern_return_t   mach_error_t;
+usr/include/mach/arm/kern_return.h:73:typedef int             kern_return_t;
+System/Library/Frameworks/Hypervisor.framework/Headers/hv_vm_types.h:24:OS_OBJECT_DECL(hv_vm_config);
+System/Library/Frameworks/Hypervisor.framework/Headers/hv_vm_types.h:26:typedef struct hv_vm_config_s *hv_vm_config_t;
+
+--- stderr ---

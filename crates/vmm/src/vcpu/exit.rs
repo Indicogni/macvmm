@@ -130,7 +130,7 @@ pub struct ExitEnv<'a> {
 impl<'a> ExitEnv<'a> {
     /// The environment as chapter 08 knows it: memory, the serial sink, the VM control block
     /// and the device bus, with generation 0, the debug hypercalls off and the default
-    /// `--unhandled-mmio fatal` policy. Every field a later chapter adds (M18 `rom`, M21
+    /// `--unhandled-mmio fatal` policy. Every field a later chapter adds (`rom`,
     /// `watch`) starts as `None` here, so code (and the frozen checkpoint contracts) that
     /// builds an `ExitEnv` with `ExitEnv { debug_calls: true, ..ExitEnv::new(..) }` keeps
     /// compiling at every chapter, whatever fields the struct has grown since.
@@ -207,6 +207,7 @@ pub struct RefusedAccess {
     pub unclaimed: bool,
 }
 
+// ANCHOR: mmio_verdict
 /// What [`unhandled_mmio_policy`] decided.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MmioVerdict {
@@ -215,12 +216,12 @@ pub enum MmioVerdict {
     /// Read as zero / ignore the write, and resume.
     RazWi,
 }
+// ANCHOR_END: mmio_verdict
 
 // ANCHOR: unhandled_mmio_policy
-/// A guest access to an IPA that is neither RAM nor a device (architecture §8.3 step 1).
-/// `fatal` (the default) stops the VM with a message only the VMM prints; `log` makes the
-/// access RAZ/WI and warns, rate-limited, because the guest decides how often it happens
-/// (LOG-1).
+/// A guest access to an IPA that is neither RAM nor a device. `fatal` (the default) stops the
+/// VM with a message only the VMM prints; `log` makes the access RAZ/WI and warns, rate-limited,
+/// because the guest decides how often it happens.
 pub fn unhandled_mmio_policy(policy: MmioPolicy, ipa: u64, da: &DataAbort, pc: u64) -> MmioVerdict {
     let dir = if da.wnr { "write" } else { "read" };
     let what = format!(
@@ -267,6 +268,7 @@ fn fatal(
     ))))
 }
 
+// ANCHOR: exit_smccc_call
 fn smccc_call(
     regs: &mut dyn VcpuRegs,
     env: &ExitEnv<'_>,
@@ -305,6 +307,7 @@ fn smccc_call(
         }
     }
 }
+// ANCHOR_END: exit_smccc_call
 
 /// The one-line reason for an exit class that always stops the VM (the last row of the
 /// PC-advance table). Numbers and static names only (LOG-5).
@@ -325,6 +328,7 @@ fn fatal_reason(exit: &Exit, raw: &hvf::VcpuExit, pc: u64) -> String {
     }
 }
 
+// ANCHOR: exit_apply_injection
 /// Write an [`Injection`] into the vCPU: the exception-entry registers, then `CPSR` and `PC`.
 fn apply_injection(regs: &mut dyn VcpuRegs, inj: &Injection) -> Result<()> {
     regs.set_sys_reg(SysReg::ELR_EL1, inj.elr_el1)?;
@@ -348,7 +352,7 @@ fn inject_state(regs: &dyn VcpuRegs) -> Result<VcpuState> {
 }
 
 /// Inject an UNDEF for the instruction at the PC and resume at the guest's vector (the PC is
-/// not advanced). A mode the injector refuses stops the VM (HC-7).
+/// not advanced). A mode the injector refuses stops the VM.
 pub fn inject_undef(
     regs: &mut dyn VcpuRegs,
     env: &ExitEnv<'_>,
@@ -369,6 +373,7 @@ pub fn inject_undef(
         }
     }
 }
+// ANCHOR_END: exit_apply_injection
 
 /// Inject a synchronous external data abort at `far` (M17: an ISV = 0 access the VMM refuses
 /// to emulate, MMIO-4/MMIO-6) and resume at the guest's vector (the PC is not advanced). A
@@ -397,9 +402,10 @@ fn inject_abort(
 }
 
 // ANCHOR: sysreg_trap
-/// A trapped `MSR`/`MRS` (EC 0x18; architecture §8.4). The policy (`arch::sysreg`) decides;
+/// A trapped `MSR`/`MRS` (EC 0x18). The policy (`arch::sysreg`) decides;
 /// an emulated access steps over the instruction, anything else becomes an UNDEF in the guest
-/// with a rate-limited warning naming the register (HC-6, LOG-1).
+/// with a rate-limited warning naming the register (at most a few
+/// lines per call site, so a guest cannot flood the log).
 fn sysreg_trap(
     regs: &mut dyn VcpuRegs,
     env: &ExitEnv<'_>,
@@ -410,7 +416,7 @@ fn sysreg_trap(
 ) -> Result<ExitAction> {
     let reg = access.encoding();
     rec.sysreg = sysreg::static_name(reg);
-    // Always the number too: the M10 trap log must identify unnamed registers (§8.4).
+    // Always the number too: the trap log must identify registers that have no name.
     rec.sysreg_enc = Some(reg.0);
     let value = if access.read { 0 } else { regs.x(access.rt)? };
     let mut fallback = SysRegState::default();
@@ -451,7 +457,7 @@ static VTIMER_WARNED: AtomicBool = AtomicBool::new(false);
 static WFX_WARNED: AtomicBool = AtomicBool::new(false);
 
 // ANCHOR: nogic_wfi
-/// A WFI in the `--irqchip none` mode (architecture §9.1): if no IRQ is pending, sleep until
+/// A WFI in the `--irqchip none` mode: if no IRQ is pending, sleep until
 /// the guest's `CNTV_CVAL` deadline, in slices of at most `timer::NOGIC_WFI_SLICE`, each one
 /// woken early by a stop, so a guest that never arms its timer cannot hold up `--timeout` or a
 /// quit. `CNTV_CTL`/`CNTV_CVAL` are re-read every slice (they are guest-controlled; their
@@ -483,6 +489,7 @@ pub fn nogic_wfi(regs: &mut dyn VcpuRegs, env: &ExitEnv<'_>) -> Result<ExitActio
 // ANCHOR_END: nogic_wfi
 
 // ANCHOR: exit_pc_rules
+// ANCHOR: exit_dispatch_head
 /// Handle one decoded exit (module docs, the PC-advance table). `raw` is the framework's exit
 /// record (ESR, IPA); `rec` is this exit's trace record, which the handler completes.
 pub fn handle(
@@ -506,6 +513,8 @@ pub fn handle(
                 }
             }
         }
+        // ANCHOR_END: exit_dispatch_head
+        // ANCHOR: nogic_exit_arms
         Exit::Wfx { .. } if regs.nogic().is_some() => nogic_wfi(regs, env),
         Exit::VtimerActivated if regs.nogic().is_some() => {
             // The framework has masked the vtimer; the line stays up until the guest handles
@@ -515,6 +524,7 @@ pub fn handle(
             }
             Ok(ExitAction::Resume { advance_pc: false })
         }
+        // ANCHOR_END: nogic_exit_arms
         Exit::Wfx { .. } => {
             if !WFX_WARNED.swap(true, Ordering::Relaxed) {
                 crate::guest_warn!("WFx exit with the in-kernel GIC (unexpected); yielding");

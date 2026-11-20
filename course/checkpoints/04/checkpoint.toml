@@ -27,6 +27,6 @@ predict = true
 
 [hints]
 conceptual = "Guest RAM is shared with an adversary: every guest-supplied address and length is checked before any byte is copied, and the only access is a copy."
-spec = "Threat model MEM-2, MEM-3, MEM-6; the `addr = u64::MAX - 3, len = 8` case is the one a wrapping add gets wrong."
+spec = "The rules this chapter states for a guest range: it is valid only if `addr.checked_add(len)` succeeds and the whole range lies in one RAM region, and a zero length is never valid; read-only memory and device addresses are never reachable through guest memory. The `addr = u64::MAX - 3, len = 8` case is the one a wrapping add gets wrong."
 pseudocode = "end = addr.checked_add(len)?; find the one region with base <= addr && end <= base + size; zero length is never valid."
 anchor = "crates/vmm/src/memory/region.rs, anchor guest_ram_bounds_check (RegionTable::locate)."

@@ -1,0 +1,20 @@
+# scripts/capture-cmd 22: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference (crates/ identical to the reference except anchor comments).
+# Carriage returns removed; stdout filtered with grep -E to the lines matching PL011|pl011|ttyAMA0|console|macvmm-|Power.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/run-linux.sh --test boot --timeout 30
+exit: 0
+--- stdout ---
+[    0.000000] Machine model: macvmm-virt
+[    0.000000] printk: legacy bootconsole [pl11] enabled
+[    0.000000] Kernel command line: console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=boot
+[    0.034637] Serial: AMBA PL011 UART driver
+[    0.035153] 9000000.pl011: ttyAMA0 at MMIO 0x9000000 (irq = 13, base_baud = 0) is a PL011 rev1
+[    0.035801] printk: console [ttyAMA0] enabled
+[    0.035801] printk: console [ttyAMA0] enabled
+[    0.036503] printk: legacy bootconsole [pl11] disabled
+[    0.036503] printk: legacy bootconsole [pl11] disabled
+macvmm-initramfs: ready 6.18.60-0-virt
+[    0.176755] reboot: Power down
+
+--- stderr ---

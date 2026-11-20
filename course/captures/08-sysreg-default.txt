@@ -1,0 +1,23 @@
+# scripts/capture-cmd 08: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference sysreg-probe and VMM in the default configuration, the checkpoint's own run; the trace file is printed after the run, and the exit status is macvmm's.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/sysreg-probe.bin@0x40080000 --trace exits:/tmp/s.jsonl:sysreg --timeout 10; cat /tmp/s.jsonl
+exit: 0
+--- stdout ---
+sysreg-probe: undef count=1 ec=0x0
+sysreg-probe: elr ok (the mrs at 0x400811ec; Rt untouched)
+sysreg-probe: lo=1 lorid=0x0 undef count=0
+sysreg-probe: lorid ok
+sysreg-probe: mdccsr undef count=1 ec=0x0
+sysreg-probe: mdccsr elr ok (the mrs at 0x40081048; Rt untouched)
+sysreg-probe: oslsr after lock=0xa after unlock=0x8
+sysreg-probe: oslsr ok
+{"t_ns":585625,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081244","value":"0x0","sysreg":"LORID_EL1","sysreg_enc":"0xc527","action":"sysreg"}
+{"t_ns":764041,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081048","sysreg":"MDCCSR_EL0","sysreg_enc":"0x9808","action":"inject_undef"}
+{"t_ns":990666,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400812ec","value":"0x1","sysreg":"OSLAR_EL1","sysreg_enc":"0x8084","action":"sysreg"}
+{"t_ns":996750,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400812f4","value":"0xa","sysreg":"OSLSR_EL1","sysreg_enc":"0x808c","action":"sysreg"}
+{"t_ns":1001250,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081304","value":"0x0","sysreg":"OSLAR_EL1","sysreg_enc":"0x8084","action":"sysreg"}
+{"t_ns":1005416,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x4008131c","value":"0x8","sysreg":"OSLSR_EL1","sysreg_enc":"0x808c","action":"sysreg"}
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: vcpu0: MRS MDCCSR_EL0 at pc 0x40081048: injecting UNDEF

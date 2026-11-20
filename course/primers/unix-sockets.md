@@ -2,10 +2,10 @@
 title: Unix domain sockets: a wire between two programs, named by a file
 slug: unix-sockets
 kind: primer
-minutes: 30
+minutes: 15
 required_by: [19]
 also_used_by: [27]
-lab: none
+labs: []
 runs: mac
 command: sysctl -n net.local.dgram.maxdgram
 expect: 2048
@@ -40,6 +40,13 @@ privileges. Unix domain sockets do exactly that, and this primer gathers what ch
 - Tell a live socket from a stale one, and replace only our own.
 - Explain why the sender of every datagram must be checked.
 - Explain why no entitlement is needed, and why that is not containment.
+:::
+
+:::prereqs
+- The [`os-basics`](/build-your-own/vmm/primers/os-basics/) primer: processes, files and the kernel.
+- File permissions as `ls -l` shows them (`rwx` for owner, group and others); the primer recaps
+  the parts it needs.
+- A Mac with Rust installed (`rustc`); every program here is one file built with `rustc -O`.
 :::
 
 ## A socket that outlives its program
@@ -520,14 +527,16 @@ or start in a fresh `mktemp -d` directory.
 > any moment: forged packets such as fake answers to the guest's "which card owns this IP
 > address?" questions (ARP), redirecting its traffic, or crafted packets aimed at bugs in the guest
 > kernel's network code. So macvmm compares the source path of every datagram with the configured
-> peer, and drops and counts mismatches, unnamed senders included. It also never "learns" its peer
-> from whoever writes first, because any process could win that race.
+> peer, and drops and counts mismatches, unnamed senders included. By default it never "learns" its peer
+> from whoever writes first, because any process could win that race (an opt-in `learn` mode
+> exists, and is weaker for exactly that reason).
 
 ## How chapter 19 spells it
 
 Each VM gets one option, `--net unixgram:LOCAL,peer=PEER`. macvmm **binds** `LOCAL` (its own name,
-where it receives), **connects** to `PEER` (the other VM's `LOCAL`, where it sends), and accepts a
-datagram only if its source path is exactly `PEER`. Before binding, it runs the four checks on
+where it receives), **sends** every frame to `PEER` (the other VM's `LOCAL`) with `send_to`, and accepts a
+datagram only if its source path is `PEER`. It never calls `connect` on this socket: the peer may not
+exist yet, or may restart and bind again. Before binding, it runs the four checks on
 `LOCAL`. The two VMs' options mirror each other, and both paths should sit in one `mktemp -d`
 directory.
 
@@ -562,13 +571,13 @@ private as their directory.
 
 Commit to an answer before you reveal it.
 
-:::predict Two VMs are started with `--net unixgram:$T/a.sock,peer=$T/b.sock` (VM A) and `--net unixgram:$T/b.sock,peer=$T/a.sock` (VM B). Fill in the blanks: which path does each process bind, which does it connect to, and what source path must each accept on every datagram it receives?
+:::predict Two VMs are started with `--net unixgram:$T/a.sock,peer=$T/b.sock` (VM A) and `--net unixgram:$T/b.sock,peer=$T/a.sock` (VM B). Fill in the blanks: which path does each process bind, which does it send to, and what source path must each accept on every datagram it receives?
 ```text
-VM A:  bind ________   connect ________   accept only source ________
-VM B:  bind ________   connect ________   accept only source ________
+VM A:  bind ________   send to ________   accept only source ________
+VM B:  bind ________   send to ________   accept only source ________
 ```
-VM A binds `$T/a.sock`, connects to `$T/b.sock`, and accepts only datagrams whose source is
-`$T/b.sock`. VM B is the mirror image: binds `$T/b.sock`, connects to `$T/a.sock`, accepts only
+VM A binds `$T/a.sock`, sends to `$T/b.sock`, and accepts only datagrams whose source is
+`$T/b.sock`. VM B is the mirror image: binds `$T/b.sock`, sends to `$T/a.sock`, accepts only
 source `$T/a.sock`. Each process binds its own name so the other can send to it and so the receiver
 can check who sent each datagram. `$T` should be a directory only you can write to.
 :::

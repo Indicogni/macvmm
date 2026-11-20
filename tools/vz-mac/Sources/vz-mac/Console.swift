@@ -88,6 +88,7 @@ struct StrictConsoleFilter {
         expected = length
     }
 
+    // ANCHOR: vz_console_utf8
     private mutating func completeSequence(into out: inout [UInt8]) {
         var cp: UInt32
         switch expected {
@@ -107,6 +108,7 @@ struct StrictConsoleFilter {
         pending.removeAll(keepingCapacity: true)
         expected = 0
     }
+    // ANCHOR_END: vz_console_utf8
 }
 
 /// Copies guest console bytes from a pipe to stdout through `StrictConsoleFilter`, on its own

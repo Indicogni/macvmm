@@ -2,7 +2,7 @@
 title: The arm64 boot protocol
 slug: arm64-boot-protocol
 kind: primer
-minutes: 30
+minutes: 25
 required_by: [06]
 also_used_by: [10, 13]
 objectives:
@@ -11,7 +11,7 @@ objectives:
 - Decode the 64-byte arm64 Image header from a hex dump, including the flags field
 - Compute where the kernel, DTB and initramfs go in RAM and name the booting.rst rule behind each address
 - Say which part of this primer chapters 06, 10 and 13 each rely on
-lab: image-inspector
+labs: [image-inspector]
 ---
 
 # What does a kernel expect on its first instruction?
@@ -529,6 +529,8 @@ Notice that the first two are numbers you could check by reading the plan, while
 about state the plan never mentioned at all. That is what a written protocol is for.
 
 ## Lab
+
+:::lab image-inspector
 
 The `image-inspector` lab lets you drop an Image file onto the page and see its header decoded:
 each field with its offset, the flags split into endianness, page size and placement, and a list

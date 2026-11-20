@@ -1,0 +1,19 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Typed at the / # prompt, one line at a time: the lines shown after each prompt.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 512M --kernel ../.cache/macvmm/Image-virt --initrd ../.cache/macvmm/initramfs-test.img --disk disk.img,ro --on-reset exit --timeout 100 --cmdline "console=ttyAMA0 panic=-1 quiet macvmm.test=shell"
+exit: 0
+--- stdout ---
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+/ # modprobe virtio_mmio; modprobe virtio_blk; sleep 1\x0d
+/ # cat /sys/block/vda/ro\x0d
+1\x0d
+/ # dd if=/dev/zero of=/dev/vda bs=4k count=1 conv=fsync\x0d
+dd: error writing '/dev/vda': Operation not permitted\x0d
+1+0 records in\x0d
+0+0 records out\x0d
+0 bytes (0B) copied, 0.000340 seconds, 0B/s\x0d
+/ # poweroff -f\x0d
+[    9.826434] reboot: Power down\x0d
+
+--- stderr ---

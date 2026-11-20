@@ -1,0 +1,48 @@
+# scripts/capture-cmd 15: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The trace from 15-vda-read.txt: Linux's own virtio-blk driver bringing up slot 0, the first 40 exits in order; fields ipa, wnr (true = a write) and value.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -o '"ipa":"0xa000[^}]*' /tmp/ch15/vda.jsonl | cut -d, -f1,2,5 | head -40
+exit: 0
+--- stdout ---
+"ipa":"0xa000000","wnr":false,"value":"0x74726976"
+"ipa":"0xa000004","wnr":false,"value":"0x2"
+"ipa":"0xa000008","wnr":false,"value":"0x2"
+"ipa":"0xa00000c","wnr":false,"value":"0x4d564d4d"
+"ipa":"0xa000070","wnr":true,"value":"0x0"
+"ipa":"0xa000070","wnr":false,"value":"0x0"
+"ipa":"0xa000070","wnr":true,"value":"0x1"
+"ipa":"0xa000070","wnr":false,"value":"0x1"
+"ipa":"0xa000070","wnr":true,"value":"0x3"
+"ipa":"0xa000014","wnr":true,"value":"0x1"
+"ipa":"0xa000010","wnr":false,"value":"0x1"
+"ipa":"0xa000014","wnr":true,"value":"0x0"
+"ipa":"0xa000010","wnr":false,"value":"0x10000244"
+"ipa":"0xa000024","wnr":true,"value":"0x1"
+"ipa":"0xa000020","wnr":true,"value":"0x1"
+"ipa":"0xa000024","wnr":true,"value":"0x0"
+"ipa":"0xa000020","wnr":true,"value":"0x10000244"
+"ipa":"0xa000070","wnr":false,"value":"0x3"
+"ipa":"0xa000070","wnr":true,"value":"0xb"
+"ipa":"0xa000070","wnr":false,"value":"0xb"
+"ipa":"0xa000030","wnr":true,"value":"0x0"
+"ipa":"0xa000044","wnr":false,"value":"0x0"
+"ipa":"0xa000034","wnr":false,"value":"0x100"
+"ipa":"0xa000038","wnr":true,"value":"0x100"
+"ipa":"0xa000080","wnr":true,"value":"0x4405c000"
+"ipa":"0xa000084","wnr":true,"value":"0x0"
+"ipa":"0xa000090","wnr":true,"value":"0x4405d000"
+"ipa":"0xa000094","wnr":true,"value":"0x0"
+"ipa":"0xa0000a0","wnr":true,"value":"0x4405e000"
+"ipa":"0xa0000a4","wnr":true,"value":"0x0"
+"ipa":"0xa000044","wnr":true,"value":"0x1"
+"ipa":"0xa00010c","wnr":false,"value":"0x7e"
+"ipa":"0xa000114","wnr":false,"value":"0x200"
+"ipa":"0xa0000fc","wnr":false,"value":"0x0"
+"ipa":"0xa000100","wnr":false,"value":"0x20000"
+"ipa":"0xa000104","wnr":false,"value":"0x0"
+"ipa":"0xa0000fc","wnr":false,"value":"0x0"
+"ipa":"0xa000070","wnr":false,"value":"0xb"
+"ipa":"0xa000070","wnr":true,"value":"0xf"
+"ipa":"0xa000050","wnr":true,"value":"0x0"
+
+--- stderr ---

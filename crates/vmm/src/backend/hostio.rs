@@ -454,10 +454,10 @@ pub struct SlotLock {
 }
 
 // ANCHOR: vmapple_slot_lock
-/// Take the first free slot of `slots` in `dir` (M21, ADR-0008 decision 6; threat model
-/// PATH-7), or fail with [`InputError::SlotsBusy`] if every slot is held by another process.
+/// Take the first free slot of `slots` in `dir`, or fail with [`InputError::SlotsBusy`] if
+/// every slot is held by another process (two slots: the macOS licence permits two more copies).
 ///
-/// PATH-7: the names are fixed (`0.lock`, `1.lock`); nothing in them comes from the guest or
+/// The names are fixed (`0.lock`, `1.lock`); nothing in them comes from the guest or
 /// the user except `dir` itself. `dir` is created `0700`, and an existing one must be a real
 /// directory (not a symlink) owned by us with no group or other permission bits, so another
 /// user can neither take our slots nor plant a link where a lock file goes. Each file is
@@ -489,6 +489,7 @@ pub fn take_slot(dir: &Path, slots: u32) -> core::result::Result<SlotLock, Input
     if meta.mode() & 0o077 != 0 {
         return Err(bad("group or other users have access (it must be 0700)"));
     }
+    // ANCHOR: vmapple_slot_loop
     for slot in 0..slots {
         let path = dir.join(format!("{slot}.lock"));
         let (file, _) = open_output(&path, &[])?;
@@ -510,15 +511,16 @@ pub fn take_slot(dir: &Path, slots: u32) -> core::result::Result<SlotLock, Input
         dir: dir.to_path_buf(),
         slots,
     })
+    // ANCHOR_END: vmapple_slot_loop
 }
 // ANCHOR_END: vmapple_slot_lock
 
 // ANCHOR: hostio_net_dir
-/// NET-3: the directory holding a `--net` socket path must be a real directory (checked with
+/// The directory holding a `--net` socket path must be a real directory (checked with
 /// `symlink_metadata`, so a symlinked directory is refused), owned by us and not group- or
 /// world-writable. Otherwise another local user could create, replace or connect to the socket
-/// file (attacker A4, threat model §7.14). The socket file itself is 0600 through the startup
-/// `umask(0o077)` (PATH-6).
+/// file (see `docs/security/threat-model.md`). The socket file itself is `srwx------` (owner
+/// only) because of the startup `umask(0o077)`.
 fn check_socket_dir(path: &Path) -> core::result::Result<(), InputError> {
     let dir = path
         .parent()
@@ -552,13 +554,14 @@ fn absolute(p: &Path) -> core::result::Result<PathBuf, InputError> {
         })
 }
 
-/// The spellings a datagram from the peer may carry as its source (NET-1): the absolute path,
+// ANCHOR: hostio_peer_spellings
+/// The spellings a datagram from the peer may carry as its source: the absolute path,
 /// and the same path with its directory resolved (`/tmp/x/b.sock` and `/private/tmp/x/b.sock`
 /// are the same socket on macOS). Only *our* configuration is resolved, here, once; a received
 /// source path is never resolved, so a sender cannot pass by binding a symlink.
 ///
 /// A relative `peer=` as typed is **not** a spelling: a datagram's source is the sender's
-/// `sun_path` exactly as it was bound `[V]`, so `b.sock` bound from *any* directory arrives as
+/// `sun_path` exactly as it was bound (checked on a real Mac), so `b.sock` bound from *any* directory arrives as
 /// `b.sock`. Accepting it would let any process that can write to LOCAL pose as the peer from a
 /// directory of its own choosing. A macvmm peer never needs it: `open_unixgram` always binds an
 /// absolute LOCAL.
@@ -575,6 +578,7 @@ fn peer_spellings(abs: &Path) -> Vec<PathBuf> {
     }
     out
 }
+// ANCHOR_END: hostio_peer_spellings
 
 // ANCHOR: hostio_net_socket
 /// Set up one `--net unixgram` NIC's socket (architecture §11.3, threat model NET-1..4):
@@ -603,6 +607,7 @@ pub fn open_unixgram(
         }
         NetPeer::Learn => PeerSpec::Learn,
     };
+    // ANCHOR: hostio_net_stale
     match std::fs::symlink_metadata(&local) {
         Err(e) if e.kind() == io::ErrorKind::NotFound => {}
         Err(err) => return Err(InputError::NetSetup { path: local, err }),
@@ -625,6 +630,7 @@ pub fn open_unixgram(
             }
         }
     }
+    // ANCHOR_END: hostio_net_stale
     UnixgramBackend::bind(&local, peer).map_err(|e| InputError::NetBind {
         why: e.to_string(),
         path: local,

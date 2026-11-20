@@ -1,0 +1,40 @@
+# scripts/capture-cmd 21: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Two edits in a copy of the reference: RomRegion::map in crates/vmm/src/memory/host.rs maps the flash with MemFlags::RWX instead of MemFlags::RX, and the ISV=0 branch in crates/vmm/src/vcpu/mmio.rs returns chapter 07's fatal stop instead of calling the decoder.
+# disk.img is an empty 16 MiB file. At the prompts a script typed: Enter, version, virtio scan; virtio info, poweroff.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --bios .cache/macvmm/u-boot.bin --mem 512M --disk disk.img --on-reset exit
+exit: 0
+--- stdout ---
+Bloblist at 0 not found (err=-2)\x0d
+alloc space exhausted ptr 400 limit 0\x0d
+Bloblist at 0 not found (err=-2)\x0d
+\x0d
+\x0d
+U-Boot 2026.04 (Apr 21 2026 - 09:17:42 +0000)\x0d
+\x0d
+DRAM:  512 MiB\x0d
+using memory 0x5e65a000-0x5f69a000 for malloc()\x0d
+Core:  15 devices, 9 uclasses, devicetree: board\x0d
+Flash: 0 Bytes\x0d
+Loading Environment from Flash... *** Warning - bad CRC, using default environment\x0d
+\x0d
+In:    serial,usbkbd\x0d
+Out:   serial,vidconsole\x0d
+Err:   serial,vidconsole\x0d
+No USB controllers found\x0d
+Net:   No ethernet found.\x0d
+\x1b[?25h\x0d
+\x1b[2K\x0dHit any key to stop autoboot: 2\x1b[2K\x0dHit any key to stop autoboot: 0\x0d
+=> version\x0d
+U-Boot 2026.04 (Apr 21 2026 - 09:17:42 +0000)\x0d
+\x0d
+gcc (Alpine 15.2.0) 15.2.0\x0d
+GNU ld (GNU Binutils) 2.45.1\x0d
+=> virtio scan; virtio info\x0d
+Device 0: MMVM VirtIO Block Device\x0d
+            Type: Hard Disk\x0d
+            Capacity: 16.0 MB = 0.0 GB (32768 x 512)\x0d
+=> poweroff\x0d
+poweroff ...\x0d
+
+--- stderr ---

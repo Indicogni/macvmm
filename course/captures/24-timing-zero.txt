@@ -1,0 +1,13 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ jq -s '(.[-1].t_ns) as $end | {first_ms: (.[0].t_ns / 1e6), last_mmio_ms: ([.[] | select(.action == "mmio") | .t_ns] | max / 1e6), end_ms: ($end / 1e6), exits_in_last_10ms: ([.[] | select(.t_ns > $end - 1e7)] | length)}' .cache/vmapple/avp.jsonl
+exit: 0
+--- stdout ---
+{
+  "first_ms": 0.185166,
+  "last_mmio_ms": 0.491,
+  "end_ms": 20003.9185,
+  "exits_in_last_10ms": 1
+}
+
+--- stderr ---

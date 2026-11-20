@@ -1,0 +1,12 @@
+# scripts/capture-cmd 21: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# uboot.jsonl was written by: cargo run -q -p macvmm -- run --bios .cache/macvmm/u-boot.bin --mem 512M --trace exits:uboot.jsonl:mmio (Enter at the countdown, then poweroff); 145,314 records.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ head -n 4 uboot.jsonl
+exit: 0
+--- stdout ---
+{"t_ns":140791,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x17c","ipa":"0x12c668","wnr":true,"size":8,"reg":0,"value":"0x40000000","action":"mmio","isv":false}
+{"t_ns":174916,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x180","ipa":"0x12c678","wnr":true,"size":8,"reg":2,"value":"0x0","action":"mmio","isv":false}
+{"t_ns":196958,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4f634","ipa":"0x9000030","wnr":true,"size":4,"reg":1,"value":"0x0","action":"mmio","isv":true}
+{"t_ns":201750,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x4f644","ipa":"0x900002c","wnr":true,"size":4,"reg":1,"value":"0x70","action":"mmio","isv":true}
+
+--- stderr ---

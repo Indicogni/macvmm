@@ -1,0 +1,8 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Terminal 2, run once terminal 1 showed the dd summary.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ kill -9 $(lsof -a -c macvmm -t disk.img)
+exit: 0
+--- stdout ---
+
+--- stderr ---

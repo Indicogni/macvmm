@@ -1,0 +1,32 @@
+# scripts/capture-cmd 00: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The finished reference VMM, not yet yours. guest-as-process.sh, a helper written for this capture and run from the repository root, verbatim:
+#   set -euo pipefail
+#   log="$(mktemp)"
+#   scripts/sign-and-run.sh target/debug/macvmm run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --cpus 2 --serial "file:$log" --timeout 8 &
+#   vmm=$!
+#   sleep 4
+#   echo "== the last lines Linux printed on its console =="
+#   tail -n 3 "$log" | tr -d '\r'; echo
+#   echo "== the same moment, seen from macOS =="
+#   ps -o pid,%cpu,rss,ucomm -p "$vmm"
+#   echo "threads in that process: $(( $(ps -M -p "$vmm" | wc -l) - 1 ))"
+#   rc=0; wait "$vmm" || rc=$?
+#   echo "macvmm exit code: $rc"
+#   rm -f -- "$log"
+# ps -M prints a header line and one line per thread, hence the minus one.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ bash guest-as-process.sh
+exit: 0
+--- stdout ---
+== the last lines Linux printed on its console ==
+[    0.113263] Run /init as init process
+macvmm-initramfs: ready 6.18.60-0-virt
+/ # 
+== the same moment, seen from macOS ==
+  PID  %CPU    RSS UCOMM
+29876   0.0 241152 macvmm          
+threads in that process: 6
+macvmm exit code: 5
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 8s

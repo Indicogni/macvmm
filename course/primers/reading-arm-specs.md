@@ -2,8 +2,8 @@
 title: Reading the ARM ARM and other primary specs
 slug: reading-arm-specs
 kind: primer
-minutes: 30
-required_by: 07
+minutes: 25
+required_by: [07]
 also_used_by: [01, 02, 08, 09, 10, 12, 15]
 objectives:
 - Find any AArch64 system register's page in DDI 0487 by its title, and name the five parts of that page
@@ -11,7 +11,7 @@ objectives:
 - Read a short piece of Arm pseudocode (bit slices, bit strings, X[], UInt, SignExtend) and say what it does
 - Say what RES0, RES1, RAZ/WI, UNKNOWN, UNDEFINED and IMPLEMENTATION DEFINED oblige the hardware, the guest and our VMM to do
 - Tell a virtio MUST from a SHOULD, and find the DTB header layout in chapter 5 of the Devicetree Specification
-lab: esr-decoder
+labs: [esr-decoder]
 ---
 
 # What does 0x93810046 mean?
@@ -43,10 +43,14 @@ precision it intends.
 - Tell a virtio MUST from a SHOULD, and find the DTB header layout in chapter 5 of the Devicetree Specification.
 :::
 
-Before you start: you should have read the
-[`aarch64-reading` primer](/build-your-own/vmm/primers/aarch64-reading/) and met the exception
-syndrome in [chapter 02](/build-your-own/vmm/bare-machine/first-exit/), where we read its top six
-bits once. Five things from that primer are used here without comment:
+:::prereqs
+- The [`aarch64-reading`](/build-your-own/vmm/primers/aarch64-reading/) primer: registers, loads and stores, system-register names and
+  bit fields.
+- [Chapter 02](/build-your-own/vmm/bare-machine/first-exit/), where you met the exception
+  syndrome and read its top six bits once.
+:::
+
+Five things from the `aarch64-reading` primer are used here without comment:
 
 - **Exception levels.** Arm code runs at a privilege level: EL0 for apps, EL1 for a kernel, EL2
   for a hypervisor. The guest runs at EL0 and EL1, and from EL2's point of view those are "lower
@@ -492,6 +496,8 @@ VM), never a precondition our code depends on for memory safety.
 :::
 
 ## Lab
+
+:::lab esr-decoder
 
 The lab for this primer is the [`esr-decoder`](/build-your-own/vmm/labs/esr-decoder/). Paste a
 syndrome and it splits it into EC, IL and the ISS fields, so you can check your hand decoding

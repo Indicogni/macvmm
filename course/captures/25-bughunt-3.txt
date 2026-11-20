@@ -1,0 +1,10 @@
+# scripts/capture.sh 25: run "bughunt-3" of course/checkpoints/25, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+$ course/checkpoints/25/bughunt.sh <repo> <repo> {out} 3 540
+exit: 0
+--- stdout ---
+bughunt: plant 3 (ring-index off-by-one) found after 0s
+    fuzz virtqueue: FAILURE at iteration 22 (seed 1): device wrote 0x40003014+8 outside the writable buffers and the used ring (used ring 0x40003000+0x16; VQ-9)
+
+--- stderr ---
+

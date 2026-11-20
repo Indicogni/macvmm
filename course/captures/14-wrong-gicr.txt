@@ -1,0 +1,176 @@
+# scripts/capture-cmd 14: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 2: in crates/vmm/src/fdt/machine.rs, the /intc node's redistributor region says GICR_BASE + 0x20000 (0x080c0000) instead of GICR_BASE (0x080a0000); the GIC itself is unchanged.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=boot" --timeout 10
+exit: 5
+--- stdout ---
+[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x610f0000]\x0d
+[    0.000000] Linux version 6.18.60-0-virt (buildozer@build-3-24-aarch64) (cc (Alpine 15.2.0) 15.2.0, GNU ld (GNU Binutils) 2.45.1) #1-Alpine SMP PREEMPT_DYNAMIC 2026-11-01 07:26:31\x0d
+[    0.000000] random: crng init done\x0d
+[    0.000000] Machine model: macvmm-virt\x0d
+[    0.000000] earlycon: pl11 at MMIO 0x0000000009000000 (options '')\x0d
+[    0.000000] printk: legacy bootconsole [pl11] enabled\x0d
+[    0.000000] efi: UEFI not found.\x0d
+[    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT\x0d
+[    0.000000] NUMA: Faking a node at [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000] NODE_DATA(0) allocated [mem 0x5fd03780-0x5fd05c3f]\x0d
+[    0.000000] Zone ranges:\x0d
+[    0.000000]   DMA      [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000]   DMA32    empty\x0d
+[    0.000000]   Normal   empty\x0d
+[    0.000000] Movable zone start for each node\x0d
+[    0.000000] Early memory node ranges\x0d
+[    0.000000]   node   0: [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000] Initmem setup node 0 [mem 0x0000000040000000-0x000000005fffffff]\x0d
+[    0.000000] psci: probing for conduit method from DT.\x0d
+[    0.000000] psci: PSCIv1.1 detected in firmware.\x0d
+[    0.000000] psci: Using standard PSCI v0.2 function IDs\x0d
+[    0.000000] psci: Trusted OS migration not required\x0d
+[    0.000000] psci: SMC Calling Convention v1.1\x0d
+[    0.000000] percpu: Embedded 34 pages/cpu s99608 r8192 d31464 u139264\x0d
+[    0.000000] Detected PIPT I-cache on CPU0\x0d
+[    0.000000] CPU features: detected: Address authentication (IMP DEF algorithm)\x0d
+[    0.000000] CPU features: detected: GICv3 CPU interface\x0d
+[    0.000000] CPU features: detected: Spectre-v4\x0d
+[    0.000000] CPU features: detected: Spectre-BHB\x0d
+[    0.000000] alternatives: applying boot alternatives\x0d
+[    0.000000] Kernel command line: console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=boot\x0d
+[    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes\x0d
+[    0.000000] Dentry cache hash table entries: 65536 (order: 7, 524288 bytes, linear)\x0d
+[    0.000000] Inode-cache hash table entries: 32768 (order: 6, 262144 bytes, linear)\x0d
+[    0.000000] software IO TLB: SWIOTLB bounce buffer size adjusted to 0MB\x0d
+[    0.000000] software IO TLB: area num 1.\x0d
+[    0.000000] software IO TLB: mapped [mem 0x000000005f380000-0x000000005f400000] (0MB)\x0d
+[    0.000000] Fallback order for Node 0: 0 \x0d
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 131072\x0d
+[    0.000000] Policy zone: DMA\x0d
+[    0.000000] mem auto-init: stack:all(zero), heap alloc:on, heap free:off\x0d
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1\x0d
+[    0.000000] Dynamic Preempt: none\x0d
+[    0.000000] rcu: Preemptible hierarchical RCU implementation.\x0d
+[    0.000000] rcu: 	RCU restricting CPUs from NR_CPUS=4096 to nr_cpu_ids=1.\x0d
+[    0.000000] 	Trampoline variant of Tasks RCU enabled.\x0d
+[    0.000000] 	Tracing variant of Tasks RCU enabled.\x0d
+[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 100 jiffies.\x0d
+[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=1\x0d
+[    0.000000] RCU Tasks: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.\x0d
+[    0.000000] RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.\x0d
+[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0\x0d
+[    0.000000] GICv3: 988 SPIs implemented\x0d
+[    0.000000] GICv3: 0 Extended SPIs implemented\x0d
+[    0.000000] Root IRQ handler: gic_handle_irq\x0d
+[    0.000000] GICv3: No redistributor present @(____ptrval____)\x0d
+[    0.000000] ------------[ cut here ]------------\x0d
+[    0.000000] WARNING: CPU: 0 PID: 0 at drivers/irqchip/irq-gic-v3.c:1174 gic_init_bases+0x444/0xf24\x0d
+[    0.000000] Modules linked in:\x0d
+[    0.000000] CPU: 0 UID: 0 PID: 0 Comm: swapper/0 Not tainted 6.18.60-0-virt #1-Alpine PREEMPT(none) \x0d
+[    0.000000] Hardware name: macvmm-virt (DT)\x0d
+[    0.000000] pstate: 600000c5 (nZCv daIF -PAN -UAO -TCO -DIT -SSBS BTYPE=--)\x0d
+[    0.000000] pc : gic_init_bases+0x444/0xf24\x0d
+[    0.000000] lr : gic_init_bases+0x41c/0xf24\x0d
+[    0.000000] sp : ffff800081783b90\x0d
+[    0.000000] x29: ffff800081783bf0 x28: ffff800081793fc8 x27: 0000000008000000\x0d
+[    0.000000] x26: ffff000003007340 x25: 0000000000000001 x24: 000000000478001f\x0d
+[    0.000000] x23: ffff800081793fc8 x22: ffff8000818a3000 x21: ffff00001fd07028\x0d
+[    0.000000] x20: ffff800081793dc8 x19: 8efbc393b3c330a0 x18: 0000000000000000\x0d
+[    0.000000] x17: 0000000000000000 x16: 0000000000000000 x15: 0000000000000000\x0d
+[    0.000000] x14: 0000000000000000 x13: 0000000000000000 x12: 0000000000000000\x0d
+[    0.000000] x11: 0000000000000000 x10: 0000000000000000 x9 : 0000000000000000\x0d
+[    0.000000] x8 : 0000000000000000 x7 : 0000000000000000 x6 : 0000000000000000\x0d
+[    0.000000] x5 : 0000000000000000 x4 : 0000000000000000 x3 : 0000000000000000\x0d
+[    0.000000] x2 : 0000000000000000 x1 : 00000000ffffffff x0 : 56f499ba3a082d85\x0d
+[    0.000000] Call trace:\x0d
+[    0.000000]  gic_init_bases+0x444/0xf24 (P)\x0d
+[    0.000000]  gic_of_init+0x2ec/0x4cc\x0d
+[    0.000000]  of_irq_init+0x450/0x788\x0d
+[    0.000000]  irqchip_init+0x24/0x84\x0d
+[    0.000000]  init_IRQ+0xf4/0x158\x0d
+[    0.000000]  start_kernel+0x578/0x758\x0d
+[    0.000000]  __primary_switched+0x88/0x90\x0d
+[    0.000000] ---[ end trace 0000000000000000 ]---\x0d
+[    0.000000] GICv3: GICv3 features: 0 PPIs, RSS, DirectLPI\x0d
+[    0.000000] GICv3: GICv4 features: DirectLPI RVPEID Valid+Dirty \x0d
+[    0.000000] GICv3: GICD_CTLR.DS=1, SCR_EL3.FIQ=0\x0d
+[    0.000000] GICv3: No redistributor present @(____ptrval____)\x0d
+[    0.000000] ------------[ cut here ]------------\x0d
+[    0.000000] CPU0: mpidr 0 has no re-distributor!\x0d
+[    0.000000] WARNING: CPU: 0 PID: 0 at drivers/irqchip/irq-gic-v3.c:1113 gic_init_bases+0xc9c/0xf24\x0d
+[    0.000000] Modules linked in:\x0d
+[    0.000000] CPU: 0 UID: 0 PID: 0 Comm: swapper/0 Tainted: G        W           6.18.60-0-virt #1-Alpine PREEMPT(none) \x0d
+[    0.000000] Tainted: [W]=WARN\x0d
+[    0.000000] Hardware name: macvmm-virt (DT)\x0d
+[    0.000000] pstate: 600000c5 (nZCv daIF -PAN -UAO -TCO -DIT -SSBS BTYPE=--)\x0d
+[    0.000000] pc : gic_init_bases+0xc9c/0xf24\x0d
+[    0.000000] lr : gic_init_bases+0xc9c/0xf24\x0d
+[    0.000000] sp : ffff800081783b90\x0d
+[    0.000000] x29: ffff800081783bf0 x28: ffff800081793fc8 x27: 0000000008000000\x0d
+[    0.000000] x26: ffff000003007340 x25: 0000000000000001 x24: 0000000000000000\x0d
+[    0.000000] x23: ffff8000810bb000 x22: ffff8000818a3000 x21: ffff00001fd07028\x0d
+[    0.000000] x20: ffff800081793dc8 x19: bc779336ef2c5a3b x18: 0000000000000000\x0d
+[    0.000000] x17: 0000000000000000 x16: 0000000000000000 x15: 0000000000000000\x0d
+[    0.000000] x14: 0000000000000000 x13: 0000000000000000 x12: 0000000000000000\x0d
+[    0.000000] x11: 0000000000000000 x10: 0000000000000000 x9 : 0000000000000000\x0d
+[    0.000000] x8 : 0000000000000000 x7 : 0000000000000000 x6 : 0000000000000000\x0d
+[    0.000000] x5 : 0000000000000000 x4 : 0000000000000000 x3 : 0000000000000000\x0d
+[    0.000000] x2 : 0000000000000000 x1 : 0000000000000000 x0 : 0000000000000000\x0d
+[    0.000000] Call trace:\x0d
+[    0.000000]  gic_init_bases+0xc9c/0xf24 (P)\x0d
+[    0.000000]  gic_of_init+0x2ec/0x4cc\x0d
+[    0.000000]  of_irq_init+0x450/0x788\x0d
+[    0.000000]  irqchip_init+0x24/0x84\x0d
+[    0.000000]  init_IRQ+0xf4/0x158\x0d
+[    0.000000]  start_kernel+0x578/0x758\x0d
+[    0.000000]  __primary_switched+0x88/0x90\x0d
+[    0.000000] ---[ end trace 0000000000000000 ]---\x0d
+[    0.000000] Unable to handle kernel paging request at virtual address 0000000000010100\x0d
+[    0.000000] Mem abort info:\x0d
+[    0.000000]   ESR = 0x0000000096000044\x0d
+[    0.000000]   EC = 0x25: DABT (current EL), IL = 32 bits\x0d
+[    0.000000]   SET = 0, FnV = 0\x0d
+[    0.000000]   EA = 0, S1PTW = 0\x0d
+[    0.000000]   FSC = 0x04: level 0 translation fault\x0d
+[    0.000000] Data abort info:\x0d
+[    0.000000]   ISV = 0, ISS = 0x00000044, ISS2 = 0x00000000\x0d
+[    0.000000]   CM = 0, WnR = 1, TnD = 0, TagAccess = 0\x0d
+[    0.000000]   GCS = 0, Overlay = 0, DirtyBit = 0, Xs = 0\x0d
+[    0.000000] [0000000000010100] user address but active_mm is swapper\x0d
+[    0.000000] Internal error: Oops: 0000000096000044 [#1]  SMP\x0d
+[    0.000000] Modules linked in:\x0d
+[    0.000000] CPU: 0 UID: 0 PID: 0 Comm: swapper/0 Tainted: G        W           6.18.60-0-virt #1-Alpine PREEMPT(none) \x0d
+[    0.000000] Tainted: [W]=WARN\x0d
+[    0.000000] Hardware name: macvmm-virt (DT)\x0d
+[    0.000000] pstate: 800000c5 (Nzcv daIF -PAN -UAO -TCO -DIT -SSBS BTYPE=--)\x0d
+[    0.000000] pc : gic_poke_irq+0x68/0xe0\x0d
+[    0.000000] lr : gic_poke_irq+0x2c/0xe0\x0d
+[    0.000000] sp : ffff800081783a00\x0d
+[    0.000000] x29: ffff800081783a10 x28: ffff8000818a3000 x27: ffff800080fea730\x0d
+[    0.000000] x26: ffff80008003f510 x25: ffff800081790bc0 x24: ffff8000816dc008\x0d
+[    0.000000] x23: 0000000000000001 x22: 0000000000000000 x21: 0000000000000000\x0d
+[    0.000000] x20: 0000000000000000 x19: ffff000003036400 x18: 0000000000000000\x0d
+[    0.000000] x17: 0000000000000000 x16: 0000000000000000 x15: 0000000000000000\x0d
+[    0.000000] x14: 0000000000000000 x13: 0000000000000000 x12: 0000000000000000\x0d
+[    0.000000] x11: 0000000000000000 x10: 0000000000000000 x9 : 0000000000000000\x0d
+[    0.000000] x8 : 0000000000000000 x7 : 0000000000000000 x6 : ffff000003036430\x0d
+[    0.000000] x5 : 0000000000000000 x4 : ffff7fff9e5f0000 x3 : 0000000000000001\x0d
+[    0.000000] x2 : 0000000000010100 x1 : 0000000000000000 x0 : 0000000000000100\x0d
+[    0.000000] Call trace:\x0d
+[    0.000000]  gic_poke_irq+0x68/0xe0 (P)\x0d
+[    0.000000]  gic_unmask_irq+0x14/0x30\x0d
+[    0.000000]  irq_percpu_enable+0x2c/0xc0\x0d
+[    0.000000]  enable_percpu_irq+0x9c/0x124\x0d
+[    0.000000]  ipi_setup+0x60/0xd0\x0d
+[    0.000000]  set_smp_ipi_range_percpu+0x3fc/0x464\x0d
+[    0.000000]  gic_init_bases+0xd70/0xf24\x0d
+[    0.000000]  gic_of_init+0x2ec/0x4cc\x0d
+[    0.000000]  of_irq_init+0x450/0x788\x0d
+[    0.000000]  irqchip_init+0x24/0x84\x0d
+[    0.000000]  init_IRQ+0xf4/0x158\x0d
+[    0.000000]  start_kernel+0x578/0x758\x0d
+[    0.000000]  __primary_switched+0x88/0x90\x0d
+[    0.000000] Code: 53057c21 d37e6821 8b204020 8b000042 (b9000043) \x0d
+[    0.000000] ---[ end trace 0000000000000000 ]---\x0d
+[    0.000000] Kernel panic - not syncing: Attempted to kill the idle task!\x0d
+[    0.000000] ---[ end Kernel panic - not syncing: Attempted to kill the idle task! ]---\x0d
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 10s

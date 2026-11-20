@@ -1,0 +1,18 @@
+# scripts/capture-cmd 08: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# sysreg-probe with one added line at the start of main that reads ID_AA64DFR0_EL1 and prints it with its PMUVer field (bits 11:8); the VMM is the reference, in the default configuration. Run in a copy of the reference with that edit.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/sysreg-probe.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+sysreg-probe: ID_AA64DFR0_EL1=0x10305006 PMUVer=0
+sysreg-probe: undef count=1 ec=0x0
+sysreg-probe: elr ok (the mrs at 0x400811ec; Rt untouched)
+sysreg-probe: lo=1 lorid=0x0 undef count=0
+sysreg-probe: lorid ok
+sysreg-probe: mdccsr undef count=1 ec=0x0
+sysreg-probe: mdccsr elr ok (the mrs at 0x40081048; Rt untouched)
+sysreg-probe: oslsr after lock=0xa after unlock=0x8
+sysreg-probe: oslsr ok
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: vcpu0: MRS MDCCSR_EL0 at pc 0x40081048: injecting UNDEF

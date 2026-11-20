@@ -1,0 +1,5 @@
+hostile-reset: boot 0
+hostile-reset: boot 10
+!guest exception
+!hostile-reset: boot 11
+[stderr] reset storm

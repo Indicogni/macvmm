@@ -1,0 +1,31 @@
+# scripts/capture-cmd 21: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: plan_isv0 in crates/vmm/src/arch/insn.rs drops the exit-IPA comparison and sends the access to the IPA its own stage-1 walk computed.
+# Run in a copy of the reference with that one edit.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test insn_decode
+exit: 101
+--- stdout ---
+
+running 15 tests
+............ 12/15
+isv0_ipa_mismatch_aborts --- FAILED
+..
+failures:
+
+---- isv0_ipa_mismatch_aborts stdout ----
+
+thread 'isv0_ipa_mismatch_aborts' (121376358) panicked at crates/vmm/tests/insn_decode.rs:498:5:
+assertion `left == right` failed
+  left: Ok(Commit { loads: [None, None], writeback: None })
+ right: Err(Refused(AddressMismatch { decoded: 184553480, exit: 184549384 }))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    isv0_ipa_mismatch_aborts
+
+test result: FAILED. 14 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+
+--- stderr ---
+error: test failed, to rerun pass `-p vmm --test insn_decode`

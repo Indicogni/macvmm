@@ -76,20 +76,20 @@ use std::time::{Duration, Instant};
 // ANCHOR: vtimer_offset_boot
 /// The virtual-counter offset of a new boot: the host tick count now, so the guest's
 /// `CNTVCT_EL0 = mach_absolute_time() - offset` starts at 0. `Machine::build` captures it once
-/// and every vCPU of the boot gets the same value before its first run (architecture §8.1).
+/// and every vCPU of the boot gets the same value before its first run, so all CPUs agree.
 pub fn boot_offset() -> u64 {
     hvf::host::mach_absolute_time()
 }
 
 /// The guest's counter at host tick `mach` under `offset` (modulo 2^64, as the hardware
-/// subtracts `CNTVOFF`).
+/// subtracts the offset).
 pub const fn guest_counter(mach: u64, offset: u64) -> u64 {
     mach.wrapping_sub(offset)
 }
 
 /// The offset that makes the guest's counter read `saved_cntvct` at host tick `mach_now`, so a
 /// paused or restored guest continues where it stopped and never sees time run backwards
-/// (architecture §9 "restore rule").
+/// (the restore rule).
 pub const fn restore_offset(mach_now: u64, saved_cntvct: u64) -> u64 {
     mach_now.wrapping_sub(saved_cntvct)
 }
@@ -100,6 +100,7 @@ pub fn pl031_time_base() -> WallClock {
     pl031::host_clock()
 }
 
+// ANCHOR: timer_cntv_ctl
 /// `CNTV_CTL_EL0` bits (ARM ARM D19.11.15).
 pub mod cntv_ctl {
     pub const ENABLE: u64 = 1 << 0;
@@ -111,6 +112,7 @@ pub mod cntv_ctl {
 pub const fn timer_asserted(ctl: u64) -> bool {
     ctl & cntv_ctl::ENABLE != 0 && ctl & cntv_ctl::IMASK == 0 && ctl & cntv_ctl::ISTATUS != 0
 }
+// ANCHOR_END: timer_cntv_ctl
 
 /// The longest one no-GIC WFI sleep lasts before the stop flag and the timer registers are
 /// checked again (a named cap: the guest picks the deadline, we pick the granularity).
@@ -127,8 +129,8 @@ pub enum WfiWait {
 
 // ANCHOR: nogic_wfi_deadline
 /// How long a WFI may sleep in the no-GIC mode, from the guest's `CNTV_CTL` and `CNTV_CVAL`,
-/// the boot's counter `offset`, the host tick count `now` and the host timebase (module docs,
-/// "Hostile values").
+/// the boot's counter `offset`, the host tick count `now` and the host timebase. Both registers
+/// are guest-written, so every input, however hostile, ends in a bounded answer.
 ///
 /// - timer disabled or masked: there is no deadline; sleep one slice (only a stop ends it);
 /// - condition already met, or `CVAL` in the past: wake;
@@ -164,6 +166,8 @@ pub fn nogic_wfi_wait(
 }
 // ANCHOR_END: nogic_wfi_deadline
 
+// ANCHOR: nogic_timer_line
+// ANCHOR: nogic_entry_action
 /// What to do before entering the guest in the no-GIC mode.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct EntryAction {
@@ -173,7 +177,8 @@ pub struct EntryAction {
     pub assert_irq: bool,
 }
 
-/// One vCPU's interrupt line in the no-GIC mode (module docs table).
+/// One vCPU's interrupt line in the no-GIC mode: raised by a VTIMER exit, re-asserted before
+/// each entry, dropped (and the vtimer unmasked) once the guest's timer stops asserting.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NoGicTimer {
     /// The boot's counter offset (for WFI deadlines).
@@ -193,6 +198,8 @@ impl NoGicTimer {
             line: false,
         }
     }
+    // ANCHOR_END: nogic_entry_action
+    // ANCHOR: nogic_before_entry_rule
 
     /// Is the IRQ line up?
     pub fn line(&self) -> bool {
@@ -221,7 +228,9 @@ impl NoGicTimer {
     pub fn irq_pending(&self, ctl: u64) -> bool {
         self.line && timer_asserted(ctl)
     }
+    // ANCHOR_END: nogic_before_entry_rule
 }
+// ANCHOR_END: nogic_timer_line
 
 /// How long the no-GIC IRQ line may stay asserted in one `hv_vcpu_run` before the VMM forces
 /// an exit to re-read `CNTV_CTL` (module docs, "Why the kick"). 1 ms: short against the
@@ -245,9 +254,10 @@ struct KickShared {
 /// A one-shot deadline on a helper thread: [`LineKicker::arm`] makes `fire` run once, `after`
 /// from now, unless [`LineKicker::disarm`] comes first. In the no-GIC mode `fire` is
 /// `hv_vcpus_exit` for the vCPU, so a stale pending IRQ lasts at most one
-/// [`NOGIC_LINE_RECHECK`] (module docs, "Why the kick"). A kick that lands while the vCPU is
-/// outside `hv_vcpu_run` is sticky and costs one spurious `CANCELED` exit, which the run loop
-/// already tolerates (spike finding 19). Dropping the kicker stops and joins the thread.
+/// [`NOGIC_LINE_RECHECK`]: the guest silences its timer without an exit, and only an exit lets
+/// us drop the line. A kick that lands while the vCPU is outside `hv_vcpu_run` is sticky and
+/// costs one spurious `CANCELED` exit, which the run loop already tolerates (verified on a real
+/// Mac). Dropping the kicker stops and joins the thread.
 #[derive(Debug)]
 pub struct LineKicker {
     shared: Arc<KickShared>,

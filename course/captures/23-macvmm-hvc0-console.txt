@@ -1,0 +1,8 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified, now with a virtio-console on standard output (--console stdio) and the PL011 sent nowhere (--serial none), because only one of the two may be stdio.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --serial none --console stdio --cmdline "console=hvc0 macvmm.test=boot" --timeout 30
+exit: 0
+--- stdout ---
+
+--- stderr ---

@@ -35,16 +35,19 @@
 //! **Totality (MMIO-1).** The syndrome comes from hardware describing what a hostile guest did,
 //! so [`Exit::decode`] is a pure function that is defined for every `u64`: it only shifts and
 //! masks, never indexes, and has no `unwrap`. `tests/esr_vectors.rs` sweeps a million xorshift
-//! values through it. The data-abort fields are decoded even when ISV is 0; they are then
-//! architecturally UNKNOWN, and `vcpu/mmio.rs` must not use them (it refuses ISV=0 until M17).
+//! values through it. The data-abort fields are decoded even when ISV is 0; bits 23:14 are
+//! then RES0 (no valid instruction syndrome), and `vcpu/mmio.rs` must not use them (it
+//! refuses ISV=0 until M17).
 //!
 //! **What is not decided here.** This module says what an exit *is*; `vcpu/exit.rs` decides
 //! what it *means* (the PC-advance table), and `vcpu/mmio.rs` emulates data aborts.
+// ANCHOR: esr_lints
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
     clippy::cast_possible_truncation
 )]
+// ANCHOR_END: esr_lints
 
 use core::fmt;
 use hvf::{ExitReason, SysReg};
@@ -73,6 +76,8 @@ pub mod ec {
     pub const BRK64: u8 = 0x3c;
 }
 
+// ANCHOR: esr_fields
+// ANCHOR: esr_field_helpers
 /// The value of `width` bits of `v` starting at bit `lo` (`width ≤ 16`). Total: the mask is
 /// built with a checked shift and the result fits by construction.
 const fn field(v: u64, lo: u32, width: u32) -> u64 {
@@ -102,6 +107,8 @@ const fn bit(v: u64, n: u32) -> bool {
     field(v, n, 1) != 0
 }
 
+// ANCHOR_END: esr_field_helpers
+// ANCHOR: esr_header_fields
 /// `ESR.EC`, bits 31:26.
 pub const fn esr_ec(esr: u64) -> u8 {
     field8(esr, 26, 6)
@@ -117,8 +124,11 @@ pub const fn esr_il(esr: u64) -> bool {
 pub const fn esr_iss(esr: u64) -> u32 {
     (field(esr, 0, 25) & 0x01ff_ffff) as u32
 }
+// ANCHOR_END: esr_header_fields
+// ANCHOR_END: esr_fields
 
-/// A data abort's syndrome (architecture §6.4; module docs table). [frozen ch07]
+// ANCHOR: esr_data_abort_struct
+/// A data abort's syndrome (the module docs table). Frozen: later chapters use this shape.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DataAbort {
     pub isv: bool,
@@ -134,7 +144,9 @@ pub struct DataAbort {
     pub wnr: bool,
     pub dfsc: u8,
 }
+// ANCHOR_END: esr_data_abort_struct
 
+// ANCHOR: esr_data_abort_size
 impl DataAbort {
     /// The access size in bytes, `1 << SAS` (1, 2, 4 or 8; SAS is two bits, so always valid).
     pub const fn size_bytes(&self) -> u8 {
@@ -144,9 +156,11 @@ impl DataAbort {
         }
     }
 }
+// ANCHOR_END: esr_data_abort_size
 
+// ANCHOR: esr_sysreg_access
 /// A trapped `MSR`/`MRS`/system instruction (EC 0x18; D17.2.40, "ISS encoding for an exception
-/// from MSR, MRS, or System instruction execution in AArch64 state"). [frozen ch07]
+/// from MSR, MRS, or System instruction execution in AArch64 state"). Frozen.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SysRegAccess {
     pub op0: u8,
@@ -167,11 +181,13 @@ impl SysRegAccess {
         SysReg::new(self.op0, self.op1, self.crn, self.crm, self.op2)
     }
 }
+// ANCHOR_END: esr_sysreg_access
 
-/// What one `hv_vcpu_run` return was (architecture §6.4). [frozen ch07]
+// ANCHOR: exit_enum
+/// What one `hv_vcpu_run` return was. Frozen: later chapters add handlers, never variants.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Exit {
-    /// `HV_EXIT_REASON_CANCELED`: our own kick; may be spurious or sticky (spike finding 19).
+    /// `HV_EXIT_REASON_CANCELED`: our own kick; may be spurious or sticky (seen on real hardware).
     Canceled,
     /// `HV_EXIT_REASON_VTIMER_ACTIVATED` (never seen with the in-kernel GIC).
     VtimerActivated,
@@ -192,6 +208,7 @@ pub enum Exit {
     /// Any other EC, and `HV_EXIT_REASON_UNKNOWN` or an undefined reason.
     Unknown { ec: u8, esr: u64 },
 }
+// ANCHOR_END: exit_enum
 
 /// Data-abort ISS `CM`, bit 8: the abort came from a cache-maintenance instruction (`DC`/`IC`
 /// by VA) rather than a load or store (D17.2.40). Only the ISV = 0 path needs it (M17: such an
@@ -202,7 +219,7 @@ pub const fn data_abort_cm(esr: u64) -> bool {
 
 // ANCHOR: esr_decode_data_abort
 /// Decode a data-abort ISS (module docs table). Every field is masked to its width, so any
-/// `esr` gives a value; with ISV = 0 the instruction fields are UNKNOWN and unused.
+/// `esr` gives a value; with ISV = 0 bits 23:14 are RES0, so those fields carry nothing.
 pub const fn decode_data_abort(esr: u64) -> DataAbort {
     DataAbort {
         isv: bit(esr, 24),
@@ -219,6 +236,7 @@ pub const fn decode_data_abort(esr: u64) -> DataAbort {
 }
 // ANCHOR_END: esr_decode_data_abort
 
+// ANCHOR: esr_decode_sysreg
 /// Decode a sysreg-trap ISS (EC 0x18).
 pub const fn decode_sysreg(esr: u64) -> SysRegAccess {
     SysRegAccess {
@@ -231,12 +249,13 @@ pub const fn decode_sysreg(esr: u64) -> SysRegAccess {
         read: bit(esr, 0),
     }
 }
+// ANCHOR_END: esr_decode_sysreg
 
 // ANCHOR: esr_decode
 impl Exit {
     /// Decode an `ESR_EL2` value from an `EXCEPTION` exit. Pure and total: never panics for
-    /// any `u64` (MMIO-1). An EC we do not handle is [`Exit::Unknown`], which the exit
-    /// handler turns into a fatal stop with a dump.
+    /// any `u64`, because a hostile guest chooses what trapped. An EC we do not handle is
+    /// [`Exit::Unknown`], which the exit handler turns into a fatal stop with a dump.
     pub const fn decode(esr: u64) -> Exit {
         let imm = field16(esr, 0, 16);
         match esr_ec(esr) {
@@ -291,8 +310,9 @@ impl Exit {
     }
 }
 
-/// A static name for an exception class, for dumps (D17.2.40, the EC table). `None` for a
-/// class we never expect to see.
+// ANCHOR: esr_ec_name
+/// A static name for an exception class, for dumps (ARM ARM, register page `ESR_EL1`, the EC
+/// table). `None` for a class we never expect to see.
 pub const fn ec_name(ec: u8) -> Option<&'static str> {
     Some(match ec {
         0x00 => "unknown reason",
@@ -319,6 +339,7 @@ pub const fn ec_name(ec: u8) -> Option<&'static str> {
         _ => return None,
     })
 }
+// ANCHOR_END: esr_ec_name
 
 /// A static name for a data or instruction fault status code (DFSC/IFSC; D17.2.40, the
 /// DFSC table, long-descriptor format). `None` for codes we do not name.

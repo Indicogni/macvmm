@@ -1,0 +1,9 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ jq -r '.fn // .action // .reason' .cache/vmapple/avp.jsonl | sort | uniq -c
+exit: 0
+--- stdout ---
+   1 canceled
+  34 mmio
+
+--- stderr ---

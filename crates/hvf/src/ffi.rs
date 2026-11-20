@@ -33,25 +33,33 @@
 //!
 //! The raw names mirror the headers exactly (hence the lint allowances), so a learner can grep
 //! the SDK for any identifier in this file.
+// ANCHOR: ffi_prelude
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
 use core::ffi::{c_char, c_int, c_long, c_void};
+// ANCHOR_END: ffi_prelude
 
 // ---------------------------------------------------------------------------------------------
 // Basic types (`hv_kern_types.h`, `hv_vm_types.h`, `hv_vm_allocate.h`)
 
+// ANCHOR: ffi_hv_return_t
 /// `hv_return_t` (`hv_kern_types.h`): `0` is success, errors are `0xfae94000 | n`.
 pub type hv_return_t = i32;
+// ANCHOR_END: ffi_hv_return_t
+// ANCHOR: ffi_basic_types
 /// `hv_ipa_t` (`hv_vm_types.h`): an intermediate physical (guest physical) address.
 pub type hv_ipa_t = u64;
 /// `hv_memory_flags_t` (`hv_kern_types.h`): `HV_MEMORY_*` bits for map and protect.
 pub type hv_memory_flags_t = u64;
 /// `hv_allocate_flags_t` (`hv_vm_allocate.h`).
 pub type hv_allocate_flags_t = u64;
+// ANCHOR: ffi_vm_config_t
 /// `hv_vm_config_t` (`hv_vm_types.h`): opaque OS object, release with [`os_release`].
 pub type hv_vm_config_t = *mut c_void;
+// ANCHOR_END: ffi_vm_config_t
 /// `hv_vcpu_config_t` (`hv_vcpu_types.h`): opaque OS object, release with [`os_release`].
 pub type hv_vcpu_config_t = *mut c_void;
+// ANCHOR_END: ffi_basic_types
 /// `hv_gic_config_t` (`hv_gic_types.h`): opaque OS object, release with [`os_release`].
 pub type hv_gic_config_t = *mut c_void;
 /// `hv_gic_state_t` (`hv_gic_types.h`): opaque OS object, release with [`os_release`].
@@ -72,6 +80,7 @@ pub const HV_EXISTS: hv_return_t = 0xfae9_4008_u32 as i32;
 pub const HV_UNSUPPORTED: hv_return_t = 0xfae9_400f_u32 as i32;
 // ANCHOR_END: ffi_return_codes
 
+// ANCHOR: ffi_mem_flags
 // Memory permissions (`hv_kern_types.h`).
 pub const HV_MEMORY_READ: hv_memory_flags_t = 1 << 0;
 pub const HV_MEMORY_WRITE: hv_memory_flags_t = 1 << 1;
@@ -79,10 +88,12 @@ pub const HV_MEMORY_EXEC: hv_memory_flags_t = 1 << 2;
 
 // `hv_vm_allocate.h`.
 pub const HV_ALLOCATE_DEFAULT: hv_allocate_flags_t = 0;
+// ANCHOR_END: ffi_mem_flags
 
 // ---------------------------------------------------------------------------------------------
 // vCPU types (`hv_vcpu_types.h`)
 
+// ANCHOR: ffi_vcpu_types
 /// `hv_vcpu_t`: a small integer on arm64 (`uint64_t`; on x86 it is `unsigned`).
 pub type hv_vcpu_t = u64;
 /// `hv_exit_reason_t` (`OS_ENUM(..., uint32_t, ...)`).
@@ -96,6 +107,7 @@ pub const HV_EXIT_REASON_CANCELED: hv_exit_reason_t = 0;
 pub const HV_EXIT_REASON_EXCEPTION: hv_exit_reason_t = 1;
 pub const HV_EXIT_REASON_VTIMER_ACTIVATED: hv_exit_reason_t = 2;
 pub const HV_EXIT_REASON_UNKNOWN: hv_exit_reason_t = 3;
+// ANCHOR_END: ffi_vcpu_types
 
 // ANCHOR: ffi_vcpu_exit_t
 /// `hv_vcpu_exit_exception_t`: what the guest did, as the hardware reported it to EL2.
@@ -107,7 +119,7 @@ pub struct hv_vcpu_exit_exception_t {
     pub syndrome: hv_exception_syndrome_t,
     /// FAR_EL2: the faulting guest *virtual* address, when the EC defines one.
     pub virtual_address: hv_exception_address_t,
-    /// The faulting IPA, page offset included (spike finding 7).
+    /// The faulting IPA, page offset included (checked on a real Mac).
     pub physical_address: hv_ipa_t,
 }
 
@@ -140,6 +152,7 @@ pub struct hv_vcpu_sme_state_t {
     pub za_storage_enabled: bool,
 }
 
+// ANCHOR: ffi_regs
 /// `hv_reg_t`: general-purpose and special registers for `hv_vcpu_{get,set}_reg`.
 pub type hv_reg_t = u32;
 pub const HV_REG_X0: hv_reg_t = 0;
@@ -179,6 +192,7 @@ pub const HV_REG_PC: hv_reg_t = 31;
 pub const HV_REG_FPCR: hv_reg_t = 32;
 pub const HV_REG_FPSR: hv_reg_t = 33;
 pub const HV_REG_CPSR: hv_reg_t = 34;
+// ANCHOR_END: ffi_regs
 
 /// `hv_simd_fp_reg_t`: Q0..Q31.
 pub type hv_simd_fp_reg_t = u32;
@@ -229,10 +243,12 @@ pub type hv_sme_p_reg_t = u32;
 pub const HV_SME_P_REG_0: hv_sme_p_reg_t = 0;
 pub const HV_SME_P_REG_15: hv_sme_p_reg_t = 15;
 
+// ANCHOR: ffi_interrupt_type
 /// `hv_interrupt_type_t`: the vCPU's IRQ/FIQ lines (only without an in-kernel GIC).
 pub type hv_interrupt_type_t = u32;
 pub const HV_INTERRUPT_TYPE_IRQ: hv_interrupt_type_t = 0;
 pub const HV_INTERRUPT_TYPE_FIQ: hv_interrupt_type_t = 1;
+// ANCHOR_END: ffi_interrupt_type
 
 /// `hv_cache_type_t`, for `hv_vcpu_config_get_ccsidr_el1_sys_reg_values`.
 pub type hv_cache_type_t = u32;
@@ -290,6 +306,7 @@ pub const HV_IPA_GRANULE_16KB: hv_ipa_granule_t = 1;
 // ---------------------------------------------------------------------------------------------
 // GIC types (`hv_gic_types.h`)
 
+// ANCHOR: ffi_gic_intids
 /// `hv_gic_intid_t`: the fixed PPIs the framework wires to its in-kernel redistributors.
 pub type hv_gic_intid_t = u16;
 pub const HV_GIC_INT_PERFORMANCE_MONITOR: hv_gic_intid_t = 23;
@@ -297,6 +314,7 @@ pub const HV_GIC_INT_MAINTENANCE: hv_gic_intid_t = 25;
 pub const HV_GIC_INT_EL2_PHYSICAL_TIMER: hv_gic_intid_t = 26;
 pub const HV_GIC_INT_EL1_VIRTUAL_TIMER: hv_gic_intid_t = 27;
 pub const HV_GIC_INT_EL1_PHYSICAL_TIMER: hv_gic_intid_t = 30;
+// ANCHOR_END: ffi_gic_intids
 
 /// `hv_gic_distributor_reg_t` (`u16`): **each value is the register's offset in the GICD frame**
 /// (GIC architecture spec IHI 0069, §12.9). The header enumerates 1534 names (every
@@ -406,27 +424,38 @@ pub const HV_GIC_REG_GICM_SET_SPI_NSR: hv_gic_msi_reg_t = 0x0040;
 // ---------------------------------------------------------------------------------------------
 // Functions available on macOS 15.0 (statically linked)
 
+// ANCHOR: ffi_extern_block
 #[link(name = "Hypervisor", kind = "framework")]
 unsafe extern "C" {
+    // ANCHOR_END: ffi_extern_block
     // ANCHOR: ffi_vm_create
+    // ANCHOR: ffi_vm_create_destroy
     // hv_vm.h (macOS 11.0). One VM per process: it has no handle.
     pub fn hv_vm_get_max_vcpu_count(max_vcpu_count: *mut u32) -> hv_return_t;
+    // ANCHOR: ffi_vm_create_destroy_only
     /// `config` is `_Nullable`: NULL means the default configuration.
     pub fn hv_vm_create(config: hv_vm_config_t) -> hv_return_t;
     /// "Requires all vCPUs be destroyed" (`hv_vm.h`).
     pub fn hv_vm_destroy() -> hv_return_t;
+    // ANCHOR_END: ffi_vm_create_destroy_only
+    // ANCHOR_END: ffi_vm_create_destroy
+    // ANCHOR: ffi_vm_map
     /// Map host memory `addr..addr+size` at guest IPA `ipa`. All three must be aligned to the
-    /// IPA granule (16 KiB by default, spike finding 1).
+    /// IPA granule (16 KiB by default; `hv_vm_config.h` lets a VM choose 4 KiB).
     pub fn hv_vm_map(
         addr: *mut c_void,
         ipa: hv_ipa_t,
         size: usize,
         flags: hv_memory_flags_t,
     ) -> hv_return_t;
+    // ANCHOR_END: ffi_vm_map
+    // ANCHOR: ffi_vm_unmap
     pub fn hv_vm_unmap(ipa: hv_ipa_t, size: usize) -> hv_return_t;
+    // ANCHOR_END: ffi_vm_unmap
     pub fn hv_vm_protect(ipa: hv_ipa_t, size: usize, flags: hv_memory_flags_t) -> hv_return_t;
     // ANCHOR_END: ffi_vm_create
 
+    // ANCHOR: ffi_vm_allocate
     // hv_vm_allocate.h (macOS 12.1)
     /// Page-aligned anonymous memory "suitable to be mapped as guest memory".
     pub fn hv_vm_allocate(
@@ -435,8 +464,10 @@ unsafe extern "C" {
         flags: hv_allocate_flags_t,
     ) -> hv_return_t;
     pub fn hv_vm_deallocate(uva: *mut c_void, size: usize) -> hv_return_t;
+    // ANCHOR_END: ffi_vm_allocate
 
     // hv_vm_config.h (macOS 13.0; EL2 15.0)
+    // ANCHOR: ffi_vm_config_ipa
     pub fn hv_vm_config_create() -> hv_vm_config_t;
     pub fn hv_vm_config_get_max_ipa_size(ipa_bit_length: *mut u32) -> hv_return_t;
     pub fn hv_vm_config_get_default_ipa_size(ipa_bit_length: *mut u32) -> hv_return_t;
@@ -445,6 +476,7 @@ unsafe extern "C" {
         config: hv_vm_config_t,
         ipa_bit_length: *mut u32,
     ) -> hv_return_t;
+    // ANCHOR_END: ffi_vm_config_ipa
     pub fn hv_vm_config_get_el2_supported(el2_supported: *mut bool) -> hv_return_t;
     pub fn hv_vm_config_get_el2_enabled(
         config: hv_vm_config_t,
@@ -466,6 +498,7 @@ unsafe extern "C" {
         values: *mut u64,
     ) -> hv_return_t;
 
+    // ANCHOR: ffi_vcpu_fns
     // hv_vcpu.h (macOS 11.0). Unless noted, "must be called by the owning thread".
     /// Creates a vCPU *for the calling thread*. `*exit` receives a framework-owned pointer that
     /// every `hv_vcpu_run` rewrites. `config` is `_Nullable`.
@@ -477,6 +510,7 @@ unsafe extern "C" {
     pub fn hv_vcpu_destroy(vcpu: hv_vcpu_t) -> hv_return_t;
     pub fn hv_vcpu_get_reg(vcpu: hv_vcpu_t, reg: hv_reg_t, value: *mut u64) -> hv_return_t;
     pub fn hv_vcpu_set_reg(vcpu: hv_vcpu_t, reg: hv_reg_t, value: u64) -> hv_return_t;
+    // ANCHOR_END: ffi_vcpu_fns
     pub fn hv_vcpu_get_simd_fp_reg(
         vcpu: hv_vcpu_t,
         reg: hv_simd_fp_reg_t,
@@ -484,8 +518,11 @@ unsafe extern "C" {
     ) -> hv_return_t;
     // `hv_vcpu_set_simd_fp_reg(hv_vcpu_t, hv_simd_fp_reg_t, hv_simd_fp_uchar16_t value)` takes
     // the vector by value in v0: not declarable here. See `hv_vcpu_set_simd_fp_reg_addr` below.
+    // ANCHOR: ffi_sys_reg_fns
     pub fn hv_vcpu_get_sys_reg(vcpu: hv_vcpu_t, reg: hv_sys_reg_t, value: *mut u64) -> hv_return_t;
     pub fn hv_vcpu_set_sys_reg(vcpu: hv_vcpu_t, reg: hv_sys_reg_t, value: u64) -> hv_return_t;
+    // ANCHOR_END: ffi_sys_reg_fns
+    // ANCHOR: ffi_pending_interrupt
     pub fn hv_vcpu_get_pending_interrupt(
         vcpu: hv_vcpu_t,
         type_: hv_interrupt_type_t,
@@ -496,19 +533,26 @@ unsafe extern "C" {
         type_: hv_interrupt_type_t,
         pending: bool,
     ) -> hv_return_t;
+    // ANCHOR_END: ffi_pending_interrupt
     pub fn hv_vcpu_get_trap_debug_exceptions(vcpu: hv_vcpu_t, value: *mut bool) -> hv_return_t;
     pub fn hv_vcpu_set_trap_debug_exceptions(vcpu: hv_vcpu_t, value: bool) -> hv_return_t;
     pub fn hv_vcpu_get_trap_debug_reg_accesses(vcpu: hv_vcpu_t, value: *mut bool) -> hv_return_t;
     pub fn hv_vcpu_set_trap_debug_reg_accesses(vcpu: hv_vcpu_t, value: bool) -> hv_return_t;
+    // ANCHOR: ffi_vcpu_run
     pub fn hv_vcpu_run(vcpu: hv_vcpu_t) -> hv_return_t;
+    // ANCHOR_END: ffi_vcpu_run
     /// **Any thread.** Forces the listed vCPUs out of `hv_vcpu_run` with
     /// `HV_EXIT_REASON_CANCELED`; sticky for a vCPU that is not running (spike finding 13).
     pub fn hv_vcpus_exit(vcpus: *mut hv_vcpu_t, vcpu_count: u32) -> hv_return_t;
+    // ANCHOR: ffi_exec_time
     pub fn hv_vcpu_get_exec_time(vcpu: hv_vcpu_t, time: *mut u64) -> hv_return_t;
+    // ANCHOR_END: ffi_exec_time
+    // ANCHOR: ffi_vtimer_fns
     pub fn hv_vcpu_get_vtimer_mask(vcpu: hv_vcpu_t, vtimer_is_masked: *mut bool) -> hv_return_t;
     pub fn hv_vcpu_set_vtimer_mask(vcpu: hv_vcpu_t, vtimer_is_masked: bool) -> hv_return_t;
     pub fn hv_vcpu_get_vtimer_offset(vcpu: hv_vcpu_t, vtimer_offset: *mut u64) -> hv_return_t;
     pub fn hv_vcpu_set_vtimer_offset(vcpu: hv_vcpu_t, vtimer_offset: u64) -> hv_return_t;
+    // ANCHOR_END: ffi_vtimer_fns
 
     // hv_gic_config.h (macOS 15.0)
     // ANCHOR: ffi_gic_create
@@ -536,8 +580,10 @@ unsafe extern "C" {
     // ANCHOR_END: ffi_gic_create
 
     // hv_gic.h (macOS 15.0): interrupt injection and register access.
+    // ANCHOR: ffi_gic_set_spi
     /// Any thread. Asserts (`level = true`) or deasserts an SPI.
     pub fn hv_gic_set_spi(intid: u32, level: bool) -> hv_return_t;
+    // ANCHOR_END: ffi_gic_set_spi
     pub fn hv_gic_send_msi(address: hv_ipa_t, intid: u32) -> hv_return_t;
     pub fn hv_gic_get_distributor_reg(
         reg: hv_gic_distributor_reg_t,
@@ -584,6 +630,7 @@ unsafe extern "C" {
     pub fn hv_gic_reset() -> hv_return_t;
 
     // hv_gic_parameters.h (macOS 15.0)
+    // ANCHOR: ffi_gic_params
     pub fn hv_gic_get_distributor_size(distributor_size: *mut usize) -> hv_return_t;
     pub fn hv_gic_get_distributor_base_alignment(
         distributor_base_alignment: *mut usize,
@@ -604,6 +651,7 @@ unsafe extern "C" {
         spi_intid_count: *mut u32,
     ) -> hv_return_t;
     pub fn hv_gic_get_intid(interrupt: hv_gic_intid_t, intid: *mut u32) -> hv_return_t;
+    // ANCHOR_END: ffi_gic_params
 
     // hv_gic_state.h (macOS 15.0). The VM must be stopped while the state object is created.
     pub fn hv_gic_state_create() -> hv_gic_state_t;
@@ -625,6 +673,7 @@ unsafe extern "C" {
 // ---------------------------------------------------------------------------------------------
 // libSystem (always linked)
 
+// ANCHOR: ffi_mach_timebase_t
 /// `mach_timebase_info_data_t` (`mach/mach_time.h`): ticks × numer / denom = nanoseconds.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -632,18 +681,23 @@ pub struct mach_timebase_info_data_t {
     pub numer: u32,
     pub denom: u32,
 }
+// ANCHOR_END: ffi_mach_timebase_t
 
 unsafe extern "C" {
+    // ANCHOR: ffi_os_release
     /// `<os/object.h>`: the C entry point behind the `os_release` macro when Objective-C is not
     /// in use (our situation). Releases `hv_vm_config_t` and the other OS objects.
     pub fn os_release(object: *mut c_void);
+    // ANCHOR_END: ffi_os_release
     /// `unistd.h`.
     pub fn sysconf(name: c_int) -> c_long;
+    // ANCHOR: ffi_mach_time_fns
     /// `mach/mach_time.h`: the host tick counter that the guest's CNTVCT_EL0 follows
     /// (`CNTVCT = mach_absolute_time() - vtimer_offset`, `hv_vcpu.h`).
     pub fn mach_absolute_time() -> u64;
     /// `mach/mach_time.h`. Returns a `kern_return_t`.
     pub fn mach_timebase_info(info: *mut mach_timebase_info_data_t) -> c_int;
+    // ANCHOR_END: ffi_mach_time_fns
     /// `dlfcn.h`: used by [`crate::optional`] to find post-15.0 symbols at run time.
     pub fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
     /// `sys/sysctl.h`: read `kern.osproductversion` for the host macOS release.

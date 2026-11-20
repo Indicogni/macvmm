@@ -22,6 +22,9 @@ export class FrontMatterError extends Error {
 }
 
 function stripComment(v) {
+  // A fully quoted value keeps everything inside its quotes: expect: "a # b" stays "a # b".
+  const q = v.match(/^\s*("[^"]*"|'[^']*')\s*(?:#(?:\s.*)?)?$/);
+  if (q) return q[1];
   // "a  # note" -> "a". A '#' with no space before it (e.g. "C#", "#address-cells") is kept.
   const m = v.match(/^(.*?)\s+#\s.*$/) || v.match(/^(.*?)\s+#$/);
   return (m ? m[1] : v).trim();
@@ -43,7 +46,7 @@ function scalar(v) {
  * so Markdown diagnostics can report real file lines. A file with no front matter returns data {}.
  */
 export function parseFrontMatter(text) {
-  const src = text.replace(/^﻿/, "").replace(/\r\n?/g, "\n");
+  const src = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
   if (!src.startsWith("---\n")) return { data: {}, body: src, bodyLine: 1 };
   const lines = src.split("\n");
   const end = lines.indexOf("---", 1);

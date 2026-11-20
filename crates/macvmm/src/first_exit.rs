@@ -1,4 +1,4 @@
-//! `macvmm first-exit`: the smallest complete VM (course ch02).
+//! `macvmm first-exit`: the smallest complete VM (course chapter 02).
 //!
 //! **Why this exists:** before any device, loader or run loop, a learner should see the whole
 //! hardware-virtualization round trip once, with nothing hidden: create a VM, give it one page
@@ -24,14 +24,16 @@ use crate::{err, out};
 use hvf::{ExitReason, MemFlags, OwnedMapping, Reg, Vcpu, VmBuilder};
 use std::process::ExitCode;
 
-/// Guest RAM base, `0x4000_0000` in the QEMU `virt` map (PLAN §1). Spelled as a shift because
-/// the audit reserves the hex literal for `vmm::arch::layout` (architecture §4), which arrives
-/// in M2; this constant should then become `vmm::arch::layout::RAM_BASE`.
+// ANCHOR: first_exit_consts
+/// Guest RAM base, `0x4000_0000` (1 GiB), where QEMU's `virt` machine puts RAM. Spelled as a
+/// shift because the repository's audit allows that hex literal only in `vmm::arch::layout`,
+/// the one file that defines the memory map (chapter 05); there it is `RAM_BASE` too.
 const RAM_BASE: u64 = 1 << 30;
-/// One 16 KiB page, the default stage-2 granule (spike finding 1).
+/// One 16 KiB page, the default stage-2 granule on a Mac.
 const PAGE: usize = 16 * 1024;
 /// EL1h with DAIF masked.
 const CPSR_EL1H_MASKED: u64 = 0x3c5;
+// ANCHOR_END: first_exit_consts
 
 // ANCHOR: first_exit_code_bytes
 /// `movz x0, #0x2a` · `hvc #0` · `b .`, as A64 words.
@@ -43,8 +45,9 @@ fn code_bytes() -> Vec<u8> {
 }
 // ANCHOR_END: first_exit_code_bytes
 
+// ANCHOR: first_exit_entry
 /// A name for the few exception classes this lesson can meet (ARM ARM, ESR_EL2 register
-/// description, the EC field table). Full decoding is `vmm::arch::esr` (M4).
+/// description, the EC field table). Chapter 07 builds the full decoder, `vmm::arch::esr`.
 fn ec_name(ec: u64) -> &'static str {
     match ec {
         0x01 => "WFx",
@@ -72,10 +75,13 @@ pub fn run() -> ExitCode {
         }
     }
 }
+// ANCHOR_END: first_exit_entry
 
 // ANCHOR: first_exit_run
 fn first_exit() -> Result<(), hvf::CallError> {
-    // 1. The VM: one per process, default 36-bit IPA, no GIC needed for a single trap.
+    // ANCHOR: first_exit_setup
+    // 1. The VM: one per process, default 36-bit IPA. No interrupt controller (GIC, chapter
+    //    12) is needed for a single trap.
     let (vm, _no_gic) = VmBuilder::new().create()?;
 
     // 2. One page of guest RAM at RAM_BASE holding the three instructions.
@@ -93,7 +99,9 @@ fn first_exit() -> Result<(), hvf::CallError> {
     let mut vcpu = Vcpu::create(&vm)?;
     vcpu.set_reg(Reg::PC, RAM_BASE)?;
     vcpu.set_reg(Reg::CPSR, CPSR_EL1H_MASKED)?;
+    // ANCHOR_END: first_exit_setup
 
+    // ANCHOR: first_exit_decode
     // 4. Run until the guest traps, then decode the syndrome by hand.
     let exit = vcpu.run()?;
     let ec = (exit.esr >> 26) & 0x3f;
@@ -115,6 +123,7 @@ fn first_exit() -> Result<(), hvf::CallError> {
     let pc = vcpu.get_reg(Reg::PC)?;
     let x0 = vcpu.get_reg(Reg::X0)?;
     out(&format!("first-exit: pc={pc:#x} x0={x0:#x}"));
+    // ANCHOR_END: first_exit_decode
 
     // Tear down in reverse: vCPU, mapping, VM (drop order would do the same; explicit `destroy`
     // reports a failure instead of hiding it).

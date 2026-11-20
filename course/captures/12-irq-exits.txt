@@ -1,0 +1,13 @@
+# scripts/capture-cmd 12: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified. The keystrokes a, b and c were piped to stdin 3 s after start, then 0.5 s apart. The trace has one line per VM exit; the grep counts the guest-physical address (IPA) of each MMIO exit.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/irq.bin@0x40080000 --timeout 10 --trace exits:t.jsonl:all > /dev/null; grep -o '"ipa":"[^"]*"' t.jsonl | sort | uniq -c; wc -l < t.jsonl
+exit: 0
+--- stdout ---
+  78 "ipa":"0x9000000"
+  81 "ipa":"0x9000018"
+   1 "ipa":"0x900002c"
+   1 "ipa":"0x9000038"
+     162
+
+--- stderr ---

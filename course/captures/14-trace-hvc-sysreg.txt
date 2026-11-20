@@ -1,0 +1,26 @@
+# scripts/capture-cmd 14: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The trace file was written to a scratch directory instead of ./boot.jsonl; nothing else differs.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=boot" --timeout 30 --trace exits:boot.jsonl:hvc,sysreg > /dev/null && cat boot.jsonl
+exit: 0
+--- stdout ---
+{"t_ns":10215875,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_VERSION","action":"psci"}
+{"t_ns":10933541,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_MIGRATE_INFO_TYPE","action":"psci"}
+{"t_ns":11311583,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_FEATURES","action":"psci"}
+{"t_ns":11315125,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"SMCCC_VERSION","action":"smccc"}
+{"t_ns":11318416,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800081624aec","imm":0,"fn":"TRNG_VERSION","action":"smccc"}
+{"t_ns":11607208,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_FEATURES","action":"psci"}
+{"t_ns":11610375,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_FEATURES","action":"psci"}
+{"t_ns":11613500,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_FEATURES","action":"psci"}
+{"t_ns":11616416,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_FEATURES","action":"psci"}
+{"t_ns":11620833,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff8000809d78fc","imm":0,"fn":"VENDOR_HYP_CALL_UID","action":"smccc"}
+{"t_ns":13406041,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff80008004186c","imm":0,"fn":"SMCCC_ARCH_FEATURES","action":"smccc"}
+{"t_ns":33215208,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800081591304","imm":0,"fn":"SMCCC_ARCH_FEATURES","action":"smccc"}
+{"t_ns":37966833,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff8000809d78fc","imm":0,"fn":"VENDOR_HYP_CALL_UID","action":"smccc"}
+{"t_ns":48028875,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff80008004186c","imm":0,"fn":"SMCCC_ARCH_FEATURES","action":"smccc"}
+{"t_ns":48036875,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080042b08","imm":0,"fn":"SMCCC_ARCH_FEATURES","action":"smccc"}
+{"t_ns":55427791,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0xffff800080029208","value":"0x0","sysreg":"OSDLR_EL1","sysreg_enc":"0x809c","action":"sysreg"}
+{"t_ns":55435125,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0xffff80008002920c","value":"0x0","sysreg":"OSLAR_EL1","sysreg_enc":"0x8084","action":"sysreg"}
+{"t_ns":158456125,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0xffff800080041338","imm":0,"fn":"PSCI_SYSTEM_OFF","action":"psci"}
+
+--- stderr ---

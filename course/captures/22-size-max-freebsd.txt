@@ -1,0 +1,32 @@
+# scripts/capture-cmd 22: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 2: virtio-blk offers VIRTIO_BLK_F_SIZE_MAX again (one added line, | blk_features::SIZE_MAX, in device_features in crates/vmm/src/virtio/blk.rs), so size_max = 64 KiB is a promise. Everything else is the reference.
+# .cache/f.raw is a fresh cp -c clone of .cache/macvmm/freebsd-15.1-ufs.raw; nothing was typed.
+# Escape sequences and carriage returns removed; stdout filtered with grep -E to the lines matching U-Boot 20|EFI loader|^FreeBSD 15|virtio_mmio|vtblk|attach|mount|Mounting|ufs:|<empty>|Abort|^\?.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --bios .cache/macvmm/u-boot.bin --disk .cache/f.raw --mem 2G --cpus 2 --timeout 60 --on-reset exit
+exit: 5
+--- stdout ---
+U-Boot 2026.04 (Apr 21 2026 - 09:17:42 +0000)
+FreeBSD/arm64 EFI loader, Revision 3.0
+FreeBSD 15.1-RELEASE releng/15.1-n283562-96841ea08dcf GENERIC arm64
+virtio_mmio0: <VirtIO MMIO adapter> mem 0xa000000-0xa0001ff irq 6 on ofwbus0
+vtblk0: <VirtIO Block Adapter> on virtio_mmio0
+vtblk0: host requires unsupported maximum segment size feature
+device_attach: vtblk0 attach returned 45
+Trying to mount root from ufs:/dev/gpt/rootfs [rw,noatime]...
+mountroot: waiting for device /dev/gpt/rootfs...
+Mounting from ufs:/dev/gpt/rootfs failed with error 19.
+  vfs.root.mountfrom=ufs:/dev/gpt/rootfs
+  vfs.root.mountfrom.options=rw,noatime
+    eg. ufs:/dev/da0s1a
+          (which is equivalent to: mount -t cd9660 -o ro /dev/cd0 /)
+  <empty line>    Abort manual input
+mountroot> random: unblocking device.
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x40000000 at offset 0x12c668 (flash is read-only, write 1 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c670 (flash is read-only, write 2 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c678 (flash is read-only, write 3 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 8-byte write of 0x0 at offset 0x12c680 (flash is read-only, write 4 to this bank)
+macvmm: warn: [vcpu0] guest: flash: ignored 4-byte write of 0x1 at offset 0xed4 (flash is read-only, write 5 to this bank)
+macvmm: timeout: the guest was still running after --timeout 60s

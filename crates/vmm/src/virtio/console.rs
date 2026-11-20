@@ -205,16 +205,17 @@ impl VirtioDevice for Console {
 impl Console {
     // ANCHOR: console_tx
     /// transmitq: copy each chain's readable bytes into a fresh buffer and hand them to the
-    /// sink, which filters them (TTY-1) and queues them for its writer thread (SINK-1).
+    /// sink, which filters terminal escapes out of them and queues them for its writer thread, so
+    /// the device never blocks on host output.
     fn process_tx(&mut self, budget: u16) -> Result<QueueProgress, VirtioError> {
         let Some(a) = self.active.as_mut() else {
             return Err(VirtioError::NotActivated);
         };
-        let budget = budget.min(a.tx.size()); // VQ-12: one ring's worth at most
+        let budget = budget.min(a.tx.size()); // one ring's worth at most
         let mem = &*a.mem;
         let mut used = false;
         let mut progress = QueueProgress::Drained;
-        // SINK-1: one 10 ms full-queue budget for the whole batch (one device-mutex hold).
+        // One 10 ms full-queue budget for the whole batch (one device-mutex hold).
         let mut wait = FullWait::new();
         for n in 0..=budget {
             if n == budget {
@@ -224,14 +225,14 @@ impl Console {
             let Some(chain) = a.tx.pop(mem)? else {
                 break;
             };
-            // VQ-4..VQ-8: every descriptor checked; each direction's total capped at 64 KiB.
+            // Every descriptor checked; each direction's total capped at 64 KiB.
             let req = chain.into_validated(CONSOLE_MAX_TOTAL)?;
-            let bytes = read_readable(mem, &req)?; // VQ-11: fresh, zeroed, never reused
-            // TTY-1: the sink's own AnsiFilter runs before any host byte is written; LOG-4
-            // caps a file sink; SINK-1: never write(2), and at most 10 ms of waiting for
+            let bytes = read_readable(mem, &req)?; // fresh, zeroed, never reused
+            // The sink's own AnsiFilter runs before any host byte is written; a file sink has a
+            // byte cap; the device never calls write(2), and waits at most 10 ms for
             // queue space in the whole batch (`wait` is shared by every chain).
             self.sink.write_guest_within(&bytes, &mut wait);
-            // VQ-9: nothing was written into the chain (writable descriptors are ignored).
+            // Used length 0: nothing was written into the chain (writable descriptors are ignored).
             a.tx.add_used(mem, req.head, 0)?;
             self.tx_bytes = self.tx_bytes.saturating_add(req.readable_len);
             used = true;

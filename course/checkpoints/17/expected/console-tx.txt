@@ -1,0 +1,8 @@
+macvmm-initramfs: ready 6.18.60-0-virt
+macvmm-console: tx done
+reboot: Power down
+rc=0
+hvc0.out sha256 matches 65536 bytes of yes macvmm
+!Kernel panic
+!sha256 differs
+![stderr] needs reset

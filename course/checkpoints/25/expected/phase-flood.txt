@@ -1,0 +1,4 @@
+check: serial file holds 1048576 bytes
+!hostile-flood
+!check: FAILED
+![stderr] panicked

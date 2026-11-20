@@ -1,0 +1,14 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Predict fork, second plant: crates/fuzz/planted/05-chain-verdict-cache.patch applied to a copy of the reference (step() skips the RAM check for a buffer whose address equals the buffer two hops earlier, a 'verdict cache' that ignores the new length); the fuzzer built in that copy. --seconds 590 keeps the run inside the capture's 600 s limit. /usr/bin/time -p adds the real/user/sys lines on stderr.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ /usr/bin/time -p cargo run -q --release -p fuzz -- virtqueue --seconds 590
+exit: 1
+--- stdout ---
+fuzz virtqueue: FAILURE at iteration 23338941 (seed 1): validated buffer 0x40003000+0x80000000 is not inside one RAM region (VQ-4)
+fuzz virtqueue: input saved to <tree>/crates/fuzz/../../target/fuzz/crashes/virtqueue-seed1-iter23338941-0.bin (replay: cargo run -p fuzz --release -- virtqueue --replay FILE)
+fuzz virtqueue: 23338942 iterations, 1 failures
+
+--- stderr ---
+real 128.07
+user 67.37
+sys 58.07

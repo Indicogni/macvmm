@@ -1,0 +1,9 @@
+# scripts/capture-cmd 17: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The trace of a repeat of the console-tx run with --trace exits:tx.jsonl:mmio added. Counts the doorbells for queue 1, the console's transmit queue (QueueNotify written with the value 1).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep '"ipa":"0xa000050"' tx.jsonl | grep -c '"value":"0x1"'
+exit: 0
+--- stdout ---
+9363
+
+--- stderr ---

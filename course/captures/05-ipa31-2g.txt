@@ -1,0 +1,9 @@
+# scripts/capture-cmd 05: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage, not the reference: in create_vm (crates/vmm/src/vm.rs), 'let bits = layout.ipa_bits_needed(ram_end);' is replaced by 'let bits = 31;', so the VM always gets a 31-bit (2 GiB) IPA space.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 2G --raw {guests}/mmio-poke.bin@0x40080000 --timeout 10
+exit: 1
+--- stdout ---
+
+--- stderr ---
+macvmm: map guest memory: hv_vm_map: HV_BAD_ARGUMENT (0xfae94003)

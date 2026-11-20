@@ -1,0 +1,11 @@
+hostile-mmio: swept pl011 (0x1000 bytes)
+hostile-mmio: swept pl031 (0x1000 bytes)
+hostile-mmio: swept virtio-mmio (0x4000 bytes)
+hostile-mmio: swept testdev (0x1000 bytes)
+hostile-mmio: swept gicr-unused (0x1000 bytes)
+hostile-mmio: swept probe-hole (0x100 bytes)
+hostile-mmio: * accesses, * alignment faults, 0 other data aborts
+hostile-mmio: survived
+!guest exception
+![stderr] guest fatal
+[stderr] unhandled MMIO

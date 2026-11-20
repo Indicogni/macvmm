@@ -1,0 +1,23 @@
+# scripts/capture-cmd 09: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# A throwaway test written for this page (not part of the reference): it drives the reference PL011 through MmioDevice::read and write, as the bus does, pushes "ok" into its SerialInput as the stdin thread would, and prints FR, RIS, MIS and the interrupt line after each step. LCR_H is left at reset, so the receive FIFO holds one byte.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo test -q -p vmm --test poke_demo -- --nocapture
+exit: 0
+--- stdout ---
+
+running 1 test
+step                         read    status after the step
+reset                                FR=0x90 RIS=0x00 MIS=0x00 line=low
+write DR = 'h' (0x68)                FR=0x90 RIS=0x20 MIS=0x00 line=low
+write IMSC = 0x10 (RX)               FR=0x90 RIS=0x20 MIS=0x00 line=low
+host types "ok"                      FR=0xc0 RIS=0x70 MIS=0x10 line=high
+write ICR = 0x70                     FR=0xc0 RIS=0x50 MIS=0x10 line=high
+read DR                      0x6f    FR=0xc0 RIS=0x50 MIS=0x10 line=high
+read DR                      0x6b    FR=0x90 RIS=0x00 MIS=0x00 line=low
+read DR (FIFO empty)         0x00    FR=0x90 RIS=0x00 MIS=0x00 line=low
+sent to the terminal: "h"
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+--- stderr ---

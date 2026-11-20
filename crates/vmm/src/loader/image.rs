@@ -21,8 +21,9 @@
 //!
 //! **Why each rule** (LDR-3, every failure a typed [`LoaderError`], never a panic):
 //! - length ≥ 64: otherwise the header itself is not in the file;
-//! - big-endian kernels (flag bit 0) cannot run: the vCPU starts little-endian and we write
-//!   little-endian device trees;
+//! - big-endian kernels (flag bit 0) cannot run: Apple Silicon implements no big-endian mode
+//!   (`ID_AA64MMFR0_EL1.BigEnd = 0`, so `SCTLR_EL1.EE` is RES0), and the kernel's early switch
+//!   to big-endian data would silently do nothing;
 //! - page size 3 means "64 KiB pages only": Apple Silicon implements the 4 KiB and 16 KiB
 //!   translation granules but not 64 KiB (`ID_AA64MMFR0_EL1.TGran64 = 0xF`), so such a kernel
 //!   would die in early boot with no console output. Refusing it up front is kinder;
@@ -111,8 +112,8 @@ fn le64(b: &[u8], off: usize) -> Option<u64> {
 }
 
 // ANCHOR: image_header_parse
-/// Validate an arm64 Image header (booting.rst §4; module docs, LDR-3). Pure: looks at the
-/// first 64 bytes and the file length only.
+/// Validate an arm64 Image header (booting.rst section 4). Pure: looks at the first 64 bytes
+/// and the file length only.
 pub fn parse_header(b: &[u8]) -> Result<ImageHeader, LoaderError> {
     let len = u64::try_from(b.len()).unwrap_or(u64::MAX);
     if b.len() < IMAGE_HEADER_SIZE {
@@ -187,6 +188,7 @@ pub fn place(b: &[u8], ram: RamRange) -> Result<ArmImage, LoaderError> {
 }
 // ANCHOR_END: bootplan_place_kernel
 
+// ANCHOR: image_load
 /// Copy the Image's file bytes to its load address. The rest of `image_size` (BSS, early page
 /// tables) is left as it is: guest RAM is freshly allocated, hence zero, on every boot, and
 /// the kernel clears its own BSS anyway.
@@ -200,6 +202,7 @@ pub fn load(img: &ArmImage, b: &[u8], mem: &dyn GuestMemory) -> Result<(), Loade
     mem.write(GuestAddress(img.load), b)?;
     Ok(())
 }
+// ANCHOR_END: image_load
 
 #[cfg(test)]
 #[allow(

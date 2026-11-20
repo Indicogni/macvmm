@@ -41,6 +41,7 @@ impl Entropy {
         Entropy { _private: () }
     }
 
+    // ANCHOR: entropy_fill
     /// Fill `buf` with random bytes, in ≤ 256-byte `getentropy(2)` calls.
     pub fn fill(&self, buf: &mut [u8]) -> std::io::Result<()> {
         for chunk in buf.chunks_mut(GETENTROPY_MAX) {
@@ -48,6 +49,7 @@ impl Entropy {
         }
         Ok(())
     }
+    // ANCHOR_END: entropy_fill
 
     /// A random `u64`.
     pub fn u64(&self) -> std::io::Result<u64> {

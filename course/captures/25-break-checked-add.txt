@@ -1,0 +1,11 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1: crates/fuzz/planted/01-chain-range-no-checked-add.patch applied to a copy (chain.rs judges a buffer by its first and last byte, computed with wrapping arithmetic).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q --release -p fuzz -- virtqueue --seconds 600
+exit: 1
+--- stdout ---
+fuzz virtqueue: FAILURE at iteration 250 (seed 1): validated buffer 0x4002e6e9+0x5193a is not inside one RAM region (VQ-4)
+fuzz virtqueue: input saved to <tree>/crates/fuzz/../../target/fuzz/crashes/virtqueue-seed1-iter250-0.bin (replay: cargo run -p fuzz --release -- virtqueue --replay FILE)
+fuzz virtqueue: 251 iterations, 1 failures
+
+--- stderr ---

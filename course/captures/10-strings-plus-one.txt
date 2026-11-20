@@ -1,0 +1,9 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# bad.dtb is a copy of the --dtb-out file (run with --irqchip none) whose off_dt_strings byte at offset 15 was changed from 0x24 to 0x25 (printf + dd, as in the lesson).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ dtc -I dtb -O dts bad.dtb
+exit: 1
+--- stdout ---
+
+--- stderr ---
+FATAL ERROR: String table extends past total size

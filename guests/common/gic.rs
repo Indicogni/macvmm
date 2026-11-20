@@ -227,6 +227,7 @@ pub fn pfr0_gic() -> u64 {
     (v >> 24) & 0xf
 }
 
+// ANCHOR: guest_gic_enable_spi
 /// Configure SPI `intid` (32..1019): Group 1, [`PRIORITY`], level-sensitive, routed to the CPU
 /// with MPIDR `target`, enabled (IHI 0069 §12.9: IGROUPR, IPRIORITYR, ICFGR, IROUTER,
 /// ISENABLER).
@@ -242,7 +243,9 @@ pub fn enable_spi(intid: u32, target: u64) {
     wr32(GICD_BASE + GICD_ISENABLER + (n / 32) * 4, bit);
     wait_rwp();
 }
+// ANCHOR_END: guest_gic_enable_spi
 
+// ANCHOR: guest_gic_ack_eoi
 /// Acknowledge the highest-priority pending Group 1 interrupt (`ICC_IAR1_EL1`); [`SPURIOUS`]
 /// when there is none.
 pub fn ack() -> u32 {
@@ -257,3 +260,4 @@ pub fn eoi(intid: u32) {
     // SAFETY: writing EOIR1 drops the running priority and deactivates `intid`.
     unsafe { asm!("msr icc_eoir1_el1, {}", "isb", in(reg) u64::from(intid), options(nostack)) };
 }
+// ANCHOR_END: guest_gic_ack_eoi

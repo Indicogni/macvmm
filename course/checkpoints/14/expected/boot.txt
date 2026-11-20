@@ -1,0 +1,12 @@
+Booting Linux on physical CPU 0x0000000000
+Machine model: macvmm-virt
+psci: PSCIv1.1 detected in firmware.
+arch_timer: cp15 timer running at 24.00MHz (virt).
+ttyAMA0 at MMIO 0x9000000
+rtc-pl031 9010000.pl031: registered as rtc0
+Run /init as init process
+macvmm-initramfs: ready 6.18.60-0-virt
+reboot: Power down
+!Kernel panic
+![stderr] unhandled MMIO
+![stderr] unknown SMCCC

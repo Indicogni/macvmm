@@ -1,0 +1,23 @@
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference tree built with: cargo build -q -p macvmm --features experimental-vmapple.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm --features experimental-vmapple -- run --machine vmapple --bios /System/Library/Frameworks/Virtualization.framework/Versions/A/Resources/AVPBooter.vmapple2.bin --mem 4G --unhandled-mmio log --dry-run
+exit: 0
+--- stdout ---
+macvmm vmapple board (dry run, no VM created; experimental, does not boot macOS)
+entry    pc=0x100000 x0=0 cpsr=0x3c5 (EL1h, MMU off, no DTB)
+rom      335096 bytes of --bios in a 1048576-byte read+execute ROM
+memory map (VmApple):
+  0x00100000..0x00200000  avpbooter  rom
+  0x00400000..0x00410000  cfg        unknown-MMIO logger
+  0x10000000..0x10010000  gicd       in-kernel GIC
+  0x10010000..0x10410000  gicr       in-kernel GIC (one 128 KiB frame; the rest: unknown-MMIO logger)
+  0x20010000..0x20020000  pl011      pl011
+  0x20050000..0x20051000  pl031      unknown-MMIO logger
+  0x20060000..0x20061000  pl061      unknown-MMIO logger
+  0x20070000..0x20070002  pvpanic    unknown-MMIO logger
+  0x30000000..0x30200000  bdif       unknown-MMIO logger
+  0x70000000..0x170000000  ram        ram
+unknown MMIO: logged, read as zero (cap 256); debug hypercalls: off
+
+--- stderr ---

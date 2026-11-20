@@ -2,10 +2,10 @@
 title: PrimeCell peripheral IDs
 slug: primecell-ids
 kind: primer
-minutes: 20
-required_by: 09
+minutes: 15
+required_by: [09]
 also_used_by: [14, 22]
-lab: none
+labs: []
 objectives:
 - Decode the eight identification bytes at offsets 0xFE0 to 0xFFC of a PrimeCell into part number, designer, revision, configuration and component ID, by hand or with shell arithmetic.
 - Trace, in order, how Linux turns a Device Tree node marked "arm,primecell" into a bound driver, naming the moment the IDs are read and what the driver's mask does.
@@ -33,6 +33,13 @@ read them before it touches a single UART register?
 > **Predict.** Suppose our VMM answers zero for all eight. The UART registers themselves are
 > perfect. Does Linux still use the UART? Write down a guess. This primer gives you enough to
 > reason it out, and Chapter 14 shows the answer on a real boot log.
+
+:::objectives
+- Decode the eight identification bytes at offsets `0xFE0` to `0xFFC` of a PrimeCell into part number, designer, revision, configuration and component ID, by hand or with shell arithmetic.
+- Trace, in order, how Linux turns a Device Tree node marked `"arm,primecell"` into a bound driver, naming the moment the IDs are read and what the driver's mask does.
+- Predict whether a given ID value matches a given driver table entry, and explain why the mask ignores some bits.
+- List the three things a VMM must get right for Linux to bind an emulated PrimeCell (the ID bytes, the size of the register window, the `apb_pclk` clock).
+:::
 
 :::prereqs
 - Memory-mapped I/O (MMIO): a device register is an address, and a guest read or write there is a request to the device, which our VMM answers (Chapters 05 and 07).

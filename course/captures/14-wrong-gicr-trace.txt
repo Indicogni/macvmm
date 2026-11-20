@@ -1,0 +1,12 @@
+# scripts/capture-cmd 14: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 2 again (the /intc node says the redistributors start at 0x080c0000). The trace file was written to a scratch directory instead of ./gic.jsonl.
+# The exit code shown is macvmm's (5, the timeout), not grep's.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --mem 512M --cmdline "console=ttyAMA0 earlycon=pl011,0x09000000 macvmm.test=boot" --timeout 5 --trace exits:gic.jsonl:mmio > /dev/null; grep '"ipa":"0x80' gic.jsonl
+exit: 5
+--- stdout ---
+{"t_ns":50782166,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff80008075c750","ipa":"0x80cffe8","wnr":false,"size":4,"reg":0,"value":"0x0","action":"mmio","isv":true}
+{"t_ns":75653375,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0xffff80008075c750","ipa":"0x80cffe8","wnr":false,"size":4,"reg":0,"value":"0x0","action":"mmio","isv":true}
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 5s

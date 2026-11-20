@@ -1,0 +1,6 @@
+hostile-sysreg: op1 0 done
+hostile-sysreg: op1 7 done
+hostile-sysreg: 16384 reads (* undef), * writes (* undef), * CPACR traps
+hostile-sysreg: survived
+!guest exception
+![stderr] guest fatal

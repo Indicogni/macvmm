@@ -138,8 +138,8 @@ impl Action {
 }
 
 // ANCHOR: trace_record
-/// One exit, as the trace and the ring keep it (module docs table). Numbers and static
-/// names only (TTY-8, LOG-5).
+/// One exit, as the trace and the ring keep it. Numbers and static names only, so no byte the
+/// guest chose can reach a terminal or a log.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ExitRecord {
     pub t_ns: u64,
@@ -154,7 +154,7 @@ pub struct ExitRecord {
     pub value: Option<u64>,
     pub imm: Option<u16>,
     pub sysreg: Option<&'static str>,
-    /// The trapped register's `hv_sys_reg_t` encoding (EC 0x18): a number, so TTY-8 holds.
+    /// The trapped register's `hv_sys_reg_t` encoding (EC 0x18): a number, so the rule holds.
     pub sysreg_enc: Option<u16>,
     pub func: Option<&'static str>,
     pub action: Option<Action>,
@@ -308,6 +308,7 @@ pub fn json_escape_into(out: &mut String, s: &str) {
 // ANCHOR_END: trace_json_escape
 
 /// `--trace` categories (architecture §13.1: `cats ⊆ mmio,hvc,sysreg,psci,cancel,all`).
+// ANCHOR: trace_cats_parse
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TraceCats(u8);
 
@@ -347,11 +348,13 @@ impl TraceCats {
     pub const fn union(self, o: TraceCats) -> TraceCats {
         TraceCats(self.0 | o.0)
     }
+    // ANCHOR_END: trace_cats_parse
 
     const fn has(self, o: TraceCats) -> bool {
         self.0 & o.0 == o.0
     }
 
+    // ANCHOR: trace_cats_selects
     /// Whether `rec` belongs to one of these categories.
     pub fn selects(self, rec: &ExitRecord) -> bool {
         use crate::arch::esr::ec;
@@ -362,6 +365,7 @@ impl TraceCats {
             || (self.has(TraceCats::PSCI) && rec.action == Some(Action::Psci))
             || (self.has(TraceCats::CANCEL) && rec.reason == TraceReason::Canceled)
     }
+    // ANCHOR_END: trace_cats_selects
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -500,8 +504,9 @@ impl Trace {
     }
 }
 
-/// One vCPU's last [`RING_CAP`] exits (architecture §16). A `Mutex` so that Ctrl-A t and
-/// SIGUSR1 (M6) can read it from another thread; in practice only its vCPU locks it.
+// ANCHOR: exit_ring
+/// One vCPU's last [`RING_CAP`] exits. A `Mutex` so that a later chapter's on-demand dump
+/// can read it from another thread; in practice only its vCPU locks it.
 #[derive(Debug, Default)]
 pub struct ExitRing {
     inner: Mutex<VecDeque<ExitRecord>>,
@@ -529,6 +534,7 @@ impl ExitRing {
         let skip = q.len().saturating_sub(n);
         q.iter().skip(skip).cloned().collect()
     }
+    // ANCHOR_END: exit_ring
 
     pub fn len(&self) -> usize {
         lock(&self.inner).len()
@@ -549,6 +555,7 @@ impl ExitRing {
 /// vCPU that owns it is held up for at most 256 clones, never for the formatting or the write.
 /// The caller (`HostCtl::dump_rings`) passes the rings of the vCPUs running right now; an
 /// empty list says so instead of printing nothing.
+// ANCHOR: trace_ring_dump_fn
 pub fn dump_rings(rings: &[(usize, std::sync::Arc<ExitRing>)]) -> String {
     let mut out = String::new();
     if rings.is_empty() {
@@ -564,6 +571,7 @@ pub fn dump_rings(rings: &[(usize, std::sync::Arc<ExitRing>)]) -> String {
     }
     out
 }
+// ANCHOR_END: trace_ring_dump_fn
 // ANCHOR_END: trace_ring_dump
 
 /// Nanoseconds since a boot's start, from `mach_absolute_time` and the timebase.

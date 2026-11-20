@@ -1,0 +1,13 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# stress.txt is the serial log of the run in 20-stress-run: the number of worker passes, the number of RCU-stall and soft-lockup warnings, then the summary lines.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -a -c 'pass ' stress.txt; grep -a -c -e 'rcu: INFO' -e 'soft lockup' stress.txt; grep -a -e 'stress:' -e 'stress output' -e 'stress done' stress.txt | tr -d '\r'
+exit: 0
+--- stdout ---
+19146
+0
+macvmm-smp: stress: 4 workers for 30 s, pinned=0
+macvmm-smp: stress output from 4 cpus
+macvmm-smp: stress done
+
+--- stderr ---

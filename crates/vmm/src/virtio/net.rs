@@ -63,8 +63,10 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
+// ANCHOR: net_consts
 /// Both queues' maximum size (PLAN M24).
 pub const NET_QUEUE_SIZE: u16 = 256;
+// ANCHOR: net_caps
 /// `receiveq1` (§5.1.2).
 pub const RX_QUEUE: usize = 0;
 /// `transmitq1` (§5.1.2).
@@ -75,18 +77,21 @@ pub const F_MAC: u64 = 1 << 5;
 pub const NET_FEATURES: u64 = features::VERSION_1 | F_MAC;
 /// The size of `struct virtio_net_hdr` with `VERSION_1` (§5.1.6).
 pub const HDR_LEN: usize = 12;
-/// The longest TX chain accepted: one header and one full frame (NET-5).
+/// The longest TX chain accepted: one header and one full frame.
 pub const MAX_TX_CHAIN: usize = 1526;
-/// The shortest TX chain accepted: one header and an Ethernet header. NET-5 only requires
+/// The shortest TX chain accepted: one header and an Ethernet header. The frame rule only
+/// requires
 /// `≥ 12`; a frame shorter than its own Ethernet header could only be dropped by the peer, so
 /// it is dropped (and counted) here instead.
 pub const MIN_TX_CHAIN: usize = 26;
 /// The config space: `mac[6]` only (§5.1.4; `status`, `max_virtqueue_pairs` and `mtu` exist only
 /// with features we do not offer).
 pub const NET_CONFIG_LEN: u32 = 6;
+// ANCHOR_END: net_caps
+// ANCHOR: net_rx_buffer
 /// The RX thread's receive buffer, sized like macOS's `net.local.dgram.maxdgram` (2048).
 /// `maxdgram` is only the *default* send buffer of a datagram socket, not a cap: a sender that
-/// raises its own `SO_SNDBUF` can send a longer datagram `[V]`, and `recv` silently truncates it
+/// raises its own `SO_SNDBUF` can send a longer datagram (checked on a real Mac), and `recv` silently truncates it
 /// to this buffer. That is safe because the buffer is **longer than any frame**: a truncated
 /// datagram is exactly `RX_BUFFER` bytes, more than [`ETH_MAX_FRAME`], so [`Net::receive`]
 /// always drops it (`rx_dropped_len`) and a truncation can never pass as a valid frame. The
@@ -96,10 +101,13 @@ const _: () = assert!(
     RX_BUFFER > ETH_MAX_FRAME,
     "a truncated datagram must not fit a frame"
 );
+// ANCHOR_END: net_rx_buffer
+// ANCHOR_END: net_consts
 
 /// The verdict an RX-thread panic posts (RUST-7: exit code 1).
 pub const RX_PANIC: &str = "a virtio-net RX thread panicked";
 
+// ANCHOR: net_counters
 /// The NIC's counters (`--stats`), shared by the device, its RX thread and the stats line.
 #[derive(Debug, Default)]
 pub struct NetCounters {
@@ -112,6 +120,7 @@ pub struct NetCounters {
     rx_dropped_small: AtomicU64,
     rx_dropped_len: AtomicU64,
 }
+// ANCHOR_END: net_counters
 
 /// A snapshot of [`NetCounters`] plus the backend's NET-1 count.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -223,6 +232,7 @@ impl core::fmt::Debug for Net {
     }
 }
 
+// ANCHOR: net_header_ok
 /// The TX header rule (§5.1.6.2 with no offload negotiated): `flags == 0` and
 /// `gso_type == GSO_NONE`. The other fields carry no meaning without offloads and are ignored.
 fn header_ok(hdr: &[u8]) -> Result<(), TxDrop> {
@@ -233,6 +243,7 @@ fn header_ok(hdr: &[u8]) -> Result<(), TxDrop> {
     }
     Ok(())
 }
+// ANCHOR_END: net_header_ok
 
 impl Net {
     /// A NIC with address `mac` whose frames go to `backend`.
@@ -261,8 +272,9 @@ impl Net {
     }
 
     // ANCHOR: net_tx_frame
+    // ANCHOR: net_tx_shape
     /// Send one popped TX chain: shape and length first, then **one** copy out of guest memory,
-    /// then the header check on the copy, then the backend (module docs, NET-5). Returns the
+    /// then the header check on the copy, then the backend (module docs). Returns the
     /// frame length sent, or why it was dropped. A guest-memory failure (memory changed shape
     /// under a validated chain) is the only `Err`.
     fn tx_one(
@@ -277,6 +289,8 @@ impl Net {
         if total < MIN_TX_CHAIN as u64 || total > MAX_TX_CHAIN as u64 {
             return Ok(Err(TxDrop::Length(total)));
         }
+        // ANCHOR_END: net_tx_shape
+        // ANCHOR: net_tx_copy
         // `total` ≤ 1526 (checked above), so this allocation is bounded by us, not the guest.
         let len = usize::try_from(total).map_err(|_| VirtioError::Device("tx length"))?;
         let mut pkt = vec![0u8; len];
@@ -300,8 +314,10 @@ impl Net {
             Err(_) => Ok(Err(TxDrop::Send)),
         }
     }
+    // ANCHOR_END: net_tx_copy
     // ANCHOR_END: net_tx_frame
 
+    // ANCHOR: net_process_tx
     /// Process up to `budget` TX chains (the worker's VQ-12 batch).
     fn process_tx(&mut self, budget: u16) -> Result<QueueProgress, VirtioError> {
         let Some(a) = self.active.as_mut() else {
@@ -319,10 +335,11 @@ impl Net {
                 progress = QueueProgress::MoreWork;
                 break;
             }
+            // ANCHOR: net_tx_loop
             let Some(chain) = a.tx.pop(mem)? else {
                 break;
             };
-            // Structure only (VQ-4..VQ-7): the hop budget bounds the walk; the length rule is
+            // Structure only: the hop budget bounds the walk; the length rule is
             // the device's own and a violation is a drop, not NEEDS_RESET.
             let req = chain.into_validated(u64::MAX)?;
             match Self::tx_one(mem, &*self.backend, &req)? {
@@ -337,17 +354,20 @@ impl Net {
             }
             a.tx.add_used(mem, req.head, 0)?; // a TX chain has nothing for us to write
             used = true;
+            // ANCHOR_END: net_tx_loop
         }
         if used && a.tx.should_interrupt(mem)? {
             a.irq.signal_used();
         }
         Ok(progress)
     }
+    // ANCHOR_END: net_process_tx
 
     // ANCHOR: net_rx_frame
-    /// Deliver one received frame into the next posted RX chain (module docs, NET-5). Drops are
+    // ANCHOR: net_rx_drops
+    /// Deliver one received frame into the next posted RX chain (module docs). Drops are
     /// counted and returned as an outcome; only a malformed ring is `Err` (the caller reports
-    /// it: NEEDS_RESET, VQ-10).
+    /// it: NEEDS_RESET).
     pub fn receive(&mut self, frame: &[u8]) -> Result<RxOutcome, VirtioError> {
         if !(ETH_MIN_FRAME..=ETH_MAX_FRAME).contains(&frame.len()) {
             bump(&self.counters.rx_dropped_len, 1);
@@ -373,6 +393,8 @@ impl Net {
             crate::guest_warn!("virtio-net: RX frame dropped: no receive buffer posted");
             return Ok(RxOutcome::NoBuffer);
         };
+        // ANCHOR_END: net_rx_drops
+        // ANCHOR: net_rx_deliver
         let req = chain.into_validated(u64::MAX)?;
         let need = HDR_LEN
             .checked_add(frame.len())
@@ -388,14 +410,14 @@ impl Net {
             a.rx.add_used(mem, req.head, 0)?;
             RxOutcome::ChainUnusable
         } else {
-            // A fresh buffer per frame (VQ-11): the zeroed header, num_buffers = 1, the frame.
+            // A fresh buffer per frame: the zeroed header, num_buffers = 1, the frame.
             let mut pkt = vec![0u8; HDR_LEN];
             if let Some(nb) = pkt.get_mut(10..12) {
                 nb.copy_from_slice(&1u16.to_le_bytes());
             }
             pkt.extend_from_slice(frame);
             let written = req.write_writable(mem, &pkt)?;
-            a.rx.add_used(mem, req.head, written)?; // VQ-9: what was actually written
+            a.rx.add_used(mem, req.head, written)?; // what was actually written
             bump(&self.counters.rx_packets, 1);
             bump(&self.counters.rx_bytes, frame.len() as u64);
             RxOutcome::Delivered
@@ -405,9 +427,11 @@ impl Net {
         }
         Ok(outcome)
     }
+    // ANCHOR_END: net_rx_deliver
     // ANCHOR_END: net_rx_frame
 }
 
+// ANCHOR: net_device_impl
 impl VirtioDevice for Net {
     fn device_id(&self) -> u32 {
         DEVICE_ID_NET
@@ -450,6 +474,7 @@ impl VirtioDevice for Net {
         Ok(())
     }
 
+    // ANCHOR: net_process_queue
     /// TX on QueueNotify of queue 1. A notify on queue 0 only says "RX buffers were posted":
     /// they are consumed when a frame arrives ([`Net::receive`]), so there is nothing to do.
     fn process_queue(&mut self, index: usize, budget: u16) -> Result<QueueProgress, VirtioError> {
@@ -464,6 +489,8 @@ impl VirtioDevice for Net {
             _ => Err(VirtioError::NoSuchQueue(index)),
         }
     }
+    // ANCHOR_END: net_process_queue
+    // ANCHOR_END: net_device_impl
 
     fn reset(&mut self) {
         // VQ-14: the queues and the memory handle go; the counters stay for --stats.
@@ -497,6 +524,7 @@ impl core::fmt::Debug for RxThread {
 }
 
 /// Posts the RUST-7 stop if the RX thread unwinds.
+// ANCHOR: net_rx_panic_guard
 struct RxPanicGuard {
     shared: Arc<RxShared>,
     ctl: Arc<VmControl>,
@@ -511,6 +539,7 @@ impl Drop for RxPanicGuard {
         }
     }
 }
+// ANCHOR_END: net_rx_panic_guard
 
 // ANCHOR: net_rx_thread
 /// Start the RX thread `name` for `device` (module docs). `label` names the NIC in the stats
@@ -537,6 +566,7 @@ pub fn spawn_rx(
                 shared: Arc::clone(&job_shared),
                 ctl,
             };
+            // ANCHOR: net_rx_loop
             let mut buf = vec![0u8; RX_BUFFER];
             while !job_shared.stop.load(Ordering::SeqCst) {
                 let n = match job_backend.recv(&mut buf) {
@@ -549,7 +579,7 @@ pub fn spawn_rx(
                     }
                 };
                 let frame = buf.get(..n).unwrap_or_default();
-                // A poisoned device (a worker panicked, RUST-7) is never touched again.
+                // A poisoned device (a worker panicked) is never touched again.
                 let Ok(mut dev) = device.lock() else { break };
                 match dev.receive(frame) {
                     Ok(_) | Err(VirtioError::NotActivated) => {}
@@ -558,6 +588,7 @@ pub fn spawn_rx(
                     Err(e) => report_error(&interrupt, RX_QUEUE, &e),
                 }
             }
+            // ANCHOR_END: net_rx_loop
         })?;
     Ok(RxThread {
         label: label.to_owned(),

@@ -1,0 +1,58 @@
+# scripts/capture-cmd 01: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Dry run of the learner path: a learner/ workspace written by following only this chapter's text (scripts/learner init, start 01), journal answered with placeholder text. Evidence for the lesson, not shown on the page (the rubric it prints would spoil the journal).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 01
+exit: 0
+--- stdout ---
+checkpoint: implementation <tree>/learner
+[INFO] requires         00 is not recorded as passed yet (scripts/checkpoint.sh 00)
+[PASS] contract tests   hv_errors (5 tests)
+[PASS] runs on your Mac doctor: 3/3 serial markers, exit 0 in 0.63s
+[PASS] runs on your Mac doctor-denied: 2/2 serial markers, exit 1 in 0.10s
+[INFO] journal          5/5 answered, predict recorded; rubric printed below
+    # Rubric 01: Where our VMM sits: Hypervisor.framework and a hand-written FFI
+    
+    Ideas a strong answer contains. Compare, do not copy: an answer in your own words that reaches
+    the same mechanism is a full answer.
+    
+    ## Predict
+    
+    - Commits to one of the three before running, with a reason (for example "the linker only checks that the function exists").
+    - Afterwards records what the run showed: the program built, started and printed, and `hv_vm_create` returned `HV_DENIED (0xfae94007)`; exit code 1, no crash.
+    - Explains it: the entitlement is checked by the kernel when the call is made, not by the linker, which never sees the signature.
+    
+    ## Q1
+    
+    - The instructions are not the difference; the address is. The CPU knows only whether the guest-physical address is mapped (and with which permissions).
+    - RAM is mapped, so the load is translated by the hardware and completes without stopping.
+    - Nothing is mapped at the serial port's address on purpose, so the store cannot complete: the CPU takes an exception to EL2, which forwards it to our VMM.
+    - A device, to a guest, is a hole in its memory that our VMM answers.
+    
+    ## Q2
+    
+    - On 64-bit Arm the result comes back in register `x0`; for an `int`, only the low 32 bits are defined, and the calling convention leaves the upper 32 bits unspecified.
+    - Results could still look right while the upper bits happen to be zero: `HV_SUCCESS` would read as 0, and an error might read as `0x00000000fae94007`.
+    - It goes wrong silently when the upper bits are not zero, or when the code is compared against constants of the wrong width: a success could read as non-zero (a false failure), or an error as an unknown code.
+    - The compiler cannot catch it, because it has never seen the C header; only reading the header (or `check-ffi.sh`) does.
+    
+    ## Q3
+    
+    - The compiler sees a function that takes nothing and returns an `i32`, called inside an `unsafe` block.
+    - It cannot see the framework's rules: there is one VM per process, it must be destroyed exactly once, all vCPUs must be destroyed first, and nothing that uses the VM (mappings, vCPUs) may outlive it. Those are the invariants the `SAFETY:` comment states and the types (the private field, `Drop`) enforce.
+    - `unsafe` leaves type checking, borrow checking of references and bounds checks on safe indexing switched on; it only allows a few extra operations, such as calling an FFI function.
+    
+    ## Q4
+    
+    - Guest physical addresses (IPAs) are an address space the VMM defines, not the host's RAM: it has holes for devices, and RAM can start at `0x4000_0000`.
+    - Every IPA is translated by tables the hardware walks, and those tables take an input of a fixed width; the limit is about the table format, not the amount of memory.
+    - Parks the rest honestly for chapter 05 (for example: "a wider IPA might need another level of table").
+    
+    ## Q5
+    
+    - Names a capability, not a motive: with the entitlement, a process can program the CPU's virtualization state through the kernel and map its own memory into another address space that a guest controls.
+    - Running code in a VM is not the same as running code in your process: the guest runs at a real kernel level (EL1) on the CPU, under a configuration the kernel set up on your behalf, and touches kernel paths ordinary processes never reach.
+    - Says what the gate is for: macOS can tell which programs use this, and an attacker cannot get it by default; it is a permission the developer asks for, visible in the signature.
+    - Notes the limit: the entitlement is not confinement. A process that has it keeps all its other rights, so a bug in the VMM is still a bug with the process's full power.
+CHECKPOINT 01 PASS
+
+--- stderr ---

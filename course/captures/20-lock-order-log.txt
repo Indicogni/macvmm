@@ -1,0 +1,11 @@
+# scripts/capture-cmd 20: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# boot.txt is the serial log of the run in 20-lock-order-hang; tr removes the carriage returns the guest sends.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ tail -n 3 boot.txt | tr -d '\r'
+exit: 0
+--- stdout ---
+macvmm-smp: cpu2 pass 11 on cpu0
+macvmm-smp: cpu3 pass 11 on cpu0
+macvmm-smp: cpu1 pass 12 on cpu2
+
+--- stderr ---

@@ -1,0 +1,17 @@
+# scripts/capture-cmd 21: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ printf '.inst 0x90000969, 0x9119a129, 0xa9000520, 0xa9010d22\n' > words.s; clang -c -target arm64-apple-macos words.s -o words.o; xcrun llvm-objdump -d words.o
+exit: 0
+--- stdout ---
+
+words.o:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+0000000000000000 <ltmp0>:
+       0: 90000969     	adrp	x9, 0x12c000 <ltmp0+0x12c000>
+       4: 9119a129     	add	x9, x9, #0x668
+       8: a9000520     	stp	x0, x1, [x9]
+       c: a9010d22     	stp	x2, x3, [x9, #0x10]
+
+--- stderr ---

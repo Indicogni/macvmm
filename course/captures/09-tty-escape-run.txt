@@ -1,0 +1,14 @@
+# scripts/capture-cmd 09: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified. script(1) runs the command on a pseudo-terminal, so macvmm sees a real terminal and enters raw mode; the bytes Ctrl-A (0x01) and x arrive on it 2 s after the start, as if typed. $G is the repository's target/guests/aarch64-unknown-none/release. The capture tool prints the escape byte as \x1b and a carriage return as \x0d.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ (sleep 2; printf '\001x'; sleep 1) | script -q /dev/null sh -c 'stty -g; cargo run -q -p macvmm -- run --mem 64M --raw $G/uart-echo.bin@0x40080000 --timeout 10; echo rc=$?; stty -g'
+exit: 0
+--- stdout ---
+gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600\x0d
+macvmm: console attached; Ctrl-A x quits, Ctrl-A h lists the escapes\x0d
+uart-echo: ready\x0d
+\x1b[0m\x1b[?25h\x1b[?1049l\x1b[?1047l\x1b[?47l\x1b[?2004l\x1b[?1l\x1b[?7h\x1b[?12l\x1b[0 q\x1b[4l\x1b>\x1b(B\x1b)B\x1b7\x1b[r\x1b8macvmm: user quit\x0d
+rc=130\x0d
+gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600\x0d
+
+--- stderr ---

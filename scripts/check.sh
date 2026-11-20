@@ -5,7 +5,8 @@
 #   scripts/check.sh --hvf      also the HVF tests and end-to-end suites on this Mac
 #   scripts/check.sh --strict   every SKIP is a failure (the M23 fresh-clone gate)
 #
-# Order: fmt, clippy, tests, unsafe/security audit, FFI oracle, anchors, guest build; then the
+# Order: fmt, clippy, tests, unsafe/security audit, FFI oracle, anchors, the lesson lint
+# (course/STYLE.md appendix A), guest build; then the
 # dependency allowlist (SC-11), `bash -n` and the SC-1 preamble on every script, shellcheck
 # (TEST-2), and the offline fetch tests. Every cargo call uses --locked (SC-11).
 set -euo pipefail
@@ -51,6 +52,7 @@ step "cargo test";    cargo test --locked --workspace
 step "check-unsafe";  scripts/check-unsafe
 step "check-ffi";     maybe scripts/check-ffi.sh M1
 step "check-anchors"; scripts/check-anchors
+step "check-lessons"; scripts/check-lessons
 step "build-guests";  maybe scripts/build-guests.sh M3
 # ANCHOR_END: check_gate
 

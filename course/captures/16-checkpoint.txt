@@ -1,0 +1,12 @@
+# scripts/capture-cmd 16: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference tree (no learner/ directory), so the journal step is not checked.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 16
+exit: 0
+--- stdout ---
+[PASS] contract tests   virtqueue_hostile (62 tests), virtqueue_toctou (9 tests)
+[INFO] runs on your Mac none for this chapter
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 16 PASS
+
+--- stderr ---

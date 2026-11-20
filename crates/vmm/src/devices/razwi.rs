@@ -21,6 +21,7 @@
 
 use crate::bus::{AccessSize, MmioDevice};
 
+// ANCHOR: razwi_device
 /// A read-as-zero, write-ignored window named `name` (for the debug log).
 #[derive(Clone, Copy, Debug)]
 pub struct RazWi {
@@ -51,3 +52,4 @@ impl MmioDevice for RazWi {
         );
     }
 }
+// ANCHOR_END: razwi_device

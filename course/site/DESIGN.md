@@ -601,6 +601,49 @@ blockquote, tables (pipe), horizontal rule, fenced code, and **directives** with
 Raw HTML in Markdown is escaped (never passed through). That is a security and CSP decision: lessons are
 inert text.
 
+**Chapter lessons (authoring kit, 2026-11-20).** The decisions below refine the sketch above for
+`course/chapters/**`; `scripts/check-lessons` (`cargo xtask lessons`) enforces them, and
+`course/STYLE.md` appendix A is the author-facing version with the exemplar
+`course/chapters/I/02-first-exit.md`.
+
+- *Front matter.* Chapters carry exactly `title`, `part` (the part id, e.g. `I`), `chapter` (the
+  display number, e.g. `I.1`), `id` (two digits), `runs`, `minutes`, `prereqs` (chapter ids),
+  `start_tag` (`ch-NN`, the reference at the end of chapter NN, until the lead fixes the tagging
+  convention of open question 4), `labs`, `command: scripts/checkpoint.sh NN` and
+  `expect: CHECKPOINT NN PASS`, plus optional `draft`. `title`, `part`, `chapter` and `id` must equal
+  `course/chapters.json`. The page `h1` comes from `title`; a chapter body has no `#` heading and
+  no heading below `###`.
+- *Directive grammar.* A line `:::name args` opens a directive; a bare `:::` closes a container.
+  Containers: `objectives`, `prereqs`, `predict`, `callout`, `concepts`. Leaves (one line, no
+  closing `:::`): `code`, `term`, `diagram`, `lab`, `checkpoint`, `retrieval`, `stopping-point`.
+  Containers do not nest; leaves may sit inside a container. Arguments are `key=value` or
+  `key="a b"`. A directive inside a blockquote is not a directive.
+- *New directives.* `:::concepts` is the "Concepts you'll need" box, five labelled list groups
+  (STYLE appendix A.4); for chapters it replaces `:::prereqs` and is rendered in the Prerequisites
+  slot of section 2.2, with `prereqs` and `start_tag` from the front matter. `:::retrieval
+  [from=NN,NN]` renders the three-item warm-up from `course/retrieval/NN.md` banks (chapters N-1,
+  N-3, N-7 by default, missing ones replaced by the nearest earlier unused chapter; rotate items on
+  repeat visits). `:::stopping-point <label>` renders the "good place to stop" marker between two
+  sittings.
+- *Arguments.* `:::code` needs both `anchor=` and `file=` (repo-relative). `:::term source=` is
+  relative to `course/` and names `captures/NN-name.txt`; its first line (`# …` provenance) feeds
+  the `captured:` footer of section 3.2, and the rest is the transcript (`$ command`, `exit:`,
+  `--- stdout ---`, `--- stderr ---`).
+- *Callouts.* Authors write STYLE section 7 blockquotes; the builder maps the label to a variant:
+  `> **Security.**` to `security`, `> **Under the hood.**` to `why`, and `> **Try it.**`,
+  `> **Aside.**`, `> **Production note.**` to `note`, keeping the label text. `:::callout` stays
+  available for the `mac` and `warn` variants. Predict is always `:::predict`.
+- *Required blocks* for a chapter, in order: `:::retrieval` (from chapter 01), `:::concepts`, the
+  opening puzzle (prose), `:::objectives`, body sections (at least one `:::predict` from Part I
+  on), `## Checkpoint` (holding `:::checkpoint`, at least one `:::term`, then `### What's next`
+  and `### Open question`), and `## Spec hunt` (2 or 3 items) as the last section. The
+  "What now works" list in the checkpoint section is the page's Recap and `## Spec hunt` its
+  Further reading (section 2.2 items 6).
+- *Glossary.* The glossary page is built from `course/GLOSSARY.md` (`## Primers` and one
+  `## Chapter NN` section per chapter; entries `- **Term** (expansion): definition.`), sorted
+  alphabetically; an entry's anchor is its term lowercased with runs of other characters turned
+  into `-`.
+
 ---------------------------------------------------------------------------------------------------
 
 ## 10. Build approach

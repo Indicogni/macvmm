@@ -2,10 +2,10 @@
 title: The macOS sandbox, rlimits and other one-way doors
 slug: macos-sandbox
 kind: primer
-minutes: 30
+minutes: 25
 required_by: [25]
 also_used_by: [09, 18, 19, 26]
-lab: none
+labs: []
 runs: mac
 command: sandbox-exec -p '(version 1)(allow default)(deny file-read* (subpath "/private/etc"))' /bin/cat /etc/hosts 2>&1
 expect: cat: /etc/hosts: Operation not permitted
@@ -35,6 +35,13 @@ why macvmm makes exactly this kind of call before it runs a single guest instruc
 - Say which parts of the macOS sandbox are documented, which are only in a header (`[H]`), and which were observed on this machine (`[V]`).
 - Use `setrlimit` to make "no core dumps" irreversible, compute a file's mode from `umask`, and show with a child process what `O_CLOEXEC` changes.
 - Explain why macvmm's `run` path never calls `fork` or `exec`.
+:::
+
+:::prereqs
+- The [`os-basics`](/build-your-own/vmm/primers/os-basics/) primer: processes, the kernel, and what a user's rights are.
+- The [`codesign-entitlements`](/build-your-own/vmm/primers/codesign-entitlements/) primer: what an entitlement is, and why it is a permission,
+  not a fence.
+- A Mac with the Xcode command-line tools (`cc`). This primer never needs sudo.
 :::
 
 ## The experiment

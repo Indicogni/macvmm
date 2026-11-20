@@ -1,0 +1,10 @@
+# scripts/capture-cmd 07: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage: the data-abort arm of the exit handler returns Resume { advance_pc: false } instead of true (crates/vmm/src/vcpu/exit.rs), so the PC is never moved past an emulated access.
+# Run in a copy of the reference with that one edit.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --testdev --raw target/guests/aarch64-unknown-none/release/mmio-probe.bin@0x40080000 --trace exits:t.jsonl:mmio --timeout 2
+exit: 5
+--- stdout ---
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 2s

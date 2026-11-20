@@ -1,0 +1,9 @@
+# scripts/capture-cmd 09: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage 1: in crates/vmm/src/devices/pl011.rs, fr() starts from TXFE | TXFF instead of TXFE, so FR always says the transmit FIFO is full. Nothing else changed.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ printf 'ping\n' | cargo run -q -p macvmm -- run --mem 64M --raw $G/uart-echo.bin@0x40080000 --timeout 10
+exit: 5
+--- stdout ---
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 10s

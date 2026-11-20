@@ -1,0 +1,26 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Typed at the / # prompt, one line at a time: the lines shown after each prompt.
+# Deliberate breakage 2: DiskFile::sync (crates/vmm/src/backend/file.rs) returns Ok(()) without syncing anything.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 512M --kernel ../.cache/macvmm/Image-virt --initrd ../.cache/macvmm/initramfs-test.img --disk disk.img --on-reset exit --timeout 100 --cmdline "console=ttyAMA0 panic=-1 quiet macvmm.test=shell"
+exit: 0
+--- stdout ---
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+/ # modprobe virtio_mmio; modprobe virtio_blk; sleep 1; cat /sys/block/vda/size\x0d
+131072\x0d
+/ # time dd if=/dev/zero of=/dev/vda bs=1M count=64 conv=fsync\x0d
+64+0 records in\x0d
+64+0 records out\x0d
+67108864 bytes (64.0MB) copied, 0.087569 seconds, 730.9MB/s\x0d
+real	0m 0.08s\x0d
+user	0m 0.00s\x0d
+sys	0m 0.01s\x0d
+/ # time sh -c 'for i in $(seq 1 100); do dd if=/dev/zero of=/dev/vda bs=4k coun\x0d\x0d
+t=1 seek=$i conv=fsync 2>/dev/null; done'\x0d
+real	0m 0.04s\x0d
+user	0m 0.01s\x0d
+sys	0m 0.00s\x0d
+/ # poweroff -f\x0d
+[   16.678345] reboot: Power down\x0d
+
+--- stderr ---

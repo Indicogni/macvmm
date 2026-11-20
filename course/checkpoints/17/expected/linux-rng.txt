@@ -1,0 +1,7 @@
+macvmm-initramfs: ready 6.18.60-0-virt
+macvmm-rng: hw_random=virtio_rng.0
+macvmm-rng: read 1048576 bytes ok
+reboot: Power down
+!Kernel panic
+![stderr] unhandled MMIO
+![stderr] needs reset

@@ -1,0 +1,10 @@
+# scripts/capture.sh 19: run "bind-file" of course/checkpoints/19, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 19; never edit by hand (CURRICULUM §3.6).
+$ course/checkpoints/19/net.sh bind-file {macvmm} <repo> {guests}/hello
+exit: 2
+--- stdout ---
+check: the file at LOCAL is unchanged
+
+--- stderr ---
+macvmm: refusing to replace non-socket path "/var/folders/xx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/T/tmp.eGNdBWhr1r/x" (--net only replaces a stale socket of yours; NET-4)
+

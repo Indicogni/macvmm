@@ -1,0 +1,35 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Run in an rsync copy of the reference with its own target directory, so the shared target/debug/macvmm was not relinked.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/test-e2e.sh hostile
+exit: 0
+--- stdout ---
+test-e2e: suite hostile
+
+running 11 tests
+test hostile_flood ... hostile_flood: 1048576 bytes in the file after 8.262096458s
+ok
+test hostile_isv0 ... ok
+test hostile_mmio ... hostile_mmio: 236.972917ms
+ok
+test hostile_reset ... ok
+test hostile_smccc_storm ... ok
+test hostile_sysreg ... ok
+test hostile_tty ... ok
+test hostile_vq_blk ... ok
+test hostile_vq_empty_slots ... ok
+test hostile_vq_live_toctou ... hostile_vq_live_toctou: 2866730 MMIO exits, all in the virtio window
+ok
+test hostile_vq_rng ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 32.92s
+
+test-e2e: e2e OK: hostile
+
+--- stderr ---
+   Compiling hvf v0.1.0 (<tree>/crates/hvf)
+   Compiling vmm v0.1.0 (<tree>/crates/vmm)
+   Compiling fuzz v0.1.0 (<tree>/crates/fuzz)
+   Compiling macvmm v0.1.0 (<tree>/crates/macvmm)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.12s
+     Running tests/e2e_hostile.rs (target/debug/deps/e2e_hostile-091ea3554dca61c6)

@@ -50,6 +50,7 @@ use std::sync::Arc;
 /// Create the process's VM, with an in-kernel GICv3 at the layout's GICD/GICR bases, for a
 /// machine whose RAM ends at `ram_end`.
 pub fn create_vm(layout: &Layout, ram_end: u64, caps: &Capabilities) -> Result<(Vm, Gic)> {
+    // ANCHOR: vm_ipa_check
     let bits = layout.ipa_bits_needed(ram_end);
     if bits > caps.max_ipa_bits {
         return Err(Error::Config(format!(
@@ -57,6 +58,7 @@ pub fn create_vm(layout: &Layout, ram_end: u64, caps: &Capabilities) -> Result<(
             caps.max_ipa_bits
         )));
     }
+    // ANCHOR_END: vm_ipa_check
     let gic = GicConfig {
         distributor_base: GICD_BASE,
         redistributor_base: GICR_BASE,
@@ -118,6 +120,7 @@ pub struct GicFacts {
     pub ptimer: u32,
 }
 
+// ANCHOR: gic_facts_query
 impl GicFacts {
     /// Ask the live framework.
     pub fn query(gic: &Gic) -> Result<GicFacts> {
@@ -137,22 +140,26 @@ impl GicFacts {
         })
     }
 }
+// ANCHOR_END: gic_facts_query
 
 /// The EL1 virtual timer PPI the DT `timer` node and the guests assume (PLAN §1).
 pub const EXPECTED_VTIMER_INTID: u32 = 27;
 /// The EL1 physical timer PPI (PLAN §1).
 pub const EXPECTED_PTIMER_INTID: u32 = 30;
 
+// ANCHOR: layout_spis
 /// Every SPI INTID the `virt` layout wires: each region's line and the 32 virtio-mmio slots.
 pub fn layout_spis(layout: &Layout) -> Vec<u32> {
     let mut v: Vec<u32> = layout.regions.iter().filter_map(|r| r.intid).collect();
     v.extend((0..VIRTIO_MMIO_SLOTS).filter_map(|i| layout.virtio_slot(i).map(|(_, intid)| intid)));
     v
 }
+// ANCHOR_END: layout_spis
 
 // ANCHOR: gic_create_checks
-/// The startup assertions of architecture §9 (module docs). Each failure names the value the
-/// framework reported and the one macvmm needs.
+/// The start-up checks: the framework's GIC geometry and timer INTIDs must match what the
+/// layout and the device tree promise the guest. Each failure names the value the framework
+/// reported and the one macvmm needs.
 pub fn check_gic_facts(f: &GicFacts, layout: &Layout) -> Result<()> {
     let mismatch = |what: &str, got: String, want: String| {
         Err(Error::Config(format!(

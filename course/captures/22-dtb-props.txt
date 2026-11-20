@@ -1,0 +1,18 @@
+# scripts/capture-cmd 22: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The same two blobs as 22-dtb-nodes.txt.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ for f in .cache/qemu.dtb .cache/ours.dtb; do echo "== $f"; fdtget -t s $f /pl011@9000000 clock-names; fdtget $f /virtio_mmio@a000000 interrupts; fdtget -t x $f /intc@8000000 reg; fdtget -t s $f /cpus/cpu@0 compatible; done
+exit: 0
+--- stdout ---
+== .cache/qemu.dtb
+uartclk apb_pclk
+0 16 1
+0 8000000 0 10000 0 80a0000 0 f60000
+arm,cortex-a57
+== .cache/ours.dtb
+uartclk apb_pclk
+0 16 4
+0 8000000 0 10000 0 80a0000 0 40000
+arm,arm-v8
+
+--- stderr ---

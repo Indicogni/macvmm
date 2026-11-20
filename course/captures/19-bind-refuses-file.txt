@@ -1,0 +1,10 @@
+# scripts/capture-cmd 19: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ printf precious > $T/x; cargo run -q -p macvmm -- run --net unixgram:$T/x,peer=$T/y --kernel target/guests/aarch64-unknown-none/release/hello --timeout 10; echo "exit code $?"; cat $T/x
+exit: 0
+--- stdout ---
+exit code 2
+precious
+
+--- stderr ---
+macvmm: refusing to replace non-socket path "$T/x" (--net only replaces a stale socket of yours; NET-4)

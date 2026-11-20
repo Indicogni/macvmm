@@ -87,7 +87,7 @@ impl VirtioInterrupt {
         self.raise(INT_CONFIG);
     }
 
-    /// InterruptACK: clear `bits` (masked to bits 0–1, VQ-16) and lower the line once no bit
+    /// InterruptACK: clear `bits` (masked to bits 0–1) and lower the line once no bit
     /// is left.
     pub fn ack(&self, bits: u32) {
         let mut s = lock(&self.state);
@@ -103,13 +103,15 @@ impl VirtioInterrupt {
         lock(&self.state).status
     }
 
-    /// Latch DEVICE_NEEDS_RESET and raise a configuration interrupt (§2.1.2, VQ-10).
+    // ANCHOR: virtio_needs_reset
+    /// Latch DEVICE_NEEDS_RESET and raise a configuration interrupt (§2.1.2).
     pub fn set_needs_reset(&self) {
         let mut s = lock(&self.state);
         s.needs_reset = true;
         s.status |= INT_CONFIG;
         self.line.set_level(true);
     }
+    // ANCHOR_END: virtio_needs_reset
 
     /// True after [`set_needs_reset`](Self::set_needs_reset), until [`reset`](Self::reset).
     pub fn needs_reset(&self) -> bool {

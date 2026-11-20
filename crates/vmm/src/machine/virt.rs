@@ -61,9 +61,10 @@ pub fn ram_regions(size: u64) -> [(GuestAddress, u64); 1] {
     [(GuestAddress(RAM_BASE), size)]
 }
 
-/// Put the devices `cfg` asks for on `bus` (one block per device, PLAN §2.1).
+// ANCHOR: testdev_register
+/// Put the devices `cfg` asks for on `bus` (one block per device).
 pub fn register_devices(cfg: &VmConfig, bus: &mut Bus) -> Result<()> {
-    // M4: the scratch-register test device, only with --testdev.
+    // The scratch-register test device, only with --testdev.
     if cfg.testdev {
         bus.insert(
             "testdev",
@@ -75,6 +76,7 @@ pub fn register_devices(cfg: &VmConfig, bus: &mut Bus) -> Result<()> {
     }
     Ok(())
 }
+// ANCHOR_END: testdev_register
 
 // ANCHOR: slot_assignment
 /// The device model in a populated virtio-mmio slot (architecture §11.3).
@@ -157,7 +159,8 @@ pub struct VirtioEnv<'a> {
     pub nets: Vec<crate::net::NetHost>,
 }
 
-/// Put all 32 virtio-mmio transports on `bus` with no device in any of them (M11; host tests).
+// ANCHOR: virtio_register_empty
+/// Put all 32 virtio-mmio transports on `bus` with no device in any of them (host tests).
 /// Refuses a `cfg` that asks for a device: use [`register_virtio_with`].
 pub fn register_virtio(cfg: &VmConfig, bus: &mut Bus) -> Result<()> {
     if !virtio_populated(cfg).is_empty() {
@@ -173,6 +176,7 @@ pub fn register_virtio(cfg: &VmConfig, bus: &mut Bus) -> Result<()> {
     }
     Ok(())
 }
+// ANCHOR_END: virtio_register_empty
 
 fn insert_transport(bus: &mut Bus, base: u64, t: VirtioMmio) -> Result<()> {
     bus.insert("virtio-mmio", base, VIRTIO_WINDOW, Arc::new(Mutex::new(t)))
@@ -241,17 +245,17 @@ fn blk_device(env: &VirtioEnv<'_>, n: usize) -> Result<Arc<Mutex<dyn VirtioDevic
 }
 
 // ANCHOR: virtio_slot_device
-/// One populated slot (M12): the device model, its transport, and its worker thread, which
+/// One populated slot: the device model, its transport, and its worker thread, which
 /// is the transport's doorbell target (`QueueNotifier`), so a QueueNotify on a vCPU only sets
-/// a bit and returns (architecture §14.3 step 1). The worker's per-queue budget is the
-/// device's queue maximum (VQ-12).
+/// a bit and returns. The worker's per-queue budget is the device's queue maximum, so one busy
+/// queue cannot starve the others.
 fn populated_slot(
     kind: VirtioKind,
     slot: usize,
     line: Arc<dyn IrqLine>,
     env: &VirtioEnv<'_>,
 ) -> Result<(VirtioMmio, Arc<Worker>)> {
-    // M24: a NIC's typed handle, for its RX thread.
+    // A NIC's typed handle, for its RX thread.
     let mut nic: Option<(usize, Arc<Mutex<crate::virtio::Net>>)> = None;
     let device: Arc<Mutex<dyn VirtioDevice>> = match kind {
         VirtioKind::Blk(n) => blk_device(env, n)?,
@@ -287,7 +291,7 @@ fn populated_slot(
     )
     .map_err(|_| Error::Internal("cannot spawn a virtio worker thread"))?;
     if let Some((n, dev)) = nic {
-        attach_net_rx(&worker, slot, n, dev, interrupt, &env.ctl)?; // M24
+        attach_net_rx(&worker, slot, n, dev, interrupt, &env.ctl)?;
     }
     let notifier: Arc<dyn QueueNotifier> = worker.clone();
     transport.set_notifier(Some(notifier));
@@ -296,8 +300,8 @@ fn populated_slot(
 // ANCHOR_END: virtio_slot_device
 
 // ANCHOR: net_rx_attach
-/// M24: start NIC `n`'s RX thread (`virtio::net::spawn_rx`) and attach it to the slot's worker
-/// as its `Companion`, so stopping the workers (before guest RAM is freed, MEM-9) also stops and
+/// Start NIC `n`'s RX thread (`virtio::net::spawn_rx`) and attach it to the slot's worker
+/// as its `Companion`, so stopping the workers (before guest RAM is freed) also stops and
 /// joins it, and its counters come out in `--stats`.
 fn attach_net_rx(
     worker: &Worker,
@@ -334,7 +338,7 @@ fn console_device(env: &VirtioEnv<'_>) -> Result<Arc<Mutex<dyn VirtioDevice>>> {
 }
 
 // ANCHOR: console_input_hook
-/// M13 (architecture §14.4): bytes the stdin thread pushes into the console's input queue ring
+/// The console input hook: bytes the stdin thread pushes into the console's input queue ring
 /// this boot's console worker for the receiveq, exactly as a guest QueueNotify would; the
 /// worker fills whatever RX buffers are posted (`virtio::console`, anchor `console_rx`). The
 /// hook holds a `Weak`, so it never keeps a torn-down boot's worker alive, and a doorbell for
@@ -368,8 +372,8 @@ impl PlatformIrqs {
 
 // ANCHOR: pl011_irq_wiring
 /// The platform lines for this boot: `GicSpi(33)` for the PL011 and `GicSpi(34)` for the PL031
-/// on the in-kernel GIC (PLAN §1, each validated against the GIC's SPI range and the MSI block,
-/// threat model §10.2 M8), or `NullIrq` without a GIC.
+/// on the in-kernel GIC (each validated against the GIC's SPI range and the MSI block before
+/// the guest runs, so a wiring bug can never reach the framework), or `NullIrq` without a GIC.
 pub fn platform_irqs(gic: Option<&hvf::Gic>) -> Result<PlatformIrqs> {
     let Some(gic) = gic else {
         return Ok(PlatformIrqs::none());
@@ -390,7 +394,9 @@ pub fn platform_irqs(gic: Option<&hvf::Gic>) -> Result<PlatformIrqs> {
 }
 // ANCHOR_END: pl011_irq_wiring
 
-/// [`register_platform_with`] with both lines connected to nothing (M6 behaviour; host tests).
+// ANCHOR: register_platform_wrapper
+/// [`register_platform_with`] with both interrupt lines connected to nothing: the chapter 09
+/// machine, and the host tests.
 pub fn register_platform(
     bus: &mut Bus,
     serial: &SinkHandle,
@@ -399,16 +405,17 @@ pub fn register_platform(
 ) -> Result<Arc<Mutex<Pl011>>> {
     register_platform_with(bus, serial, input, ncpus, PlatformIrqs::none())
 }
+// ANCHOR_END: register_platform_wrapper
 
 // ANCHOR: register_platform
-/// Put the devices every `virt` machine has on `bus` (M6, architecture §5.1, §10):
+/// Put the devices every `virt` machine has on `bus` (the memory map in `arch/layout.rs`):
 /// - the PL011 UART0, transmitting to `serial` and receiving from `input`;
 /// - the PL031 RTC;
-/// - a RAZ/WI window over the part of the GIC redistributor window that `ncpus` vCPUs leave
-///   unused (the in-kernel GIC implements one 128 KiB frame per vCPU).
+/// - a RAZ/WI window over the part of the interrupt controller's per-CPU window that `ncpus`
+///   vCPUs leave unused (one 128 KiB frame per vCPU; chapter 12 explains the frames).
 ///
-/// Their interrupt lines are `irqs` ([`platform_irqs`]: the in-kernel GIC's SPI 1 and SPI 2
-/// from M8). Returns the UART so the caller can connect `input`'s push hook to it.
+/// Their interrupt lines are `irqs` (connected to nothing until the interrupt controller
+/// arrives in chapter 12). Returns the UART so the caller can connect `input`'s push hook.
 pub fn register_platform_with(
     bus: &mut Bus,
     serial: &SinkHandle,
@@ -433,6 +440,7 @@ pub fn register_platform_with(
         ))),
     )
     .map_err(Error::Bus)?;
+    // ANCHOR: gicr_unused_razwi
     let frames = Layout::virt()
         .gicr_size(ncpus)
         .ok_or(Error::Internal("vCPU count outside 1..=MAX_CPUS"))?;
@@ -448,6 +456,7 @@ pub fn register_platform_with(
         )
         .map_err(Error::Bus)?;
     }
+    // ANCHOR_END: gicr_unused_razwi
     Ok(uart)
 }
 // ANCHOR_END: register_platform

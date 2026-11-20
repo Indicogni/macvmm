@@ -42,6 +42,7 @@ pub fn deallocate_calls() -> u64 {
     DEALLOCATE_CALLS.load(Ordering::SeqCst)
 }
 
+// ANCHOR: host_timebase
 /// The host tick counter (`mach_absolute_time`). Monotonic; never fails.
 pub fn mach_absolute_time() -> u64 {
     // SAFETY: no arguments, no preconditions; it only reads the system clock.
@@ -78,6 +79,7 @@ pub fn timebase() -> Option<Timebase> {
         denom: info.denom,
     })
 }
+// ANCHOR_END: host_timebase
 
 /// The host's macOS release as `(major, minor)`, from `sysctl kern.osproductversion`
 /// (for example `(27, 2)`). `None` if the value cannot be read or parsed.
@@ -107,6 +109,7 @@ pub fn macos_version() -> Option<(u32, u32)> {
     Some((major, minor))
 }
 
+// ANCHOR: os_object
 /// Owns one retained OS object (`hv_*_config_t`, `hv_gic_state_t`) and releases it on drop.
 pub(crate) struct OsObject {
     ptr: NonNull<c_void>,
@@ -137,6 +140,7 @@ impl Drop for OsObject {
         unsafe { ffi::os_release(self.ptr.as_ptr()) }
     }
 }
+// ANCHOR_END: os_object
 
 /// Host memory from `hv_vm_allocate`, released with `hv_vm_deallocate` on drop.
 ///
@@ -205,6 +209,7 @@ impl Drop for Allocation {
     }
 }
 
+// ANCHOR: host_allocate
 /// `hv_vm_allocate(len)`. `len` must be a non-zero multiple of the host page size; that is
 /// checked here first (reported as `hv_vm_allocate: HV_BAD_ARGUMENT`), because the header only
 /// promises behaviour for page multiples.
@@ -228,6 +233,7 @@ pub fn allocate(len: usize) -> Result<Allocation, CallError> {
     })?;
     Ok(Allocation { ptr, len })
 }
+// ANCHOR_END: host_allocate
 
 /// `hv_vm_deallocate`, reporting the framework's answer (dropping an [`Allocation`] does the
 /// same call but has to discard the result). Owners that keep a deallocation counter or must
@@ -750,6 +756,7 @@ pub fn socket_buffers(fd: i32) -> std::io::Result<(usize, usize)> {
 // process used during a boot with the wall time it took: CURRICULUM ch12 checks that a guest
 // idling in in-kernel WFI costs under 10 % of one host CPU.
 
+// ANCHOR: host_process_cpu_time
 /// `getrusage(RUSAGE_SELF)`: user + system CPU time of the whole process (every thread,
 /// including the vCPU threads while they are inside `hv_vcpu_run`). `None` if the call fails.
 pub fn process_cpu_time() -> Option<std::time::Duration> {
@@ -766,6 +773,7 @@ pub fn process_cpu_time() -> Option<std::time::Duration> {
     };
     Some(tv(ru.ru_utime)? + tv(ru.ru_stime)?)
 }
+// ANCHOR_END: host_process_cpu_time
 
 #[cfg(test)]
 mod cpu_time_tests {
@@ -783,7 +791,6 @@ mod cpu_time_tests {
     }
 }
 
-// ANCHOR: host_sandbox
 // Confinement shims (M22; threat model SBX-1..SBX-4, PROC-4). `macvmm/src/sandbox.rs` owns the
 // policy (the SBPL profile, when to apply it, what the self-test expects); these wrappers only
 // say what libSystem does.
@@ -796,6 +803,7 @@ mod cpu_time_tests {
 // `sandbox-exec -p` uses; it is verified on this machine (threat model §13, M22) but may break
 // in any release, which is why `--sandbox` fails closed (SBX-4). It lives in
 // `libsystem_sandbox.dylib`, part of libSystem, so no extra link flag is needed.
+// ANCHOR: host_sandbox
 unsafe extern "C" {
     fn sandbox_init(
         profile: *const libc::c_char,

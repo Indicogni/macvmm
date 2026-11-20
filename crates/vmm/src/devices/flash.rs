@@ -86,6 +86,7 @@ impl MmioDevice for FlashDevice {
     fn write(&mut self, offset: u64, size: AccessSize, value: u64) {
         // MMIO-10: the ROM is read+execute at stage 2, so a store faults here; drop it. The
         // count saturates (a guest can loop forever) and the log is rate-limited (LOG-1).
+        // ANCHOR: flash_write_ignored_body
         self.writes = self.writes.saturating_add(1);
         crate::guest_warn!(
             "flash: ignored {}-byte write of {value:#x} at offset {offset:#x} \
@@ -93,6 +94,7 @@ impl MmioDevice for FlashDevice {
             size.bytes(),
             self.writes
         );
+        // ANCHOR_END: flash_write_ignored_body
     }
     // ANCHOR_END: flash_write_ignored
 }

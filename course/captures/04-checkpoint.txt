@@ -1,0 +1,15 @@
+# scripts/capture-cmd 04: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The chapter's checkpoint, run against an unmodified copy of the reference (scripts/checkpoint.sh 04 --impl <tree>): what a finished chapter 04 looks like.
+# The journal line reports "not a learner tree" here; in your own learner/ workspace it checks your journal.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/checkpoint.sh 04
+exit: 0
+--- stdout ---
+checkpoint: implementation <tree>
+[PASS] contract tests   memory_hostile (37 tests)
+[PASS] runs on your Mac memtest: 10/10 serial markers, exit 0 in 0.19s
+[PASS] runs on your Mac guest-ram: HVF contract guest_ram_hostile (4 tests) in 2.24s
+[INFO] journal          not checked (not a learner tree)
+CHECKPOINT 04 PASS
+
+--- stderr ---

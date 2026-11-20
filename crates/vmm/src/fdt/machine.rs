@@ -62,14 +62,17 @@ pub const GIC_PHANDLE: u32 = 1;
 pub const APB_PCLK_PHANDLE: u32 = 2;
 /// The fixed APB clock, 24 MHz like QEMU (`virt.c`, `create_fdt`: `clk24mhz`).
 pub const APB_PCLK_HZ: u32 = 24_000_000;
+// ANCHOR: fdt_interrupt_cells
 /// Interrupt-specifier cells (`dt-bindings/interrupt-controller/arm-gic.h`, `irq.h`).
 pub const GIC_SPI: u32 = 0;
 pub const GIC_PPI: u32 = 1;
 pub const IRQ_TYPE_LEVEL_HIGH: u32 = 4;
 /// The four architected-timer PPIs in the order `arm,arch_timer.yaml` lists them: secure
-/// physical (13 → INTID 29), non-secure physical (14 → 30), **virtual** (11 → 27, the one
-/// HVF delivers as `HV_EXIT_REASON_VTIMER_ACTIVATED`) and hypervisor physical (10 → 26).
+/// physical (13 → INTID 29), non-secure physical (14 → 30), **virtual** (11 → 27; delivered
+/// in-kernel by the GIC, or as `HV_EXIT_REASON_VTIMER_ACTIVATED` only with `--irqchip none`)
+/// and hypervisor physical (10 → 26).
 pub const TIMER_PPIS: [u32; 4] = [13, 14, 11, 10];
+// ANCHOR_END: fdt_interrupt_cells
 /// `/chosen/rng-seed` length. Linux accepts any length; 64 bytes (512 bits) is what QEMU and
 /// U-Boot pass and more than the pool needs to be fully seeded.
 pub const RNG_SEED_LEN: usize = 64;
@@ -81,6 +84,7 @@ pub const MAX_BOOTARGS: usize = 2047;
 /// 39:32, Aff2..Aff0 in bits 23:0; bits 31:24 are not affinity).
 pub const MPIDR_AFFINITY_MASK: u64 = 0xff_00ff_ffff;
 
+// ANCHOR: fdt_machine_desc
 /// Everything about one boot that the tree describes. Pure data: tests fill the seeds with
 /// fixed values, the machine build with [`MachineDesc::from_entropy`].
 #[derive(Clone, PartialEq, Eq)]
@@ -89,11 +93,11 @@ pub struct MachineDesc {
     pub ncpus: u32,
     /// RAM size in bytes (checked against the layout again here).
     pub mem_bytes: u64,
-    /// `/chosen/bootargs`, if any (M9: the kernel command line).
+    /// `/chosen/bootargs`, if any (chapter 13: the kernel command line).
     pub bootargs: Option<String>,
-    /// `/chosen/linux,initrd-{start,end}`: `[start, end)` (M9).
+    /// `/chosen/linux,initrd-{start,end}`: `[start, end)` (chapter 13).
     pub initrd: Option<(u64, u64)>,
-    /// The populated virtio-mmio slot indices (M11), each `< VIRTIO_MMIO_SLOTS`.
+    /// The populated virtio-mmio slot indices (chapter 15), each `< VIRTIO_MMIO_SLOTS`.
     pub virtio_slots: Vec<usize>,
     /// `/chosen/rng-seed`.
     pub rng_seed: [u8; RNG_SEED_LEN],
@@ -102,7 +106,7 @@ pub struct MachineDesc {
 }
 
 impl fmt::Debug for MachineDesc {
-    /// Never prints the seeds (FDT-4: logs and `--dry-run` must not reveal them).
+    /// Never prints the seeds: logs and `--dry-run` must not reveal them.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MachineDesc")
             .field("ncpus", &self.ncpus)
@@ -117,7 +121,7 @@ impl fmt::Debug for MachineDesc {
 }
 
 impl MachineDesc {
-    /// A description with fresh seeds from the host CSPRNG (FDT-3): what every real boot uses.
+    /// A description with fresh seeds from the host CSPRNG: what every real boot uses.
     pub fn from_entropy(
         ncpus: u32,
         mem_bytes: u64,
@@ -136,7 +140,9 @@ impl MachineDesc {
         })
     }
 }
+// ANCHOR_END: fdt_machine_desc
 
+// ANCHOR: fdt_machine_row
 fn bad(why: impl Into<String>) -> FdtError {
     FdtError::InvalidMachine(why.into())
 }
@@ -149,7 +155,9 @@ fn row(layout: &Layout, base: u64) -> Result<&Region, FdtError> {
         .find(|r| r.base == base)
         .ok_or_else(|| bad(format!("no layout region at {base:#x}")))
 }
+// ANCHOR_END: fdt_machine_row
 
+// ANCHOR: fdt_spi_cells
 /// `<GIC_SPI n IRQ_TYPE_LEVEL_HIGH>` for an SPI INTID (32..=1019, GIC spec IHI 0069 §2.2).
 pub fn spi_cells(intid: u32) -> Result<[u32; 3], FdtError> {
     match intid.checked_sub(32) {
@@ -157,7 +165,9 @@ pub fn spi_cells(intid: u32) -> Result<[u32; 3], FdtError> {
         _ => Err(bad(format!("INTID {intid} is not an SPI"))),
     }
 }
+// ANCHOR_END: fdt_spi_cells
 
+// ANCHOR: fdt_machine_primecell
 /// An AMBA PrimeCell node (`arm,primecell.yaml`) named from its layout row: `reg`, one
 /// level-high SPI, and the APB clock(s) the AMBA bus enables before probing.
 fn primecell(
@@ -181,13 +191,16 @@ fn primecell(
     w.prop_strs("clock-names", clock_names)?;
     w.end_node(n)
 }
+// ANCHOR_END: fdt_machine_primecell
 
+// ANCHOR: fdt_machine_reg64
 /// One `<u64 address u64 size>` entry with 2 address and 2 size cells.
 fn reg64(addr: u64, size: u64) -> [u32; 4] {
     let hi = |v: u64| u32::try_from(v >> 32).unwrap_or(u32::MAX);
     let lo = |v: u64| u32::try_from(v & 0xffff_ffff).unwrap_or(u32::MAX);
     [hi(addr), lo(addr), hi(size), lo(size)]
 }
+// ANCHOR_END: fdt_machine_reg64
 
 /// The DT path the console lives at (`/chosen/stdout-path`, DT spec §3.6).
 pub fn stdout_path(layout: &Layout) -> Result<String, FdtError> {
@@ -196,11 +209,12 @@ pub fn stdout_path(layout: &Layout) -> Result<String, FdtError> {
 }
 
 // ANCHOR: fdt_machine_chosen
-/// `/chosen` (DT spec §3.6; booting.rst §2; Linux `drivers/of/fdt.c`).
+/// `/chosen` (devicetree specification section 3.6; booting.rst section 2; Linux
+/// `drivers/of/fdt.c`).
 fn chosen(w: &mut FdtWriter, layout: &Layout, d: &MachineDesc) -> Result<(), FdtError> {
     let n = w.begin_node("chosen")?;
     if let Some(args) = &d.bootargs {
-        // FDT-2: Linux would silently truncate a longer line; a NUL would end it early.
+        // Linux would silently truncate a longer line; a NUL would end it early.
         if args.len() > MAX_BOOTARGS || args.as_bytes().contains(&0) {
             return Err(bad(format!(
                 "bootargs must be at most {MAX_BOOTARGS} bytes without NUL"
@@ -217,13 +231,15 @@ fn chosen(w: &mut FdtWriter, layout: &Layout, d: &MachineDesc) -> Result<(), Fdt
         w.prop_u64("linux,initrd-start", start)?;
         w.prop_u64("linux,initrd-end", end)?;
     }
-    // Fresh per boot from the host CSPRNG (FDT-3); zeroed in --dtb-out copies (FDT-4).
+    // Fresh per boot from the host's secure random generator; zeroed in --dtb-out copies, so
+    // a saved tree never leaks the seeds the guest used.
     w.prop_bytes("rng-seed", &d.rng_seed)?;
     w.prop_u64("kaslr-seed", d.kaslr_seed)?;
     w.end_node(n)
 }
 // ANCHOR_END: fdt_machine_chosen
 
+// ANCHOR: fdt_machine_memory
 fn memory(w: &mut FdtWriter, layout: &Layout, d: &MachineDesc) -> Result<(), FdtError> {
     layout
         .ram_end(d.mem_bytes)
@@ -233,7 +249,9 @@ fn memory(w: &mut FdtWriter, layout: &Layout, d: &MachineDesc) -> Result<(), Fdt
     w.prop_cells("reg", &reg64(RAM_BASE, d.mem_bytes))?;
     w.end_node(n)
 }
+// ANCHOR_END: fdt_machine_memory
 
+// ANCHOR: fdt_machine_cpus
 /// `/cpus` (DT spec §3.7). `reg` is the MPIDR affinity the vCPU is given
 /// (`arch::regs::mpidr`), which the GIC redistributor of that vCPU also reports.
 fn cpus(w: &mut FdtWriter, d: &MachineDesc) -> Result<(), FdtError> {
@@ -262,17 +280,20 @@ fn cpus(w: &mut FdtWriter, d: &MachineDesc) -> Result<(), FdtError> {
     }
     w.end_node(n)
 }
+// ANCHOR_END: fdt_machine_cpus
 
+// ANCHOR: fdt_machine_psci
 fn psci(w: &mut FdtWriter) -> Result<(), FdtError> {
     let n = w.begin_node("psci")?;
     w.prop_strs("compatible", &["arm,psci-1.0", "arm,psci-0.2", "arm,psci"])?;
     w.prop_str("method", "hvc")?;
     w.end_node(n)
 }
+// ANCHOR_END: fdt_machine_psci
 
 // ANCHOR: fdt_machine_timer
 /// `/timer` (`arm,arch_timer.yaml`). No `clock-frequency`: the binding says firmware should
-/// set `CNTFRQ_EL0` instead, and HVF does (24 MHz, spike finding 4).
+/// set `CNTFRQ_EL0` instead, and HVF does (24 MHz, measured on this Mac).
 fn timer(w: &mut FdtWriter, with_gic: bool) -> Result<(), FdtError> {
     let n = w.begin_node("timer")?;
     w.prop_strs("compatible", &["arm,armv8-timer", "arm,armv7-timer"])?;
@@ -291,7 +312,7 @@ fn timer(w: &mut FdtWriter, with_gic: bool) -> Result<(), FdtError> {
 // ANCHOR: fdt_machine_gic
 /// `/intc@8000000` (`arm,gic-v3.yaml`): the in-kernel GICv3 HVF emulates at the layout bases
 /// (`vm::create_vm`). `reg[0]` is the distributor, `reg[1]` one redistributor region of
-/// `ncpus` 128 KiB frames (RD_base + SGI_base, IHI 0069 §12.10). No ITS and no v2m frame: the
+/// `ncpus` 128 KiB frames (RD_base + SGI_base, IHI 0069 section 12.10). No ITS and no v2m frame: the
 /// virtio-mmio devices use wired SPIs.
 fn gic(w: &mut FdtWriter, layout: &Layout, d: &MachineDesc) -> Result<(), FdtError> {
     let gicr = layout
@@ -313,6 +334,7 @@ fn gic(w: &mut FdtWriter, layout: &Layout, d: &MachineDesc) -> Result<(), FdtErr
 }
 // ANCHOR_END: fdt_machine_gic
 
+// ANCHOR: fdt_machine_apb_pclk
 fn apb_pclk(w: &mut FdtWriter) -> Result<(), FdtError> {
     let n = w.begin_node("apb-pclk")?;
     w.prop_str("compatible", "fixed-clock")?;
@@ -322,6 +344,7 @@ fn apb_pclk(w: &mut FdtWriter) -> Result<(), FdtError> {
     w.prop_u32("phandle", APB_PCLK_PHANDLE)?;
     w.end_node(n)
 }
+// ANCHOR_END: fdt_machine_apb_pclk
 
 // ANCHOR: fdt_machine_virtio_slot
 /// One `/virtio_mmio@…` node (`virtio/mmio.yaml`; virtio 1.2 §4.2.2): slot `i` of the layout,
@@ -340,13 +363,14 @@ fn virtio_slot(w: &mut FdtWriter, layout: &Layout, slot: usize) -> Result<(), Fd
 }
 // ANCHOR_END: fdt_machine_virtio_slot
 
+// ANCHOR: fdt_build_dtb_with
 /// Build the blob for `desc` on `layout` (module docs). Deterministic for a given `desc`.
 pub fn build_dtb(layout: &Layout, desc: &MachineDesc) -> Result<Vec<u8>, FdtError> {
     build_dtb_with(layout, desc, true)
 }
 
 /// [`build_dtb`], or with `with_gic = false` the tree of the `--irqchip none` teaching mode
-/// (M8, architecture §9.1): no `intc` node, no root `interrupt-parent`, and no `interrupts`
+/// (chapter 11): no `intc` node, no root `interrupt-parent`, and no `interrupts`
 /// on the timer and the PrimeCells, since nothing could deliver them. Test guests in that
 /// mode do not read the tree; this keeps it self-consistent anyway (no dangling phandle).
 pub fn build_dtb_with(
@@ -362,6 +386,8 @@ pub fn build_dtb_with(
     if slots.windows(2).any(|p| p.first() == p.get(1)) {
         return Err(bad("a virtio slot is listed twice"));
     }
+    // ANCHOR_END: fdt_build_dtb_with
+    // ANCHOR: fdt_machine_root
     let mut w = FdtWriter::new();
     let root = w.begin_node("")?;
     w.prop_str("compatible", "linux,dummy-virt")?;
@@ -381,6 +407,7 @@ pub fn build_dtb_with(
         gic(&mut w, layout, desc)?;
     }
     apb_pclk(&mut w)?;
+    // ANCHOR: fdt_machine_pl011_node
     primecell(
         &mut w,
         row(layout, PL011_BASE)?,
@@ -388,6 +415,7 @@ pub fn build_dtb_with(
         &["uartclk", "apb_pclk"],
         with_gic,
     )?;
+    // ANCHOR_END: fdt_machine_pl011_node
     primecell(
         &mut w,
         row(layout, PL031_BASE)?,
@@ -401,6 +429,7 @@ pub fn build_dtb_with(
     w.end_node(root)?;
     // The boot CPU is vCPU 0, whose `reg` is 0.
     w.finish(0)
+    // ANCHOR_END: fdt_machine_root
 }
 
 /// The vtimer PPI the tree lists must be the one the layout (and HVF) uses.
@@ -454,6 +483,7 @@ pub fn redact_seeds(blob: &[u8]) -> Result<Vec<u8>, FdtError> {
                 pos = align4(step(step(pos, name_len), 1));
             }
             FDT_END_NODE | FDT_NOP => {}
+            // ANCHOR: fdt_redact_prop
             FDT_PROP => {
                 let (len, nameoff) = (be(pos)?, be(step(pos, 4))?);
                 let value = step(pos, 8);
@@ -478,6 +508,7 @@ pub fn redact_seeds(blob: &[u8]) -> Result<Vec<u8>, FdtError> {
                 }
                 pos = align4(value_end);
             }
+            // ANCHOR_END: fdt_redact_prop
             FDT_END => break,
             _ => return Err(FdtError::Malformed("unknown token")),
         }

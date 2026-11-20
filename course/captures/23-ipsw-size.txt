@@ -1,0 +1,9 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# A HEAD request: asks Apple's server for the size of the restore image the dry run named, and downloads nothing.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ curl -sSI https://updates.cdn-apple.com/2026FallFCS/c202a724-db7e-4d56-917b-110aa0226507/UniversalMac_27.2.1_26B131_Restore.ipsw | grep -i '^content-length'
+exit: 0
+--- stdout ---
+Content-Length: 25595954706\x0d
+
+--- stderr ---

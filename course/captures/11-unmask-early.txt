@@ -1,0 +1,17 @@
+# scripts/capture-cmd 11: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Experiment: nogic_before_entry in crates/vmm/src/vcpu/mod.rs unmasks the vtimer before every entry whenever it is masked (if action.unmask || masked), instead of waiting until CNTV_CTL shows the timer no longer asserting.
+# Run in a copy of the reference with that one edit.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --irqchip none --mem 64M --raw {guests}/timer-nogic.bin@0x40080000 --stats --timeout 10
+exit: 5
+--- stdout ---
+timer-nogic: cntfrq=24000000
+timer-nogic: pfr0.gic=0
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 10s
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=53 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 8379518, wfx 1, total 8387052: canceled 7480, vtimer 8379518, wfx 1, hvc 53
+macvmm: stats: vcpu0 time: exec 2.798 s, wfi n/a
+macvmm: stats: host cpu 9.500 s over 10.004 s wall (95%)
+macvmm: stats: rlimit core=0 nofile=1048576

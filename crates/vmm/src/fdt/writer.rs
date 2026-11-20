@@ -37,6 +37,7 @@
 use core::fmt;
 use std::collections::BTreeMap;
 
+// ANCHOR: fdt_consts
 /// `magic` (DT spec §5.2).
 pub const FDT_MAGIC: u32 = 0xd00d_feed;
 /// The format version we write, and the oldest version it is compatible with (§5.2: version
@@ -55,6 +56,7 @@ pub const FDT_HEADER_SIZE: usize = 40;
 pub const FDT_RSV_ENTRY_SIZE: usize = 16;
 /// The largest blob we produce (booting.rst §2: at most 2 MiB).
 pub const FDT_MAX_SIZE: usize = 2 << 20;
+// ANCHOR_END: fdt_consts
 /// Node names are at most 31 characters before the `@` (DT spec §2.2.1), property names at
 /// most 31 (§2.2.4). The unit address adds at most 16 hex digits and the `@`.
 pub const MAX_NODE_NAME: usize = 31 + 1 + 16;
@@ -65,8 +67,9 @@ pub const MAX_DEPTH: usize = 16;
 /// At most this many `/memreserve/` entries (we normally emit none).
 pub const MAX_MEM_RESERVE: usize = 64;
 
+// ANCHOR: fdt_error
 /// Why the writer refused a call. All of these are bugs in the code that builds the tree
-/// (every name and value comes from our own code, FDT-2), so the machine build reports them as
+/// (every name and value comes from our own code), so the machine build reports them as
 /// an internal error rather than a guest or user error.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FdtError {
@@ -99,6 +102,7 @@ pub enum FdtError {
     /// A blob handed to `machine::redact_seeds` is not one we can redact.
     Malformed(&'static str),
 }
+// ANCHOR_END: fdt_error
 
 impl fmt::Display for FdtError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -133,6 +137,7 @@ impl fmt::Display for FdtError {
 
 impl std::error::Error for FdtError {}
 
+// ANCHOR: fdt_writer_struct
 /// A handle to an open node, returned by [`FdtWriter::begin_node`] and consumed by
 /// [`FdtWriter::end_node`]. Deliberately not `Clone`: each node is closed exactly once.
 #[derive(Debug, PartialEq, Eq)]
@@ -164,6 +169,7 @@ pub struct FdtWriter {
     /// The root has been closed: nothing more may be added.
     root_done: bool,
 }
+// ANCHOR_END: fdt_writer_struct
 
 /// DT spec §2.2.1 Table 2.1: characters allowed in a node name (plus `@` before the unit
 /// address).
@@ -176,8 +182,9 @@ fn prop_char_ok(c: u8) -> bool {
     c.is_ascii_alphanumeric() || matches!(c, b',' | b'.' | b'_' | b'+' | b'?' | b'#' | b'-')
 }
 
+// ANCHOR: fdt_check_node_name
 /// Check a non-root node name: `node-name[@unit-address]` (§2.2.1). Rejects NUL and `/`
-/// explicitly (FDT-2) as well as everything else outside the tables.
+/// explicitly as well as everything else outside the tables.
 pub fn check_node_name(name: &str) -> Result<(), FdtError> {
     let bad = || FdtError::InvalidNodeName {
         name: name.to_owned(),
@@ -200,6 +207,7 @@ pub fn check_node_name(name: &str) -> Result<(), FdtError> {
         Err(bad())
     }
 }
+// ANCHOR_END: fdt_check_node_name
 
 /// Check a property name (§2.2.4).
 pub fn check_prop_name(name: &str) -> Result<(), FdtError> {
@@ -218,6 +226,7 @@ fn pad4(buf: &mut Vec<u8>) {
     }
 }
 
+// ANCHOR: fdt_writer_new
 impl FdtWriter {
     /// An empty writer. The first call must be `begin_node("")` (the root).
     pub fn new() -> FdtWriter {
@@ -254,10 +263,11 @@ impl FdtWriter {
             }),
         }
     }
+    // ANCHOR_END: fdt_writer_new
 
     // ANCHOR: fdt_begin_node
     /// Open a node. The first node must be the root, named `""` (§5.4.1: "the root node's name
-    /// is the empty string"); every later one needs a valid, non-empty name (FDT-2).
+    /// is the empty string"); every later one needs a valid, non-empty name.
     pub fn begin_node(&mut self, name: &str) -> Result<NodeId, FdtError> {
         // Nothing after the root closes, and the first node is the root.
         if self.root_done || (self.open.is_empty() && !name.is_empty()) {
@@ -287,6 +297,7 @@ impl FdtWriter {
     }
     // ANCHOR_END: fdt_begin_node
 
+    // ANCHOR: fdt_end_node
     /// Close `node`, which must be the innermost open node.
     pub fn end_node(&mut self, node: NodeId) -> Result<(), FdtError> {
         match self.open.last() {
@@ -300,6 +311,7 @@ impl FdtWriter {
         }
         self.check_size()
     }
+    // ANCHOR_END: fdt_end_node
 
     // ANCHOR: fdt_strings_dedup
     /// The strings-block offset of `name`, adding it on first use (§5.5).
@@ -337,6 +349,8 @@ impl FdtWriter {
             }
             Some(_) => {}
         }
+        // ANCHOR_END: fdt_prop
+        // ANCHOR: fdt_prop_size
         // Check the size before touching the buffers: `value` may be large. Exact: the
         // 12-byte `FDT_PROP` header, the value padded to 4, and the name if it is new.
         let new_name = if self.string_offsets.contains_key(name) {
@@ -370,34 +384,39 @@ impl FdtWriter {
         pad4(&mut self.structure);
         self.check_size()
     }
-    // ANCHOR_END: fdt_prop
+    // ANCHOR_END: fdt_prop_size
 
     /// An empty (boolean) property, such as `interrupt-controller` (§2.2.4.2 `<empty>`).
     pub fn prop_null(&mut self, name: &str) -> Result<(), FdtError> {
         self.prop_bytes(name, &[])
     }
 
+    // ANCHOR: fdt_prop_u32
     /// One big-endian cell (`<u32>`).
     pub fn prop_u32(&mut self, name: &str, v: u32) -> Result<(), FdtError> {
         self.prop_bytes(name, &v.to_be_bytes())
     }
+    // ANCHOR_END: fdt_prop_u32
 
     /// A `<u64>`: two cells, high first (§2.2.4.2).
     pub fn prop_u64(&mut self, name: &str, v: u64) -> Result<(), FdtError> {
         self.prop_bytes(name, &v.to_be_bytes())
     }
 
+    // ANCHOR: fdt_prop_cells
     /// A `<prop-encoded-array>` of cells.
     pub fn prop_cells(&mut self, name: &str, cells: &[u32]) -> Result<(), FdtError> {
         let bytes: Vec<u8> = cells.iter().flat_map(|c| c.to_be_bytes()).collect();
         self.prop_bytes(name, &bytes)
     }
+    // ANCHOR_END: fdt_prop_cells
 
     /// A `<string>`: the bytes and one NUL. An interior NUL is refused.
     pub fn prop_str(&mut self, name: &str, s: &str) -> Result<(), FdtError> {
         self.prop_strs(name, &[s])
     }
 
+    // ANCHOR: fdt_prop_strs
     /// A `<stringlist>`: each string NUL-terminated, concatenated
     /// (`"arm,pl011\0arm,primecell\0"`).
     pub fn prop_strs(&mut self, name: &str, list: &[&str]) -> Result<(), FdtError> {
@@ -413,6 +432,7 @@ impl FdtWriter {
         }
         self.prop_bytes(name, &bytes)
     }
+    // ANCHOR_END: fdt_prop_strs
 
     /// Add a `/memreserve/` entry (§5.3). We normally emit none: Linux reserves the DTB and
     /// the initrd itself (booting.rst §2).
@@ -424,7 +444,7 @@ impl FdtWriter {
         self.check_size()
     }
 
-    // ANCHOR: fdt_finish_header
+    // ANCHOR: fdt_finish_layout
     /// Serialize: header, reservation map (8-aligned, `{0, 0}`-terminated), structure block
     /// (4-aligned, ending in `FDT_END`), strings block. `boot_cpuid` is the `reg` of the boot
     /// CPU (§5.2 `boot_cpuid_phys`).
@@ -460,6 +480,8 @@ impl FdtWriter {
         if total > FDT_MAX_SIZE {
             return Err(too_large(total));
         }
+        // ANCHOR_END: fdt_finish_layout
+        // ANCHOR: fdt_finish_header
         let u = |v: usize| u32::try_from(v).map_err(|_| too_large(v));
         let header = [
             FDT_MAGIC,

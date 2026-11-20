@@ -1,0 +1,11 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage, second half: the same guest as 03-bss-nozero.txt (no BSS zeroing), run by a copy of the monitor whose raw loader first fills guest RAM from the load address to the end of RAM with the byte 0xA5, then copies the file (two added lines in crates/vmm/src/loader/plan.rs).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw $G/hello.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+hello from guest, x0=0x40000000
+hello: COUNTER = 0xa5a5a5a5
+guest done
+
+--- stderr ---

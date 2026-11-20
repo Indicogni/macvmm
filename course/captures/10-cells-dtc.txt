@@ -1,0 +1,16 @@
+# scripts/capture-cmd 10: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# c.dtb is the file the run in 10-cells-dtb-reader wrote (root #address-cells = 1).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ dtc -I dtb -O dts -o /dev/null c.dtb
+exit: 0
+--- stdout ---
+
+--- stderr ---
+/dev/null: Warning (reg_format): /memory@40000000:reg: property has invalid length (16 bytes) (#address-cells == 1, #size-cells == 2)
+/dev/null: Warning (reg_format): /pl011@9000000:reg: property has invalid length (16 bytes) (#address-cells == 1, #size-cells == 2)
+/dev/null: Warning (reg_format): /pl031@9010000:reg: property has invalid length (16 bytes) (#address-cells == 1, #size-cells == 2)
+/dev/null: Warning (pci_device_reg): Failed prerequisite 'reg_format'
+/dev/null: Warning (pci_device_bus_num): Failed prerequisite 'reg_format'
+/dev/null: Warning (simple_bus_reg): Failed prerequisite 'reg_format'
+/dev/null: Warning (i2c_bus_reg): Failed prerequisite 'reg_format'
+/dev/null: Warning (spi_bus_reg): Failed prerequisite 'reg_format'

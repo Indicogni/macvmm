@@ -1,0 +1,56 @@
+# Checkpoint 19 `virtio-net`: virtio-net over two Unix datagram sockets, with no networking
+# entitlement. The two-VM run needs `scripts/fetch.sh linux` (Image-virt and initramfs-test.img
+# in .cache/macvmm/). net.sh makes a short private socket directory for each run.
+id = "19"
+slug = "virtio-net"
+requires = ["18"]
+
+# The hostile virtio-net suite (TX longer than 12 + 1514 or shorter than 12 bytes; a writable
+# descriptor in TX; non-zero gso_type or flags; an RX chain too small or with a readable
+# descriptor; RX with no buffer posted dropped and counted; a 1514-byte frame round trip through
+# MockBackend; a backend send error counted, never propagated; the RX thread as the worker's
+# Companion) and the unixgram backend over real sockets (stale and live sockets, refused paths,
+# the peer check, learn mode). Host only.
+[contract]
+tests = ["contract/virtio_net_hostile.rs", "contract/unixgram.rs"]
+
+# (a) Two Linux VMs on a socket pair: A pings B 5/5 and sends it 32 MiB, both print the same
+# sha256 and both exit 0.
+[[run]]
+name = "two-vms"
+command = ["course/checkpoints/19/net.sh", "two-vms", "{macvmm}", "{repo}"]
+cwd = "repo"
+timeout = 300
+expect_exit_code = 0
+serial = "expected/two-vms.txt"
+
+# (b) A regular file at LOCAL is refused with exit code 2 before any VM exists, and left alone.
+[[run]]
+name = "bind-file"
+guest = "hello"
+command = ["course/checkpoints/19/net.sh", "bind-file", "{macvmm}", "{repo}", "{guest}"]
+cwd = "repo"
+timeout = 30
+expect_exit_code = 2
+serial = "expected/bind-file.txt"
+
+# (c) The bare-metal probe finds device 1 (network) in slot 0 and negotiates its features.
+[[run]]
+name = "probe-net"
+guest = "virtio-probe"
+command = ["course/checkpoints/19/net.sh", "probe", "{macvmm}", "{repo}", "{guest}"]
+cwd = "repo"
+timeout = 30
+expect_exit_code = 0
+serial = "expected/probe-net.txt"
+
+[journal]
+file = "journal/19.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "A network card only moves frames between two rings and a backend. TX: copy the readable bytes of one chain once, check the copy (12 to 12 + 1514 bytes, no writable descriptor, flags and gso_type 0), hand the frame after the header to the backend, and count any failure instead of returning it. RX: a frame arrives whenever the backend has one, on its own thread; if the guest has posted no buffer, drop it and count it. The device never waits for its guest, and every host-side wait has a timeout."
+spec = "virtio 1.2 (virtio-v1.2-cs01): 5.1 Network Device (5.1.2 virtqueues, 5.1.3 feature bits: VIRTIO_NET_F_MAC, 5.1.4 configuration layout: mac, 5.1.6 Device Operation: 5.1.6.1 the packet header, 5.1.6.2 packet transmission, 5.1.6.3 setting up receive buffers, 5.1.6.4 processing of incoming packets)."
+pseudocode = "TX (worker, queue 1): while pop: any writable descriptor -> drop; readable length outside 12..=12 + 1514 -> drop; bytes = copy readable once; hdr flags != 0 or gso_type != 0 -> drop; backend.send(&bytes[12..]) error -> tx_dropped += 1; add_used(head, 0); interrupt if should_interrupt. RX thread: loop until stop: n = backend.recv(buf) with a 100 ms timeout; n not in 14..=1514 -> drop; lock device; chain = rx.pop(), or drop and rx_dropped_no_buffer += 1; chain has a readable descriptor or fewer than 12 + n writable bytes -> add_used(head, 0) and count; write a header of zeros except num_buffers = 1, then the frame; add_used(head, 12 + n). Backend: bind LOCAL 0600 after the directory and stale-socket checks; send_to(peer); drop any datagram whose source path is not the peer's."
+anchor = "crates/vmm/src/virtio/net.rs (tx_one, process_queue, Net::receive, spawn_rx), crates/vmm/src/virtio/worker.rs (Companion), crates/vmm/src/net/backend.rs (NetBackend), crates/vmm/src/net/unixgram.rs (bind, the stale probe, recv and the peer check, send), crates/vmm/src/backend/hostio.rs (check_socket_dir, open_unixgram), crates/vmm/src/machine/virt.rs (attach_net_rx), crates/macvmm/src/cli.rs (parse_net)."

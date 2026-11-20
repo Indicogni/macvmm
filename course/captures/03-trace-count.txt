@@ -1,0 +1,12 @@
+# scripts/capture-cmd 03: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Reads the trace file written by the run in 03-hello-trace-run.txt.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ grep -c '"ec":"0x16"' h.jsonl; head -n 2 h.jsonl; tail -n 1 h.jsonl
+exit: 0
+--- stdout ---
+44
+{"t_ns":232541,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x4008117c","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+{"t_ns":248750,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x4008117c","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+{"t_ns":423416,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400810ac","imm":0,"fn":"PSCI_SYSTEM_OFF","action":"psci"}
+
+--- stderr ---

@@ -39,6 +39,7 @@ static OTHER: AtomicU32 = AtomicU32::new(0);
 static LAST_INTID: AtomicU32 = AtomicU32::new(0);
 static BYTES: AtomicU32 = AtomicU32::new(0);
 
+// ANCHOR: guest_irq_handler
 fn on_irq(_frame: &mut ExceptionFrame) {
     let intid = gic::ack();
     if intid == gic::SPURIOUS {
@@ -56,7 +57,9 @@ fn on_irq(_frame: &mut ExceptionFrame) {
     LAST_INTID.store(intid, Ordering::Relaxed);
     gic::eoi(intid);
 }
+// ANCHOR_END: guest_irq_handler
 
+// ANCHOR: guest_irq_main
 fn main(_x0: u64) {
     uart::enable_console();
     println!("irq: pfr0.gic={}", gic::pfr0_gic());
@@ -81,3 +84,4 @@ fn main(_x0: u64) {
         BYTES.load(Ordering::Relaxed)
     );
 }
+// ANCHOR_END: guest_irq_main

@@ -90,6 +90,7 @@ impl Rng {
     }
 }
 
+// ANCHOR: rng_device_impl
 impl VirtioDevice for Rng {
     fn device_id(&self) -> u32 {
         DEVICE_ID_RNG
@@ -103,7 +104,7 @@ impl VirtioDevice for Rng {
     }
     fn ack_features(&mut self, _accepted: u64) {}
     /// §5.4.4: "None currently defined". `config_len` stays 0, so every config access is
-    /// refused by the transport (VQ-13).
+    /// refused by the transport.
     fn read_config(&self, _offset: u32, data: &mut [u8]) {
         data.fill(0);
     }
@@ -123,6 +124,8 @@ impl VirtioDevice for Rng {
         Ok(())
     }
 
+    // ANCHOR_END: rng_device_impl
+
     // ANCHOR: rng_process_queue
     /// Fill up to `budget` posted chains with host randomness (module docs).
     fn process_queue(&mut self, index: usize, budget: u16) -> Result<QueueProgress, VirtioError> {
@@ -132,7 +135,7 @@ impl VirtioDevice for Rng {
         let Some(a) = self.active.as_mut() else {
             return Err(VirtioError::NotActivated);
         };
-        let budget = budget.min(a.queue.size()); // VQ-12: one ring's worth at most
+        let budget = budget.min(a.queue.size()); // one ring's worth at most
         let mem = &*a.mem;
         let mut used = false;
         let mut progress = QueueProgress::Drained;
@@ -144,18 +147,18 @@ impl VirtioDevice for Rng {
             let Some(chain) = a.queue.pop(mem)? else {
                 break;
             };
-            // VQ-4..VQ-8: every descriptor checked; the writable total capped at 64 KiB.
+            // Every descriptor checked; the writable total capped at 64 KiB.
             let req = chain.into_validated(RNG_MAX_REQUEST)?;
             let want = usize::try_from(req.writable_len)
                 .map_err(|_| VirtioError::Device("rng request larger than the address space"))?;
-            // VQ-11: a fresh, zeroed buffer per request, never reused.
+            // A fresh, zeroed buffer per request, never reused.
             let mut buf = vec![0u8; want];
             self.entropy
                 .fill(&mut buf)
                 .map_err(|_| VirtioError::Device("the host entropy source failed"))?;
             // Only `req.writable` is written: readable descriptors are never touched.
             let written = req.write_writable(mem, &buf)?;
-            a.queue.add_used(mem, req.head, written)?; // VQ-9: the bytes actually written
+            a.queue.add_used(mem, req.head, written)?; // the bytes actually written
             self.requests = self.requests.saturating_add(1);
             self.bytes = self.bytes.saturating_add(u64::from(written));
             used = true;

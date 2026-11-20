@@ -265,6 +265,7 @@ net_up() {
   fi
 }
 
+# ANCHOR: initramfs_net_a
 net_a() {
   net_up 10.0.0.1
   # Up to 10 s for B to answer (it is already listening when A boots, but ARP and its link
@@ -293,6 +294,7 @@ net_a() {
     echo "macvmm-net: FAILED nc send"
   fi
 }
+# ANCHOR_END: initramfs_net_a
 
 net_b() {
   net_up 10.0.0.2
@@ -534,6 +536,7 @@ WORKER
 # ANCHOR_END: initramfs_smp_stress
 
 # ANCHOR: initramfs_dispatch
+# ANCHOR: initramfs_dispatch_linux
 case "$test_case" in
   boot)
     off ;;
@@ -555,6 +558,7 @@ case "$test_case" in
     t1="$(cut -d' ' -f1 /proc/uptime)"
     echo "macvmm-timer: 100x usleep(10ms) took $(echo "$t0 $t1" | awk '{printf "%.2f", $2 - $1}') s"
     off ;;
+# ANCHOR_END: initramfs_dispatch_linux
   tty-attack)
     # PLAN M10 security test `linux_tty_attack` (threat model TTY-3, TEST-7 phase 6): the full
     # TTY-3 forbidden list, written by Linux's own tty layer to the PL011. macvmm's `safe`

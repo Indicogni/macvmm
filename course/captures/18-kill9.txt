@@ -1,0 +1,17 @@
+# scripts/capture-cmd 18: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Terminal 1. Deliberate breakage 2 build: DiskFile::sync (crates/vmm/src/backend/file.rs) returns Ok(()) without syncing anything.
+# Typed at the / # prompt, one line at a time: the lines shown after each prompt. Terminal 2 then ran kill -9 (18-kill9-kill.txt).
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 512M --kernel ../.cache/macvmm/Image-virt --initrd ../.cache/macvmm/initramfs-test.img --disk disk.img --on-reset exit --timeout 100 --cmdline "console=ttyAMA0 panic=-1 quiet macvmm.test=shell"
+exit: none (ended by a signal)
+--- stdout ---
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+/ # modprobe virtio_mmio; modprobe virtio_blk; sleep 1\x0d
+/ # yes macvmm | head -c 1048576 > /tmp/p; dd if=/tmp/p of=/dev/vda bs=1M seek=8\x0d\x0d
+ count=1 conv=fsync\x0d
+1+0 records in\x0d
+1+0 records out\x0d
+1048576 bytes (1.0MB) copied, 0.001988 seconds, 503.0MB/s\x0d
+/ # 
+
+--- stderr ---

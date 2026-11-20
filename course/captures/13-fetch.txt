@@ -1,0 +1,13 @@
+# scripts/capture-cmd 13: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# The reference, unmodified, run from the repository root; the download cache was already filled, so nothing was downloaded.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ scripts/fetch.sh linux
+exit: 0
+--- stdout ---
+fetch: cached vmlinuz-virt
+fetch: cached initramfs-virt
+fetch: cached config-6.18.60-0-virt
+fetch: cached Image-virt
+fetch: built initramfs-test.img sha256=caef97fecea58e6ee29a2dda26fba750ad0e0da1df31f4f170b87f14fed204d4
+
+--- stderr ---

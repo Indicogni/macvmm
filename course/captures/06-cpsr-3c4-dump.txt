@@ -1,0 +1,27 @@
+# scripts/capture-cmd 06: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Deliberate breakage, then a probe: the boot CPSR is 0x3c4 (EL1t) as in the break, and the run loop prints the register block of the dump when it stops (here, at the timeout); nothing else changed.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --raw target/guests/aarch64-unknown-none/release/regcheck.bin@0x40080000 --timeout 3
+exit: 5
+--- stdout ---
+regcheck: CurrentEL=0x4
+regcheck: MPIDR_EL1=0x80000000
+regcheck: SCTLR_EL1.M=0
+regcheck: DAIF=0x3c0
+regcheck: x0=0x40000000
+
+--- stderr ---
+  x0=0x0000000040081040 x1=0x000000000000000a x2=0x0000000000000000 x3=0x0000000000000000
+  x4=0x0000000000000002 x5=0x0000000000000008 x6=0x0000000000000000 x7=0x0000000000000000
+  x8=0x0000000040082f90 x9=0x0000000000000000 x10=0x0000000000000078 x11=0x0000000040082ea0
+  x12=0x0000000000000034 x13=0x0000000040092ec9 x14=0x0000000000000000 x15=0x0000000000000000
+  x16=0x0000000000000000 x17=0x0000000000000000 x18=0x0000000040092ee0 x19=0x0000000040092f98
+  x20=0x0000000040082988 x21=0x0000000000000000 x22=0x0000000000000000 x23=0x0000000000000000
+  x24=0x0000000000000000 x25=0x0000000000000000 x26=0x0000000000000000 x27=0x0000000000000000
+  x28=0x0000000000000000 x29=0x0000000000000000 x30=0x0000000040081150
+  sp_el0=0x40092f70 sp_el1=0xffffffed2081bf60
+  pc=0x40080a00 cpsr=0x824003c5 (EL1h, DAIF, Nzcv)
+  ELR_EL1=0x40080a04 SPSR_EL1=0x824003c5 ESR_EL1=0x96000040 (EC 0x25: data abort, same EL) FAR_EL1=0xffffffed2081bf60
+  VBAR_EL1=0x40080800 SCTLR_EL1=0x30000180 TCR_EL1=0x0 TTBR0_EL1=0x0 TTBR1_EL1=0x0
+  note: pc is VBAR_EL1 + 0x200, an exception vector: the guest took an exception at EL1 first, so ELR_EL1 and ESR_EL1 describe the first fault
+macvmm: timeout: the guest was still running after --timeout 3s

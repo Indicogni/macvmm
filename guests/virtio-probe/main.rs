@@ -73,6 +73,7 @@ const RNG_REQUEST: u32 = 32;
 /// virtio 1.2 §5: the entropy device.
 const DEVICE_ID_RNG: u32 = 4;
 
+// ANCHOR: virtio_probe_handshake
 fn handshake(slot: u64) -> u32 {
     vreg_write(slot, STATUS, 0);
     vreg_write(slot, STATUS, 1);
@@ -108,6 +109,7 @@ fn handshake(slot: u64) -> u32 {
     vreg_write(slot, STATUS, 1 | 2 | 8 | 4);
     vreg_read(slot, STATUS)
 }
+// ANCHOR_END: virtio_probe_handshake
 
 /// Write `v` to guest RAM at `addr` (one volatile store of exactly its width).
 fn poke<T>(addr: u64, v: T) {

@@ -1,0 +1,9 @@
+macvmm-initramfs: ready 6.18.60-0-virt
+/ #
+macvmm-shell: 42
+reboot: Power down
+[stderr] vcpu0: last 256 exits, oldest first:
+[stderr]   {"t_ns":
+[stderr] vcpu0: last 256 exits, oldest first:
+[stderr]   {"t_ns":
+!Kernel panic

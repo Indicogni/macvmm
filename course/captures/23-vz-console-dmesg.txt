@@ -1,0 +1,39 @@
+# scripts/capture-cmd 23: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Typed at the / # prompt (piped in by the capture after 6 s): dmesg | grep -i -e console -e virtio; poweroff -f. It asks the guest when each console was enabled.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ tools/vz-mac/run.sh linux --kernel .cache/macvmm/Image-virt --initrd .cache/macvmm/initramfs-test.img --cmdline "console=hvc0 macvmm.test=shell"
+exit: 0
+--- stdout ---
+[    0.068223] hv_vmbus: registering driver hyperv_keyboard\x0d
+[    0.069149] rtc-pl031 20050000.pl031: registered as rtc0\x0d
+[    0.069204] rtc-pl031 20050000.pl031: setting system clock to 2026-11-20T10:15:33 UTC (1795169733)\x0d
+[    0.069551] NET: Registered PF_INET6 protocol family\x0d
+[    0.070095] Segment Routing with IPv6\x0d
+[    0.070276] In-situ OAM (IOAM) with IPv6\x0d
+[    0.074155] registered taskstats version 1\x0d
+[    0.075462] Loading compiled-in X.509 certificates\x0d
+[    0.127501] Freeing initrd memory: 9204K\x0d
+[    0.131197] Loaded X.509 cert 'alpinelinux.org: Alpine Linux kernel key: 87fa969a47f3e2a6aa35859eb932a17c95abcd82'\x0d
+[    0.134628] Demotion targets for Node 0: null\x0d
+[    0.135149] Key type .fscrypt registered\x0d
+[    0.135360] Key type fscrypt-provisioning registered\x0d
+[    0.137531] clk: Disabling unused clocks\x0d
+[    0.137739] PM: genpd: Disabling unused power domains\x0d
+[    0.138056] Freeing unused kernel memory: 2048K\x0d
+[    0.138446] Run /init as init process\x0d
+macvmm-initramfs: ready 6.18.60-0-virt\x0d
+/ # ^[[6ndmesg | grep -i -e console -e virtio\x0d
+[    0.000000] Kernel command line: console=hvc0 macvmm.test=shell\x0d
+[    0.003404] Console: colour dummy device 80x25\x0d
+[    0.058483] virtio-pci 0000:00:05.0: enabling device (0000 -> 0002)\x0d
+[    0.061198] virtio-pci 0000:00:06.0: enabling device (0000 -> 0002)\x0d
+[    0.067685] printk: legacy console [hvc0] enabled\x0d
+/ # poweroff -f\x0d
+
+--- stderr ---
+Building for production...
+Build complete! (0.20 sec)
+VZ guest state: starting
+VZ guest state: running
+VZ guest state: stopped (guest)
+vz-mac: guest powered off (exit 0)

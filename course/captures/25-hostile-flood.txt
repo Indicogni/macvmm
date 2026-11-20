@@ -1,0 +1,9 @@
+# scripts/capture-cmd 25: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
+$ cargo run -q -p macvmm -- run --mem 64M --serial file:scratch/flood.txt,max=1M --kernel target/guests/aarch64-unknown-none/release/hostile-flood --timeout 60 && stat -f %z scratch/flood.txt
+exit: 0
+--- stdout ---
+1048576
+
+--- stderr ---
+macvmm: warn: [vcpu0] serial file sink reached its cap of 1048576 bytes; further guest output to it is dropped (the guest keeps running)
