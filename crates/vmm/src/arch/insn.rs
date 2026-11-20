@@ -40,10 +40,16 @@
 //! stage-2 miss on one reaches us because the IPA is not RAM, and there is nothing in a device
 //! window to clean. KVM does the same (`kvm_handle_guest_abort`: if `kvm_vcpu_dabt_is_cm()`, the
 //! guest "is just being cautious", so skip the instruction). The caller makes no bus access and
-//! advances the PC by 4. It should do that only when the syndrome agrees (CM = 1). A decode/CM
-//! disagreement means the code changed under us, which is an abort, the same as a `WnR`
-//! mismatch. Firmware that cleans a range overlapping the flash or a device window after a
-//! flash write therefore keeps running, as it does on hardware.
+//! advances the PC by 4. It does that only when the syndrome agrees (CM = 1). A decode/CM
+//! disagreement **in either direction** means the code changed under us, which is an abort, the
+//! same as a `WnR` mismatch: cache maintenance with CM = 0, and also a load, store or prefetch
+//! with CM = 1. The second direction matters most. Cache maintenance by VA reports `WnR = 1`
+//! (D17.2.40) and needs only read permission at stage 1 (EL0 needs only `SCTLR_EL1.UCI`), so a
+//! racing vCPU that swaps `dc civac, x0` for `stp x1, x2, [x0]` after the fault would otherwise
+//! pass the direction and address checks and write a device through a mapping the guest kernel
+//! made read-only (a confused deputy inside the guest, F17). Firmware that cleans a range
+//! overlapping the flash or a device window after a flash write therefore keeps running, as it
+//! does on hardware, and nothing else rides on the CM exemption.
 //!
 //! **CONSTRAINED UNPREDICTABLE forms are refused** ([`Unsupported::Unpredictable`]). A
 //! writeback form whose base is also a transfer register (`ldr x1, [x1, #8]!`, Rn = Rt ≠ 31), and
@@ -58,6 +64,16 @@
 //! reported (HVF reports the full byte address, `docs/research/hvf-api.md` "exit info"), and the
 //! direction must equal `WnR`. The accesses themselves use the exit IPA. A mismatch is an abort,
 //! never an emulated access to a device the guest did not actually fault on.
+//!
+//! **Stage-1 permissions come from the faulting page only** ([`Mapped`], MMIO-4). The VMM does
+//! not check stage-1 permissions: the hardware already checked them for the access that
+//! faulted, before stage 2 (D8.2). But it checked them only for the page or block that holds
+//! the faulting address. So every byte the VMM emulates must lie in that same stage-1 mapping.
+//! A pair whose second element falls on the next page is refused
+//! ([`Refusal::CrossesMapping`]), even when the guest's tables map that page contiguously onto
+//! the same device window: its descriptor may forbid the access (AP, PAN, an EL0-only page),
+//! and the VMM would be bypassing a permission fault the hardware would have raised. With the
+//! MMU off there is no stage-1 mapping and nothing to bypass.
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
@@ -190,7 +206,8 @@ pub enum Insn {
     Prefetch,
     /// `DC`/`IC` maintenance by VA other than `DC ZVA`/`GVA`/`GZVA` (`SYS #op1, C7, Cm, #op2`,
     /// C5.3): no bus access; the caller advances the PC by 4 when ESR_EL2.CM = 1 and aborts
-    /// otherwise (module docs, "Cache maintenance by VA is skipped").
+    /// otherwise. A [`Insn::Mem`] or [`Insn::Prefetch`] under CM = 1 is an abort too (module
+    /// docs, "Cache maintenance by VA is skipped").
     CacheMaintenance,
 }
 
@@ -747,6 +764,27 @@ impl Operands {
     }
 }
 
+/// What the planner's `translate` callback reports for a guest VA (module docs, "Stage-1
+/// permissions come from the faulting page only").
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Mapped {
+    /// The IPA the VA translates to.
+    pub ipa: u64,
+    /// The size of the stage-1 page or block that holds the VA (a power of two:
+    /// `stage1_walk::Translation::mapping_size`), or 0 when the MMU is off and VA = IPA.
+    pub mapping_size: u64,
+}
+
+impl Mapped {
+    /// The MMU-off translation: identity, no stage-1 mapping.
+    pub const fn identity(va: u64) -> Mapped {
+        Mapped {
+            ipa: va,
+            mapping_size: 0,
+        }
+    }
+}
+
 /// What the exit said: the faulting IPA (authoritative) and `WnR`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExitFacts {
@@ -807,6 +845,13 @@ pub enum Refusal {
     AddressMismatch { decoded: u64, exit: u64 },
     /// A pair's second element does not translate to `exit IPA + size`.
     PairMismatch { decoded: Option<u64>, expected: u64 },
+    /// The `len`-byte access at `va` leaves the stage-1 page or block (`mapping_size` bytes)
+    /// that holds `va`, whose permissions are the only ones the hardware checked (module docs).
+    CrossesMapping {
+        va: u64,
+        len: u64,
+        mapping_size: u64,
+    },
     /// A pair's two elements are not both inside one device window: an element is unmapped,
     /// straddles a window end, or sits in a different device (MMIO-4, F17 confused deputy).
     /// The values are [`Isv0Bus::window`] identities.
@@ -836,6 +881,14 @@ impl fmt::Display for Refusal {
                 Some(d) => write!(f, "second element at {d:#x}, expected {expected:#x}"),
                 None => write!(f, "second element has no mapping (expected {expected:#x})"),
             },
+            Refusal::CrossesMapping {
+                va,
+                len,
+                mapping_size,
+            } => write!(
+                f,
+                "{len}-byte access at {va:#x} leaves its {mapping_size:#x}-byte stage-1 mapping"
+            ),
             Refusal::CrossDevice { first, second } => {
                 let w =
                     |o: Option<u64>| o.map_or_else(|| "none".to_string(), |b| format!("{b:#x}"));
@@ -854,16 +907,18 @@ impl fmt::Display for Refusal {
 // ANCHOR: isv0_plan
 /// Turn a decoded instruction into bus accesses **anchored on the exit IPA** (MMIO-4, F17).
 ///
-/// `translate` maps a guest VA to an IPA (`stage1_walk::translate` with the vCPU's current
-/// translation registers, or identity with the MMU off); `None` = no mapping. The decoded
-/// address is only a cross-check: it must translate to exactly `exit.ipa`, and the direction
-/// must match `WnR`. A pair has the extra rules of [`plan_second`]. `bus` is only asked for
-/// window identities here, never accessed.
+/// `translate` maps a guest VA to an IPA and the size of the stage-1 mapping that holds it
+/// (`stage1_walk::translate` with the vCPU's current translation registers, or
+/// [`Mapped::identity`] with the MMU off); `None` = no mapping. The decoded address is only a
+/// cross-check: it must translate to exactly `exit.ipa`, the direction must match `WnR`, and
+/// the access must stay inside that one stage-1 mapping ([`within_mapping`]). A pair has the
+/// extra rules of [`plan_second`]. `bus` is only asked for window identities here, never
+/// accessed.
 pub fn plan_isv0<B: Isv0Bus + ?Sized>(
     insn: &MemInsn,
     ops: &Operands,
     exit: ExitFacts,
-    translate: &mut dyn FnMut(u64) -> Option<u64>,
+    translate: &mut dyn FnMut(u64) -> Option<Mapped>,
     bus: &B,
 ) -> Result<Plan, Refusal> {
     if insn.is_store() != exit.wnr {
@@ -873,13 +928,14 @@ pub fn plan_isv0<B: Isv0Bus + ?Sized>(
         });
     }
     let (va, new_base) = insn.addresses(ops.base, ops.index);
-    let decoded = translate(va).ok_or(Refusal::Untranslatable { va })?;
-    if decoded != exit.ipa {
+    let map = translate(va).ok_or(Refusal::Untranslatable { va })?;
+    if map.ipa != exit.ipa {
         return Err(Refusal::AddressMismatch {
-            decoded,
+            decoded: map.ipa,
             exit: exit.ipa,
         });
     }
+    within_mapping(va, insn.size.bytes(), map)?;
     let first = BusAccess {
         ipa: exit.ipa,
         size: insn.size,
@@ -887,7 +943,7 @@ pub fn plan_isv0<B: Isv0Bus + ?Sized>(
     };
     let second = match insn.rt2 {
         None => None,
-        Some(_) => Some(plan_second(insn, ops, va, exit, translate, bus)?),
+        Some(_) => Some(plan_second(insn, ops, va, map, exit, translate, bus)?),
     };
     let writeback = insn.writes_back().then_some((insn.base(), new_base));
     Ok(Plan {
@@ -900,30 +956,60 @@ pub fn plan_isv0<B: Isv0Bus + ?Sized>(
 }
 // ANCHOR_END: isv0_plan
 
+/// Refuse an access of `len` bytes at `va` that leaves the stage-1 page or block `map`
+/// describes (module docs, "Stage-1 permissions come from the faulting page only"). With the
+/// MMU off (`mapping_size == 0`) there is no mapping to leave.
+fn within_mapping(va: u64, len: u64, map: Mapped) -> Result<(), Refusal> {
+    if map.mapping_size == 0 {
+        return Ok(());
+    }
+    let last = len
+        .checked_sub(1)
+        .and_then(|l| va.checked_add(l))
+        .ok_or(Refusal::Overflow)?;
+    let crosses = match map.mapping_size.checked_sub(1) {
+        // Both ends share every address bit above the mapping's offset bits.
+        Some(offset_bits) if map.mapping_size.is_power_of_two() => (va ^ last) & !offset_bits != 0,
+        _ => true,
+    };
+    if crosses {
+        return Err(Refusal::CrossesMapping {
+            va,
+            len,
+            mapping_size: map.mapping_size,
+        });
+    }
+    Ok(())
+}
+
 // ANCHOR: isv0_pair
 /// The second element of LDP/STP/LDPSW (MMIO-4). It must translate to exactly
-/// `exit.ipa + size`, and both elements must lie wholly inside **one** device window of `bus`.
-/// Otherwise a guest whose page tables map a pair across the end of a device window would send
-/// the second element to the neighbouring device, which never saw a fault (F17, a confused
-/// deputy). Because the check runs before any access, a store pair can never half-happen.
+/// `exit.ipa + size`, the whole pair must lie in the stage-1 mapping `first_map` of the first
+/// (faulting) element, whose permissions are the only ones the hardware checked, and both
+/// elements must lie wholly inside **one** device window of `bus`. Otherwise a guest whose page
+/// tables map a pair across the end of a device window would send the second element to the
+/// neighbouring device, which never saw a fault (F17, a confused deputy). Because the check runs
+/// before any access, a store pair can never half-happen.
 fn plan_second<B: Isv0Bus + ?Sized>(
     insn: &MemInsn,
     ops: &Operands,
     va: u64,
+    first_map: Mapped,
     exit: ExitFacts,
-    translate: &mut dyn FnMut(u64) -> Option<u64>,
+    translate: &mut dyn FnMut(u64) -> Option<Mapped>,
     bus: &B,
 ) -> Result<BusAccess, Refusal> {
     let n = insn.size.bytes();
     let expected = exit.ipa.checked_add(n).ok_or(Refusal::Overflow)?;
     let va2 = va.checked_add(n).ok_or(Refusal::Overflow)?;
-    let got = translate(va2);
+    let got = translate(va2).map(|m| m.ipa);
     if got != Some(expected) {
         return Err(Refusal::PairMismatch {
             decoded: got,
             expected,
         });
     }
+    within_mapping(va, n.checked_mul(2).ok_or(Refusal::Overflow)?, first_map)?;
     let first = bus.window(exit.ipa, insn.size);
     let second = bus.window(expected, insn.size);
     if first.is_none() || first != second {
@@ -992,7 +1078,7 @@ pub fn emulate_isv0<B: Isv0Bus + ?Sized>(
     insn: &MemInsn,
     ops: &Operands,
     exit: ExitFacts,
-    translate: &mut dyn FnMut(u64) -> Option<u64>,
+    translate: &mut dyn FnMut(u64) -> Option<Mapped>,
     bus: &mut B,
 ) -> Result<Commit, Isv0Error<B::Error>> {
     let plan = plan_isv0(insn, ops, exit, translate, &*bus).map_err(Isv0Error::Refused)?;

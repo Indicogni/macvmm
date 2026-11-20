@@ -7,11 +7,13 @@
 //!   (RUST-5, SINK-1, LOG-4), and the console input queue `SerialInput` (TTY-10).
 //! - [`entropy`]: the host CSPRNG (`getentropy(2)`) for the DTB seeds (M7, FDT-3) and
 //!   virtio-rng (M12).
+//! - [`file`]: the block backend, a raw disk image behind `pread`/`pwrite` (M14, BLK-5..11).
 //!
-//! Later: `file.rs` (block backend, M14). Every module here is guest-facing or
-//! host-input-facing, so each carries the RUST-1 deny attribute.
+//! Every module here is guest-facing or host-input-facing, so each carries the RUST-1 deny
+//! attribute.
 
 pub mod ansi;
 pub mod entropy;
+pub mod file;
 pub mod hostio;
 pub mod serial;

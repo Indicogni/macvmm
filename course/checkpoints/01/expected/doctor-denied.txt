@@ -1,0 +1,3 @@
+[stderr] HV_DENIED (0xfae94007)
+[stderr] scripts/sign-and-run.sh
+!DOCTOR OK

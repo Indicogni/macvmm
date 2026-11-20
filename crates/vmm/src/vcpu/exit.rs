@@ -118,6 +118,93 @@ pub struct ExitEnv<'a> {
     pub generation: u64,
     pub debug_calls: bool,
     pub unhandled_mmio: MmioPolicy,
+    /// M21: a machine profile's observer of the exits (the vmapple first-probe trace). `None`
+    /// for the `virt` machine, which then behaves exactly as without it.
+    pub watch: Option<&'a dyn ExitWatch>,
+    /// M18: the flash ROM (`--bios`), so the ISV = 0 path can fetch an instruction executing
+    /// in place from it (`arch::stage1_walk::fetch_insn_rom`). Read-only; `None` without one.
+    pub rom: Option<&'a dyn crate::arch::stage1_walk::InsnRom>,
+}
+
+// ANCHOR: exit_env_new
+impl<'a> ExitEnv<'a> {
+    /// The environment as chapter 08 knows it: memory, the serial sink, the VM control block
+    /// and the device bus, with generation 0, the debug hypercalls off and the default
+    /// `--unhandled-mmio fatal` policy. Every field a later chapter adds (M18 `rom`, M21
+    /// `watch`) starts as `None` here, so code (and the frozen checkpoint contracts) that
+    /// builds an `ExitEnv` with `ExitEnv { debug_calls: true, ..ExitEnv::new(..) }` keeps
+    /// compiling at every chapter, whatever fields the struct has grown since.
+    pub fn new(
+        mem: &'a dyn GuestMemory,
+        serial: &'a Sink,
+        ctl: &'a VmControl,
+        bus: &'a Bus,
+    ) -> Self {
+        Self {
+            mem,
+            serial,
+            ctl,
+            bus,
+            generation: 0,
+            debug_calls: false,
+            unhandled_mmio: MmioPolicy::Fatal,
+            watch: None,
+            rom: None,
+        }
+    }
+}
+// ANCHOR_END: exit_env_new
+
+/// An MMIO access that reached no device (M21, [`ExitWatch::unclaimed_mmio`]). Numbers only:
+/// nothing in it is a string the guest chose (TTY-8).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct UnclaimedAccess {
+    /// The PC of the faulting instruction.
+    pub pc: u64,
+    pub ipa: u64,
+    /// The access size in bytes (1, 2, 4 or 8).
+    pub size: u8,
+    /// `Some(value)` for a store (masked to `size`), `None` for a load.
+    pub write: Option<u64>,
+}
+
+// ANCHOR: exit_watch
+/// A machine profile's hook into exit handling (M21; PLAN M21 `unknown.rs`). The `virt`
+/// machine has none. The experimental vmapple profile uses it to say where the boot ROM
+/// first trapped, to stop at a hypercall it does not implement, and to log what the ROM
+/// touches instead of stopping at the first unknown device (ADR-0008 decision 3).
+///
+/// Both methods run on the vCPU thread that took the exit, so they must be cheap and must
+/// never block (architecture §14.2). They see only numbers, never guest strings.
+pub trait ExitWatch: Sync {
+    /// Called before `exit` is handled. `Ok(Some(reason))` stops the VM with a `GuestFatal`
+    /// (exit code 3) carrying `reason` instead of handling the exit.
+    fn before_exit(&self, regs: &dyn VcpuRegs, exit: &Exit) -> Result<Option<String>>;
+    /// An access to no device. `Some(verdict)` replaces the `--unhandled-mmio` policy for it;
+    /// `None` leaves the policy in charge.
+    fn unclaimed_mmio(&self, access: &UnclaimedAccess) -> Option<MmioVerdict>;
+    /// An ISV = 0 access the M17 decoder refused (MMIO-4/6), before the synchronous external
+    /// abort is injected. `Some(reason)` stops the VM instead (exit code 3); `None`, the
+    /// default and the `virt` behaviour, injects the abort.
+    fn refused_isv0(&self, _access: &RefusedAccess) -> Option<String> {
+        None
+    }
+}
+// ANCHOR_END: exit_watch
+
+/// An ISV = 0 data abort that was not emulated (M21, [`ExitWatch::refused_isv0`]). Nothing was
+/// decoded, so the size and the value are unknown; only the syndrome's facts remain. Numbers
+/// and a static reason only (TTY-8, LOG-5).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RefusedAccess {
+    /// The PC of the faulting instruction.
+    pub pc: u64,
+    /// The exit IPA.
+    pub ipa: u64,
+    /// `ESR.WnR`.
+    pub write: bool,
+    /// No device is mapped at `ipa` (the access would have gone to the unhandled-MMIO path).
+    pub unclaimed: bool,
 }
 
 /// What [`unhandled_mmio_policy`] decided.
@@ -453,6 +540,24 @@ pub fn handle(
 }
 // ANCHOR_END: exit_pc_rules
 
+/// [`handle`], after the machine profile's [`ExitWatch`] (M21) had its look: the run loop's
+/// entry point. Without a watch (the `virt` machine) this is exactly `handle`; with one, the
+/// watch may stop the VM at an exit it does not support, with a `GuestFatal` (exit code 3).
+pub fn handle_watched(
+    regs: &mut dyn VcpuRegs,
+    env: &ExitEnv<'_>,
+    exit: &Exit,
+    raw: &hvf::VcpuExit,
+    rec: &mut ExitRecord,
+) -> Result<ExitAction> {
+    if let Some(w) = env.watch
+        && let Some(why) = w.before_exit(&*regs, exit)?
+    {
+        return fatal(regs, env, exit, raw, rec, why);
+    }
+    handle(regs, env, exit, raw, rec)
+}
+
 #[cfg(test)]
 #[allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)] // tests: a panic fails it
 pub(crate) mod tests {
@@ -572,6 +677,8 @@ pub(crate) mod tests {
             generation: 0,
             debug_calls: true,
             unhandled_mmio: policy,
+            watch: None,
+            rom: None,
         };
         f(&env)
     }

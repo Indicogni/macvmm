@@ -1,0 +1,3 @@
+setup: host: arm64
+setup: OK
+!setup: error

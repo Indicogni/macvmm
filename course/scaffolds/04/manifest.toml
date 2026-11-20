@@ -1,0 +1,10 @@
+# Chapter 04 (guest-memory) scaffold: reference files whose `// LEARNER:` regions become holes.
+# Regenerate with `cargo xtask learner gen-scaffold 04`; never edit files/ by hand (PLAN M27).
+chapter = "04"
+files = [
+  "crates/vmm/src/memory/mod.rs",
+  "crates/vmm/src/memory/address.rs",
+  "crates/vmm/src/memory/host.rs",
+  "crates/vmm/src/memory/region.rs",
+  "crates/vmm/src/memory/vec_mem.rs",
+]

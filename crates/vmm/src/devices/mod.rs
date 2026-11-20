@@ -7,7 +7,7 @@
 //! - [`testdev`] (M4, `--testdev`): 512 scratch registers, for testing MMIO decode itself;
 //! - [`pl011`], [`pl031`] (M6): the serial console and the real-time clock;
 //! - [`razwi`] (M6): read-as-zero windows (the unused GIC redistributor frames);
-//! - `flash` (M18).
+//! - [`flash`] (M18, `--bios`): flash bank 0's write-ignore trap handler.
 //!
 //! **Rules for every device** (threat model MMIO-8; architecture §10):
 //! - **total over its window**: every `(offset, size)` the bus can pass (`offset + size ≤`
@@ -18,6 +18,8 @@
 //!
 //! Every file in this directory is guest-facing, so each carries the RUST-1 deny attribute.
 
+// M18: flash bank 0 (writes ignored, MMIO-10).
+pub mod flash;
 pub mod pl011;
 pub mod pl031;
 pub mod razwi;

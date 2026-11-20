@@ -676,6 +676,76 @@ pub fn getentropy(buf: &mut [u8]) -> std::io::Result<()> {
 }
 // ANCHOR_END: host_getentropy
 
+// ANCHOR: socket_buffers
+// Socket-buffer shim (M24; architecture §11.3, threat model NET-5). macOS sizes an AF_UNIX
+// datagram socket for chat, not for a NIC: `net.local.dgram.recvspace = 4096` (verified on the
+// dev machine) queues only two 1514-byte frames before the sender gets `ENOBUFS`. The
+// `--net unixgram` backend therefore raises both buffers to 1 MiB with `setsockopt(2)`
+// (`SO_SNDBUF`, `SO_RCVBUF`, `sys/socket.h`), well under `kern.ipc.maxsockbuf = 8 MiB`.
+// std has no setter for these, so the call lives here with the other `unsafe` FFI.
+
+/// `ENOBUFS` (`sys/errno.h`: 55): what `sendto(2)` on a macOS AF_UNIX datagram socket returns
+/// *at once* when the receiver's buffer is full. It does not block, even on a blocking socket
+/// with a write timeout (verified on macOS 27.2 in M24), so the backend retries it itself.
+pub const ENOBUFS: i32 = libc::ENOBUFS;
+
+/// `setsockopt(fd, SOL_SOCKET, SO_SNDBUF, snd)` then `SO_RCVBUF, rcv`. Either failing is an
+/// error: the NIC would silently drop most frames with the default sizes, so the caller fails
+/// startup instead (PLAN M24 design notes).
+pub fn set_socket_buffers(fd: i32, snd: usize, rcv: usize) -> std::io::Result<()> {
+    for (opt, value) in [(libc::SO_SNDBUF, snd), (libc::SO_RCVBUF, rcv)] {
+        let v = libc::c_int::try_from(value)
+            .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidInput))?;
+        let len = libc::socklen_t::try_from(core::mem::size_of::<libc::c_int>())
+            .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidInput))?;
+        // SAFETY: `&v` points at a live `c_int` for the duration of the call and `len` is its
+        // exact size; the kernel only reads it and validates `fd` and `opt` itself.
+        let rc = unsafe {
+            libc::setsockopt(
+                fd,
+                libc::SOL_SOCKET,
+                opt,
+                (&raw const v).cast::<libc::c_void>(),
+                len,
+            )
+        };
+        if rc != 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+    }
+    Ok(())
+}
+
+// ANCHOR_END: socket_buffers
+
+/// `getsockopt` of `SO_SNDBUF` and `SO_RCVBUF`: `(snd, rcv)` as the kernel applied them (the
+/// M24 tests check that both read back at least 1 MiB).
+pub fn socket_buffers(fd: i32) -> std::io::Result<(usize, usize)> {
+    let mut out = [0usize; 2];
+    for (slot, opt) in out.iter_mut().zip([libc::SO_SNDBUF, libc::SO_RCVBUF]) {
+        let mut v: libc::c_int = 0;
+        let mut len = libc::socklen_t::try_from(core::mem::size_of::<libc::c_int>())
+            .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidInput))?;
+        // SAFETY: `&mut v` and `&mut len` are live and writable; `len` says how many bytes `v`
+        // holds, and the kernel writes at most that many and updates `len`.
+        let rc = unsafe {
+            libc::getsockopt(
+                fd,
+                libc::SOL_SOCKET,
+                opt,
+                (&raw mut v).cast::<libc::c_void>(),
+                &mut len,
+            )
+        };
+        if rc != 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        *slot = usize::try_from(v).map_err(|_| std::io::Error::other("negative buffer size"))?;
+    }
+    let [snd, rcv] = out;
+    Ok((snd, rcv))
+}
+
 // CPU-time shim (M8; architecture §16 "Stats"). `--stats` compares the host CPU time the whole
 // process used during a boot with the wall time it took: CURRICULUM ch12 checks that a guest
 // idling in in-kernel WFI costs under 10 % of one host CPU.
@@ -711,6 +781,144 @@ mod cpu_time_tests {
         let b = super::process_cpu_time().unwrap();
         assert!(b > a, "{a:?} -> {b:?} ({x})");
     }
+}
+
+// ANCHOR: host_sandbox
+// Confinement shims (M22; threat model SBX-1..SBX-4, PROC-4). `macvmm/src/sandbox.rs` owns the
+// policy (the SBPL profile, when to apply it, what the self-test expects); these wrappers only
+// say what libSystem does.
+//
+// `sandbox_init` is declared in the SDK's `usr/include/sandbox.h` (macOS 27.2):
+//     int sandbox_init(const char *profile, uint64_t flags, char **errorbuf);
+//     void sandbox_free_error(char *errorbuf);
+// The header marks it deprecated since 10.8 and documents only `flags = SANDBOX_NAMED` (a
+// built-in profile name). Passing SBPL *text* with `flags = 0` is the undocumented mode that
+// `sandbox-exec -p` uses; it is verified on this machine (threat model §13, M22) but may break
+// in any release, which is why `--sandbox` fails closed (SBX-4). It lives in
+// `libsystem_sandbox.dylib`, part of libSystem, so no extra link flag is needed.
+unsafe extern "C" {
+    fn sandbox_init(
+        profile: *const libc::c_char,
+        flags: u64,
+        errorbuf: *mut *mut libc::c_char,
+    ) -> libc::c_int;
+    fn sandbox_free_error(errorbuf: *mut libc::c_char);
+}
+
+/// Apply the SBPL `profile` to this process, irrevocably (`sandbox_init(profile, 0, &err)`).
+/// `Err` carries libsandbox's message (for example a profile syntax error, or "already in a
+/// sandbox"). Threads that exist keep running under the new profile.
+pub fn sandbox_init_profile(profile: &str) -> Result<(), String> {
+    let c = std::ffi::CString::new(profile).map_err(|_| "the profile contains a NUL byte")?;
+    let mut err: *mut libc::c_char = core::ptr::null_mut();
+    // SAFETY: `c` is a NUL-terminated string that outlives the call; `err` is a live, writable
+    // `char *` slot that `sandbox_init` sets to NULL or to a string it allocated.
+    let rc = unsafe { sandbox_init(c.as_ptr(), 0, &mut err) };
+    let msg = if err.is_null() {
+        None
+    } else {
+        // SAFETY: on error `sandbox_init` stored a NUL-terminated string it owns in `err`; we
+        // copy it before freeing it below.
+        let m = unsafe { std::ffi::CStr::from_ptr(err) }
+            .to_string_lossy()
+            .into_owned();
+        // SAFETY: `err` came from `sandbox_init` and is freed exactly once, as `sandbox.h`
+        // requires; it is not used afterwards.
+        unsafe { sandbox_free_error(err) };
+        Some(m)
+    };
+    match (rc, msg) {
+        (0, _) => Ok(()),
+        (_, Some(m)) => Err(m),
+        (rc, None) => Err(format!("sandbox_init returned {rc}")),
+    }
+}
+
+// ANCHOR_END: host_sandbox
+
+/// The highest open file descriptor below `limit`, found with `fcntl(fd, F_GETFD)` (which only
+/// asks whether `fd` is open). Used to lower `RLIMIT_NOFILE` to what the process needs (PROC-4).
+pub fn highest_open_fd(limit: i32) -> Option<i32> {
+    (0..limit).rev().find(|&fd| {
+        // SAFETY: `F_GETFD` reads the descriptor flags of `fd`; an fd that is not open returns
+        // -1 (EBADF). No memory of ours is touched.
+        unsafe { libc::fcntl(fd, libc::F_GETFD) != -1 }
+    })
+}
+
+/// Self-test probe (SBX-3 item 4): try to `open(path, O_RDONLY)`. `Ok` means the open
+/// succeeded, which under the lockdown is a failure of the sandbox.
+pub fn probe_open(path: &str) -> std::io::Result<()> {
+    let c = std::ffi::CString::new(path).map_err(|_| std::io::ErrorKind::InvalidInput)?;
+    // SAFETY: `c` is a NUL-terminated path that outlives the call.
+    let fd = unsafe { libc::open(c.as_ptr(), libc::O_RDONLY | libc::O_CLOEXEC) };
+    if fd < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    // SAFETY: `fd` was just returned by `open` and is closed exactly once.
+    unsafe { libc::close(fd) };
+    Ok(())
+}
+
+/// Self-test probe: a TCP `connect` to 127.0.0.1 port 1. `Ok` or `ECONNREFUSED` mean the
+/// request reached the network stack (not confined); `EPERM`/`EACCES` mean the sandbox refused
+/// it. (On macOS `socket(2)` itself is not mediated by `network*`; `connect`, `bind` and
+/// `sendto` are, verified in M22.)
+pub fn probe_connect_loopback() -> std::io::Result<()> {
+    // SAFETY: plain syscall with integer arguments.
+    let s = unsafe { libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0) };
+    if s < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    let addr = libc::sockaddr_in {
+        sin_len: u8::try_from(core::mem::size_of::<libc::sockaddr_in>()).unwrap_or(16),
+        sin_family: u8::try_from(libc::AF_INET).unwrap_or(2),
+        sin_port: 1u16.to_be(),
+        sin_addr: libc::in_addr {
+            s_addr: 0x7f00_0001u32.to_be(),
+        },
+        sin_zero: [0; 8],
+    };
+    let len = libc::socklen_t::try_from(core::mem::size_of::<libc::sockaddr_in>()).unwrap_or(16);
+    // SAFETY: `addr` is a fully initialised `sockaddr_in` of `len` bytes that outlives the call;
+    // `s` is the socket created above.
+    let rc = unsafe { libc::connect(s, (&raw const addr).cast(), len) };
+    let r = if rc == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
+    };
+    // SAFETY: `s` is open and closed exactly once.
+    unsafe { libc::close(s) };
+    r
+}
+
+/// Self-test probe: `posix_spawn` the program at `path` with no arguments and an empty
+/// environment, and reap it. `Ok` means a process was created (not confined).
+pub fn probe_spawn(path: &str) -> std::io::Result<()> {
+    let c = std::ffi::CString::new(path).map_err(|_| std::io::ErrorKind::InvalidInput)?;
+    let argv = [c.as_ptr().cast_mut(), core::ptr::null_mut()];
+    let envp = [core::ptr::null_mut()];
+    let mut pid: libc::pid_t = 0;
+    // SAFETY: `path`, `argv` and `envp` are NULL-terminated as posix_spawn(2) requires and
+    // outlive the call; NULL file actions and attributes mean the defaults.
+    let rc = unsafe {
+        libc::posix_spawn(
+            &mut pid,
+            c.as_ptr(),
+            core::ptr::null(),
+            core::ptr::null(),
+            argv.as_ptr(),
+            envp.as_ptr(),
+        )
+    };
+    if rc != 0 {
+        return Err(std::io::Error::from_raw_os_error(rc));
+    }
+    let mut status = 0;
+    // SAFETY: `pid` is our child; `status` is a live int.
+    unsafe { libc::waitpid(pid, &mut status, 0) };
+    Ok(())
 }
 
 #[cfg(test)]
@@ -781,6 +989,16 @@ mod tests {
         assert!(got.iter().all(|&b| b == b'z'));
         assert!(write_fd(-1, b"x").is_err());
         assert_eq!(write_bounded(-1, b"x", std::time::Duration::ZERO), 0);
+    }
+
+    /// M24: a bad fd or an oversized value is an error, never a panic. (The 1 MiB round trip on
+    /// a real socket is `vmm/tests/unixgram.rs`: sockets may only be named under
+    /// `vmm/src/net/` and in test crates, RUST-6.)
+    #[test]
+    fn socket_buffers_refuse_bad_input() {
+        assert!(set_socket_buffers(-1, 1, 1).is_err());
+        assert!(socket_buffers(-1).is_err());
+        assert!(set_socket_buffers(0, usize::MAX, 1).is_err());
     }
 
     #[test]

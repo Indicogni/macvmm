@@ -1,0 +1,11 @@
+# scripts/capture.sh 12: run "irq" of course/checkpoints/12, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 12; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --mem 64M --raw {guests}/irq.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+irq: pfr0.gic=1
+irq: ready
+irq: 3 irqs intid=33 spurious=0 other=0 bytes=3
+
+--- stderr ---
+

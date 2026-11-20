@@ -1,0 +1,21 @@
+[package]
+name = "vmm"
+version = "0.1.0"
+description = "Your VMM library: memory, vCPUs, devices, loaders, FDT"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+hvf = { path = "../hvf" }
+
+[features]
+# Tests that create real VMs (`--test-threads=1`).
+hvf-tests = ["hvf/hvf-tests"]
+# Host test doubles (`VecMemory` in ch04, `TestIrq` in ch12): the checkpoint harness's
+# contract tests build your crate with this feature.
+test-util = []
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

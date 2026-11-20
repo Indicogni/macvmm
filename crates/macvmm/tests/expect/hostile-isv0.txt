@@ -1,7 +1,9 @@
-hostile-isv0: 12/12 external aborts
+hostile-isv0: 15/15 external aborts
 hostile-isv0: device state intact
 hostile-isv0: phase 2 ok
 [stderr] ISV=0 write at *not emulated*injecting a synchronous external abort
+[stderr] ISV=0 write at 0xa0001f8 *(pair is not inside one device window (first 0xa000000, second 0xa000200))*
+[stderr] ISV=0 write at 0xb000ff8 *(second element at 0x9000000, expected 0xb001000)*
 !FAILED
 !guest fatal
 !guest exception

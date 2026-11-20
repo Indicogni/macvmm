@@ -255,7 +255,5 @@ pub fn ack() -> u32 {
 /// End the interrupt `intid` returned by [`ack`] (`ICC_EOIR1_EL1`). Never for [`SPURIOUS`].
 pub fn eoi(intid: u32) {
     // SAFETY: writing EOIR1 drops the running priority and deactivates `intid`.
-    unsafe {
-        asm!("msr icc_eoir1_el1, {}", "isb", in(reg) u64::from(intid), options(nostack))
-    };
+    unsafe { asm!("msr icc_eoir1_el1, {}", "isb", in(reg) u64::from(intid), options(nostack)) };
 }

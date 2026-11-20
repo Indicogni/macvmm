@@ -1,0 +1,13 @@
+sysreg-probe: undef count=1 ec=0x0
+sysreg-probe: elr ok
+sysreg-probe: lo=1 lorid=0x0 undef count=0
+sysreg-probe: lorid ok
+sysreg-probe: mdccsr undef count=1 ec=0x0
+sysreg-probe: mdccsr elr ok
+sysreg-probe: oslsr after lock=0x*a after unlock=0x*8
+sysreg-probe: oslsr ok
+[stderr] MRS MDCCSR_EL0 at pc 0x*: injecting UNDEF
+![stderr] LORID_EL1
+!FAILED
+!guest exception
+!guest fatal

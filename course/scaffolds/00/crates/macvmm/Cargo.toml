@@ -1,0 +1,18 @@
+[package]
+name = "macvmm"
+version = "0.1.0"
+description = "Your VMM's command line: doctor, first-exit, run"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+hvf = { path = "../hvf" }
+vmm = { path = "../vmm" }
+
+[features]
+hvf-tests = ["vmm/hvf-tests"]
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

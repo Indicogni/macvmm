@@ -20,8 +20,9 @@
 //!    one register and no writeback): [`isv0`] (M17) fetches the instruction at the PC through
 //!    the guest's stage 1 (`arch::stage1_walk`), decodes it (`arch::insn`), checks it against
 //!    the exit (the decoded address must translate to the exit IPA, the direction must match
-//!    `WnR`, a pair must stay inside one device window: MMIO-4), performs the accesses on the
-//!    exit IPA and only then writes the registers (loads, then the base writeback, with
+//!    `WnR`, the decode must agree with `ESR.CM`, the access must stay inside the faulting
+//!    stage-1 page or block, a pair must stay inside one device window: MMIO-4), performs the
+//!    accesses on the exit IPA and only then writes the registers (loads, then the base writeback, with
 //!    Rn = 31 meaning the SP that PSTATE selects). Anything refused or unsupported (SIMD/FP,
 //!    exclusives, atomics, `DC ZVA`, a mismatch) is answered with a synchronous external
 //!    abort injected into the guest, never a VMM error (MMIO-6). `PRFM` and cache
@@ -40,9 +41,12 @@
     clippy::cast_possible_truncation
 )]
 
-use super::exit::{ExitEnv, MmioVerdict, VcpuRegs, unhandled_mmio_policy};
+use super::exit::{
+    ExitEnv, ExitWatch, MmioVerdict, RefusedAccess, UnclaimedAccess, VcpuRegs,
+    unhandled_mmio_policy,
+};
 use crate::arch::esr::{DataAbort, data_abort_cm};
-use crate::arch::insn::{self, ExitFacts, Gpr, Insn, Isv0Bus, Isv0Error, Operands, SpSel};
+use crate::arch::insn::{self, ExitFacts, Gpr, Insn, Isv0Bus, Isv0Error, Mapped, Operands, SpSel};
 use crate::arch::layout::{Layout, RegionKind};
 use crate::arch::regs::Pstate;
 use crate::arch::stage1_walk::{self, TranslationRegs};
@@ -183,6 +187,8 @@ pub fn handle(
     rec: &mut ExitRecord,
 ) -> Result<MmioOutcome> {
     let ipa = raw.ipa;
+    // Every data-abort record says which kind it was, including the ones stopped below.
+    rec.isv = Some(da.isv);
     if da.s1ptw {
         return Ok(MmioOutcome::Fatal(format!(
             "stage-1 table walk touched non-RAM IPA {ipa:#x} pc {pc:#x}"
@@ -198,7 +204,6 @@ pub fn handle(
     let Some(access) = MmioAccess::from_data_abort(ipa, da, regs)? else {
         return isv0(regs, env, raw, da, pc, rec);
     };
-    rec.isv = Some(true);
     rec.wnr = Some(access.write.is_some());
     rec.size = u8::try_from(access.size.bytes()).ok();
     rec.reg = Some(access.reg);
@@ -220,7 +225,16 @@ pub fn handle(
             Ok(MmioOutcome::Done)
         }
         Err(BusError::Unmapped { .. } | BusError::Straddle { .. }) => {
-            match unhandled_mmio_policy(env.unhandled_mmio, ipa, da, pc) {
+            // M21: a machine profile's watch may take the access instead of the policy.
+            let unclaimed = UnclaimedAccess {
+                pc,
+                ipa,
+                size: rec.size.unwrap_or(0),
+                write: access.write,
+            };
+            let verdict = env.watch.and_then(|w| w.unclaimed_mmio(&unclaimed));
+            match verdict.unwrap_or_else(|| unhandled_mmio_policy(env.unhandled_mmio, ipa, da, pc))
+            {
                 MmioVerdict::Fatal(why) => {
                     rec.action = None;
                     Ok(MmioOutcome::Fatal(why))
@@ -296,6 +310,8 @@ struct MachineBus<'a> {
     policy: MmioPolicy,
     da: DataAbort,
     pc: u64,
+    /// M21: the machine profile's watch, consulted before the policy as in [`handle`].
+    watch: Option<&'a dyn ExitWatch>,
 }
 
 impl MachineBus<'_> {
@@ -303,7 +319,7 @@ impl MachineBus<'_> {
         &self,
         ipa: u64,
         size: AccessSize,
-        write: bool,
+        write: Option<u64>,
         e: &BusError,
     ) -> core::result::Result<(), String> {
         match e {
@@ -311,10 +327,19 @@ impl MachineBus<'_> {
                 // With ISV = 0 the syndrome's SAS is UNKNOWN: describe the decoded access.
                 let da = DataAbort {
                     sas: sas_of(size),
-                    wnr: write,
+                    wnr: write.is_some(),
                     ..self.da
                 };
-                match unhandled_mmio_policy(self.policy, ipa, &da, self.pc) {
+                let unclaimed = UnclaimedAccess {
+                    pc: self.pc,
+                    ipa,
+                    size: u8::try_from(size.bytes()).unwrap_or(0),
+                    write,
+                };
+                let verdict = self.watch.and_then(|w| w.unclaimed_mmio(&unclaimed));
+                match verdict
+                    .unwrap_or_else(|| unhandled_mmio_policy(self.policy, ipa, &da, self.pc))
+                {
                     MmioVerdict::Fatal(why) => Err(why),
                     MmioVerdict::RazWi => Ok(()),
                 }
@@ -341,7 +366,7 @@ impl Isv0Bus for MachineBus<'_> {
     fn read(&mut self, ipa: u64, size: AccessSize) -> core::result::Result<u64, String> {
         match self.bus.read(ipa, size) {
             Ok(v) => Ok(v),
-            Err(e) => self.unhandled(ipa, size, false, &e).map(|()| 0),
+            Err(e) => self.unhandled(ipa, size, None, &e).map(|()| 0),
         }
     }
 
@@ -353,20 +378,37 @@ impl Isv0Bus for MachineBus<'_> {
     ) -> core::result::Result<(), String> {
         match self.bus.write(ipa, size, value) {
             Ok(()) => Ok(()),
-            Err(e) => self.unhandled(ipa, size, true, &e),
+            Err(e) => self.unhandled(ipa, size, Some(value), &e),
         }
     }
 }
 
 /// Answer a refused ISV = 0 access with an abort, warning once per call site (LOG-1). `why`
 /// is numbers and static names only (LOG-5).
+///
+/// M21: a machine profile's watch sees the refusal first ([`ExitWatch::refused_isv0`]) and may
+/// stop the VM instead. The vmapple board does: its boot ROM is not `GuestMemory`, so no
+/// instruction there can be fetched, and an abort injected into the ROM is an event it would
+/// never see under VZ, which would make the rest of the device-access trace macvmm's artefact.
 fn refuse(
+    env: &ExitEnv<'_>,
     vcpu: usize,
     raw: &hvf::VcpuExit,
     da: &DataAbort,
     pc: u64,
     why: &dyn fmt::Display,
 ) -> MmioOutcome {
+    if let Some(w) = env.watch {
+        let access = RefusedAccess {
+            pc,
+            ipa: raw.ipa,
+            write: da.wnr,
+            unclaimed: env.bus.device_at(raw.ipa).is_none(),
+        };
+        if let Some(reason) = w.refused_isv0(&access) {
+            return MmioOutcome::Fatal(format!("{reason} ({why})"));
+        }
+    }
     crate::guest_warn!(
         "vcpu{vcpu}: ISV=0 {} at {:#x} pc {pc:#x} not emulated ({why}): injecting a \
          synchronous external abort",
@@ -381,28 +423,46 @@ fn refuse(
 
 /// Steps 1 and 2 of [`isv0`]: the instruction at `pc`, decoded, or the outcome to return at
 /// once. Hints and cache maintenance (with `ESR.CM = 1`) make no access, so they are `Done`
-/// and the PC advances (insn.rs module docs). Everything undecodable is a refusal.
+/// and the PC advances (insn.rs module docs); `rec` says `skip` for them, so the trace tells
+/// a handled no-access exit from an emulated access or a record whose handling went missing. Everything undecodable is a refusal, and so is
+/// any disagreement between the decode and `ESR.CM`, in either direction (MMIO-4): a load or
+/// store under CM = 1 would otherwise ride on a cache-maintenance fault, which reports
+/// `WnR = 1` and needed only read permission at stage 1.
 fn decode_at_pc(
-    mem: &dyn GuestMemory,
+    env: &ExitEnv<'_>,
     tr: &TranslationRegs,
     raw: &hvf::VcpuExit,
     da: &DataAbort,
     pc: u64,
     vcpu: usize,
+    rec: &mut ExitRecord,
 ) -> core::result::Result<insn::MemInsn, MmioOutcome> {
-    let word = stage1_walk::fetch_insn(mem, tr, pc).map_err(|e| refuse(vcpu, raw, da, pc, &e))?;
-    match insn::decode(word) {
-        Ok(Insn::Mem(m)) => Ok(m),
-        Ok(Insn::Prefetch) => Err(MmioOutcome::Done),
-        Ok(Insn::CacheMaintenance) if data_abort_cm(raw.esr) => Err(MmioOutcome::Done),
-        Ok(Insn::CacheMaintenance) => Err(refuse(
+    // M18: from RAM, or read-only from the flash ROM for execute-in-place firmware.
+    let word = stage1_walk::fetch_insn_rom(env.mem, env.rom, tr, pc)
+        .map_err(|e| refuse(env, vcpu, raw, da, pc, &e))?;
+    match (insn::decode(word), data_abort_cm(raw.esr)) {
+        (Ok(Insn::Mem(_) | Insn::Prefetch), true) => Err(refuse(
+            env,
+            vcpu,
+            raw,
+            da,
+            pc,
+            &"syndrome says cache maintenance (ESR.CM = 1) but the instruction is a load/store",
+        )),
+        (Ok(Insn::Mem(m)), false) => Ok(m),
+        (Ok(Insn::Prefetch), false) | (Ok(Insn::CacheMaintenance), true) => {
+            rec.action = Some(Action::Skip);
+            Err(MmioOutcome::Done)
+        }
+        (Ok(Insn::CacheMaintenance), false) => Err(refuse(
+            env,
             vcpu,
             raw,
             da,
             pc,
             &"cache maintenance with ESR.CM = 0",
         )),
-        Err(u) => Err(refuse(vcpu, raw, da, pc, &u)),
+        (Err(u), _) => Err(refuse(env, vcpu, raw, da, pc, &u)),
     }
 }
 
@@ -417,6 +477,9 @@ fn apply_commit(regs: &mut dyn VcpuRegs, sp: SpSel, commit: &insn::Commit) -> Re
     }
 }
 
+/// The refusal reason for an ISV = 0 access outside an AArch64 EL1&0 context.
+const NOT_EL1_CONTEXT: &str = "not an AArch64 EL1&0 context";
+
 // ANCHOR: isv0_emulate
 /// A data abort with ISV = 0 (module docs, step 3; M17). The exit IPA is authoritative: the
 /// instruction is only read to learn *what* the access was, and every way it can disagree
@@ -429,18 +492,17 @@ fn isv0(
     pc: u64,
     rec: &mut ExitRecord,
 ) -> Result<MmioOutcome> {
-    rec.isv = Some(false);
     rec.wnr = Some(da.wnr);
     let vcpu = regs.index();
     let tr = translation_regs(regs)?;
     // 1, 2. Fetch the instruction at the PC through stage 1 and decode it.
-    let m = match decode_at_pc(env.mem, &tr, raw, da, pc, vcpu) {
+    let m = match decode_at_pc(env, &tr, raw, da, pc, vcpu, rec) {
         Ok(m) => m,
         Err(outcome) => return Ok(outcome),
     };
     // 3. Read the operands. Register 31 as a base is the SP that PSTATE selects.
     let Some(sp) = SpSel::from_pstate(Pstate(regs.cpsr()?)) else {
-        return Ok(refuse(vcpu, raw, da, pc, &"not an AArch64 EL1&0 context"));
+        return Ok(refuse(env, vcpu, raw, da, pc, &NOT_EL1_CONTEXT));
     };
     let ops = Operands::gather(&m, |g| read_gpr(&*regs, g, sp))?;
     // 4. Check against the exit, then perform the accesses on the exit IPA.
@@ -448,16 +510,25 @@ fn isv0(
         ipa: raw.ipa,
         wnr: da.wnr,
     };
-    let mut translate = |va: u64| stage1_walk::translate(env.mem, &tr, va).ok().map(|t| t.ipa);
+    // The mapping size goes with the IPA: an access may not leave the faulting page (insn.rs).
+    let mut translate = |va: u64| {
+        stage1_walk::translate(env.mem, &tr, va)
+            .ok()
+            .map(|t| Mapped {
+                ipa: t.ipa,
+                mapping_size: t.mapping_size,
+            })
+    };
     let mut bus = MachineBus {
         bus: env.bus,
         policy: env.unhandled_mmio,
         da: *da,
         pc,
+        watch: env.watch,
     };
     let commit = match insn::emulate_isv0(&m, &ops, exit, &mut translate, &mut bus) {
         Ok(c) => c,
-        Err(Isv0Error::Refused(r)) => return Ok(refuse(vcpu, raw, da, pc, &r)),
+        Err(Isv0Error::Refused(r)) => return Ok(refuse(env, vcpu, raw, da, pc, &r)),
         Err(Isv0Error::Bus(why)) => return Ok(MmioOutcome::Fatal(why)),
     };
     // 5. Only now change registers: loads, then the base writeback.
@@ -872,11 +943,18 @@ mod tests {
         });
     }
 
-    /// MMIO-6: `str q0, [x0]` is SIMD/FP: an abort at FAR with WnR, and no device access.
+    /// MMIO-6: `str q0, [x0]` is SIMD/FP: an abort at FAR with WnR, and no device access (a
+    /// q store would cover both 8-byte registers at 0x80 and 0x88).
     #[test]
     fn isv0_simd_store_aborts() {
         let bus = testdev_bus();
         with_env_bus(MmioPolicy::Fatal, &bus, |env| {
+            const SENTINEL: u64 = 0x5e5e_5e5e_5e5e_5e5e;
+            for off in [0x80, 0x88] {
+                env.bus
+                    .write(TESTDEV_BASE + off, AccessSize::B8, SENTINEL)
+                    .unwrap();
+            }
             let mut r = Fake::default();
             r.x[0] = TESTDEV_BASE + 0x80;
             let (o, rec) = isv0_run(&mut r, env, 0x3d80_0000, ISV0_STORE, TESTDEV_BASE + 0x80);
@@ -889,6 +967,9 @@ mod tests {
             );
             assert_eq!(rec.isv, Some(false));
             assert_eq!(rec.action, None, "the exit handler sets inject_abort");
+            for off in [0x80, 0x88] {
+                assert_eq!(dev(env, off, AccessSize::B8), SENTINEL, "offset {off:#x}");
+            }
         });
     }
 
@@ -957,35 +1038,130 @@ mod tests {
             let mut r = Fake::default();
             r.x[0] = TESTDEV_BASE;
             let dc = 0xd50b_7e20;
-            let (o, _) = isv0_run(&mut r, env, dc, ISV0_STORE | CM, TESTDEV_BASE);
+            let (o, rec) = isv0_run(&mut r, env, dc, ISV0_STORE | CM, TESTDEV_BASE);
             assert_eq!(o, MmioOutcome::Done);
-            let (o, _) = isv0_run(&mut r, env, dc, ISV0_STORE, TESTDEV_BASE);
+            // Handled, with no access: the trace says `skip`, not `mmio` and not nothing.
+            assert_eq!(rec.action, Some(Action::Skip));
+            assert_eq!(rec.wnr, Some(true));
+            assert_eq!(rec.size, None);
+            let (o, rec) = isv0_run(&mut r, env, dc, ISV0_STORE, TESTDEV_BASE);
             assert!(matches!(o, MmioOutcome::Abort { .. }));
+            assert_eq!(rec.action, None);
         });
     }
 
-    /// With the MMU on, the PC and the decoded address go through the guest's stage 1: an
-    /// `ldp` through an alias VA (0x0b10_0000 → the testdev page) is emulated, and the same
+    /// MMIO-4 review fix: a load, store or prefetch under a cache-maintenance syndrome
+    /// (`ESR.CM = 1`) means the code changed after the fault (a `dc civac` swapped for an
+    /// `stp`). Cache maintenance reports `WnR = 1` and needs only read permission at stage 1,
+    /// so emulating the store would write the device through a read-only mapping. It is an
+    /// abort, and the device is untouched.
+    #[test]
+    fn isv0_cm_with_store_aborts() {
+        let bus = testdev_bus();
+        with_env_bus(MmioPolicy::Fatal, &bus, |env| {
+            const SENTINEL: u64 = 0x5e5e_5e5e_5e5e_5e5e;
+            for off in [0x100, 0x108] {
+                env.bus
+                    .write(TESTDEV_BASE + off, AccessSize::B8, SENTINEL)
+                    .unwrap();
+            }
+            let mut r = Fake::default();
+            (r.x[0], r.x[1], r.x[2]) = (TESTDEV_BASE + 0x100, 0x1111, 0x2222);
+            let ipa = TESTDEV_BASE + 0x100;
+            for (word, esr, what) in [
+                (0xa900_0801, ISV0_STORE | CM, "stp x1, x2, [x0]"),
+                (0xa940_0801, ISV0_STORE | CM, "ldp x1, x2, [x0]"),
+                (0xa940_0801, ISV0_LOAD | CM, "ldp x1, x2, [x0] (WnR 0)"),
+                (0xf980_0000, ISV0_STORE | CM, "prfm pldl1keep, [x0]"),
+            ] {
+                let (o, rec) = isv0_run(&mut r, env, word, esr, ipa);
+                assert!(matches!(o, MmioOutcome::Abort { .. }), "{what}: {o:?}");
+                assert_eq!(rec.action, None, "{what}");
+            }
+            for off in [0x100, 0x108] {
+                assert_eq!(dev(env, off, AccessSize::B8), SENTINEL, "offset {off:#x}");
+            }
+            assert_eq!((r.x[0], r.x[1], r.x[2]), (ipa, 0x1111, 0x2222));
+            // Control: the same stp under a plain store syndrome is emulated.
+            let (o, _) = isv0_run(&mut r, env, 0xa900_0801, ISV0_STORE, ipa);
+            assert_eq!(o, MmioOutcome::Done);
+            assert_eq!(dev(env, 0x100, AccessSize::B8), 0x1111);
+        });
+    }
+
+    /// Every data-abort record carries `isv`, also the ones stopped before the ISV branch
+    /// (S1PTW, a stage-2 fault in RAM): it comes straight from the syndrome.
+    #[test]
+    fn early_fatal_records_carry_isv() {
+        let bus = testdev_bus();
+        with_env_bus(MmioPolicy::Fatal, &bus, |env| {
+            let mut r = Fake::default();
+            for (esr, ipa, isv) in [
+                (esr(2, false, 1, false, true) | (1 << 7), TESTDEV_BASE, true),
+                (ISV0_STORE | (1 << 7), TESTDEV_BASE, false),
+                (esr(2, false, 1, false, true), RAM_BASE, true),
+                (ISV0_LOAD, RAM_BASE, false),
+            ] {
+                let da = decode_data_abort(esr);
+                let mut rec = ExitRecord::default();
+                let o = handle(&mut r, env, &at(ipa), &da, CODE, &mut rec).unwrap();
+                assert!(matches!(o, MmioOutcome::Fatal(_)), "{esr:#x}: {o:?}");
+                assert_eq!(rec.isv, Some(isv), "{esr:#x}");
+                let want = if isv {
+                    r#""isv":true"#
+                } else {
+                    r#""isv":false"#
+                };
+                assert!(rec.to_json().contains(want), "{}", rec.to_json());
+            }
+        });
+    }
+
+    /// Descriptor type bits (D8.3): a block at levels 1–2; a table at 0–2, a page at 3.
+    const BLOCK: u64 = 0b01;
+    const TABLE: u64 = 0b11;
+    /// AP[2] (bit 7): read-only at stage 1.
+    const AP_RO: u64 = 1 << 7;
+    /// The guest's level-1, -2 and -3 tables ([`mmu_on`]).
+    const L1: u64 = RAM_BASE + 0x1000;
+    const L2: u64 = RAM_BASE + 0x2000;
+    const L3: u64 = RAM_BASE + 0x3000;
+    /// The data alias VA of the testdev page.
+    const ALIAS: u64 = 0x0b10_0000;
+
+    /// Write one descriptor into guest RAM.
+    fn desc(env: &ExitEnv<'_>, table: u64, index: u64, v: u64) {
+        env.mem
+            .write_u64(GuestAddress(table + index * 8), v)
+            .unwrap();
+    }
+
+    /// Guest page tables (4 KiB granule, T0SZ 25: levels 1–3) and the MMU on in `r`:
+    /// VA 1–2 GiB is an identity 1 GiB block (RAM, so the code at [`CODE`] runs), and
+    /// [`ALIAS`] is a 4 KiB page on the testdev page. Tests add more entries.
+    fn mmu_on(env: &ExitEnv<'_>, r: &mut Fake) {
+        desc(env, L1, 1, RAM_BASE | BLOCK);
+        desc(env, L1, 0, L2 | TABLE);
+        desc(env, L2, 88, L3 | TABLE); // 0x0b00_0000 >> 21 = 88
+        desc(env, L3, 0x100, TESTDEV_BASE | TABLE); // VA 0x0b10_0000 → IPA 0x0b00_0000
+        r.sys.insert(SysReg::SCTLR_EL1.0, 1);
+        // T0SZ = 25 (39-bit VAs, start at level 1), TG0 = 4K, IPS = 48 bits, EPD1.
+        r.sys
+            .insert(SysReg::TCR_EL1.0, 25 | (0b101 << 32) | (1 << 23));
+        r.sys.insert(SysReg::TTBR0_EL1.0, L1);
+    }
+
+    /// With the MMU on, the decoded address goes through the guest's stage 1: an `ldp`
+    /// through an alias VA (0x0b10_0000 → the testdev page) is emulated, and the same
     /// instruction with the MMU off is refused (the identity of the VA is not the exit IPA).
+    /// The PC is identity-mapped here; `isv0_pc_through_stage1` covers a PC alias.
     #[test]
     fn isv0_through_stage1_alias() {
         let bus = testdev_bus();
         with_env_bus(MmioPolicy::Fatal, &bus, |env| {
-            const VALID: u64 = 0b01;
-            const TABLE: u64 = 0b11;
-            let (l1, l2, l3) = (RAM_BASE + 0x1000, RAM_BASE + 0x2000, RAM_BASE + 0x3000);
-            let w = |a: u64, v: u64| env.mem.write_u64(GuestAddress(a), v).unwrap();
-            w(l1 + 8, RAM_BASE | VALID); // VA 1-2 GiB: identity 1 GiB block (RAM, code)
-            w(l1, l2 | TABLE);
-            w(l2 + 88 * 8, l3 | TABLE); // 0x0b00_0000 >> 21 = 88
-            w(l3 + 0x100 * 8, TESTDEV_BASE | TABLE); // VA 0x0b10_0000 → IPA 0x0b00_0000
             let mut r = Fake::default();
-            r.sys.insert(SysReg::SCTLR_EL1.0, 1);
-            // T0SZ = 25 (39-bit VAs, start at level 1), TG0 = 4K, IPS = 48 bits, EPD1.
-            r.sys
-                .insert(SysReg::TCR_EL1.0, 25 | (0b101 << 32) | (1 << 23));
-            r.sys.insert(SysReg::TTBR0_EL1.0, l1);
-            r.x[0] = 0x0b10_0000;
+            mmu_on(env, &mut r);
+            r.x[0] = ALIAS;
             env.bus
                 .write(TESTDEV_BASE, AccessSize::B8, 0x0123_4567_89ab_cdef)
                 .unwrap();
@@ -1007,6 +1183,173 @@ mod tests {
         });
     }
 
+    /// The PC is a VA too: the instruction is fetched through the guest's stage 1. VA
+    /// `RAM_BASE + 0x6000` maps to IPA `RAM_BASE + 0x5000`, which holds `ldp x1, x2, [x0]`;
+    /// the identity IPA holds a decoy, `ldp x3, x4, [x0]`. A VMM that read the PC as an IPA
+    /// would load x3 and x4.
+    #[test]
+    fn isv0_pc_through_stage1() {
+        let bus = testdev_bus();
+        with_env_bus(MmioPolicy::Fatal, &bus, |env| {
+            const L2_RAM: u64 = RAM_BASE + 0x7000;
+            const L3_RAM: u64 = RAM_BASE + 0x8000;
+            const PC_VA: u64 = RAM_BASE + 0x6000;
+            const PC_IPA: u64 = RAM_BASE + 0x5000;
+            let mut r = Fake::default();
+            mmu_on(env, &mut r);
+            // Replace the identity 1 GiB block with tables: one 4 KiB page at PC_VA.
+            desc(env, L1, 1, L2_RAM | TABLE);
+            desc(env, L2_RAM, 0, L3_RAM | TABLE);
+            desc(env, L3_RAM, 6, PC_IPA | TABLE);
+            let w = |a: u64, v: u32| env.mem.write_u32(GuestAddress(a), v).unwrap();
+            w(PC_IPA, 0xa940_0801); // ldp x1, x2, [x0]
+            w(PC_VA, 0xa940_1003); // ldp x3, x4, [x0]: the decoy at the identity IPA
+            env.bus
+                .write(TESTDEV_BASE, AccessSize::B8, 0x0123_4567_89ab_cdef)
+                .unwrap();
+            env.bus
+                .write(TESTDEV_BASE + 8, AccessSize::B8, 0xfedc_ba98_7654_3210)
+                .unwrap();
+            r.x[0] = ALIAS;
+            r.pc = PC_VA;
+            let raw = hvf::VcpuExit {
+                reason: hvf::ExitReason::Exception,
+                esr: ISV0_LOAD,
+                far: ALIAS,
+                ipa: TESTDEV_BASE,
+            };
+            let da = decode_data_abort(ISV0_LOAD);
+            let o = handle(&mut r, env, &raw, &da, PC_VA, &mut ExitRecord::default()).unwrap();
+            assert_eq!(o, MmioOutcome::Done);
+            assert_eq!(
+                (r.x[1], r.x[2], r.x[3], r.x[4]),
+                (0x0123_4567_89ab_cdef, 0xfedc_ba98_7654_3210, 0, 0)
+            );
+            // The same PC with the page unmapped cannot be fetched: an abort, nothing loaded.
+            desc(env, L3_RAM, 6, 0);
+            (r.x[1], r.x[2]) = (0, 0);
+            let o = handle(&mut r, env, &raw, &da, PC_VA, &mut ExitRecord::default()).unwrap();
+            assert!(matches!(o, MmioOutcome::Abort { .. }), "{o:?}");
+            assert_eq!((r.x[1], r.x[2], r.x[3], r.x[4]), (0, 0, 0, 0));
+        });
+    }
+
+    /// An MMIO device that logs every access.
+    struct Recorder(Arc<Mutex<AccessLog>>);
+
+    /// Every access a [`Recorder`] saw: (offset, `Some(value)` for a write).
+    type AccessLog = Vec<(u64, Option<u64>)>;
+
+    impl crate::bus::MmioDevice for Recorder {
+        fn read(&mut self, offset: u64, _: AccessSize) -> u64 {
+            self.0.lock().unwrap().push((offset, None));
+            0
+        }
+        fn write(&mut self, offset: u64, _: AccessSize, value: u64) {
+            self.0.lock().unwrap().push((offset, Some(value)));
+        }
+    }
+
+    /// MMIO-4 review fix: the hardware checked stage-1 permissions for the faulting element's
+    /// page only. An 8 KiB device mapped by two 4 KiB pages, the second read-only: an `stp`
+    /// whose second element falls on the read-only page is refused with no access, although
+    /// it translates contiguously into the same window. A pair inside the first page, and the
+    /// same crossing pair with the MMU off, are emulated.
+    #[test]
+    fn isv0_pair_across_stage1_pages_aborts() {
+        const BIG: u64 = 0x0b20_0000;
+        const BIG_VA: u64 = 0x0b11_0000;
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let mut bus = testdev_bus();
+        bus.insert(
+            "recorder",
+            BIG,
+            0x2000,
+            Arc::new(Mutex::new(Recorder(Arc::clone(&log)))),
+        )
+        .unwrap();
+        with_env_bus(MmioPolicy::Fatal, &bus, |env| {
+            let mut r = Fake::default();
+            mmu_on(env, &mut r);
+            desc(env, L3, 0x110, BIG | TABLE); // BIG_VA → BIG, read/write
+            desc(env, L3, 0x111, (BIG + 0x1000) | AP_RO | TABLE); // → BIG + 0x1000, read-only
+            let stp = 0xa900_0801; // stp x1, x2, [x0]
+            (r.x[0], r.x[1], r.x[2]) = (BIG_VA + 0xff8, 0x11, 0x22);
+            let (o, _) = isv0_run_at(&mut r, env, stp, ISV0_STORE, BIG + 0xff8, BIG_VA + 0xff8);
+            assert!(matches!(o, MmioOutcome::Abort { write: true, .. }), "{o:?}");
+            assert!(log.lock().unwrap().is_empty(), "{:?}", log.lock().unwrap());
+            // Control: both elements in the read/write page.
+            r.x[0] = BIG_VA + 0xff0;
+            let (o, _) = isv0_run_at(&mut r, env, stp, ISV0_STORE, BIG + 0xff0, BIG_VA + 0xff0);
+            assert_eq!(o, MmioOutcome::Done);
+            assert_eq!(
+                std::mem::take(&mut *log.lock().unwrap()),
+                vec![(0xff0, Some(0x11)), (0xff8, Some(0x22))]
+            );
+            // Control: MMU off, no stage-1 permissions; the pair crosses 4 KiB inside one window.
+            r.sys.insert(SysReg::SCTLR_EL1.0, 0);
+            r.x[0] = BIG + 0xff8;
+            let (o, _) = isv0_run(&mut r, env, stp, ISV0_STORE, BIG + 0xff8);
+            assert_eq!(o, MmioOutcome::Done);
+            assert_eq!(
+                *log.lock().unwrap(),
+                vec![(0xff8, Some(0x11)), (0x1000, Some(0x22))]
+            );
+        });
+    }
+
+    /// MMIO-4 review fix: a pair whose two elements land in two *different real devices*
+    /// whose windows touch, as the virtio-mmio slots do (0x200 stride, no gap). This is the
+    /// production [`MachineBus::window`] over a real [`Bus`], not the `MockBus` of
+    /// `tests/insn_decode.rs`: it must see two different window bases and refuse
+    /// (`Refusal::CrossDevice`) before either device is touched, for a store pair and a load
+    /// pair, and leave the load's registers alone. Control: the same pair inside slot 0.
+    #[test]
+    fn isv0_pair_across_adjacent_devices_aborts() {
+        use crate::arch::layout::{VIRTIO_MMIO_BASE, VIRTIO_MMIO_STRIDE};
+        let slot0 = Arc::new(Mutex::new(Vec::new()));
+        let slot1 = Arc::new(Mutex::new(Vec::new()));
+        let mut bus = Bus::new();
+        for (i, log) in [&slot0, &slot1].into_iter().enumerate() {
+            bus.insert(
+                "virtio-mmio",
+                VIRTIO_MMIO_BASE + i as u64 * VIRTIO_MMIO_STRIDE,
+                VIRTIO_MMIO_STRIDE,
+                Arc::new(Mutex::new(Recorder(Arc::clone(log)))),
+            )
+            .unwrap();
+        }
+        // The last 8 bytes of slot 0: the second element is the first 8 bytes of slot 1.
+        let edge = VIRTIO_MMIO_BASE + VIRTIO_MMIO_STRIDE - 8;
+        with_env_bus(MmioPolicy::Fatal, &bus, |env| {
+            let mut r = Fake::default();
+            for (word, esr, write, what) in [
+                (0xa900_0801, ISV0_STORE, true, "stp x1, x2, [x0]"),
+                (0xa940_0801, ISV0_LOAD, false, "ldp x1, x2, [x0]"),
+                (0x2900_0801, ISV0_STORE, true, "stp w1, w2, [x0]"),
+            ] {
+                // `stp w` needs its first element in the last word of slot 0.
+                let a = if word == 0x2900_0801 { edge + 4 } else { edge };
+                (r.x[0], r.x[1], r.x[2]) = (a, 0x1111, 0x2222);
+                let (o, rec) = isv0_run(&mut r, env, word, esr, a);
+                assert_eq!(o, MmioOutcome::Abort { far: a, write }, "{what}");
+                assert_eq!(rec.action, None, "{what}");
+                assert!(slot0.lock().unwrap().is_empty(), "{what}: slot 0 touched");
+                assert!(slot1.lock().unwrap().is_empty(), "{what}: slot 1 touched");
+                assert_eq!((r.x[0], r.x[1], r.x[2]), (a, 0x1111, 0x2222), "{what}");
+            }
+            // Control: both elements inside slot 0 are emulated, and slot 1 is not touched.
+            (r.x[0], r.x[1], r.x[2]) = (edge - 8, 0x11, 0x22);
+            let (o, _) = isv0_run(&mut r, env, 0xa900_0801, ISV0_STORE, edge - 8);
+            assert_eq!(o, MmioOutcome::Done);
+            assert_eq!(
+                *slot0.lock().unwrap(),
+                vec![(0x1f0, Some(0x11)), (0x1f8, Some(0x22))]
+            );
+            assert!(slot1.lock().unwrap().is_empty());
+        });
+    }
+
     /// A PC that does not translate to RAM cannot be decoded: abort, not a VMM error.
     #[test]
     fn isv0_pc_outside_ram_aborts() {
@@ -1024,6 +1367,95 @@ mod tests {
                 let o = handle(&mut r, env, &raw, &da, pc, &mut ExitRecord::default()).unwrap();
                 assert!(matches!(o, MmioOutcome::Abort { .. }), "pc {pc:#x}: {o:?}");
             }
+        });
+    }
+
+    /// M18: an ISV = 0 access whose PC is in the flash ROM (`env.rom = Some`), as U-Boot's
+    /// first `stp` executes in place from flash. The instruction is fetched from the ROM hook,
+    /// and the pair store to flash lands on a real [`crate::devices::flash::FlashDevice`] as
+    /// two 8-byte writes, both dropped: `Done`. With the same ROM present, a SIMD store in the
+    /// ROM still aborts (MMIO-6) and a PC past the ROM still aborts (fetch `NotRam`), with no
+    /// device write; and without a ROM the `stp` aborts, as `isv0_pc_outside_ram_aborts` shows.
+    #[test]
+    fn isv0_stp_fetched_from_rom_hits_flash() {
+        use crate::arch::layout::FLASH_BANK_SIZE;
+        use crate::arch::stage1_walk::InsnRom;
+        use crate::devices::flash::FlashDevice;
+        /// One page of ROM at `FLASH0_BASE`; reads as `RomRegion::read_u32` does.
+        struct Rom(Vec<u32>);
+        impl InsnRom for Rom {
+            fn read_insn(&self, ipa: u64) -> Option<u32> {
+                if !ipa.is_multiple_of(4) {
+                    return None;
+                }
+                let i = usize::try_from(ipa.checked_sub(FLASH0_BASE)? / 4).ok()?;
+                self.0.get(i).copied()
+            }
+        }
+        const STP: u32 = 0xa900_0801; // stp x1, x2, [x0]
+        const STR_Q0: u32 = 0x3d80_0000; // str q0, [x0]
+        let mut words = vec![0xd503_201f; 1024]; // nop
+        words[0x100 / 4] = STP;
+        words[0x104 / 4] = STR_Q0;
+        let rom = Rom(words);
+        let flash = Arc::new(Mutex::new(FlashDevice::new()));
+        let mut bus = Bus::new();
+        bus.insert("flash0", FLASH0_BASE, FLASH_BANK_SIZE, flash.clone())
+            .unwrap();
+        let target = FLASH0_BASE + 0x12_c668; // where U-Boot's save_boot_params stores
+        let raw = hvf::VcpuExit {
+            reason: hvf::ExitReason::Exception,
+            esr: ISV0_STORE,
+            far: target,
+            ipa: target,
+        };
+        let da = decode_data_abort(ISV0_STORE);
+        with_env_bus(MmioPolicy::Fatal, &bus, |base| {
+            let env = ExitEnv {
+                mem: base.mem,
+                serial: base.serial,
+                ctl: base.ctl,
+                bus: base.bus,
+                generation: base.generation,
+                debug_calls: base.debug_calls,
+                unhandled_mmio: base.unhandled_mmio,
+                watch: None,
+                rom: Some(&rom),
+            };
+            let mut r = Fake::default();
+            (r.x[0], r.x[1], r.x[2]) = (target, 0x4000_0000, 0);
+            let pc = FLASH0_BASE + 0x100;
+            let mut rec = ExitRecord::default();
+            let o = handle(&mut r, &env, &raw, &da, pc, &mut rec).unwrap();
+            assert_eq!(o, MmioOutcome::Done);
+            assert_eq!(
+                crate::sync::lock(&flash).writes_ignored(),
+                2,
+                "two 8-byte writes"
+            );
+            assert_eq!(
+                (rec.isv, rec.wnr, rec.size, rec.value),
+                (Some(false), Some(true), Some(8), Some(0x4000_0000))
+            );
+            assert_eq!(r.x[0], target, "no writeback form");
+            // Refusals are unchanged with a ROM present: a SIMD store fetched from the ROM,
+            // and a PC past the ROM's end (the fetch misses: NotRam).
+            for pc in [FLASH0_BASE + 0x104, FLASH0_BASE + 0x1000] {
+                let o = handle(&mut r, &env, &raw, &da, pc, &mut ExitRecord::default()).unwrap();
+                assert_eq!(
+                    o,
+                    MmioOutcome::Abort {
+                        far: target,
+                        write: true
+                    },
+                    "pc {pc:#x}"
+                );
+            }
+            assert_eq!(
+                crate::sync::lock(&flash).writes_ignored(),
+                2,
+                "no more writes"
+            );
         });
     }
 }

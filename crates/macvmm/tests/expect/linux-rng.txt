@@ -1,0 +1,7 @@
+macvmm-initramfs: ready *
+macvmm-rng: hw_random=virtio_rng.0
+macvmm-rng: read 1048576 bytes ok
+!macvmm-rng: FAILED
+![stderr] needs reset
+![stderr] unhandled MMIO
+![stderr] panicked

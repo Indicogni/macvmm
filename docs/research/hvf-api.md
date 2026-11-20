@@ -113,7 +113,7 @@ hv_vm_destroy()                                   // requires all vCPUs destroye
 | **`hv_vcpus_exit(ids, n)` can be called from any thread, for several vCPUs at once.** Each running vCPU returns from `hv_vcpu_run` with `HV_EXIT_REASON_CANCELED`. Four spinning vCPUs on four threads were all kicked by one call from the main thread. | [verified-on-machine] |
 | `hv_vcpus_exit` on a vCPU that is *not* running is sticky: its next `hv_vcpu_run` returns CANCELED at once (2 µs) without entering the guest. The VMM's run loop must therefore tolerate spurious CANCELED exits. | [verified-on-machine] |
 | vCPU ids are small integers starting at 0, given out in creation order. | [verified-on-machine] |
-| Creating a vCPU *after* other vCPUs have run still succeeds, and it gets the next redistributor slot. The GIC header says the topology "is considered final" once vCPUs run, and "Destroy vcpus only when you are tearing down the virtual machine". **Design decision: create all vCPUs at startup.** PSCI CPU_ON then only sets PC/x0 and releases a parked thread. | create [verified-on-machine]; functional correctness unverified |
+| Creating a vCPU *after* other vCPUs have run still succeeds, and it gets the next redistributor slot. The GIC header says the topology "is considered final" once vCPUs run, and "Destroy vcpus only when you are tearing down the virtual machine". **Design decision: create all vCPUs at startup.** PSCI CPU_ON then only sets PC/x0 and releases a parked thread. **M16: late creation is unused** — `vcpu::manager` creates all `--cpus` vCPUs one at a time (a rendezvous per vCPU) before vCPU 0 first runs, and checks `hv_gic_get_redistributor_base == GICR_BASE + i·0x20000` for each; CPU_ON only fills a mailbox. | create [verified-on-machine]; late-vCPU functional correctness unverified **and not needed** (M16) |
 | Measured exit round trip: about 1–3 µs for a trivial HVC/MMIO exit, as seen from user space. | [verified-on-machine] |
 
 Default vCPU state after create: PC=0, CPSR=0, MPIDR_EL1=0, SCTLR_EL1=0, CNTV_CTL=0, vtimer offset 0, vtimer
@@ -408,7 +408,9 @@ The spike verified this sequence: `hv_vm_create` → `hv_gic_config_create` → 
   order, and slots still followed creation order. The guest discovers its frame by matching
   GICR_TYPER.Affinity, so any order works.
 - Rule for the VMM: create vCPU *i* sequentially and set MPIDR so that Aff0 = i. For more than 16 CPUs, use
-  Aff1 = i/16 and Aff0 = i%16, mirroring QEMU's GICv3 cluster size [from-docs/unverified].
+  Aff1 = i/16 and Aff0 = i%16, mirroring QEMU's GICv3 cluster size. [verified-on-machine, M16: Linux boots
+  on 64 vCPUs (`smp: Brought up 1 node, 64 CPUs`, timer interrupts on all 64), so Aff1 = 1..3 works with
+  the in-kernel GIC.]
 - The MPIDR value must include RES1 bit 31.
 
 ### Interrupt injection
@@ -418,7 +420,7 @@ The spike verified this sequence: `hv_vm_create` → `hv_gic_config_create` → 
 | `hv_gic_set_spi(intid, level)` | Called from a **non-vCPU thread** while the guest sat in in-kernel WFI. It woke the vCPU, which took IRQ INTID 33 (~35 ms after the call was scheduled 30 ms out). `level=false` deasserts it. | [verified-on-machine] |
 | Level vs edge | `level=true` also produces an edge for edge-triggered interrupts; `false` is ignored for edge. An intid outside the SPI range, or inside the MSI range, gives `HV_BAD_ARGUMENT`. Virtio-mmio interrupts are level-triggered: assert while `InterruptStatus != 0`, deassert after the guest ACKs. | [from-header]; virtio semantics [from-docs/unverified] |
 | `hv_gic_send_msi(ipa_of_GICM_SETSPI_NSR, intid)` | Host-initiated MSI, for virtio-pci later. | [from-header] |
-| SGIs (IPIs) | Handled entirely in the kernel through `ICC_SGI1R_EL1`. | [from-docs/unverified]; to be verified at the SMP milestone |
+| SGIs (IPIs) | Handled entirely in the kernel through `ICC_SGI1R_EL1`. **M16 evidence:** Linux 6.18 on `--cpus 4` (and 64) boots all CPUs, `/proc/interrupts` shows IPI counts on every CPU (`macvmm-smp: ipis on 4 cpus total 1179`; 64 CPUs: `total 21645`), CPU hotplug works, and a `--trace exits:…:sysreg` of the 4-CPU boot has exactly 8 EC 0x18 exits, all `OSDLR_EL1`/`OSLAR_EL1` (2 per vCPU): no `ICC_SGI1R_EL1` access ever reaches the VMM. | [verified-on-machine] (M16, 2026-11-19, M5 Pro, macOS 27.2) |
 | `hv_vcpu_{get,set}_pending_interrupt` | Return `HV_UNSUPPORTED` once a GIC exists. | [verified-on-machine] |
 
 ### Host-side register access
@@ -580,11 +582,13 @@ Measured while bringing up PLAN M17 (`scripts/test-e2e.sh guests hostile`: `isv0
 
 | Fact | Evidence | Tag |
 |---|---|---|
-| Pairs (`stp`/`ldp`/`ldpsw`, W and X, offset/pre/post), single-register writeback forms (`str x, [x0, #8]!`, `ldrsh x, [x0], #2`) and SIMD stores (`str q0/d0/s0`, `stp q0, q1`, `st1 {v0.16b}`) and loads (`ldr q0`) to an unmapped IPA all exit with EC 0x24 and **ISV = 0**; plain `ldr`/`str` keep ISV = 1. The isv0-probe trace has 15 `"isv":false` and 24 `"isv":true` records. | `isv0_probe` e2e + `isv0-probe.trace.txt` | [verified-on-machine] |
+| Pairs (`stp`/`ldp`/`ldpsw`, W and X, offset/pre/post), single-register writeback forms (`str x, [x0, #8]!`, `ldrsh x, [x0], #2`) and SIMD stores (`str q0/d0/s0`, `stp q0, q1`, `st1 {v0.16b}`) and loads (`ldr q0`) to an unmapped IPA all exit with EC 0x24 and **ISV = 0**; plain `ldr`/`str` keep ISV = 1. The isv0-probe trace has 17 `"isv":false` and 28 `"isv":true` records (16 checks, after the M17 review added checks 15 and 16; it had 15 and 24 with 14 checks). | `isv0_probe` e2e + `isv0-probe.trace.txt` | [verified-on-machine] |
 | With the guest MMU on (4 KiB granule, T0SZ 25, alias VA `0x0b10_0000` → IPA `0x0b00_0000`), `exception.physical_address` is the **IPA** (`0xb0000a0` for an `ldp` through the alias) and `virtual_address` is the VA; the PC is a VA, so the VMM must walk the guest tables to fetch the instruction. | `isv0_probe` check 13 (`ldp x via stage-1 alias ok`) | [verified-on-machine] |
 | A pair whose second element is outside the faulting device, both at a device-window end with the MMU off (`stp x` at `0x0b00_0ff8`) and across a page whose next page maps the PL011, reports the **first** element's IPA (`0xb000ff8`). | `hostile_isv0` stderr: `ISV=0 write at 0xb000ff8 ... (pair is not inside one device window ...)`, `(second element at 0x9000000, expected 0xb001000)` | [verified-on-machine] |
 | A VMM-injected synchronous external abort (`ESR_EL1` EC 0x25, DFSC 0x10, WnR, `FAR_EL1` = the VA) is taken by the guest's EL1h vector exactly like an UNDEF injection (§17); 12/12 counted, and no device register was written by a refused store pair. | `hostile_isv0`, `isv0_probe` (`simd store -> sync external abort ok`) | [verified-on-machine] |
 | `stp x, [sp, #-16]!` at EL1t with SP_EL0 pointed at MMIO uses SP_EL0 (read and written back through `HV_SYS_REG_SP_EL0`), and SP_EL1 is untouched. | `isv0_probe` check 14 | [verified-on-machine] |
+| `ldp x, [sp], #16` at **EL1h** with SP pointed at MMIO: `HV_SYS_REG_SP_EL1` read at the exit is the **live** stack pointer (not a stale banked copy), and the VMM's write of SP + 16 to it is what the guest sees after the trap. | `isv0_probe` check 15 (`ldp x [sp], #16 at EL1h ok`, 2026-11-19) | [verified-on-machine] |
+| Code run from a second VA of RAM (`mmu::CODE_ALIAS`, VA `0x8000_0000` → IPA `0x4000_0000`, level-1 block) faults with the **alias VA** as the PC (`0x80081828`), so the VMM must fetch the instruction through the guest's tables. Negative control: a VMM build that fetched at the PC as an IPA refused it (`pc 0x80081828 translates to 0x80081828, outside RAM`) and the guest took the abort at check 16, while checks 1–15 still passed. | `isv0_probe` check 16 (`ldp x with pc via stage-1 code alias ok`, 2026-11-19) | [verified-on-machine] |
 
 ## 19. M10 findings: Linux 6.18 boots to a shell (2026-11-19, macOS 27.2, M5 Pro)
 
@@ -601,3 +605,31 @@ Measured while bringing up PLAN M10 (`scripts/test-e2e.sh linux`): Alpine `linux
 | Linux names the timer `arch_timer: cp15 timer running at 24.00MHz (virt).` (singular; the PLAN text had `timer(s)`, the marker follows the capture). Linux also detects SME and SME2 on this host (`CPU features: detected: SME2`), so HVF exposes SME to EL1 by default. | `linux_boot` serial log | [verified-on-machine] |
 | A boot's exit mix: ~33 000 exits for the `timer-latency` case, of which 32 956 are data aborts (PL011 traffic: 12 156 bytes written, plus the driver's flag-register reads), 16 HVC, 2 sysreg. The PL011 is the dominant exit source of a console boot. | `--stats` `vcpu0 exits:` line | [verified-on-machine] |
 | SIGUSR1 while Linux idles at the prompt prints `vcpu0: last 256 exits, oldest first:` and 256 records on stderr; the guest keeps running and answers the next command. SIGINT at the prompt ends the run with exit code 130 in 4.5–7 ms. | `linux_ring_dump`; `linux_sigint` (`exited 6.946458ms after SIGINT`) | [verified-on-machine] |
+
+## 20. M11 findings: virtio-mmio transport and the hostile guest (2026-11-19, macOS 27.2, M5 Pro)
+
+Measured while bringing up PLAN M11 (`scripts/test-e2e.sh virtio hostile`).
+
+| Fact | Evidence | Tag |
+|---|---|---|
+| **A full `S3_*` read sweep at EL1 reaches the VMM only 5 times.** Of the 16384 op0 = 3 encodings, 145 read without an exception and 16239 take an exception in the guest; writing zero to every one of those (except the ICC block) adds 16127 more. With the in-kernel GIC, HVF answers or UNDEFs almost all of them itself; only 5 sysreg exits reach macvmm (whose policy table answers or injects). | e2e `hostile_sysreg` (`16384 reads (16239 undef), 16127 writes (16127 undef), 4 CPACR traps`; `--stats`: `total 332: hvc 327, sysreg 5`) | [verified-on-machine] |
+| **FEAT_IDST is visible to the guest:** `mrs x0, S3_0_C0_C0_1` (an unallocated ID-space register) is reported to EL1 as **EC 0x18** (`ESR_EL1 = 0x62320001`), not EC 0x00. A guest (or a test) that only accepts EC 0x00 as "UNDEFINED" stops on the first unallocated ID register. | first `hostile-sysreg` run (`guest exception: kind=4 (sync, EL1h) esr=0x62320001 ec=0x18`) | [verified-on-machine] |
+| `SMCR_EL1`-class accesses trap on the guest's own `CPACR_EL1` with **EC 0x1D** (SME) at EL1, consistent with HVF exposing SME to EL1 (§19). | first `hostile-sysreg` run after the EC 0x18 fix (`esr=0x76000000 ec=0x1d`) | [verified-on-machine] |
+| Unaligned accesses to device windows with the MMU off fault **inside the guest** (EC 0x25, DFSC 0x21) and never exit to the VMM; only naturally aligned accesses trap as stage-2 data aborts. The full phase-1 sweep (284,192 accesses, 150,926 alignment faults, ~133,000 MMIO exits) runs in about 0.2–1 s. | e2e `hostile_mmio` (`hostile_mmio: 212.620583ms`) | [verified-on-machine] |
+| A 4 MiB PL011 flood (one 32-bit `DR` store per byte, ~4.2 M MMIO exits) takes about 7.5 s: ~1.8 µs per MMIO exit including the serial sink path, against ~1.2 µs for a bare HVC (§16). | e2e `hostile_flood` (`1048576 bytes in the file after 7.589144625s`) | [verified-on-machine] |
+
+## 21. M22 findings: HVF under a mid-process `sandbox_init` (2026-11-19, macOS 27.2, M5 Pro)
+
+Measured while bringing up PLAN M22 (`macvmm run --sandbox`; threat model §7.12, §13). Earlier,
+only an exec-time `sandbox-exec` profile had been tried (threat model §13, revision 2).
+
+| Fact | Evidence | Tag |
+|---|---|---|
+| **`sandbox_init(sbpl_text, 0, &err)` works mid-process** (the undocumented string mode; the SDK documents only `SANDBOX_NAMED`), and HVF keeps working after it under `(deny default)` with **no `mach-lookup` and no `iokit-open`**: `hv_vm_create`, `hv_gic_create`, `hv_vm_allocate`/`map`, `hv_vcpu_create`, `hv_vcpu_run`, destroy, and a **second** create/GIC/vCPU cycle (an in-process reboot) all return `HV_SUCCESS`. | scratch C probe (two full VM cycles after `sandbox_init`); e2e `sandbox_reboot` (psci-probe `boot 1` after SYSTEM_RESET), `sandbox_smp` (`--cpus 4`, vCPUs created after the lockdown), `sandbox_rootfs_persist` | [verified-on-machine] |
+| Under `(deny default)` **already-open fds keep working**: `read`/`write`, `pread`/`pwrite`, `fstat`, `fcntl(F_FULLFSYNC)`, `fsync`, a held `flock`, `send`/`recv` on a socketpair, `pipe()` and `pthread_create`; `open("/etc/hosts")` → `EPERM`, `fork` → `EPERM`, `posix_spawn` → `EPERM`. | scratch C probes; e2e `sandbox_blk_flush` (a virtio-blk FLUSH, `F_FULLFSYNC` on the open disk fd) | [verified-on-machine] |
+| **`socket(2)` is not mediated by `network*`** (nor by `(deny system-socket)`): creating AF_INET/AF_UNIX sockets still succeeds; `connect`, `bind`, `listen` and `sendto` fail with `EPERM`. So the self-test's "socket denied" probe is a loopback `connect` (`EPERM` vs `ECONNREFUSED` unsandboxed). | scratch C probe | [verified-on-machine] |
+| **`(deny default)` refuses `tcsetattr` and `tcflush`** (`EPERM`) on the inherited TTY while `tcgetattr` works; `(allow file-ioctl (ioctl-command TIOCSETA) … (ioctl-command TIOCFLUSH))` fixes the exit path and keeps `TIOCSTI` denied. | scratch C probe in a pty; e2e `sandbox_tty_restored` (`stty -g` identical) | [verified-on-machine] |
+| A unix-datagram `sendto(peer)` needs `(allow network-outbound (remote unix-socket (path-literal PEER)))` with the **resolved** path; receiving on an already-bound socket needs no rule. If the address spells a symlink (`/var/folders/...`), the send also needs `file-read-metadata` on that link (`/var`): without it `EPERM` even under a bare `(allow network-outbound)`. | scratch C probes; e2e `sandbox_net` | [verified-on-machine] |
+| A second `sandbox_init` in an already-sandboxed process (for example under `sandbox-exec`) fails with "Operation not permitted": `--sandbox` exits 1, `--sandbox=best-effort` warns and runs (SBX-4). | e2e `sandbox_fail_closed` | [verified-on-machine] |
+| Exec-time `sandbox-exec` with `file-read*` limited to system paths aborts the process at launch (exit 134) unless `"/"` itself is readable (dyld). `scripts/sandbox-exec-fallback.sh` allows it. | bisection with `sandbox-exec -p`; e2e `sandbox_exec_fallback` | [verified-on-machine] |
+| **App Sandbox for an ad-hoc-signed CLI (CURRICULUM K3):** with `com.apple.security.app-sandbox` + `com.apple.security.hypervisor` and no embedded `Info.plist`, the binary is killed at launch (SIGTRAP, exit 133). With an `__info_plist` section carrying a bundle id it launches, HVF works (VM create, vCPU create, destroy), and a container appears under `~/Library/Containers/<bundle id>`; but `open()` of a user file outside the container (an argv path) fails `EPERM`. So App Sandbox is a poor fit for a CLI that takes paths, as SBX-1 predicted. | scratch probe `hvapp`/`hvapp2` | [verified-on-machine] |

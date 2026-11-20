@@ -1,0 +1,2 @@
+hello from guest, x0=0x40000000
+guest done

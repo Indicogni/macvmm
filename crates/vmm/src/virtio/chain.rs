@@ -72,7 +72,24 @@ impl Descriptor {
 impl FromLeBytes for Descriptor {
     type Bytes = [u8; 16];
     fn decode_le(b: [u8; 16]) -> Descriptor {
-        let [a0, a1, a2, a3, a4, a5, a6, a7, l0, l1, l2, l3, f0, f1, n0, n1] = b;
+        let [
+            a0,
+            a1,
+            a2,
+            a3,
+            a4,
+            a5,
+            a6,
+            a7,
+            l0,
+            l1,
+            l2,
+            l3,
+            f0,
+            f1,
+            n0,
+            n1,
+        ] = b;
         Descriptor {
             addr: u64::from_le_bytes([a0, a1, a2, a3, a4, a5, a6, a7]),
             len: u32::from_le_bytes([l0, l1, l2, l3]),
@@ -149,7 +166,6 @@ impl<'m> DescriptorChain<'m> {
         self.head
     }
 
-    // ANCHOR: chain_next_descriptor
     /// Read descriptor `index` of the current table: once, into a local (MEM-7).
     fn read_desc(&self, index: u16) -> Result<Descriptor, QueueError> {
         if index >= self.table_len {
@@ -168,6 +184,7 @@ impl<'m> DescriptorChain<'m> {
         Ok(self.mem.read_obj::<Descriptor>(addr)?)
     }
 
+    // ANCHOR: chain_next_descriptor
     /// One step of the walk: the next *buffer* descriptor, or `None` at the end of the chain.
     fn step(&mut self) -> Result<Option<Descriptor>, QueueError> {
         loop {
@@ -240,7 +257,8 @@ impl<'m> DescriptorChain<'m> {
         {
             return Err(QueueError::BadIndirectLen { len: d.len });
         }
-        let entries = u16::try_from(entries).map_err(|_| QueueError::BadIndirectLen { len: d.len })?;
+        let entries =
+            u16::try_from(entries).map_err(|_| QueueError::BadIndirectLen { len: d.len })?;
         GuestAddress(d.addr)
             .checked_add(u64::from(d.len))
             .ok_or(QueueError::Overflow {

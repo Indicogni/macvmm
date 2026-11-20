@@ -1,0 +1,13 @@
+diff --git a/crates/vmm/src/arch/inject.rs b/crates/vmm/src/arch/inject.rs
+index 7a95eaf..f368c6f 100644
+--- a/crates/vmm/src/arch/inject.rs
++++ b/crates/vmm/src/arch/inject.rs
+@@ -142,7 +142,7 @@ impl fmt::Display for InjectError {
+ pub const fn vector_offset(cpsr: u64) -> Result<u64, InjectError> {
+     match cpsr & pstate_ext::MODE {
+         0b00100 => Ok(offset::CURRENT_SP0),
+-        0b00101 => Ok(offset::CURRENT_SPX),
++        0b00101 => Ok(offset::CURRENT_SP0),
+         0b00000 => Ok(offset::LOWER_A64),
+         _ => Err(InjectError::UnsupportedMode { cpsr }),
+     }

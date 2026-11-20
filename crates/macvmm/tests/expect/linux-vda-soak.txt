@@ -1,0 +1,7 @@
+macvmm-initramfs: ready *
+macvmm-vda: /dev/vda 131072 sectors ro=1
+macvmm-vda: soak 20/20 ok
+!FAILED
+![stderr] needs reset
+![stderr] unhandled MMIO
+![stderr] panicked

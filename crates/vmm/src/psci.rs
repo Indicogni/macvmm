@@ -18,7 +18,7 @@
 //!
 //! - `CPU_ON` on an `On` target is `ALREADY_ON` (-4), on an `OnPending` one `ON_PENDING` (-5),
 //!   so a guest racing two CPU_ONs for one CPU gets a defined error, never a double start
-//!   (HC-3). Every transition happens under one mutex.
+//!   (HC-3). Every transition of a target happens under that target's mutex.
 //! - An unknown MPIDR is `INVALID_PARAMETERS` (-2), and an entry point outside RAM (and, from
 //!   M18, ROM) or not 4-byte aligned is `INVALID_ADDRESS` (-9) (HC-3).
 //! - `AFFINITY_INFO` answers 0 (ON), 1 (OFF) or 2 (ON_PENDING) for level 0; any higher
@@ -28,11 +28,19 @@
 //! 39:32, `Aff2..Aff0` in 23:0, DEN 0022 §5.1.4); the DT `cpu@N/reg` a kernel reads them from
 //! has no bit 31. A target with any other bit set is `INVALID_PARAMETERS`.
 //!
-//! **Parking.** A vCPU that is off waits in [`Psci::park`] on a condition variable, outside
-//! `hv_vcpu_run`. It wakes for its `PowerOn` or for a VM stop ([`Psci::wake_all`], called by
-//! `VmControl::request_stop` after it set the stop flag, so a wake cannot be lost). **M5 runs
-//! one vCPU**, so the table has one row and CPU_ON can only answer -2 or -4; the multi-row
-//! machinery is host-tested here and used by SMP (M16).
+//! **One mutex per target** (M16, threat model HC-3 "under races"). With SMP, several vCPU
+//! threads make PSCI calls at the same time, each on its own host thread (CLAUDE.md: one host
+//! thread per vCPU). Each target vCPU has its own `Mutex<TargetState>` and `Condvar`: the
+//! check-then-transition of a CPU_ON is atomic for that target, and CPU_ONs for different
+//! targets never contend. The MPIDR table is immutable after [`Psci::new`], so looking a
+//! target up takes no lock at all. Lock order: a thread holds at most one target lock at a
+//! time and never takes a device lock under it (architecture §14.2).
+//!
+//! **Parking.** A vCPU that is off waits in [`Psci::park`] on its target's condition variable
+//! (`vcpu/wait.rs`), outside `hv_vcpu_run`. It wakes for its `PowerOn` or for a VM stop
+//! ([`Psci::wake_all`], called by `VmControl::request_stop` after it set the stop flag, so a
+//! wake cannot be lost). Every secondary vCPU starts parked (architecture §8.1 step 4): with
+//! `--cpus N` the table has N rows, created once, and a CPU_ON only fills a mailbox.
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
@@ -112,18 +120,37 @@ impl PsciError {
     }
 }
 
+/// One target vCPU's mutable PSCI state: its power state and its CPU_ON mailbox.
 #[derive(Debug)]
-struct Slot {
-    mpidr: u64,
+struct TargetState {
     power: CpuPower,
     mailbox: Option<PowerOn>,
+}
+
+/// One target vCPU: its MPIDR (fixed for the boot) and its state behind **its own** mutex, with
+/// the condition variable its thread parks on (module docs, "One mutex per target").
+#[derive(Debug)]
+struct Target {
+    mpidr: u64,
+    state: Mutex<TargetState>,
+    wake: Condvar,
+}
+
+impl Target {
+    /// `OnPending → On` if a `PowerOn` waits in the mailbox: take it.
+    fn take(s: &mut TargetState) -> Option<PowerOn> {
+        let on = s.mailbox.take()?;
+        s.power = CpuPower::On;
+        Some(on)
+    }
 }
 
 /// The power state of every vCPU of one boot, and their mailboxes.
 #[derive(Debug)]
 pub struct Psci {
-    cpus: Mutex<Vec<Slot>>,
-    wake: Condvar,
+    /// Indexed by vCPU index. The table itself never changes after [`Psci::new`] (all vCPUs
+    /// exist from startup, architecture §8.1), so finding a target takes no lock.
+    cpus: Box<[Target]>,
 }
 
 impl Default for Psci {
@@ -140,53 +167,61 @@ impl Psci {
         let cpus = mpidrs
             .iter()
             .enumerate()
-            .map(|(i, &mpidr)| Slot {
+            .map(|(i, &mpidr)| Target {
                 mpidr,
-                power: if i == 0 { CpuPower::On } else { CpuPower::Off },
-                mailbox: None,
+                state: Mutex::new(TargetState {
+                    power: if i == 0 { CpuPower::On } else { CpuPower::Off },
+                    mailbox: None,
+                }),
+                wake: Condvar::new(),
             })
             .collect();
-        Psci {
-            cpus: Mutex::new(cpus),
-            wake: Condvar::new(),
-        }
+        Psci { cpus }
     }
 
     /// The number of vCPUs.
     pub fn len(&self) -> usize {
-        lock(&self.cpus).len()
+        self.cpus.len()
     }
 
     /// True if there are no vCPUs (never, for a built machine).
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.cpus.is_empty()
     }
 
     /// The vCPU index whose MPIDR affinity equals `target`, or `INVALID_PARAMETERS` if
-    /// `target` has bits outside [`AFFINITY_MASK`] or names no vCPU.
-    fn find(cpus: &[Slot], target: u64) -> Result<usize, PsciError> {
+    /// `target` has bits outside [`AFFINITY_MASK`] or names no vCPU (HC-3: only created vCPUs
+    /// are valid targets).
+    pub fn index_of(&self, target: u64) -> Result<usize, PsciError> {
         if target & !AFFINITY_MASK != 0 {
             return Err(PsciError::InvalidParameters);
         }
-        cpus.iter()
-            .position(|s| s.mpidr & AFFINITY_MASK == target)
+        self.cpus
+            .iter()
+            .position(|t| t.mpidr & AFFINITY_MASK == target)
             .ok_or(PsciError::InvalidParameters)
     }
 
-    /// The vCPU index for MPIDR affinity `target` (see [`Psci::find`]).
-    pub fn index_of(&self, target: u64) -> Result<usize, PsciError> {
-        Psci::find(&lock(&self.cpus), target)
+    fn target(&self, index: usize) -> Result<&Target, PsciError> {
+        self.cpus.get(index).ok_or(PsciError::InvalidParameters)
     }
 
     /// vCPU `index`'s state, if it exists.
     pub fn state(&self, index: usize) -> Option<CpuPower> {
-        lock(&self.cpus).get(index).map(|s| s.power)
+        self.cpus.get(index).map(|t| lock(&t.state).power)
     }
 
     // ANCHOR: psci_cpu_on
+    // ANCHOR: psci_cpu_on_mailbox
     /// PSCI CPU_ON (DEN 0022 §5.1.4; HC-3). `entry_valid` is the caller's verdict on the entry
     /// point (in RAM or ROM, 4-byte aligned). On success the target goes `Off → OnPending`, its
-    /// mailbox holds the `PowerOn`, its thread is woken, and its index is returned.
+    /// mailbox holds the `PowerOn`, its parked thread is woken, and its index is returned.
+    ///
+    /// The check of the state and the transition happen under the **target's** mutex, so of
+    /// any number of racing CPU_ONs exactly one sees `Off` and wins; every other one sees
+    /// `OnPending` (-5) or, once the target has taken its mailbox, `On` (-4). No thread is
+    /// created here: the target's thread has existed since startup and only waits (a CPU_ON
+    /// storm cannot spawn threads, threat model §10.2 M16).
     pub fn cpu_on(
         &self,
         target: u64,
@@ -194,24 +229,25 @@ impl Psci {
         ctx: u64,
         entry_valid: bool,
     ) -> Result<usize, PsciError> {
-        let mut cpus = lock(&self.cpus);
-        let index = Psci::find(&cpus, target)?;
+        let index = self.index_of(target)?;
         if !entry_valid {
             return Err(PsciError::InvalidAddress);
         }
-        let slot = cpus.get_mut(index).ok_or(PsciError::InvalidParameters)?;
-        match slot.power {
+        let t = self.target(index)?;
+        let mut s = lock(&t.state);
+        match s.power {
             CpuPower::On => Err(PsciError::AlreadyOn),
             CpuPower::OnPending => Err(PsciError::OnPending),
             CpuPower::Off => {
-                slot.power = CpuPower::OnPending;
-                slot.mailbox = Some(PowerOn { entry, ctx });
-                drop(cpus);
-                self.wake.notify_all();
+                s.power = CpuPower::OnPending;
+                s.mailbox = Some(PowerOn { entry, ctx });
+                drop(s);
+                t.wake.notify_all();
                 Ok(index)
             }
         }
     }
+    // ANCHOR_END: psci_cpu_on_mailbox
     // ANCHOR_END: psci_cpu_on
 
     /// PSCI AFFINITY_INFO (DEN 0022 §5.1.5; HC-4): the state of `target` at affinity level 0.
@@ -220,68 +256,55 @@ impl Psci {
         if level != 0 {
             return Err(PsciError::InvalidParameters);
         }
-        let cpus = lock(&self.cpus);
-        let index = Psci::find(&cpus, target)?;
-        cpus.get(index)
-            .map(|s| s.power)
-            .ok_or(PsciError::InvalidParameters)
+        let index = self.index_of(target)?;
+        Ok(lock(&self.target(index)?.state).power)
     }
 
     /// PSCI CPU_OFF (DEN 0022 §5.1.3) by vCPU `index`: `On → Off`. Returns false if the vCPU
     /// was not on (a VMM bug: only a running vCPU can make the call).
     pub fn cpu_off(&self, index: usize) -> bool {
-        let mut cpus = lock(&self.cpus);
-        match cpus.get_mut(index) {
-            Some(s) if s.power == CpuPower::On => {
-                s.power = CpuPower::Off;
-                s.mailbox = None;
-                true
-            }
-            _ => false,
+        let Some(t) = self.cpus.get(index) else {
+            return false;
+        };
+        let mut s = lock(&t.state);
+        if s.power != CpuPower::On {
+            return false;
         }
+        s.power = CpuPower::Off;
+        s.mailbox = None;
+        true
     }
 
-    /// True if no vCPU is on or about to be (every vCPU called CPU_OFF).
+    /// True if no vCPU is on or about to be (every vCPU called CPU_OFF). Each target is read
+    /// under its own lock, one after the other: the answer is a snapshot, used only for a
+    /// warning.
     pub fn all_off(&self) -> bool {
-        lock(&self.cpus).iter().all(|s| s.power == CpuPower::Off)
+        self.cpus
+            .iter()
+            .all(|t| lock(&t.state).power == CpuPower::Off)
     }
 
     /// If vCPU `index` has a pending `PowerOn`, take it: `OnPending → On`.
     pub fn take_power_on(&self, index: usize) -> Option<PowerOn> {
-        let mut cpus = lock(&self.cpus);
-        Psci::take(&mut cpus, index)
-    }
-
-    fn take(cpus: &mut [Slot], index: usize) -> Option<PowerOn> {
-        let slot = cpus.get_mut(index)?;
-        let on = slot.mailbox.take()?;
-        slot.power = CpuPower::On;
-        Some(on)
+        Target::take(&mut lock(&self.cpus.get(index)?.state))
     }
 
     /// Park vCPU `index` (it is `Off`) until its `PowerOn` arrives (returned) or `stopping()`
-    /// becomes true (`None`). `stopping` is read under the table lock, and
-    /// [`Psci::wake_all`] notifies under it, so a stop requested at any moment wakes us.
+    /// becomes true (`None`); `None` at once for an index that does not exist. The wait itself
+    /// is `vcpu::wait::wait_for` on this target's mutex and condition variable.
     pub fn park(&self, index: usize, stopping: impl Fn() -> bool) -> Option<PowerOn> {
-        let mut cpus = lock(&self.cpus);
-        loop {
-            if stopping() {
-                return None;
-            }
-            if let Some(on) = Psci::take(&mut cpus, index) {
-                return Some(on);
-            }
-            cpus = match self.wake.wait(cpus) {
-                Ok(g) => g,
-                Err(poisoned) => poisoned.into_inner(),
-            };
-        }
+        let t = self.cpus.get(index)?;
+        crate::vcpu::wait::wait_for(&t.state, &t.wake, stopping, Target::take)
     }
 
-    /// Wake every parked vCPU so it re-checks its mailbox and the stop flag.
+    /// Wake every parked vCPU so it re-checks its mailbox and the stop flag. Each notify is
+    /// made while holding that target's lock, so a waiter between its stop check and its wait
+    /// cannot miss it (`vcpu::wait` module docs).
     pub fn wake_all(&self) {
-        let _held = lock(&self.cpus);
-        self.wake.notify_all();
+        for t in self.cpus.iter() {
+            let _held = lock(&t.state);
+            t.wake.notify_all();
+        }
     }
 }
 

@@ -1,0 +1,56 @@
+# Checkpoint 09 `mmio-pl011` (CURRICULUM §5 ch09).
+id = "09"
+slug = "mmio-pl011"
+requires = ["08"]
+
+[contract]
+tests = ["contract/pl011_regs.rs", "contract/pl031_regs.rs", "contract/bus_overlap.rs"]
+
+# (a) The guest echoes through the PL011 and reads the PL031 clock.
+[[run]]
+name = "uart-echo"
+guest = "uart-echo"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+steps = ["wait:uart-echo: ready", "send:ping\n"]
+expect_exit_code = 0
+serial = "expected/uart-echo.txt"
+
+# (b) --serial file: the console goes to the file, not stdout.
+[[run]]
+name = "serial-file"
+guest = "hello"
+command = ["/bin/sh", "-c", "\"$0\" run --mem 64M --raw \"$1\" --serial \"file:$2/s.txt\" --timeout 10 >\"$2/stdout.txt\"; echo \"rc=$?\"; sed 's/^/file: /' \"$2/s.txt\"; echo \"stdout lines with hello: $(grep -c 'hello from guest' \"$2/stdout.txt\")\"", "{macvmm}", "{guest_raw}", "{out}"]
+timeout = 20
+expect_exit_code = 0
+serial = "expected/serial-file.txt"
+
+# (c) Ctrl-A x in a real terminal (script(1) gives a pty): exit 130, terminal settings unchanged.
+[[run]]
+name = "tty-escape"
+guest = "uart-echo"
+command = ["/usr/bin/script", "-q", "/dev/null", "/bin/sh", "-c", "stty -g; \"$0\" run --mem 64M --raw \"$1\" --timeout 10; echo \"rc=$?\"; stty -g", "{macvmm}", "{guest_raw}"]
+steps = ["wait:uart-echo: ready", "sleep:100", "send:\u0001x"]
+timeout = 20
+expect_exit_code = 0
+serial = "expected/tty-escape.txt"
+equal_lines = "gfmt1:"
+
+# (d) SIGTERM: the VMM says `user quit` and exits 130.
+[[run]]
+name = "sigterm"
+guest = "uart-echo"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+steps = ["wait:uart-echo: ready", "signal:TERM"]
+expect_exit_code = 130
+serial = "expected/sigterm.txt"
+
+[journal]
+file = "journal/09.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "A device is a state machine behind a few registers: reads and writes of the bus move it, and its flags tell the guest what it may do next."
+spec = "ARM PrimeCell UART (PL011) TRM: DR, FR (TXFE, RXFE), IMSC/RIS/MIS/ICR, the PrimeCell ID registers (course/primers/primecell-ids.md); PL031 TRM."
+pseudocode = "Bus: sorted non-overlapping ranges, reject size 0 and base+size overflow; dispatch only accesses entirely inside one device."
+anchor = "crates/vmm/src/devices/pl011.rs and crates/vmm/src/bus.rs."

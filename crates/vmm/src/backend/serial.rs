@@ -28,6 +28,12 @@
 //!   [`Sink::set_stopping`] was called, then drops what did not fit and counts it
 //!   ([`Sink::dropped`], one warning). This is the **only bounded wait allowed under a device
 //!   mutex** (architecture §14.2): it caps how long a vCPU can be outside `hv_vcpu_run`.
+//! - The 10 ms is a bound **per device-mutex hold**, not per call. A producer that writes
+//!   several buffers under one hold (the virtio-console's TX batch: up to 64 chains, M13)
+//!   passes one [`FullWait`] to [`Sink::write_guest_within`] for all of them: the first write
+//!   that finds the queue full starts the 10 ms clock, and later writes in the same hold wait
+//!   only for what is left of it, then drop at once. Without this, a stalled reader would cost
+//!   64 × 10 ms per batch.
 //! - The writer thread drains the queue with `write_all` in chunks of up to 16 KiB. On any
 //!   write error, `EPIPE` included (`macvmm run … | head -1`), the sink turns into `none` with
 //!   exactly one warning, and the guest keeps running: losing console output is safe, killing
@@ -66,6 +72,16 @@
 //! with the queue unlocked, so the lock order device → `SerialInput` holds (architecture
 //! §14.2). `SerialInput` lives in `HostIo` and persists across reboots; each boot installs its
 //! own device's hook.
+//!
+//! **M13: which device gets stdin** ([`StdinBinding`], architecture §14.4). With
+//! `--console stdio` the virtio-console, not the PL011, is the interactive device, so stdin is
+//! bound to the console's own queue (`HostIo::console_input`, the same bounded, never-blocking
+//! [`SerialInput`]) and the PL011's queue gets nothing. Exactly one device is bound: the one
+//! whose sink is `stdio`; at most one sink may be `stdio` (`VmConfig::validate`). The console
+//! drains its queue into RX buffers the guest posted, taking bytes only once they are in
+//! guest memory ([`SerialInput::peek_into`], then [`SerialInput::discard`]); while it posts
+//! none, the queue holds at most [`SERIAL_INPUT_CAP`] bytes and drops the rest (TTY-10). Its
+//! overflow warning names the console and `console_input_dropped` ([`SerialInput::console`]).
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -74,6 +90,7 @@
 )]
 
 use crate::backend::ansi::{AnsiFilter, FilterPolicy};
+use crate::config::SinkKind;
 use crate::sync::lock;
 use std::collections::VecDeque;
 use std::io::{self, Write};
@@ -88,7 +105,7 @@ pub const SINK_QUEUE_CAP: usize = 64 * 1024;
 pub const SINK_FULL_WAIT: Duration = Duration::from_millis(10);
 /// How long [`Sink::close`] lets the writer drain (SINK-1, TTY-6 ordering).
 pub const SINK_DRAIN_ON_STOP: Duration = Duration::from_millis(500);
-/// Bytes of host input waiting for the guest's UART (TTY-10, MMIO-9).
+/// Bytes of host input waiting for the guest's UART or virtio-console (TTY-10, MMIO-9).
 pub const SERIAL_INPUT_CAP: usize = 4 * 1024;
 /// The default byte cap of a file sink (`--serial file:F[,max=SIZE]`, LOG-4).
 pub const DEFAULT_SINK_MAX: u64 = 1 << 30;
@@ -208,6 +225,28 @@ fn note_written(st: &mut QState, bytes: &[u8]) {
     }
 }
 
+/// The full-queue wait budget of one device-mutex hold (SINK-1, module docs): unset until a
+/// write first finds the queue full, then [`SINK_FULL_WAIT`] from that moment, shared by
+/// every later write made with the same `FullWait`.
+#[derive(Debug, Default)]
+pub struct FullWait {
+    until: Option<Instant>,
+}
+
+impl FullWait {
+    /// A fresh budget: no wait has started yet.
+    pub fn new() -> FullWait {
+        FullWait::default()
+    }
+
+    /// The deadline, started at `now` if this is the first wait.
+    fn deadline(&mut self, now: Instant) -> Instant {
+        *self
+            .until
+            .get_or_insert_with(|| now.checked_add(SINK_FULL_WAIT).unwrap_or(now))
+    }
+}
+
 /// One guest output sink (stdout, a file, or nothing). Module docs.
 pub struct Sink {
     name: &'static str,
@@ -294,6 +333,12 @@ impl Sink {
     /// Filter `bytes` from the guest and queue what survives (module docs). Never fails, never
     /// panics, and never waits longer than [`SINK_FULL_WAIT`].
     pub fn write_guest(&self, bytes: &[u8]) {
+        self.write_guest_within(bytes, &mut FullWait::new());
+    }
+
+    /// [`Sink::write_guest`] for one of several writes made under one device-mutex hold: all
+    /// of them share `wait`, so together they wait at most [`SINK_FULL_WAIT`] (module docs).
+    pub fn write_guest_within(&self, bytes: &[u8], wait: &mut FullWait) {
         let mut guard = lock(&self.front);
         let f = &mut *guard;
         f.buf.clear();
@@ -315,7 +360,7 @@ impl Sink {
         // LOG-4 counts what was actually queued (or written), not what SINK-1 dropped.
         let queued = match f.inline.as_mut() {
             Some(w) => self.write_inline(w, data),
-            None => self.enqueue(data),
+            None => self.enqueue(data, wait),
         };
         f.accepted = f.accepted.saturating_add(len64(queued));
         if f.inline.is_some() && self.is_none() {
@@ -348,16 +393,16 @@ impl Sink {
     }
 
     // ANCHOR: sink_enqueue
-    /// Append `data` to the queue, waiting at most [`SINK_FULL_WAIT`] for space and not at all
-    /// once stopping; drop and count the rest (SINK-1). Returns the number of bytes queued.
-    fn enqueue(&self, data: &[u8]) -> usize {
+    /// Append `data` to the queue, waiting for space until `wait`'s deadline (at most
+    /// [`SINK_FULL_WAIT`] after the first full queue it saw) and not at all once stopping; drop
+    /// and count the rest (SINK-1). Returns the number of bytes queued.
+    fn enqueue(&self, data: &[u8], wait: &mut FullWait) -> usize {
         let mut st = self.q.lock();
         if st.mode != Mode::Open {
             st.lost = st.lost.saturating_add(len64(data.len()));
             return 0;
         }
         let mut rest = data;
-        let mut deadline: Option<Instant> = None;
         let mut queued = 0usize;
         loop {
             let space = SINK_QUEUE_CAP.saturating_sub(st.buf.len());
@@ -375,8 +420,7 @@ impl Sink {
                 break;
             }
             let now = Instant::now();
-            let until =
-                *deadline.get_or_insert_with(|| now.checked_add(SINK_FULL_WAIT).unwrap_or(now));
+            let until = wait.deadline(now);
             match until.checked_duration_since(now) {
                 Some(left) if !left.is_zero() => st = wait_timeout(&self.q.space, st, left),
                 _ => break,
@@ -635,13 +679,24 @@ fn describe(e: &io::Error) -> String {
 /// Called after bytes were pushed into a [`SerialInput`] (module docs).
 pub type InputHook = Arc<dyn Fn() + Send + Sync>;
 
-/// Host input waiting for the guest's UART: bounded, never blocking (TTY-10). Module docs.
-#[derive(Default)]
+/// Host input waiting for the guest's UART or virtio-console: bounded, never blocking
+/// (TTY-10). Module docs.
 pub struct SerialInput {
     q: Mutex<VecDeque<u8>>,
     dropped: AtomicU64,
     warned: AtomicBool,
     hook: Mutex<Option<InputHook>>,
+    /// Who should be reading this queue, and its drop counter in `--stats`, for the one
+    /// overflow warning (TTY-10 diagnostics name the right device).
+    device: &'static str,
+    stat: &'static str,
+}
+
+impl Default for SerialInput {
+    /// The PL011's queue.
+    fn default() -> SerialInput {
+        SerialInput::named("its UART", "serial_input_dropped")
+    }
 }
 
 impl core::fmt::Debug for SerialInput {
@@ -654,8 +709,28 @@ impl core::fmt::Debug for SerialInput {
 }
 
 impl SerialInput {
+    /// The PL011's input queue (`HostIo::serial_input`).
     pub fn new() -> SerialInput {
         SerialInput::default()
+    }
+
+    /// The virtio-console's input queue (`HostIo::console_input`, M13): its overflow warning
+    /// names the console and `console_input_dropped`, the counter `--stats` shows for it.
+    pub fn console() -> SerialInput {
+        SerialInput::named("its virtio-console (/dev/hvc0)", "console_input_dropped")
+    }
+
+    /// An input queue whose overflow warning says the guest is not reading `device` and points
+    /// at the `stat` counter of `--stats` (M13: the virtio-console's `console_input`).
+    pub fn named(device: &'static str, stat: &'static str) -> SerialInput {
+        SerialInput {
+            q: Mutex::new(VecDeque::new()),
+            dropped: AtomicU64::new(0),
+            warned: AtomicBool::new(false),
+            hook: Mutex::new(None),
+            device,
+            stat,
+        }
     }
 
     // ANCHOR: serial_input_push
@@ -675,8 +750,10 @@ impl SerialInput {
             self.dropped.fetch_add(len64(lost), Ordering::Relaxed);
             if !self.warned.swap(true, Ordering::Relaxed) {
                 crate::warn!(
-                    "console input: the guest is not reading its UART; typed bytes are being \
-                     dropped (see serial_input_dropped in --stats). Ctrl-A x still quits."
+                    "console input: the guest is not reading {}; typed bytes are being \
+                     dropped (see {} in --stats). Ctrl-A x still quits.",
+                    self.device,
+                    self.stat
                 );
             }
         }
@@ -692,6 +769,28 @@ impl SerialInput {
     pub fn pop(&self) -> Option<u8> {
         lock(&self.q).pop_front()
     }
+
+    // ANCHOR: serial_input_peek_into
+    /// Copy up to `out.len()` of the oldest bytes into `out` **without** taking them, and
+    /// return how many. With [`SerialInput::discard`] this is a two-step take for a consumer
+    /// that may fail between the copy and the commit (M13: a guest-memory write), so a failed
+    /// delivery loses no typed byte. Only correct with one consumer (`push` only appends).
+    pub fn peek_into(&self, out: &mut [u8]) -> usize {
+        let q = lock(&self.q);
+        let n = out.len().min(q.len());
+        for (slot, b) in out.iter_mut().zip(q.iter().take(n)) {
+            *slot = *b;
+        }
+        n
+    }
+
+    /// Remove the `n` oldest bytes (after a successful [`SerialInput::peek_into`]).
+    pub fn discard(&self, n: usize) {
+        let mut q = lock(&self.q);
+        let n = n.min(q.len());
+        q.drain(..n);
+    }
+    // ANCHOR_END: serial_input_peek_into
 
     /// Bytes waiting.
     pub fn len(&self) -> usize {
@@ -712,6 +811,33 @@ impl SerialInput {
         *lock(&self.hook) = hook;
     }
 }
+
+// ANCHOR: stdin_binding
+/// Which device's input queue the stdin thread feeds (M13, architecture §14.4): the one whose
+/// sink is `stdio`. With neither sink on stdio, stdin is not read at all (PROC-1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StdinBinding {
+    /// The PL011 (`--serial stdio`, the default).
+    Serial,
+    /// The virtio-console (`--console stdio`).
+    Console,
+    /// No sink is `stdio`: the stdin thread is not started.
+    Unbound,
+}
+
+impl StdinBinding {
+    /// The binding for a serial sink of kind `serial` and an optional console sink.
+    /// `VmConfig::validate` already refused both being `stdio`; if they were, the console
+    /// would win, but that configuration never reaches here.
+    pub fn of(serial: SinkKind, console: Option<SinkKind>) -> StdinBinding {
+        match (serial, console) {
+            (_, Some(SinkKind::Stdio)) => StdinBinding::Console,
+            (SinkKind::Stdio, _) => StdinBinding::Serial,
+            _ => StdinBinding::Unbound,
+        }
+    }
+}
+// ANCHOR_END: stdin_binding
 
 #[cfg(test)]
 #[allow(
@@ -873,5 +999,81 @@ mod tests {
         si.set_hook(None);
         si.push(b"z");
         assert_eq!(calls.load(Ordering::Relaxed), 2);
+    }
+
+    /// M13 review: peek + discard is a take that can be abandoned between its two steps.
+    #[test]
+    fn peek_then_discard_takes_only_on_commit() {
+        let si = SerialInput::new();
+        si.push(b"hello");
+        let mut out = [0u8; 3];
+        assert_eq!(si.peek_into(&mut out), 3);
+        assert_eq!(&out, b"hel");
+        assert_eq!(si.len(), 5, "a peek takes nothing");
+        si.discard(3);
+        let mut big = [0u8; 16];
+        assert_eq!(si.peek_into(&mut big), 2);
+        assert_eq!(&big[..2], b"lo");
+        si.discard(99); // clamped
+        assert!(si.is_empty());
+    }
+
+    /// M13 review (TTY-10 diagnostics): the overflow warning names the device that should be
+    /// reading the queue and its own `--stats` counter.
+    #[test]
+    fn overflow_warning_names_the_device_and_its_counter() {
+        crate::log::test_capture::start();
+        SerialInput::new().push(&[0u8; SERIAL_INPUT_CAP + 1]);
+        let con = SerialInput::console();
+        con.push(&[0u8; SERIAL_INPUT_CAP + 1]);
+        con.push(b"x"); // one warning per queue
+        let lines = crate::log::test_capture::finish();
+        assert_eq!(lines.len(), 2, "{lines:?}");
+        assert!(lines[0].contains("its UART") && lines[0].contains("serial_input_dropped"));
+        assert!(lines[1].contains("virtio-console") && lines[1].contains("console_input_dropped"));
+        assert!(!lines[1].contains("serial_input_dropped") && !lines[1].contains("UART"));
+    }
+
+    /// SINK-1 (M13 review): writes that share one [`FullWait`] wait at most 10 ms *in total*
+    /// on a stalled reader, however many there are; separate calls each get their own 10 ms.
+    #[test]
+    fn full_wait_is_shared_by_the_writes_of_one_hold() {
+        let w = Stall::default();
+        let s = Sink::spawn("t", Box::new(w.clone()), FilterPolicy::Raw, u64::MAX).unwrap();
+        s.write_guest(&vec![b'q'; SINK_QUEUE_CAP + 1]); // the writer holds some, queue full
+        while !w.entered.load(Ordering::SeqCst) {
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        s.write_guest(&vec![b'q'; SINK_QUEUE_CAP]); // refill whatever the writer took
+        let mut wait = FullWait::new();
+        let t0 = Instant::now();
+        for _ in 0..40 {
+            s.write_guest_within(b"0123456789", &mut wait);
+        }
+        let shared = t0.elapsed();
+        assert!(shared >= SINK_FULL_WAIT, "it did wait: {shared:?}");
+        assert!(
+            shared < Duration::from_millis(150),
+            "40 writes took {shared:?}"
+        );
+        let t0 = Instant::now();
+        for _ in 0..20 {
+            s.write_guest(b"0123456789");
+        }
+        let separate = t0.elapsed();
+        assert!(separate >= SINK_FULL_WAIT * 20, "per call: {separate:?}");
+        w.released.store(true, Ordering::SeqCst);
+        assert!(s.close(b""));
+    }
+
+    #[test]
+    fn stdin_goes_to_the_stdio_sink_only() {
+        use SinkKind::{File, None as Off, Stdio};
+        assert_eq!(StdinBinding::of(Stdio, None), StdinBinding::Serial);
+        assert_eq!(StdinBinding::of(File, Some(Stdio)), StdinBinding::Console);
+        assert_eq!(StdinBinding::of(Off, Some(Stdio)), StdinBinding::Console);
+        assert_eq!(StdinBinding::of(Stdio, Some(File)), StdinBinding::Serial);
+        assert_eq!(StdinBinding::of(File, Some(File)), StdinBinding::Unbound);
+        assert_eq!(StdinBinding::of(Off, None), StdinBinding::Unbound);
     }
 }

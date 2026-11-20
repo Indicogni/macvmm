@@ -1,0 +1,6 @@
+self-fault: SCTLR_EL1.A=1, VBAR_EL1=0, loading 8 bytes from 0x4008*
+[stderr] guest fatal: instruction abort
+[stderr] pc=0x200
+[stderr] ELR_EL1=0x4008*
+[stderr] ESR_EL1=0x96*
+!self-fault: FAILED

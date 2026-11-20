@@ -1,0 +1,12 @@
+hostile-vq: RAM ends at 0x44000000
+hostile-vq: blk slot 0: capacity 131072 sectors ro=1
+hostile-vq: blk slot 0: 9 attacks answered with a status, 3 ended in needs-reset, recovered
+hostile-vq: 31 empty slots attacked, * alignment faults, 0 unexpected values
+hostile-vq: survived
+[stderr] guest: virtio: queue 0 failed, device needs reset: device: blk request without a writable status byte
+[stderr] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength
+[stderr] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam
+!FAILED
+!guest exception
+![stderr] guest fatal
+![stderr] panicked

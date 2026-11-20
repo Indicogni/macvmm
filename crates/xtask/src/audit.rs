@@ -21,6 +21,7 @@
 //! | `entitlements.plist` holds exactly `com.apple.security.hypervisor = true` | SIGN-1, F18 |
 //! | `vmm::fdt::reader` is gated by `cfg(test)`/`test-util` and named only by tests, `crates/fuzz/` and itself | FDT-1, PLAN M7 |
 //! | `hvf`'s `fault-injection` feature is named only in `dev-dependencies` tables and its own definition; `crates/macvmm/Cargo.toml` never names it | MEM-11, PLAN M2 |
+//! | no `hdiutil attach`/`mount`/`open` of a `*.img`/`*.raw` path in `scripts/`, `crates/`, `course/` (unless negated on the line; [`crate::image_audit`]) | SC-14, PLAN M15 |
 //! | M20 rules for `tools/`, `course/`, `docs/macos/` (forbidden advice, the vz-mac entitlement, SC-1 for tool scripts, no Apple binaries): see [`crate::vz_audit`] | AS9, SIGN-1, SC-1 |
 //!
 //! `--deps` additionally checks every third-party package in `Cargo.lock` (the transitive
@@ -191,6 +192,8 @@ pub fn audit(root: &Path) -> io::Result<Report> {
     }
     // M20: tools/, course/, docs/macos/ (AS9, the vz-mac entitlement, SC-1 for tools/).
     crate::vz_audit::audit_tools(root, &mut report)?;
+    // M15: no host mount/attach/open of a disk image in scripts/, crates/, course/ (SC-14).
+    crate::image_audit::audit_host_mounts(root, &mut report)?;
     Ok(report)
 }
 

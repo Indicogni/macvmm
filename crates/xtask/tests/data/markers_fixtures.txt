@@ -1,0 +1,270 @@
+# The marker rules of PLAN §0.3 as a fixture table, shared by the two implementations:
+# crates/xtask/src/checkpoint/markers.rs (tested by crates/xtask/tests/checkpoint.rs) and the
+# e2e harness's crates/macvmm/tests/support/mod.rs (tested by crates/macvmm/tests/markers_shared.rs).
+# If one implementation changes behaviour, a case here fails for it and the two cannot drift.
+#
+# Format: `=== <name>`, then `--- spec`, `--- stdout`, `--- stderr` (lines joined with \n, no
+# final newline) and `--- expect` with `ok` or `err`. Put `--- expect` last in each block.
+
+=== single marker present
+--- spec
+hello
+--- stdout
+say hello world
+--- stderr
+--- expect
+ok
+
+=== single marker missing
+--- spec
+hello
+--- stdout
+goodbye
+--- stderr
+--- expect
+err
+
+=== markers in order
+--- spec
+one
+two
+three
+--- stdout
+one two three
+--- stderr
+--- expect
+ok
+
+=== markers out of order
+--- spec
+two
+one
+--- stdout
+one two
+--- stderr
+--- expect
+err
+
+=== the same text twice needs two occurrences
+--- spec
+tick
+tick
+--- stdout
+tick
+--- stderr
+--- expect
+err
+
+=== two occurrences satisfy two markers
+--- spec
+tick
+tick
+--- stdout
+tick
+tick
+--- stderr
+--- expect
+ok
+
+=== wildcard inside a line
+--- spec
+x=0x*
+pc 0x4008*
+--- stdout
+x=0x40000000
+pc 0x40081010
+--- stderr
+--- expect
+ok
+
+=== wildcard never crosses a newline
+--- spec
+a*b
+--- stdout
+a
+b
+--- stderr
+--- expect
+err
+
+=== two wildcards on one line
+--- spec
+in * ticks, * ns/exit
+--- stdout
+exit-bench: 100000 hvc in 5 ticks, 9 ns/exit
+--- stderr
+--- expect
+ok
+
+=== two wildcards split by a newline
+--- spec
+in * ticks, * ns/exit
+--- stdout
+in 5 ticks
+, 9 ns/exit
+--- stderr
+--- expect
+err
+
+=== wildcard retries a later first piece
+--- spec
+a=*;
+--- stdout
+a=1
+a=2;
+--- stderr
+--- expect
+ok
+
+=== stderr marker on stderr
+--- spec
+[stderr] unhandled MMIO write at 0xc000000 size 4 pc 0x4008*
+--- stdout
+--- stderr
+macvmm: unhandled MMIO write at 0xc000000 size 4 pc 0x40081088
+--- expect
+ok
+
+=== a stdout marker never matches stderr text
+--- spec
+unhandled MMIO
+--- stdout
+--- stderr
+unhandled MMIO
+--- expect
+err
+
+=== a stderr marker never matches stdout text
+--- spec
+[stderr] guest fatal
+--- stdout
+guest fatal
+--- stderr
+--- expect
+err
+
+=== streams are ordered independently
+--- spec
+[stderr] second
+first
+[stderr] third
+--- stdout
+first
+--- stderr
+second
+third
+--- expect
+ok
+
+=== stderr order is enforced
+--- spec
+[stderr] b
+[stderr] a
+--- stdout
+--- stderr
+a b
+--- expect
+err
+
+=== negative absent
+--- spec
+ok
+!FAILED
+--- stdout
+all ok
+--- stderr
+--- expect
+ok
+
+=== negative present on stdout
+--- spec
+!FAILED
+--- stdout
+test FAILED
+--- stderr
+--- expect
+err
+
+=== negative present on stderr
+--- spec
+!FAILED
+--- stdout
+--- stderr
+FAILED
+--- expect
+err
+
+=== negative is checked everywhere, not only after the last match
+--- spec
+!early
+late
+--- stdout
+early late
+--- stderr
+--- expect
+err
+
+=== stderr-only negative ignores stdout
+--- spec
+![stderr] LORID_EL1
+--- stdout
+LORID_EL1
+--- stderr
+--- expect
+ok
+
+=== stderr-only negative on stderr
+--- spec
+![stderr] LORID_EL1
+--- stdout
+--- stderr
+trap LORID_EL1
+--- expect
+err
+
+=== negative with a wildcard
+--- spec
+!psci-probe: boot 1*
+--- stdout
+psci-probe: boot 10
+--- stderr
+--- expect
+err
+
+=== empty and blank spec
+--- spec
+
+
+--- stdout
+anything
+--- stderr
+--- expect
+ok
+
+=== trailing spaces of a marker are ignored
+--- spec
+guest done   
+--- stdout
+guest done
+--- stderr
+--- expect
+ok
+
+=== utf-8 output around a marker
+--- spec
+ok
+--- stdout
+é ok ü
+--- stderr
+--- expect
+ok
+
+=== trace-style JSON marker
+--- spec
+"ipa":"0xb000000","wnr":true,"size":1,"reg":*,"value":"0x5a","action":"mmio"
+!"ec":"0x16"
+--- stdout
+{"t_ns":1,"vcpu":0,"reason":"exception","ec":"0x24","pc":"0x40081000","ipa":"0xb000000","wnr":true,"size":1,"reg":8,"value":"0x5a","action":"mmio","isv":true}
+--- stderr
+--- expect
+ok

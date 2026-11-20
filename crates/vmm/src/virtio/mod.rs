@@ -16,7 +16,14 @@
 //!   every hardening rule of architecture §11.2 (hop budget, ordering, totals, TOCTOU);
 //! - [`interrupt`]: `InterruptStatus` plus one level-sensitive line under one mutex (§4.2.2,
 //!   ADR-0003), so no interrupt is ever lost;
-//! - [`null`]: the device in an empty slot (DeviceID 0, §4.2.3.1.1).
+//! - [`null`]: the device in an empty slot (DeviceID 0, §4.2.3.1.1);
+//! - [`worker`] (M12): one host thread per device that runs `process_queue` off the vCPU
+//!   thread, with the VQ-12 budget, notify coalescing and the RUST-7 panic stop;
+//! - [`rng`] (M12): virtio-rng (§5.4), the first real device model;
+//! - [`console`] (M13): virtio-console (§5.3), two queues with opposite directions, TX through
+//!   the sink's `AnsiFilter` (TTY-1), RX from a bounded input queue (TTY-10).
+//! - [`net`] (M24): virtio-net (§5.1), `VERSION_1 | MAC` only, TX on the worker and RX on its
+//!   own thread through a `net::NetBackend` (threat model NET-5).
 //!
 //! The device models (rng M12, console M13, blk M14, net M24) implement [`VirtioDevice`] and
 //! never touch the transport registers; the transport never parses a ring.
@@ -31,17 +38,27 @@
     clippy::cast_possible_truncation
 )]
 
+pub mod blk;
 pub mod chain;
+pub mod console;
 pub mod interrupt;
 pub mod mmio;
+pub mod net;
 pub mod null;
 pub mod queue;
+pub mod rng;
+pub mod worker;
 
+pub use blk::Blk;
 pub use chain::{Descriptor, DescriptorChain, ValidatedChain};
+pub use console::Console;
 pub use interrupt::VirtioInterrupt;
 pub use mmio::{QueueNotifier, VirtioMmio};
+pub use net::Net;
 pub use null::NullDevice;
 pub use queue::Queue;
+pub use rng::Rng;
+pub use worker::Worker;
 
 use crate::memory::{GuestMemoryOrdered, MemoryError};
 use core::fmt;
@@ -109,7 +126,11 @@ pub enum QueueError {
     /// A ring does not fit in one RAM region, or its end overflows (VQ-1).
     RingOutOfRam { ring: Ring, addr: u64, len: u64 },
     /// `avail.idx` moved by more than the queue size since we last looked (VQ-2).
-    AvailIdxJump { avail_idx: u16, next_avail: u16, size: u16 },
+    AvailIdxJump {
+        avail_idx: u16,
+        next_avail: u16,
+        size: u16,
+    },
     /// An avail-ring entry names a descriptor `≥ N` (VQ-3).
     HeadOutOfRange { head: u16, size: u16 },
     /// A descriptor's `next` is outside its table (VQ-4).

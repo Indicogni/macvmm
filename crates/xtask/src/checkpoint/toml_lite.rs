@@ -245,6 +245,11 @@ pub fn parse(text: &str) -> Result<Document, TomlError> {
             }
         }
         let value = parse_value(&value_text, line_no)?;
+        if matches!(target, Target::Root)
+            && (doc.tables.contains_key(key) || doc.arrays.contains_key(key))
+        {
+            return err(line_no, format!("`{key}` is already a table"));
+        }
         let table = match &target {
             Target::Root => &mut doc.root,
             Target::Table(n) => doc.tables.get_mut(n).ok_or_else(|| TomlError {
@@ -263,11 +268,6 @@ pub fn parse(text: &str) -> Result<Document, TomlError> {
         if table.get(key).is_some() {
             return err(line_no, format!("duplicate key `{key}`"));
         }
-        if matches!(target, Target::Root)
-            && (doc.tables.contains_key(key) || doc.arrays.contains_key(key))
-        {
-            return err(line_no, format!("`{key}` is already a table"));
-        }
         table.entries.push((key.to_owned(), value));
     }
     Ok(doc)
@@ -275,8 +275,7 @@ pub fn parse(text: &str) -> Result<Document, TomlError> {
 
 fn valid_bare_key(k: &str) -> bool {
     !k.is_empty()
-        && k
-            .bytes()
+        && k.bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
 }
 
@@ -420,7 +419,11 @@ fn parse_int(t: &str, line: usize) -> Result<i64, TomlError> {
         line,
         message: format!("integer {t:?} does not fit 64 bits"),
     })?;
-    Ok(if neg { v.checked_neg().ok_or_else(bad)? } else { v })
+    Ok(if neg {
+        v.checked_neg().ok_or_else(bad)?
+    } else {
+        v
+    })
 }
 
 /// Parse one string at the start of `t`; returns it and the rest of the text.
@@ -555,6 +558,7 @@ pub fn quote_array(items: &[String]) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
 mod tests {
     use super::*;
 

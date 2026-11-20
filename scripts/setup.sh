@@ -54,18 +54,59 @@ if command -v dtc >/dev/null 2>&1; then
 else
   optional dtc M7 "golden DTS comparison" "brew install dtc"
 fi
-e2fs="/opt/homebrew/opt/e2fsprogs/sbin/mkfs.ext4"
-if command -v mkfs.ext4 >/dev/null 2>&1 || [[ -x "$e2fs" ]]; then
-  info "optional: e2fsprogs  present"
+# M15: `cargo xtask mkrootfs` runs mkfs.ext4, and the rootfs_fsck_clean test runs `e2fsck -fn`
+# on a guest-written image, i.e. a host parser on hostile input (SC-14). e2fsprogs has had
+# memory-safety CVEs (CVE-2019-5094, CVE-2022-1304, fixed in 1.46.6), so an e2fsprogs older
+# than 1.47.0 is refused. Homebrew's formula is keg-only: look in its prefix, then PATH.
+e2fs=""
+for c in /opt/homebrew/opt/e2fsprogs/sbin/mkfs.ext4 /usr/local/opt/e2fsprogs/sbin/mkfs.ext4; do
+  if [[ -x "$c" ]]; then e2fs="$c"; break; fi
+done
+if [[ -z "$e2fs" ]] && command -v mkfs.ext4 >/dev/null 2>&1; then e2fs="$(command -v mkfs.ext4)"; fi
+if [[ -n "$e2fs" ]]; then
+  e2v="$("$e2fs" -V 2>&1 | sed -n 's/^mke2fs \([0-9][0-9.]*\).*/\1/p' | head -n 1)"
+  if [[ -z "$e2v" ]]; then
+    die "cannot read the e2fsprogs version from $e2fs -V"
+  fi
+  IFS=. read -r e2a e2b _ <<< "$e2v"
+  if [[ ! "$e2a" =~ ^[0-9]+$ ]] || [[ ! "${e2b:-0}" =~ ^[0-9]+$ ]]; then
+    die "cannot read the e2fsprogs version from $e2fs -V"
+  fi
+  if (( e2a < 1 || (e2a == 1 && ${e2b:-0} < 47) )); then
+    die "e2fsprogs $e2v at $e2fs is older than 1.47.0 (SC-14: e2fsck parses guest-written images); run: brew upgrade e2fsprogs"
+  fi
+  # The floor protects the parser of guest-written images, e2fsck, so the e2fsck beside this
+  # mkfs.ext4 is checked too (the rootfs_fsck_clean test also checks the one it runs).
+  e2fsck="$(dirname "$e2fs")/e2fsck"
+  if [[ -x "$e2fsck" ]]; then
+    ckv="$("$e2fsck" -V 2>&1 | sed -n 's/^e2fsck \([0-9][0-9.]*\).*/\1/p' | head -n 1)"
+    if [[ -z "$ckv" ]]; then
+      die "cannot read the e2fsprogs version from $e2fsck -V"
+    fi
+    IFS=. read -r cka ckb _ <<< "$ckv"
+    if [[ ! "$cka" =~ ^[0-9]+$ ]] || [[ ! "${ckb:-0}" =~ ^[0-9]+$ ]]; then
+      die "cannot read the e2fsprogs version from $e2fsck -V"
+    fi
+    if (( cka < 1 || (cka == 1 && ${ckb:-0} < 47) )); then
+      die "e2fsck $ckv at $e2fsck is older than 1.47.0 (SC-14: it parses guest-written images); run: brew upgrade e2fsprogs"
+    fi
+  fi
+  info "optional: e2fsprogs  present ($e2v, $e2fs)"
 else
-  optional e2fsprogs M15 "ext4 root filesystem image" "brew install e2fsprogs"
+  optional e2fsprogs M15 "ext4 root filesystem image (cargo xtask mkrootfs)" "brew install e2fsprogs"
 fi
 if command -v xz >/dev/null 2>&1; then
-  xzv="$(xz --version | head -n 1)"
-  # SC-8: refuse the backdoored releases (CVE-2024-3094).
-  case "$xzv" in
-    *" 5.6.0"*|*" 5.6.1"*) die "xz release with the CVE-2024-3094 backdoor: $xzv; brew upgrade xz" ;;
-  esac
+  xzout="$(xz --version)"
+  xzv="$(printf '%s\n' "$xzout" | head -n 1)"
+  # SC-8: refuse the backdoored releases (CVE-2024-3094), both as the xz program's version and
+  # as the run-time liblzma version on the second line (the backdoor lives in liblzma).
+  while IFS= read -r xzline; do
+    case "$xzline" in
+      "xz (XZ Utils) 5.6.0"|"xz (XZ Utils) 5.6.0 "*|"xz (XZ Utils) 5.6.1"|"xz (XZ Utils) 5.6.1 "*|\
+      "liblzma 5.6.0"|"liblzma 5.6.0 "*|"liblzma 5.6.1"|"liblzma 5.6.1 "*)
+        die "xz release with the CVE-2024-3094 backdoor: $xzline; brew upgrade xz" ;;
+    esac
+  done <<< "$xzout"
   info "optional: xz         present ($xzv)"
 else
   optional xz M19 "FreeBSD .raw.xz image" "brew install xz"

@@ -1,0 +1,14 @@
+U-Boot 2026.04
+Hit any key to stop autoboot
+Scanning for bootflows in all bootdevs
+Scanning global bootmeth 'efi_mgr'
+No more bootdevs
+bootflow* valid)
+=> poweroff
+poweroff ...
+[stderr] flash: ignored 8-byte write of 0x40000000 at offset 0x12c668
+!Synchronous Abort
+![stderr] unhandled MMIO
+![stderr] unknown SMCCC
+![stderr] not emulated
+![stderr] guest fatal

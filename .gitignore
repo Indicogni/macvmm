@@ -3,3 +3,4 @@
 /learner
 *.part
 .DS_Store
+/guests/target

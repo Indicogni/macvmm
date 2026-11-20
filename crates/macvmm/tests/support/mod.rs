@@ -251,10 +251,21 @@ pub fn run(args: &[&str], limit: Duration) -> Outcome {
 
 /// Run `macvmm <args>`, performing `steps` in order; hard-kill after `limit` + 10 s.
 pub fn run_steps(args: &[&str], steps: &[Step], limit: Duration) -> Outcome {
+    run_steps_env(args, &[], steps, limit)
+}
+
+/// [`run_steps`] with extra environment variables for the child (M21: `MACVMM_CACHE`).
+pub fn run_steps_env(
+    args: &[&str],
+    env: &[(&str, &Path)],
+    steps: &[Step],
+    limit: Duration,
+) -> Outcome {
     let start = Instant::now();
     let deadline = start + limit + Duration::from_secs(10);
     let mut child = Command::new(macvmm())
         .args(args)
+        .envs(env.iter().copied())
         .env_remove("MACVMM_LOG")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -420,8 +431,14 @@ impl Running {
     /// Spawn `macvmm <args>` with piped stdin and stderr. `read_stdout = false` leaves stdout
     /// a pipe that nobody ever reads (the SINK-1 `sink_backpressure` case).
     pub fn spawn(args: &[&str], read_stdout: bool) -> Running {
+        Running::spawn_env(args, &[], read_stdout)
+    }
+
+    /// [`Running::spawn`] with extra environment variables (M21: `MACVMM_CACHE`).
+    pub fn spawn_env(args: &[&str], env: &[(&str, &Path)], read_stdout: bool) -> Running {
         let mut child = Command::new(macvmm())
             .args(args)
+            .envs(env.iter().copied())
             .env_remove("MACVMM_LOG")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -465,6 +482,22 @@ impl Running {
             std::thread::sleep(Duration::from_millis(5));
         }
         false
+    }
+
+    /// Wait until stderr (the VMM's own lines) contains `marker` (or `limit` passes, or the
+    /// child exits). M21: a readiness marker, so a test never has to probe a lock itself.
+    pub fn wait_for_stderr(&mut self, marker: &str, limit: Duration) -> bool {
+        let deadline = Instant::now() + limit;
+        while Instant::now() < deadline {
+            if String::from_utf8_lossy(&self.err.lock().unwrap()).contains(marker) {
+                return true;
+            }
+            if self.child.try_wait().ok().flatten().is_some() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        String::from_utf8_lossy(&self.err.lock().unwrap()).contains(marker)
     }
 
     /// Write `bytes` to the child's stdin.

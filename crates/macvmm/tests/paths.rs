@@ -6,7 +6,8 @@
 //! with exit code 2, the `not a regular file:` message, and quickly (a FIFO must never block
 //! the open). M4 adds the trace cases of the output half (PATH-3..6 for `--trace`): a
 //! symlinked target, a hard-linked target, an output that is an input, and the 0600 mode. M6 adds
-//! the same cases for `--serial file:F` (PATH-3..6), plus a file owned by another user.
+//! the same cases for `--serial file:F` (PATH-3..6), plus a file owned by another user. M13
+//! adds them for `--console file:F`, including a console file that is also the serial file.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::path::{Path, PathBuf};
@@ -442,5 +443,168 @@ fn serial_file_owned_by_another_user_is_refused() {
     assert_eq!(code, Some(2), "{stderr}");
     assert!(stderr.contains("owned by another user"), "{stderr}");
     assert_eq!(std::fs::read(&path).unwrap_or_default(), before);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+// ---- M13: `--console file:F` (PATH-3..6) ----
+
+/// PATH-3..6 for the virtio-console sink: a symlinked or hard-linked target is refused and
+/// untouched, the console file may not be the serial file or an input (PATH-4), and a file
+/// macvmm creates is 0600. All exit 2 before any HVF call.
+#[test]
+fn console_file_path_policy() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = scratch("console_paths");
+    let kernel = dir.join("kernel");
+    std::fs::write(&kernel, b"not an elf").unwrap();
+    let console = |p: &Path, extra: &[&std::ffi::OsStr]| {
+        let arg = serial_arg(p);
+        let mut args: Vec<&std::ffi::OsStr> = vec![
+            "--kernel".as_ref(),
+            kernel.as_os_str(),
+            "--console".as_ref(),
+            &arg,
+        ];
+        args.extend_from_slice(extra);
+        run_args(&args)
+    };
+    let victim = dir.join("authorized_keys");
+    std::fs::write(&victim, b"precious").unwrap();
+    let link = dir.join("hvc0.out");
+    std::os::unix::fs::symlink(&victim, &link).unwrap();
+    let (code, stderr) = console(&link, &[]);
+    assert_eq!(code, Some(2), "{stderr}");
+    assert!(stderr.contains("refusing symlinked output"), "{stderr}");
+    let hard = dir.join("hard.out");
+    std::fs::hard_link(&victim, &hard).unwrap();
+    let (code, stderr) = console(&hard, &[]);
+    assert_eq!(code, Some(2), "{stderr}");
+    assert!(stderr.contains("hard links"), "{stderr}");
+    assert_eq!(std::fs::read(&victim).unwrap(), b"precious");
+    // PATH-4: the console file is the kernel, or the serial file.
+    let (code, stderr) = console(&kernel, &[]);
+    assert_eq!(code, Some(2), "{stderr}");
+    assert!(stderr.contains("it is the same file as"), "{stderr}");
+    assert_eq!(std::fs::read(&kernel).unwrap(), b"not an elf");
+    let both = dir.join("both.txt");
+    let serial = serial_arg(&both);
+    let (code, stderr) = console(&both, &["--serial".as_ref(), &serial]);
+    assert_eq!(code, Some(2), "{stderr}");
+    assert!(stderr.contains("it is the same file as"), "{stderr}");
+    // PATH-6: created 0600 (the run then fails on the kernel bytes, exit 2).
+    let out = dir.join("c.out");
+    let (code, stderr) = console(&out, &[]);
+    assert_eq!(code, Some(2), "{stderr}");
+    assert!(stderr.contains("not an ELF"), "{stderr}");
+    assert_eq!(
+        std::fs::metadata(&out).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+// ---- M14: --disk (threat model BLK-8, BLK-11, PATH-4, PATH-5) ----
+
+/// `macvmm run --kernel <k> <args>` for the disk cases; the kernel only has to be a regular
+/// file, because every case is refused by `HostIo::open` before any VM exists.
+fn run_disk(dir: &Path, args: &[&std::ffi::OsStr]) -> (Option<i32>, String) {
+    let kernel = dir.join("kernel");
+    std::fs::write(&kernel, b"not an elf").unwrap();
+    let mut all: Vec<&std::ffi::OsStr> = vec!["--kernel".as_ref(), kernel.as_os_str()];
+    all.extend_from_slice(args);
+    run_args(&all)
+}
+
+/// PATH-5: the same image twice (by name, by a second name, read-only or not) is exit 2.
+#[test]
+fn disk_twice_is_refused() {
+    let dir = scratch("disk_twice");
+    let img = dir.join("disk.img");
+    std::fs::write(&img, vec![7u8; 4096]).unwrap();
+    let alias = dir.join("alias.img");
+    std::fs::hard_link(&img, &alias).unwrap();
+    let ro = {
+        let mut s = img.clone().into_os_string();
+        s.push(",ro");
+        s
+    };
+    for second in [img.as_os_str(), alias.as_os_str(), ro.as_os_str()] {
+        let (code, stderr) = run_disk(
+            &dir,
+            &[
+                "--disk".as_ref(),
+                img.as_os_str(),
+                "--disk".as_ref(),
+                second,
+            ],
+        );
+        assert_eq!(code, Some(2), "{stderr}");
+        assert!(stderr.contains("is the same disk image as"), "{stderr}");
+    }
+    assert_eq!(std::fs::read(&img).unwrap(), vec![7u8; 4096]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// PATH-4: `--serial file:disk.img` (and `--trace`, `--dtb-out`) onto a `--disk` image is
+/// exit 2, and the image is not truncated.
+#[test]
+fn output_onto_a_disk_is_refused() {
+    let dir = scratch("disk_output");
+    let img = dir.join("disk.img");
+    std::fs::write(&img, vec![9u8; 4096]).unwrap();
+    for (flag, value) in [
+        ("--serial", serial_arg(&img)),
+        ("--trace", trace_arg(&img)),
+        ("--dtb-out", img.clone().into_os_string()),
+    ] {
+        let (code, stderr) = run_disk(
+            &dir,
+            &["--disk".as_ref(), img.as_os_str(), flag.as_ref(), &value],
+        );
+        assert_eq!(code, Some(2), "{flag}: {stderr}");
+        assert!(
+            stderr.contains("it is the same file as"),
+            "{flag}: {stderr}"
+        );
+        assert_eq!(std::fs::read(&img).unwrap(), vec![9u8; 4096], "{flag}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// BLK-11 / PATH-2: a block device, a character device, a FIFO or a directory is not a disk.
+/// `/dev/disk0` is root-only on macOS, so an unprivileged run may fail at the open instead of
+/// the `fstat`; either way it is exit 2 and nothing is opened for writing.
+#[test]
+fn disk_must_be_a_regular_file() {
+    let dir = scratch("disk_nonreg");
+    let fifo = dir.join("fifo");
+    assert!(
+        Command::new("/usr/bin/mkfifo")
+            .arg(&fifo)
+            .status()
+            .unwrap()
+            .success()
+    );
+    for (path, why) in [
+        ("/dev/disk0", None),
+        ("/dev/disk0,ro", None),
+        ("/dev/zero", Some("not a regular file:")),
+        ("/dev/null,ro", Some("not a regular file:")),
+        (fifo.to_str().unwrap(), Some("not a regular file:")),
+    ] {
+        let t0 = Instant::now();
+        let (code, stderr) = run_disk(&dir, &["--disk".as_ref(), path.as_ref()]);
+        assert_eq!(code, Some(2), "{path}: {stderr}");
+        if let Some(why) = why {
+            assert!(stderr.contains(why), "{path}: {stderr}");
+        }
+        assert!(t0.elapsed() < Duration::from_secs(2), "{path} blocked");
+    }
+    let dir_ro = format!("{},ro", dir.display());
+    let (code, stderr) = run_disk(&dir, &["--disk".as_ref(), dir_ro.as_ref()]);
+    assert_eq!(code, Some(2), "{stderr}");
+    assert!(stderr.contains("not a regular file:"), "{stderr}");
+    let (code, stderr) = run_disk(&dir, &["--disk".as_ref(), "".as_ref()]);
+    assert_eq!(code, Some(2), "{stderr}");
     let _ = std::fs::remove_dir_all(&dir);
 }

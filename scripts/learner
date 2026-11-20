@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Learner mode: your own VMM in ./learner (PLAN M27; CURRICULUM §3.1, §3.4, §3.5).
+#
+#   scripts/learner init                      create ./learner (its own git repository)
+#   scripts/learner start NN [--level L]      copy chapter NN's scaffold; never overwrites
+#                                             (L: worked | completion | spec | open)
+#   scripts/learner hint NN [1-4]             the hint ladder: concept, spec, pseudocode, anchor
+#   scripts/learner lifeline MODULE           borrow a reference module (yours kept as .mine)
+#   scripts/learner lifeline --return MODULE  give it back
+#   scripts/learner status                    chapters started, checkpoints passed, borrowed
+#
+# Every file written stays inside ./learner (no `..`, no symlinks followed). Your progress
+# lives in learner/.progress.toml and never leaves this machine.
+set -euo pipefail
+IFS=$'\n\t'
+umask 077
+# shellcheck source=scripts/lib/common.sh
+. "$(dirname -- "${BASH_SOURCE[0]}")/lib/common.sh"
+
+case "${1:-}" in
+  -h|--help|'') sed -n '2,13p' "$0"; [[ -n "${1:-}" ]] && exit 0; exit 2 ;;
+  gen-scaffold) die "gen-scaffold is an author command: cargo xtask learner gen-scaffold NN" ;;
+esac
+cd -- "$REPO_ROOT"
+exec cargo run --quiet --locked -p xtask -- learner "$@"

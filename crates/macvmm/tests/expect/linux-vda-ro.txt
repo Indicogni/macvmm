@@ -1,0 +1,7 @@
+macvmm-initramfs: ready *
+macvmm-vda: /dev/vda 131072 sectors ro=1
+macvmm-vda-ro: write rejected
+!FAILED
+![stderr] needs reset
+![stderr] unhandled MMIO
+![stderr] panicked

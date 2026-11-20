@@ -1,0 +1,27 @@
+[package]
+name = "fuzz"
+version = "0.1.0"
+description = "Dependency-free, deterministic fuzzers for macvmm's hostile-input surfaces (PLAN M22, threat model TEST-3)"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Only our own crates (docs/dependencies.md: path dependencies are exempt from the allowlist).
+# `vmm` with `test-util` for `VecMemory`, `TestIrq` and the FDT reader; `xtask` for the archive
+# parsers (`tar`, `cpio`, `zboot`). Build `macvmm` releases with `-p macvmm`, never
+# `--workspace`: Cargo unifies features across the packages of one build, and this crate's
+# `test-util` would then reach the shipped binary (threat model FDT-1; §12 residual note).
+[dependencies]
+vmm = { path = "../vmm", features = ["test-util"] }
+xtask = { path = "../xtask" }
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "fuzz"
+path = "src/main.rs"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

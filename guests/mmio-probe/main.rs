@@ -77,13 +77,28 @@ fn main(_x0: u64) {
     store!("strh {v:w}, [{a}]", 0, 0xbeef);
     check(&mut ok, "strh/ldrh", load!("ldrh {r:w}, [{a}]", 0), 0xbeef);
     store!("str {v:w}, [{a}]", 0, 0xdead_beef);
-    check(&mut ok, "str w/ldr w", load!("ldr {r:w}, [{a}]", 0), 0xdead_beef);
+    check(
+        &mut ok,
+        "str w/ldr w",
+        load!("ldr {r:w}, [{a}]", 0),
+        0xdead_beef,
+    );
     store!("str {v}, [{a}]", 0, 0x0123_4567_89ab_cdef);
-    check(&mut ok, "str x/ldr x", load!("ldr {r}, [{a}]", 0), 0x0123_4567_89ab_cdef);
+    check(
+        &mut ok,
+        "str x/ldr x",
+        load!("ldr {r}, [{a}]", 0),
+        0x0123_4567_89ab_cdef,
+    );
 
     store!("str {v}, [{a}]", 8, u64::MAX);
     store!("strb {v:w}, [{a}]", 8, 0x1234_5678_9abc_de42);
-    check(&mut ok, "write masked to 1 byte", load!("ldr {r}, [{a}]", 8), 0xffff_ffff_ffff_ff42);
+    check(
+        &mut ok,
+        "write masked to 1 byte",
+        load!("ldr {r}, [{a}]", 8),
+        0xffff_ffff_ffff_ff42,
+    );
 
     store!("str {v}, [{a}]", 16, u64::MAX);
     {
@@ -106,11 +121,26 @@ fn main(_x0: u64) {
     check(&mut ok, "ldr xzr discarded (sp kept)", sp(), before);
 
     store!("strb {v:w}, [{a}]", 32, 0x80);
-    check(&mut ok, "ldrsb w sign-extends to 32", load!("ldrsb {r:w}, [{a}]", 32), 0xffff_ff80);
+    check(
+        &mut ok,
+        "ldrsb w sign-extends to 32",
+        load!("ldrsb {r:w}, [{a}]", 32),
+        0xffff_ff80,
+    );
     store!("strh {v:w}, [{a}]", 40, 0x8001);
-    check(&mut ok, "ldrsh x sign-extends to 64", load!("ldrsh {r}, [{a}]", 40), 0xffff_ffff_ffff_8001);
+    check(
+        &mut ok,
+        "ldrsh x sign-extends to 64",
+        load!("ldrsh {r}, [{a}]", 40),
+        0xffff_ffff_ffff_8001,
+    );
     store!("str {v:w}, [{a}]", 48, 0x8000_0000);
-    check(&mut ok, "ldrsw x sign-extends to 64", load!("ldrsw {r}, [{a}]", 48), 0xffff_ffff_8000_0000);
+    check(
+        &mut ok,
+        "ldrsw x sign-extends to 64",
+        load!("ldrsw {r}, [{a}]", 48),
+        0xffff_ffff_8000_0000,
+    );
 
     println!("mmio-probe: {ok}/10 ok");
 }

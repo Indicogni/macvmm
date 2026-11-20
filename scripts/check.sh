@@ -54,10 +54,29 @@ step "check-anchors"; scripts/check-anchors
 step "build-guests";  maybe scripts/build-guests.sh M3
 # ANCHOR_END: check_gate
 
+# M21: the experimental vmapple board is off by default, so the gate above never compiles it.
+step "experimental-vmapple (M21)"
+cargo clippy --locked -p vmm -p macvmm --all-targets --features experimental-vmapple -- -D warnings
+cargo test --locked -p vmm -p macvmm --features experimental-vmapple --lib --bins
+
 step "check-insn-corpus"; scripts/check-insn-corpus.sh
 
 step "dependency allowlist"
 cargo run --locked --quiet -p xtask -- audit --deps
+
+# M22 (threat model FDT-1, RR14): neither a plain `cargo build` (the workspace default-members)
+# nor `cargo build -p macvmm` may turn on `vmm/test-util` (the FDT reader, the test doubles)
+# through feature unification with `crates/fuzz`.
+step "shipped build has no vmm/test-util (FDT-1)"
+for scope in default macvmm; do
+  if [[ "$scope" == default ]]; then
+    features="$(cargo tree --locked -e normal,features -i vmm)"
+  else
+    features="$(cargo tree --locked -p macvmm -e normal,features -i vmm)"
+  fi
+  [[ "$features" != *test-util* ]] \
+    || die "the $scope build enables vmm/test-util (check default-members in Cargo.toml)"
+done
 
 step "scripts: syntax and SC-1 preamble"
 shell_scripts=()
@@ -124,6 +143,10 @@ if (( hvf )); then
   scripts/test-signing.sh
   step "HVF tests"
   cargo test --locked -p hvf -p vmm --features hvf/hvf-tests,vmm/hvf-tests -- --test-threads=1
+  # F22 (threat model MEM-11): teardown.rs compiles only with `fault-injection`, so the line
+  # above runs it as 0 tests; this is the one place outside the M23 gate that runs it.
+  step "HVF teardown tests (fault injection)"
+  cargo test --locked -p hvf --features hvf-tests,fault-injection --test teardown -- --test-threads=1
   step "end-to-end"
   maybe scripts/test-e2e.sh M3 all
 fi

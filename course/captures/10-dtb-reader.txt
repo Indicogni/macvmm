@@ -1,0 +1,18 @@
+# scripts/capture.sh 10: run "dtb-reader" of course/checkpoints/10, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 10; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --mem 64M --raw {guests}/dtb-reader.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+dtb-reader: x0=0x40000000
+dtb-reader: magic ok
+dtb-reader: model=macvmm-virt
+dtb-reader: memory@40000000 reg=0x40000000+0x4000000
+dtb-reader: pl011@9000000 compatible=arm,pl011
+dtb-reader: cpus=1
+dtb-reader: stdout-path=/pl011@9000000
+dtb-reader: rng-seed nonzero
+dtb-reader: kaslr-seed nonzero
+dtb-reader: done
+
+--- stderr ---
+

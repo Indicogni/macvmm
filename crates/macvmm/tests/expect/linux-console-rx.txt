@@ -1,0 +1,7 @@
+macvmm-initramfs: ready *
+macvmm-console: rx ready
+macvmm-console: rx macvmm-rx-test
+!macvmm-console: FAILED
+![stderr] needs reset
+![stderr] unhandled MMIO
+![stderr] panicked

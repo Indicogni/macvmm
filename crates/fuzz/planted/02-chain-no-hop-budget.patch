@@ -1,0 +1,20 @@
+--- a/crates/vmm/src/virtio/chain.rs
++++ b/crates/vmm/src/virtio/chain.rs
+@@ -191,14 +191,9 @@
+             let Some(index) = self.next else {
+                 return Ok(None);
+             };
+-            // VQ-5: the hop budget catches loops and over-long chains without a visited set.
+-            self.budget = self.budget.checked_sub(1).ok_or(QueueError::ChainTooLong {
+-                budget: if self.in_indirect {
+-                    self.table_len
+-                } else {
+-                    self.queue_size
+-                },
+-            })?;
++            // PLANTED BUG 2 (scripts/bughunt-selftest.sh): no hop budget. A chain whose `next`
++            // points back at an earlier descriptor is walked until something else gives up.
++            let _ = (self.budget, self.in_indirect, self.queue_size);
+             let d = self.read_desc(index)?;
+             if d.flags & F_INDIRECT != 0 {
+                 self.enter_indirect(&d)?;

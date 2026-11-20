@@ -22,6 +22,7 @@
 mod cli;
 mod doctor;
 mod first_exit;
+mod sandbox;
 mod signals;
 mod term;
 

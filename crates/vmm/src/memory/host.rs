@@ -112,6 +112,7 @@ impl Block {
     /// re-checks what `RegionTable::locate` already proved, so a bug in a caller cannot turn
     /// into an out-of-bounds pointer.
     fn ptr(&self, offset: u64, len: usize) -> Option<*mut u8> {
+        // LEARNER: block_ptr_bounds
         let alloc = self.alloc.as_ref()?;
         let start = usize::try_from(offset).ok()?;
         let end = start.checked_add(len)?;
@@ -121,6 +122,7 @@ impl Block {
         // SAFETY: `start <= end <= self.len`, the size of the live allocation, so the result
         // stays inside it (or one past its end when `len == 0`, which callers never use).
         Some(unsafe { alloc.as_ptr().add(start) })
+        // LEARNER_END: block_ptr_bounds
     }
 
     /// Map the block at its IPA with `flags`. A block maps at most once at a time.
@@ -445,6 +447,8 @@ pub struct RomRegion {
     table: RegionTable,
     block: Block,
     leak_on_drop: AtomicBool,
+    /// M18: set by the first [`RomRegion::load`]; until then the ROM is all zero (MEM-10).
+    written: AtomicBool,
 }
 
 impl RomRegion {
@@ -455,7 +459,14 @@ impl RomRegion {
             block: Block::new(base.0, size)?,
             table,
             leak_on_drop: AtomicBool::new(false),
+            written: AtomicBool::new(false),
         })
+    }
+
+    /// M18: true until the first [`RomRegion::load`]: a fresh `hv_vm_allocate` block is
+    /// zero-filled (MEM-10), so the firmware loader need not write the padding.
+    pub fn is_fresh(&self) -> bool {
+        !self.written.load(Ordering::SeqCst)
     }
 
     /// Guest-physical base address.
@@ -489,6 +500,7 @@ impl RomRegion {
     /// Host-side load of firmware bytes at `offset` (the loader's job, before the guest runs).
     pub fn load(&self, offset: u64, data: &[u8]) -> core::result::Result<(), MemoryError> {
         let dst = self.ptr(offset, data.len())?;
+        self.written.store(true, Ordering::SeqCst);
         // SAFETY: `ptr` proved the range lies inside the live block; volatile because the
         // block may already be mapped (the guest can read, never write, it).
         unsafe { volatile_write(dst, data) };
@@ -501,6 +513,21 @@ impl RomRegion {
         // SAFETY: as in `load`.
         unsafe { volatile_read(src, buf) };
         Ok(())
+    }
+
+    /// M18: the little-endian 32-bit word at guest-physical `ipa`, if `ipa` is 4-byte aligned
+    /// and the word lies inside the ROM. Read-only and bounds-checked (`locate` + the block
+    /// check): the ISV = 0 path's instruction fetch from execute-in-place firmware
+    /// (`arch::stage1_walk::fetch_insn_rom`). This is the only guest-driven read of the ROM;
+    /// nothing guest-driven ever writes it (MEM-3).
+    pub fn read_u32(&self, ipa: GuestAddress) -> Option<u32> {
+        if !ipa.0.is_multiple_of(4) {
+            return None;
+        }
+        let offset = ipa.0.checked_sub(self.base().0)?;
+        let mut b = [0u8; 4];
+        self.read(offset, &mut b).ok()?;
+        Some(u32::from_le_bytes(b))
     }
 
     /// Map into `vm` read+execute for the guest (PLAN §1: flash bank 0 is READ+EXEC).
@@ -529,6 +556,12 @@ impl RomRegion {
         } else {
             TeardownAction::Deallocate
         }
+    }
+}
+
+impl crate::arch::stage1_walk::InsnRom for RomRegion {
+    fn read_insn(&self, ipa: u64) -> Option<u32> {
+        self.read_u32(GuestAddress(ipa))
     }
 }
 

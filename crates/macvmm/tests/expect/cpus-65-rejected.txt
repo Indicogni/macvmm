@@ -1,0 +1,1 @@
+[stderr] macvmm: invalid configuration: --cpus must be between 1 and 64

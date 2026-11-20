@@ -1,0 +1,9 @@
+macvmm-initramfs: ready *
+macvmm-net: eth0 10.0.0.1 up
+macvmm-net: ping 5/5 ok
+macvmm-net: sent 33554432 bytes sha256=*
+[stderr] stats: net0 slot 0: tx_packets=*
+!macvmm-net: FAILED
+![stderr] needs reset
+![stderr] unhandled MMIO
+![stderr] panicked

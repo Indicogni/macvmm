@@ -3,12 +3,12 @@
 //!
 //! **Raw mode, and only on a TTY (PROC-1).** A serial console wants every keystroke as it is
 //! typed, including Ctrl-C (which belongs to the guest's shell), so when stdin is a terminal
-//! and the serial sink is `stdio`, [`Terminal::setup`] switches it to the raw variant of
-//! `hvf::host::Termios` (no line editing, no echo, no signal keys; output post-processing is
-//! kept so `\n` still renders as a new line). Under a pipe, as in every test, nothing changes.
-//! The saved state is restored by [`Terminal::restore`] (normal exit), its `Drop`, a panic hook
-//! ([`install_panic_hook`]) and the signal path (`signals.rs`), so no exit path leaves the
-//! user's shell raw.
+//! and the serial or (M13) the console sink is `stdio`, [`Terminal::setup`] switches it to the
+//! raw variant of `hvf::host::Termios` (no line editing, no echo, no signal keys; output
+//! post-processing is kept so `\n` still renders as a new line). Under a pipe, as in every
+//! test, nothing changes. The saved state is restored by [`Terminal::restore`] (normal exit),
+//! its `Drop`, a panic hook ([`install_panic_hook`]) and the signal path (`signals.rs`), so no
+//! exit path leaves the user's shell raw.
 //!
 //! **Ctrl-A escapes (TTY-9).** The stdin thread ([`spawn_stdin`]) runs every byte through an
 //! [`EscapeParser`] *before* anything reaches the guest, so a guest can never produce a host
@@ -26,9 +26,10 @@
 //! Any other byte after Ctrl-A is discarded with the escape.
 //!
 //! **The stdin thread never waits for the guest (TTY-10, flaw F21).** It only ever blocks in
-//! `read(0)`. Guest-bound bytes go into `HostIo::serial_input`, whose `push` drops and counts
-//! what does not fit, so the thread is always back in `read` and always sees Ctrl-A x, even
-//! when the guest stopped reading its UART. EOF on stdin ends the thread quietly: the guest
+//! `read(0)`. Guest-bound bytes go into the input queue of the device whose sink is `stdio`
+//! (`HostIo::stdin_queue`: the PL011's, or the virtio-console's with `--console stdio`, M13),
+//! whose `push` drops and counts what does not fit, so the thread is always back in `read` and
+//! always sees Ctrl-A x, even when the guest stopped reading that device. EOF on stdin ends the thread quietly: the guest
 //! simply gets no more input.
 //!
 //! **Exit hygiene (TTY-6, TTY-7, flaw F1).** A guest may have left the terminal in the
@@ -119,8 +120,8 @@ pub struct Terminal {
 
 impl Terminal {
     // ANCHOR: term_raw_mode
-    /// Enter raw mode if `interactive` (the serial sink is `stdio`, so stdin is bound to the
-    /// guest) and stdin is a TTY (PROC-1). Installs the panic hook first, so the terminal is
+    /// Enter raw mode if `interactive` (the serial or the console sink is `stdio`, so stdin is
+    /// bound to the guest: `HostIo::stdin` is not `Unbound`) and stdin is a TTY (PROC-1). Installs the panic hook first, so the terminal is
     /// never raw without a way back.
     pub fn setup(interactive: bool) -> Terminal {
         install_panic_hook();
@@ -291,7 +292,8 @@ fn stdin_loop(host: &HostIo) {
         to_guest.clear();
         parser.feed(buf.get(..n).unwrap_or(&[]), &mut to_guest, &mut cmds);
         if !to_guest.is_empty() {
-            host.serial_input.push(&to_guest); // never blocks (TTY-10)
+            // M13: the PL011's or the console's queue, whichever sink is stdio (§14.4).
+            host.stdin_queue().push(&to_guest); // never blocks (TTY-10)
         }
         for cmd in cmds.drain(..) {
             match cmd {

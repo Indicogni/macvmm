@@ -5,7 +5,7 @@
 //! be the same as the author's. A checkpoint runs three levels against an implementation tree
 //! (the learner's `learner/`, the reference repo, or any other tree):
 //!
-//! - **L1, contract** ([`run::level1`]): a throwaway crate under `target/checkpoint/NN/` that
+//! - **L1, contract** ([`run::level1`]): a throwaway crate under `target/checkpoint/NN/<key>/` that
 //!   depends on `<impl>/crates/vmm` (feature `test-util`) and/or `<impl>/crates/hvf`, with the
 //!   chapter's `contract/*.rs` copied in as integration tests. Host only, no HVF. The tests use
 //!   only items the lesson names, so a learner's own types satisfy them (the frozen contracts of
@@ -153,7 +153,9 @@ pub fn valid_id(id: &str) -> bool {
 pub fn valid_name(n: &str) -> bool {
     !n.is_empty()
         && n.len() <= 64
-        && n.bytes().next().is_some_and(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+        && n.bytes()
+            .next()
+            .is_some_and(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
         && n.bytes()
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
 }
@@ -174,11 +176,16 @@ pub fn safe_rel(p: &str) -> bool {
 
 fn need_safe(dir: &Path, rel: &str, what: &str) -> Result<String, String> {
     if !safe_rel(rel) {
-        return Err(format!("{what} path {rel:?} must be relative and stay inside the checkpoint"));
+        return Err(format!(
+            "{what} path {rel:?} must be relative and stay inside the checkpoint"
+        ));
     }
     let p = dir.join(rel);
     if !p.is_file() {
-        return Err(format!("{what} file {rel:?} does not exist in {}", dir.display()));
+        return Err(format!(
+            "{what} file {rel:?} does not exist in {}",
+            dir.display()
+        ));
     }
     Ok(rel.to_owned())
 }
@@ -200,7 +207,9 @@ pub fn parse_step(s: &str) -> Result<Step, String> {
         "signal" if matches!(arg, "TERM" | "INT" | "USR1" | "HUP") => {
             Ok(Step::Signal(arg.to_owned()))
         }
-        _ => Err(format!("step {s:?}: unknown or empty (wait|send|sleep|signal)")),
+        _ => Err(format!(
+            "step {s:?}: unknown or empty (wait|send|sleep|signal)"
+        )),
     }
 }
 
@@ -220,7 +229,7 @@ fn arg_timeout(args: &[String]) -> Option<u64> {
 }
 
 fn parse_hex(s: &str) -> Option<Vec<u8>> {
-    if s.is_empty() || s.len() % 2 != 0 || s.len() > 8192 {
+    if s.is_empty() || !s.len().is_multiple_of(2) || s.len() > 8192 {
         return None;
     }
     (0..s.len())
@@ -294,7 +303,11 @@ fn parse_run(t: &Table, dir: &Path) -> Result<RunSpec, String> {
     let sign = match t.str("sign").map_err(ctx)? {
         None | Some("hypervisor") => Sign::Hypervisor,
         Some("no-entitlements") => Sign::NoEntitlements,
-        Some(o) => return Err(ctx(format!("sign must be hypervisor or no-entitlements, not {o:?}"))),
+        Some(o) => {
+            return Err(ctx(format!(
+                "sign must be hypervisor or no-entitlements, not {o:?}"
+            )));
+        }
     };
     let steps = t
         .strs("steps")
@@ -310,6 +323,12 @@ fn parse_run(t: &Table, dir: &Path) -> Result<RunSpec, String> {
     };
     let timeout_s = match t.int("timeout").map_err(ctx)? {
         Some(v) => u64::try_from(v).map_err(|_| ctx("timeout must be positive".into()))?,
+        // The deadline covers building the contract crate too: no silent 30 s default.
+        None if matches!(exec, Exec::ContractHvf(_)) => {
+            return Err(ctx(
+                "a contract_hvf run needs `timeout` (it bounds the build and the tests)".into(),
+            ));
+        }
         None => from_args.unwrap_or(30),
     };
     if timeout_s == 0 || timeout_s > MAX_TIMEOUT_S {
@@ -323,6 +342,11 @@ fn parse_run(t: &Table, dir: &Path) -> Result<RunSpec, String> {
         .ok()
         .filter(|c| (0..=255).contains(c))
         .ok_or_else(|| ctx("expect_exit_code must be 0..=255".into()))?;
+    if matches!(exec, Exec::ContractHvf(_)) && expect_exit_code != 0 {
+        return Err(ctx(
+            "a contract_hvf run passes only when `cargo test` exits 0: expect_exit_code = 0".into(),
+        ));
+    }
     let serial = t
         .str("serial")
         .map_err(ctx)?
@@ -337,7 +361,11 @@ fn parse_run(t: &Table, dir: &Path) -> Result<RunSpec, String> {
         .map_err(ctx)?;
     let trace_file = match t.str("trace_file").map_err(ctx)? {
         Some(f) if safe_rel(f) => Some(f.to_owned()),
-        Some(f) => return Err(ctx(format!("trace_file {f:?} must be a plain relative name"))),
+        Some(f) => {
+            return Err(ctx(format!(
+                "trace_file {f:?} must be a plain relative name"
+            )));
+        }
         None => match &exec {
             Exec::Macvmm(a) => infer_trace_file(a),
             _ => None,
@@ -364,7 +392,9 @@ fn parse_run(t: &Table, dir: &Path) -> Result<RunSpec, String> {
     if let Some(tool) = &requires_tool
         && !valid_name(tool)
     {
-        return Err(ctx(format!("requires_tool {tool:?} is not a plain tool name")));
+        return Err(ctx(format!(
+            "requires_tool {tool:?} is not a plain tool name"
+        )));
     }
     let blob = t
         .str("blob_hex")
@@ -426,12 +456,23 @@ pub fn load(repo: &Path, id: &str) -> Result<Checkpoint, String> {
             return Err(ctx(format!("unknown array of tables [[{name}]]")));
         }
     }
-    let file_id = doc.root.str("id").map_err(ctx)?.ok_or_else(|| ctx("`id` is required".into()))?;
+    let file_id = doc
+        .root
+        .str("id")
+        .map_err(ctx)?
+        .ok_or_else(|| ctx("`id` is required".into()))?;
     if file_id != id {
-        return Err(ctx(format!("id {file_id:?} does not match its directory {id:?}")));
+        return Err(ctx(format!(
+            "id {file_id:?} does not match its directory {id:?}"
+        )));
     }
     let slug = doc.root.str("slug").map_err(ctx)?.unwrap_or("").to_owned();
-    let requires = doc.root.strs("requires").map_err(ctx)?.unwrap_or(&[]).to_vec();
+    let requires = doc
+        .root
+        .strs("requires")
+        .map_err(ctx)?
+        .unwrap_or(&[])
+        .to_vec();
     for r in &requires {
         if !valid_id(r) || r.as_str() >= id {
             return Err(ctx(format!("requires {r:?} must be an earlier checkpoint")));
@@ -536,7 +577,12 @@ pub fn load(repo: &Path, id: &str) -> Result<Checkpoint, String> {
 pub fn all_ids(repo: &Path) -> Vec<String> {
     (0u8..=27)
         .map(|n| format!("{n:02}"))
-        .filter(|id| repo.join(CHECKPOINTS_DIR).join(id).join("checkpoint.toml").is_file())
+        .filter(|id| {
+            repo.join(CHECKPOINTS_DIR)
+                .join(id)
+                .join("checkpoint.toml")
+                .is_file()
+        })
         .collect()
 }
 
@@ -607,7 +653,9 @@ pub fn parse_args(repo: &Path, args: &[String]) -> Result<Options, String> {
     if ids.is_empty() {
         return Err("no checkpoint definitions found".into());
     }
-    if capture && target.as_ref().is_some_and(|t| *t != Target::Reference) {
+    // Golden captures come from the reference only: with no target the harness would judge
+    // `./learner` when it exists, so `--capture` needs an explicit `--ref`.
+    if capture && target != Some(Target::Reference) {
         return Err("--capture records the reference only: use it with --ref".into());
     }
     Ok(Options {

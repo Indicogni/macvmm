@@ -1,0 +1,44 @@
+# Checkpoint 08 `traps-psci` (CURRICULUM §5 ch08). The OS-lock and LORID registers are the ones
+# HVF forwards on this machine; PMCR_EL0 is handled inside HVF with the in-kernel GIC (measured
+# in M5), so the UNDEF case uses MDCCSR_EL0.
+id = "08"
+slug = "traps-psci"
+requires = ["07"]
+
+[contract]
+crates = ["vmm", "hvf"]
+tests = ["contract/inject.rs", "contract/sysreg_policy.rs", "contract/smccc_dispatch.rs", "contract/psci_state.rs"]
+
+[[run]]
+name = "sysreg-probe"
+guest = "sysreg-probe"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--trace", "exits:{out}/s.jsonl:sysreg", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/sysreg-probe.txt"
+trace = "expected/sysreg-probe.trace.txt"
+
+# SYSTEM_RESET under the default --on-reset reboot: the machine is rebuilt and boot 1 powers off.
+[[run]]
+name = "psci-probe"
+guest = "psci-probe"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/psci-probe-reboot.txt"
+
+[[run]]
+name = "psci-probe-exit"
+guest = "psci-probe"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--on-reset", "exit", "--timeout", "10"]
+expect_exit_code = 4
+serial = "expected/psci-probe-exit.txt"
+
+[journal]
+file = "journal/08.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "Some instructions must not run on the real hardware's behalf: system-register accesses trap, and the VMM answers, emulates or injects an exception the guest's own vector handles."
+spec = "ARM ARM D1.10 (exception entry: vector offsets, ELR/SPSR/ESR), ESR EC 0x18 ISS; SMCCC 1.4 and PSCI 1.1 (course/primers/smccc.md)."
+pseudocode = "inject: ELR_EL1 = pc, SPSR_EL1 = cpsr, ESR_EL1 = EC<<26|IL, pc = VBAR + offset(mode), cpsr = 0x3c5; HVC: x0 selects the function, unknown -> -1."
+anchor = "crates/vmm/src/arch/inject.rs and crates/vmm/src/psci.rs."

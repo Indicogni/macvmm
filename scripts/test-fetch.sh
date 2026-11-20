@@ -5,7 +5,8 @@
 #
 # Each case runs fetch.sh against a temporary manifest and a temporary cache, with a stub `curl`
 # first on PATH that serves files from a temporary directory and fails unless it is called with
-# the mandatory HTTPS-only flags. Nothing touches the network or the real cache.
+# the mandatory HTTPS-only flags. Nothing touches the network or the real cache. Stub `xz`
+# and `df` (M19) let the write-sparse derive run offline, over its cap, or on a "full" disk.
 set -euo pipefail
 IFS=$'\n\t'
 umask 077
@@ -44,6 +45,36 @@ src="$T/srv/\${url##*/}"
 cp -- "\$src" "\$out"
 EOF
 chmod 700 "$T/bin/curl"
+
+# Stub xz (M19 write-sparse): logs its arguments; `--version` reports $(<xz.version) and
+# liblzma $(<xz.libversion) (both default 5.8.4); when $T/xz.bytes exists, prints $(<xz.zeros)
+# zero bytes then $(<xz.bytes) 'A's and exits 0; otherwise fails like xz on a file that is not
+# xz. (Files, not environment variables: xtask runs xz with an environment of only PATH.)
+cat > "$T/bin/xz" <<STUB
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "\$*" >> "$T/xz.log"
+if [[ "\$1" == "--version" ]]; then printf 'xz (XZ Utils) %s\nliblzma %s\n' "\$(cat "$T/xz.version" 2>/dev/null || echo 5.8.4)" "\$(cat "$T/xz.libversion" 2>/dev/null || echo 5.8.4)"; exit 0; fi
+[[ "\$1" == "-dc" && "\$2" == "--" ]] || { echo "stub xz: unexpected arguments \$*" >&2; exit 98; }
+if [[ ! -f "$T/xz.bytes" ]]; then echo "xz: \$3: File format not recognized" >&2; exit 1; fi
+z="\$(cat "$T/xz.zeros")"
+if (( z > 0 )); then head -c "\$z" /dev/zero; fi  # macOS head refuses -c 0
+yes A | tr -d '\n' | head -c "\$(cat "$T/xz.bytes")" || true
+STUB
+chmod 700 "$T/bin/xz"
+
+# Stub df (M19 free-space check): reports DF_STUB_KIB available when set, else the real df.
+cat > "$T/bin/df" <<STUB
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ -n "\${DF_STUB_KIB:-}" ]]; then
+  printf 'Filesystem 1024-blocks Used Available Capacity Mounted on\n'
+  printf 'stub 999999999 1 %s 1%% /\n' "\$DF_STUB_KIB"
+  exit 0
+fi
+exec /bin/df "\$@"
+STUB
+chmod 700 "$T/bin/df"
 
 # Stub cargo for the "never run xtask on an unverified input" case: records and fails.
 cat > "$T/nocargo/cargo" <<EOF
@@ -147,9 +178,69 @@ tried="$(tail -n "+$((before + 1))" -- "$T/curl.log" | sed -e 's/.* //' | tr '\n
 run "t good.bin $GOOD $U/good.bin
 t derived.bin $GOOD derive:no-such-kind:good.bin" t
 expect "an unimplemented derive kind is PENDING, not a failure" 0 "fetch: PENDING derived.bin (needs cargo xtask no-such-kind, M?)"
+
+# 6a. M19: derive:write-sparse runs `xz -dc` (the stub below) into a sparse file, capped (SC-6).
 run "t good.bin $GOOD $U/good.bin
 t derived.bin $GOOD derive:write-sparse:good.bin" t
-expect "a planned derive kind names its milestone" 0 "fetch: PENDING derived.bin (needs cargo xtask write-sparse, M19)"
+expect "write-sparse of a stream xz rejects fails" 1 "fetch: FAILED derived.bin (cargo xtask derive write-sparse exited 1)"
+[[ ! -e "$T/cache/derived.bin" && ! -e "$T/cache/derived.bin.part" ]] && ok "a failed write-sparse leaves nothing in the cache" || not_ok "a failed write-sparse leaves nothing in the cache" "$(ls -la "$T/cache")"
+head -c 4096 /dev/zero > "$T/a.bin"; printf 'AAAA' >> "$T/a.bin"
+SP_HASH="$(shasum -a 256 -- "$T/a.bin")"; SP_HASH="${SP_HASH%% *}"
+xz_stub() { printf '%s' "$1" > "$T/xz.zeros"; printf '%s' "$2" > "$T/xz.bytes"; }
+xz_stub 4096 4
+run "t good.bin $GOOD $U/good.bin
+t sparse.raw $SP_HASH derive:write-sparse:good.bin" t
+expect "write-sparse turns the xz stream into the pinned raw" 0 "fetch: OK sparse.raw $SP_HASH"
+# SC-6: a stream over the cap. 2 MiB of non-zero bytes against a 1 MiB cap.
+xz_stub 0 2097152
+export MACVMM_SPARSE_CAP=1048576
+run "t good.bin $GOOD $U/good.bin
+t big.raw $GOOD derive:write-sparse:good.bin" t
+expect "an xz stream over the cap fails the derive" 1 "fetch: FAILED big.raw (cargo xtask derive write-sparse exited 1)"
+[[ "$out" == *"larger than the 1048576-byte cap"* ]] && ok "the cap is named in the error" || not_ok "the cap is named in the error" "$out"
+[[ ! -e "$T/cache/big.raw" && ! -e "$T/cache/big.raw.part" ]] && ok "an over-cap derived file is deleted" || not_ok "an over-cap derived file is deleted" "$(ls -la "$T/cache")"
+# The cached raw is re-verified, not re-derived.
+xz_stub 4096 4
+rm -f -- "$T/xz.log"
+run "t good.bin $GOOD $U/good.bin
+t sparse.raw $SP_HASH derive:write-sparse:good.bin" t
+expect "the derived sparse raw is cached on the second run" 0 "fetch: cached sparse.raw"
+# A cap above 16 GiB in the environment is ignored, not an error, and the derive really runs
+# under it (the cached raw is removed first). That the value can only *lower* the cap is
+# proven by the unit test cap_env_can_only_lower_the_cap (crates/xtask/src/sparse.rs): a
+# stream over 16 GiB is too large for this script.
+rm -f -- "$T/cache/sparse.raw" "$T/xz.log"
+export MACVMM_SPARSE_CAP=99999999999999
+run "t good.bin $GOOD $U/good.bin
+t sparse.raw $SP_HASH derive:write-sparse:good.bin" t
+expect "a cap above 16 GiB is ignored and the derive succeeds" 0 "fetch: OK sparse.raw $SP_HASH"
+grep -q -- "-dc" "$T/xz.log" 2>/dev/null && ok "the derive ran xz under the oversized cap" || not_ok "the derive ran xz under the oversized cap" "$(cat "$T/xz.log" 2>/dev/null)"
+unset MACVMM_SPARSE_CAP
+# The free-space check runs before xz (the stub df reports 1 GiB free).
+rm -f -- "$T/cache/sparse.raw" "$T/xz.log"
+export DF_STUB_KIB=1048576
+run "t good.bin $GOOD $U/good.bin
+t sparse.raw $SP_HASH derive:write-sparse:good.bin" t
+expect "write-sparse needs 8 GiB free" 1 "fetch: FAILED sparse.raw (needs at least 8 GiB free"
+[[ ! -e "$T/xz.log" ]] && ok "xz never runs when the disk is too full" || not_ok "xz never runs when the disk is too full" "$(cat "$T/xz.log")"
+unset DF_STUB_KIB
+# SC-8: a backdoored xz release (CVE-2024-3094) is refused before it decompresses anything.
+rm -f -- "$T/xz.log"
+printf '5.6.1' > "$T/xz.version"
+run "t good.bin $GOOD $U/good.bin
+t sparse.raw $SP_HASH derive:write-sparse:good.bin" t
+expect "xz 5.6.1 is refused" 1 "xz 5.6.1 is a CVE-2024-3094 backdoored release"
+grep -q -- "-dc" "$T/xz.log" && not_ok "a refused xz never decompresses" "$(cat "$T/xz.log")" || ok "a refused xz never decompresses"
+rm -f -- "$T/xz.version"
+# The backdoor lives in liblzma: a clean xz program reporting a 5.6.1 liblzma is refused too.
+rm -f -- "$T/xz.log"
+printf '5.6.1' > "$T/xz.libversion"
+run "t good.bin $GOOD $U/good.bin
+t sparse.raw $SP_HASH derive:write-sparse:good.bin" t
+expect "a 5.6.1 liblzma is refused" 1 "liblzma 5.6.1 is a CVE-2024-3094 backdoored release"
+grep -q -- "-dc" "$T/xz.log" && not_ok "a refused liblzma never decompresses" "$(cat "$T/xz.log")" || ok "a refused liblzma never decompresses"
+rm -f -- "$T/xz.libversion"
+rm -f -- "$T/xz.zeros" "$T/xz.bytes"
 
 # 6b. M9: the unzboot derive kind is real. A synthetic EFI zboot (zboot-header.S layout: MZ,
 #     zimg, payload offset 0x40 and size, "gzip") around a gzip of a fake arm64 Image.
@@ -191,7 +282,9 @@ t derived.bin $GOOD derive:extract-apk:good.bin:$bad_arg" t
 done
 run "t good.bin $GOOD $U/good.bin
 t derived.bin $GOOD derive:extract-apk:good.bin:usr/share/u-boot/qemu_arm64/u-boot.bin" t
-expect "a relative derive argument is accepted (PENDING until M18)" 0 "fetch: PENDING derived.bin (needs cargo xtask extract-apk, M18)"
+# M18: extract-apk is implemented; good.bin is no gzip package, so the derive itself fails (the
+# argument passed the manifest checks and reached xtask).
+expect "a relative derive argument reaches extract-apk (M18), which refuses a non-apk" 1 "fetch: FAILED derived.bin (cargo xtask derive extract-apk exited 1)"
 
 # 7. SC-5: an input whose hash mismatches never reaches xtask.
 rm -f -- "$T/cargo.log"

@@ -1,0 +1,35 @@
+# Checkpoint 07 `exit-loop` (CURRICULUM §5 ch07).
+id = "07"
+slug = "exit-loop"
+requires = ["06"]
+
+[contract]
+crates = ["vmm", "hvf"]
+tests = ["contract/esr_vectors.rs"]
+
+[[run]]
+name = "mmio-probe"
+guest = "mmio-probe"
+args = ["run", "--mem", "64M", "--testdev", "--raw", "{guest_raw}", "--trace", "exits:{out}/t.jsonl:mmio", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/mmio-probe.txt"
+trace = "expected/mmio-probe.trace.txt"
+
+# ch06's self-fault again, now with the last-exits ring in the dump.
+[[run]]
+name = "self-fault"
+guest = "self-fault"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+expect_exit_code = 3
+serial = "expected/self-fault.txt"
+
+[journal]
+file = "journal/07.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "A data abort with ISV=1 carries the whole instruction in its syndrome: size, register, sign extension, direction. Decode, then emulate."
+spec = "ARM ARM ESR_EL2 ISS encoding for data aborts (ISV, SAS, SSE, SRT, SF, WnR); register 31 is XZR here, never SP."
+pseudocode = "ec == 0x24 && isv -> size = 1 << sas; write: value = x[srt] masked (0 for 31); read: sign-extend if sse, zero-extend to 32 if !sf; pc += 4."
+anchor = "crates/vmm/src/arch/esr.rs (Exit::decode) and crates/vmm/src/vcpu/mmio.rs."

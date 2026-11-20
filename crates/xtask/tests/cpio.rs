@@ -40,7 +40,18 @@ fn golden_single_init_and_trailer() {
 
 #[test]
 fn names_are_checked_and_parents_emitted() {
-    for bad in ["", "/init", "a/../b", "./x", "a//b", "..", "a\0b"] {
+    // "TRAILER!!!": M22 fuzz regression (the `cpio` target), an early end-of-archive entry.
+    for bad in [
+        "",
+        "/init",
+        "a/../b",
+        "./x",
+        "a//b",
+        "..",
+        "a\0b",
+        "TRAILER!!!",
+        "TRAILER!!!/x",
+    ] {
         assert!(cpio::check_name(bad).is_err(), "{bad:?}");
     }
     let mut a = Newc::new();

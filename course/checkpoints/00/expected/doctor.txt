@@ -1,0 +1,6 @@
+doctor: hv_vm_create: OK
+doctor: max IPA: * bits (default *)
+doctor: EL2 supported: *
+doctor: codesign entitlements: com.apple.security.hypervisor only
+DOCTOR OK
+!DOCTOR FAILED

@@ -1,0 +1,14 @@
+# scripts/capture.sh 09: run "tty-escape" of course/checkpoints/09, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 09; never edit by hand (CURRICULUM §3.6).
+$ /usr/bin/script -q /dev/null /bin/sh -c stty -g; "$0" run --mem 64M --raw "$1" --timeout 10; echo "rc=$?"; stty -g {macvmm} {guests}/uart-echo.bin@0x40080000
+exit: 0
+--- stdout ---
+gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600\r
+macvmm: console attached; Ctrl-A x quits, Ctrl-A h lists the escapes\r
+uart-echo: ready\r
+\u{1b}[0m\u{1b}[?25h\u{1b}[?1049l\u{1b}[?1047l\u{1b}[?47l\u{1b}[?2004l\u{1b}[?1l\u{1b}[?7h\u{1b}[?12l\u{1b}[0 q\u{1b}[4l\u{1b}>\u{1b}(B\u{1b})B\u{1b}7\u{1b}[r\u{1b}8macvmm: user quit\r
+rc=130\r
+gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600\r
+
+--- stderr ---
+

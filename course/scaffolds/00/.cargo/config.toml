@@ -1,0 +1,9 @@
+# Every binary cargo runs goes through the course's signing runner, which signs binaries that
+# link Hypervisor.framework with the one entitlement, com.apple.security.hypervisor (ch01).
+[target.aarch64-apple-darwin]
+runner = ["../scripts/sign-and-run.sh"]
+
+# Build output goes under the course repository's target/ (the only place the signing
+# scripts sign, SIGN-4), never into this workspace.
+[build]
+target-dir = "../target/learner"

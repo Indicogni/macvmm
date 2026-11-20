@@ -1,0 +1,28 @@
+# scripts/capture.sh 08: run "psci-probe" of course/checkpoints/08, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 08; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --mem 64M --raw {guests}/psci-probe.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+psci-probe: version=0x10001 ok
+psci-probe: smccc_version=0x10001 ok
+psci-probe: features(CPU_ON)=0 ok
+psci-probe: features(0x84000099)=-1 ok
+psci-probe: sip(0x82000000)=-1 ok
+psci-probe: affinity_info(0,0)=0 ok
+psci-probe: cpu_on(1)=-2 ok
+psci-probe: migrate_info_type=2 ok
+psci-probe: boot 0
+psci-probe: version=0x10001 ok
+psci-probe: smccc_version=0x10001 ok
+psci-probe: features(CPU_ON)=0 ok
+psci-probe: features(0x84000099)=-1 ok
+psci-probe: sip(0x82000000)=-1 ok
+psci-probe: affinity_info(0,0)=0 ok
+psci-probe: cpu_on(1)=-2 ok
+psci-probe: migrate_info_type=2 ok
+psci-probe: boot 1
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: unknown SMCCC function 0x82000000; returning -1
+macvmm: warn: [vcpu0] guest: unknown SMCCC function 0x82000000; returning -1
+

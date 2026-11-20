@@ -1,0 +1,9 @@
+# scripts/capture.sh 03: run "timeout" of course/checkpoints/03, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 03; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --mem 64M --raw {out}/blob.bin@0x40080000 --timeout 1
+exit: 5
+--- stdout ---
+
+--- stderr ---
+macvmm: timeout: the guest was still running after --timeout 1s
+

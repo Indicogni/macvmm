@@ -1,0 +1,82 @@
+#!/bin/sh
+# /sbin/macvmm-init: PID 1 of the macvmm ext4 test root (PLAN M15; course ch18 part 2). It runs
+# INSIDE the guest only, after the initramfs `rootfs` case did `exec switch_root /newroot
+# /sbin/macvmm-init`; it is never executed on the host (SC-4). `cargo xtask mkrootfs` copies
+# it into the image (crates/xtask/src/rootfs.rs).
+#
+# The reboot-persistence test (`linux_rootfs_persist`):
+# - boot 1 (no /persist.bin): fix ownership, write 16 MiB of /dev/urandom to /persist.bin and
+#   its sha256 to /persist.sha, sync, then `reboot -f`. busybox reboot -f calls reboot(2)
+#   directly, which on arm64 Linux is a PSCI SYSTEM_RESET HVC (DEN0022 §5.1.10); macvmm's
+#   default `--on-reset reboot` rebuilds the VM over the same open disk file.
+# - boot 2: re-hash /persist.bin, compare with /persist.sha, print the verdict, `poweroff -f`
+#   (PSCI SYSTEM_OFF, exit code 0).
+#
+# Before either exit the root is remounted read-only: that commits the ext4 journal and marks
+# the filesystem clean (fs/ext4/super.c ext4_remount -> ext4_mark_recovery_complete), so the
+# host's read-only `e2fsck -fn` on the test's clone sees a consistent image (SC-14).
+# Markers follow PLAN §0.3: `macvmm-rootfs: <message>`.
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+# Leave the guest without ever returning: PID 1 exiting would panic the kernel.
+finish() {
+  sync
+  mount -o remount,ro / || echo "macvmm-rootfs: FAILED remount ro"
+  sync
+  "$1" -f
+  while :; do sleep 1; done
+}
+
+# The boot counter lives on the disk, so it is itself a persistence check.
+n="$(cat /boot-count 2>/dev/null || echo 0)"
+case "$n" in
+  ''|*[!0-9]*) n=0 ;;
+esac
+n=$((n + 1))
+echo "$n" > /boot-count
+echo "macvmm-rootfs: boot $n"
+
+if [ ! -f /persist.bin ]; then
+  # First boot. Staged files carry the host builder's uid (mkfs.ext4 -d copies it; only the
+  # root directory gets -E root_owner=0:0), so ownership is fixed here, inside the guest
+  # (SC-9). -h: change symlinks themselves, never their targets. /proc, /sys and /dev are
+  # kernel filesystems and are skipped. The marker is earned, not assumed: every chown's
+  # status is kept, and afterwards `find -xdev` (the root filesystem only) must find no file
+  # left with another owner or group; otherwise the FAILED marker the test forbids is printed.
+  bad=""
+  for p in /* /.[!.]*; do
+    case "$p" in
+      /proc|/sys|/dev|'/.[!.]*') continue ;;
+    esac
+    chown -Rh 0:0 "$p" || bad="$bad $p"
+  done
+  chown 0:0 / || bad="$bad /"
+  left="$(find / -xdev \( ! -user 0 -o ! -group 0 \) 2>/dev/null | head -n 1)"
+  if [ -n "$bad" ]; then
+    echo "macvmm-rootfs: FAILED chown$bad"
+  elif [ -n "$left" ]; then
+    echo "macvmm-rootfs: FAILED chown: $left is not 0:0"
+  else
+    echo "macvmm-rootfs: ownership fixed"
+  fi
+  if head -c 16777216 /dev/urandom > /persist.bin; then
+    sha256sum /persist.bin | cut -d' ' -f1 > /persist.sha
+    echo "macvmm-rootfs: wrote /persist.bin sha256=$(cat /persist.sha)"
+  else
+    echo "macvmm-rootfs: FAILED writing /persist.bin"
+    finish poweroff
+  fi
+  echo "macvmm-rootfs: rebooting"
+  finish reboot
+fi
+
+want="$(cat /persist.sha 2>/dev/null)"
+got="$(sha256sum /persist.bin | cut -d' ' -f1)"
+size="$(wc -c < /persist.bin)"
+if [ -n "$want" ] && [ "$want" = "$got" ] && [ "$size" -eq 16777216 ]; then
+  echo "macvmm-rootfs: persist ok sha256=$got"
+else
+  echo "macvmm-rootfs: FAILED persist size=$size sha256=$got want=$want"
+fi
+finish poweroff

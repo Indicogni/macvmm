@@ -6,7 +6,12 @@
 //! decode the instruction behind an ISV = 0 data abort (`crates/vmm/src/arch/insn.rs`) must then
 //! fetch it through the guest's own page tables and cross-check the decoded address the same
 //! way (`crates/vmm/src/arch/stage1_walk.rs`, threat model MMIO-4/MMIO-5). With the MMU off,
-//! VA = IPA and a VMM that ignores the tables would still pass; this map makes it fail.
+//! VA = IPA and a VMM that ignores the tables would still pass. The identity entries alone do
+//! not change that, since VA = IPA there too; what makes such a VMM fail is the aliases below.
+//! [`TESTDEV_ALIAS`] proves the walk of the *data* address (the decoded base register), and
+//! [`CODE_ALIAS`] proves the walk of the *PC*: code run through it faults with a PC whose
+//! identity IPA is not RAM, so a VMM that read the instruction at the PC as an IPA would find
+//! nothing there.
 //!
 //! **The map** (ARM ARM DDI 0487, D8.2 "Translation process" and D8.3 "Translation table
 //! descriptor formats", 4 KiB granule, `T0SZ = 25`: 39-bit VAs, so the walk starts at level 1
@@ -15,6 +20,7 @@
 //! | VA | → IPA | How | Attributes |
 //! |---|---|---|---|
 //! | `0x4000_0000` + 1 GiB | identity | level-1 block | Normal write-back (MAIR attr 1) |
+//! | [`CODE_ALIAS`] + 1 GiB | RAM (`0x4000_0000`) | level-1 block | Normal write-back, executable |
 //! | `0x0900_0000` + 2 MiB (PL011, PL031) | identity | level-2 block | Device-nGnRnE (attr 0), XN |
 //! | `0x0b00_0000` + 4 KiB (testdev) | identity | level-3 page | Device-nGnRnE, XN |
 //! | [`TESTDEV_ALIAS`] + 4 KiB | the testdev page | level-3 page | Device-nGnRnE, XN |
@@ -44,6 +50,15 @@ pub const UART: u64 = 0x0900_0000;
 pub const TESTDEV_ALIAS: u64 = 0x0b10_0000;
 /// The page right after [`TESTDEV_ALIAS`], mapped to the PL011.
 pub const UART_ALIAS: u64 = TESTDEV_ALIAS + PAGE;
+/// A second VA for all of RAM (module docs): RAM address `a` is also VA
+/// `a - 0x4000_0000 + CODE_ALIAS`. Its identity IPA (`0x8000_0000`, past the end of any guest
+/// RAM a test uses) is not RAM.
+pub const CODE_ALIAS: u64 = 0x8000_0000;
+
+/// The alias VA of the RAM address `a` (`a` must be in RAM).
+pub const fn code_alias(a: u64) -> u64 {
+    a - RAM + CODE_ALIAS
+}
 
 const PAGE: u64 = 0x1000;
 const RAM: u64 = 0x4000_0000;
@@ -103,6 +118,7 @@ pub fn enable() {
     // 4 KiB-aligned statics in RAM, which is identity-mapped by the same tables.
     unsafe {
         set(l1, idx(RAM, 30), RAM | NORMAL | BLOCK);
+        set(l1, idx(CODE_ALIAS, 30), RAM | NORMAL | BLOCK);
         set(l1, 0, l2 as u64 | TABLE_OR_PAGE);
         set(l2, idx(UART, 21), UART | DEVICE | BLOCK);
         set(l2, idx(TESTDEV, 21), l3 as u64 | TABLE_OR_PAGE);

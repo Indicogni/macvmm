@@ -24,9 +24,29 @@ M5 Pro, macOS 27.2.1 (build 26B131), Virtualization.framework `CFBundleVersion` 
 
 ## S1: AVPBooter in macvmm (PLAN M21)
 
-Not started (blocked on ADR-0009, risk R10).
+Scope: ADR-0009 (= DECISIONS D4): AVPBooter is read in place from the system path, only its
+first device accesses are logged, nothing is disassembled, and per-access logs are not
+published. ROM tested: `AVPBooter.vmapple2.bin`, 335,096 bytes, sha256 `9cefbfa5e7478945…`
+(the prefix only identifies the version; the file itself is never copied: TEST-11).
+
+| Date | Line | Evidence |
+|---|---|---|
+| 2026-11-19 | **observed** AVPBooter executes in macvmm. `macvmm run --machine vmapple --bios <AVPBooter> --mem 4G --unhandled-mmio log --trace exits:$T/avp.jsonl --timeout 20` (feature build) prints `vmapple: first exit at pc=0x103478` (inside the ROM window `0x10_0000..0x20_0000`), then `vmapple: 34 unknown MMIO accesses logged` (33 in the `cfg` row, 1 in the `pvpanic` row), and ends with `macvmm: timeout: the guest was still running after --timeout 20s` (exit 5): no hypercall stop, and no exit after the last logged access. Re-observed 2026-11-19 after the review fixes (per-access lines now on stderr at the default level; ISV=0 refusals counted): the same first-exit PC, count and rows. | `e2e_vmapple::vmapple_first_probe` |
+| 2026-11-19 | **blocked at** the `cfg` block (S2): macvmm does not model it, so every read of it returns 0 and every write is dropped. After its last logged access the ROM makes no further exit for the rest of the run. Whether it is waiting for a value S2 would provide is **unknown** (we do not inspect its code, ADR-0009). Next step: S2 fills `cfg` from QEMU-documented facts and the bundle's ECID, then the trace is repeated. | the run above |
+| 2026-11-19 | **observed** with the default `--unhandled-mmio fatal`, the first unknown access is logged and stops the VM, exit 3. | `e2e_vmapple::vmapple_fatal_by_default` |
+| 2026-11-19 | **observed** the SLA guard: with two vmapple instances running, a third exits 2 with `vmapple: all 2 macOS-VM slots … are in use`; the lock directory is `0700`. The slots are per user (`$HOME/.cache/macvmm/vmapple-slots`): with both held, a run from another directory with another `MACVMM_CACHE` is still refused. The guard is advisory (HVF enforces no limit of its own). | `e2e_vmapple::vmapple_third_instance_refused`, `e2e_vmapple::vmapple_slots_are_per_user` |
+| 2026-11-19 | **observed** the default build refuses `--machine vmapple` with `built without experimental-vmapple` (exit 2). | `e2e_vmapple::vmapple_needs_the_feature` |
+| 2026-11-19 | **observed** `tools/hv-denied-probe/run.sh` (signed like macvmm: only `com.apple.security.hypervisor`, hardened runtime): `hv_vm_config_set_isa(3): 0x00000000`, `hv_vm_create with private ISA 3: HV_DENIED (0xfae94007)`. | `e2e_vmapple::hv_denied_probe` |
+| 2026-11-19 | **observed** no file in the repo (build outputs included; about 290,000 files) or in `.cache/` has AVPBooter's sha256. | `e2e_vmapple::avpbooter_never_copied` |
+
+Status line: **observed** AVPBooter's first exit at `pc=0x103478` and 34 unknown device
+accesses (cfg, pvpanic); **blocked at** the unmodelled `cfg` block (S2). macOS does not boot in
+macvmm, and nothing here claims it does.
 
 ## Open points for the lead
+
+- **M21 / S1** is done to its exit criterion (above). S2 (cfg, bdif, pvpanic, PL031/PL061 at
+  the vmapple bases) is post-v1 research with no boot promise (ADR-0008 decision 7).
 
 - **ADR-0008 decision 5**: resolved. The ADR's status line now records the lead's approval as
   DECISIONS **D3**, which is why vz-mac implements `--latest` (opt-in, never in tests) instead of

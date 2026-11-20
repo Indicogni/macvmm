@@ -22,7 +22,21 @@
 //! `--stats` with the exit counts, exec/WFI time and host CPU, and adds the hidden
 //! `--irqchip none` (the ch11 no-GIC teaching mode, architecture §9.1; not in `--help`, PLAN
 //! D13). M9 adds `--initrd F`, `--cmdline S` and `--dry-run`, and `--kernel` accepts an arm64
-//! Image (an EFI zboot is refused with a hint, exit code 2; LDR-4).
+//! Image (an EFI zboot is refused with a hint, exit code 2; LDR-4). M12 adds `--rng`; M14
+//! `--disk F[,ro]` (repeatable; [`parse_disk`]). M21
+//! adds `--machine virt|vmapple` and `--bios F`: `vmapple` exists only in a build with the
+//! `experimental-vmapple` feature (otherwise exit code 2), defaults `--bios` to the system's
+//! AVPBooter, and takes its SLA lock files in `$HOME/.cache/macvmm/vmapple-slots`: one directory
+//! per user, whatever the working directory or `MACVMM_CACHE` (ADR-0008 decision 6). M13 adds
+//! `--console stdio|file:F[,strict|,raw][,max=SIZE]`, a virtio-console with its own sink (same
+//! grammar and rules as `--serial`, but no `none`); at most one of the two sinks may be
+//! `stdio`, and that one gets stdin (architecture §14.4). M16 adds `--cpus N` (1..=64, and
+//! at most `hv_vm_get_max_vcpu_count`, checked when the VM is built). M18 accepts `--bios F` on
+//! the `virt` machine: firmware (U-Boot) in flash bank 0, alone (no `--kernel`, `--raw`,
+//! `--initrd` or `--cmdline`; `VmConfig::validate`).
+//! M22 adds `--sandbox[=best-effort]` and the hidden `--sandbox-selftest` (`sandbox.rs`; threat
+//! model SBX-1..SBX-4): they are split off before [`parse_run`], and the lockdown is applied
+//! after `HostIo::open` and the host threads, right before the first guest instruction.
 //!
 //! **M6: the terminal and the exit path.** Before the VM starts, `run` puts the terminal in raw
 //! mode when stdin is a TTY and the serial sink is `stdio` (`term.rs`, PROC-1), starts the
@@ -37,8 +51,9 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 use vmm::backend::ansi::FilterPolicy;
+use vmm::backend::serial::StdinBinding;
 use vmm::config::{DebugHvc, IrqChip, MAX_TIMEOUT, MmioPolicy, ResetAction, TraceSpec, VmConfig};
-use vmm::config::{SinkKind, SinkSpec};
+use vmm::config::{DiskSpec, SinkKind, SinkSpec};
 use vmm::trace::TraceCats;
 use vmm::{HostIo, StopReason};
 
@@ -47,11 +62,20 @@ usage: macvmm run [options]
 
 options:
   --mem SIZE               guest RAM, e.g. 64M, 2G (default 512M; 64M..255G, a multiple of 2M)
+  --cpus N                 number of vCPUs, 1..64 and at most what this Mac allows (default 1);
+                           vCPU 0 boots, the others wait for PSCI CPU_ON
   --kernel FILE            an ELF test guest or an arm64 Linux Image (detected from its
                            bytes; an EFI zboot vmlinuz is refused: run scripts/fetch.sh linux)
   --initrd FILE            an initramfs for an Image kernel, placed above the kernel
   --cmdline STRING         the kernel command line for an Image (at most 2047 bytes; default
                            console=ttyAMA0 earlycon=pl011,<the PL011 address>)
+  --machine BOARD          virt (default) or vmapple (experimental: AVPBooter's first device
+                           accesses, needs a build with --features experimental-vmapple;
+                           it does not boot macOS; at most two per user, an advisory lock
+                           in $HOME/.cache/macvmm/vmapple-slots)
+  --bios FILE              a firmware ROM image, at most 64 MiB (virt: U-Boot in flash
+                           bank 0, entered at 0x0 instead of --kernel; vmapple: default the
+                           system AVPBooter, read in place and never copied)
   --dry-run                print the boot plan, memory map and device-tree summary, then exit
                            0 without creating a VM (needs no entitlement)
   --raw FILE@0xADDR        load FILE's bytes at guest-physical ADDR (repeatable); the first
@@ -63,6 +87,19 @@ options:
                            symlink). CATS: comma-separated mmio,hvc,sysreg,psci,cancel,all
                            (default all). SIZE caps the file (default 1G)
   --testdev                map the 512-register test device at 0x0b000000
+  --disk FILE[,ro]         add a virtio-blk disk backed by the raw image FILE (repeatable;
+                           the first is /dev/vda). ,ro opens it read-only. The image is
+                           locked (flock) while macvmm runs; a locked image is refused
+  --rng                    add a virtio-rng device fed by the host CSPRNG (getentropy)
+  --net unixgram:LOCAL,peer=REMOTE[,mac=XX:XX:XX:XX:XX:XX]
+                           add a virtio-net NIC whose wire is a Unix datagram socket bound
+                           at LOCAL; frames go to, and are accepted only from, the socket at
+                           REMOTE (another macvmm's LOCAL). Both must be in a directory you
+                           own that is not group- or world-writable. A stale socket of yours
+                           at LOCAL is replaced; anything else there is refused. Repeatable
+                           (at most 4). Default MAC 02:6d:76 plus 3 random bytes.
+                           unixgram:LOCAL,learn instead locks the peer to the first sender
+                           (logged). No host network access and no entitlement
   --on-reset ACTION        reboot (default: rebuild the VM in-process) or exit (exit code 4)
                            when the guest calls PSCI SYSTEM_RESET
   --debug-hvc, --no-debug-hvc
@@ -76,9 +113,18 @@ options:
                            (created 0600, never a symlink, capped at SIZE, default 1G) or none.
                            Guest output is filtered for terminal safety; strict shows every
                            control visibly, raw disables the filter (not recommended)
+  --console SINK[,strict|,raw][,max=SIZE]
+                           add a virtio-console (Linux /dev/hvc0) whose output goes to stdio
+                           or file:FILE, filtered like --serial. At most one of --serial and
+                           --console may be stdio, and that one gets stdin: --console stdio
+                           needs --serial file:FILE or --serial none
   --stats                  print the console I/O counters, the exit counts, the vCPU exec and
                            WFI time and the host CPU time when the VM stops
   --log LEVEL              error|warn|info|debug|trace (default warn; also MACVMM_LOG)
+  --sandbox[=best-effort]  after opening every file, confine macvmm: no file opened by path, no
+                           network, no new process (macOS sandbox, threat model SBX-2). Exits 1
+                           if the sandbox cannot be applied; best-effort warns and runs anyway.
+                           Not with --net ...,learn
 ";
 
 /// Parse a size with an optional binary suffix: `K`, `M`, `G` (case-insensitive; `KiB`,
@@ -162,6 +208,7 @@ pub fn parse_trace(s: &str) -> Result<TraceSpec, String> {
 pub fn parse_run(args: &[String]) -> Result<VmConfig, String> {
     let mut cfg = VmConfig::default();
     let mut serial_seen = false;
+    let mut console_seen = false;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         let (flag, inline) = match arg.split_once('=') {
@@ -176,6 +223,9 @@ pub fn parse_run(args: &[String]) -> Result<VmConfig, String> {
         };
         match flag {
             "--mem" => cfg.mem_bytes = parse_size(&value()?).map_err(|e| format!("--mem: {e}"))?,
+            // M16 (architecture §8.1): the range (1..=MAX_CPUS) is `VmConfig::validate`'s; the
+            // host's own limit (`hv_vm_get_max_vcpu_count`) is checked in `Machine::build`.
+            "--cpus" => cfg.cpus = parse_cpus(&value()?)?,
             "--kernel" => {
                 if cfg.boot.kernel.is_some() {
                     return Err("--kernel given twice".into());
@@ -229,6 +279,31 @@ pub fn parse_run(args: &[String]) -> Result<VmConfig, String> {
                 }
                 cfg.testdev = true;
             }
+            // M21: the board, and a firmware ROM image (read by HostIo, LDR-1).
+            "--machine" => {
+                cfg.machine = parse_machine(&value()?)?;
+            }
+            "--bios" => {
+                if cfg.boot.bios.is_some() {
+                    return Err("--bios given twice".into());
+                }
+                let path = value()?;
+                if path.is_empty() {
+                    return Err("--bios needs a file name".into());
+                }
+                cfg.boot.bios = Some(PathBuf::from(path));
+            }
+            // M12: virtio-rng, in the slot after the disks (ADR-0005).
+            // M14: virtio-blk, one per flag, in CLI order (ADR-0005: before every other device).
+            "--disk" => cfg.disks.push(parse_disk(&value()?)?),
+            // M24: virtio-net, one per flag, after the console (ADR-0005).
+            "--net" => cfg.net.push(parse_net(&value()?)?),
+            "--rng" => {
+                if inline.is_some() {
+                    return Err("--rng takes no value".into());
+                }
+                cfg.rng = true;
+            }
             // M5: what SYSTEM_RESET does, and the HC-2 override of the debug-call default.
             "--on-reset" => {
                 cfg.on_reset = match value()?.as_str() {
@@ -271,6 +346,21 @@ pub fn parse_run(args: &[String]) -> Result<VmConfig, String> {
                 serial_seen = true;
                 cfg.serial = parse_serial(&value()?)?;
             }
+            // M13: the virtio-console sink (TTY-1/2, LOG-4, PATH-3..6), in the slot after --rng.
+            "--console" => {
+                if console_seen {
+                    return Err("--console given twice".into());
+                }
+                console_seen = true;
+                let spec = parse_sink("--console", &value()?)?;
+                if spec.kind == SinkKind::None {
+                    return Err(
+                        "invalid --console: use stdio or file:FILE (leave it out for no console)"
+                            .into(),
+                    );
+                }
+                cfg.console = Some(spec);
+            }
             "--stats" => {
                 if inline.is_some() {
                     return Err("--stats takes no value".into());
@@ -288,14 +378,151 @@ pub fn parse_run(args: &[String]) -> Result<VmConfig, String> {
             other => return Err(format!("run: unknown flag {other:?}")),
         }
     }
+    vmapple_defaults(&mut cfg);
     cfg.validate().map_err(|e| e.to_string())?;
     Ok(cfg)
 }
+
+/// Parse the `--cpus` count: decimal digits only (no sign, no `0x`), so `--cpus -1` or
+/// `--cpus 4k` is a usage error rather than a surprise.
+fn parse_cpus(s: &str) -> Result<u32, String> {
+    if s.is_empty() || !s.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(format!(
+            "invalid --cpus {s:?}: use a number from 1 to {}",
+            vmm::arch::layout::MAX_CPUS
+        ));
+    }
+    s.parse::<u32>().map_err(|_| {
+        format!(
+            "invalid --cpus {s:?}: use a number from 1 to {}",
+            vmm::arch::layout::MAX_CPUS
+        )
+    })
+}
+
+/// Parse `--machine` (M21). `vmapple` needs the `experimental-vmapple` build (ADR-0008).
+fn parse_machine(s: &str) -> Result<vmm::arch::layout::MachineProfile, String> {
+    use vmm::arch::layout::MachineProfile;
+    match s {
+        "virt" => Ok(MachineProfile::Virt),
+        #[cfg(feature = "experimental-vmapple")]
+        "vmapple" => Ok(MachineProfile::VmApple),
+        #[cfg(not(feature = "experimental-vmapple"))]
+        "vmapple" => Err(
+            "--machine vmapple: built without experimental-vmapple (rebuild with \
+             `--features experimental-vmapple`; PLAN M21)"
+                .into(),
+        ),
+        other => Err(format!("invalid --machine {other:?}: virt|vmapple")),
+    }
+}
+
+/// M21: on `--machine vmapple`, default `--bios` to the system AVPBooter (read in place, never
+/// copied: ADR-0008 decision 3) and name the SLA lock directory (ADR-0008 decision 6).
+fn vmapple_defaults(cfg: &mut VmConfig) {
+    if cfg.machine == vmm::arch::layout::MachineProfile::Virt {
+        return;
+    }
+    if cfg.boot.bios.is_none() {
+        cfg.boot.bios = Some(PathBuf::from(vmm::loader::firmware::AVPBOOTER_VMAPPLE2));
+    }
+    cfg.vmapple_slots = vmapple_slot_dir(std::env::var_os("HOME"));
+}
+
+/// The SLA lock directory for the user whose `HOME` is `home`: `$HOME/.cache/macvmm/vmapple-slots`.
+///
+/// **Why `HOME`, and not `MACVMM_CACHE` or the working directory.** The licence counts macOS VMs
+/// per Mac; a lock directory that moved with the current directory or the download cache would
+/// count them per directory, and two shells in two checkouts could start four. One fixed
+/// directory per user is the most a `0700` lock can do: it cannot see another user's VMs, and
+/// HVF, unlike VZ, enforces no limit of its own. So the guard is advisory and per user (it
+/// stops accidents, not someone who sets `HOME` elsewhere). `None` (no absolute `HOME`) makes
+/// `--machine vmapple` refuse to start (`machine::vmapple::validate`).
+fn vmapple_slot_dir(home: Option<std::ffi::OsString>) -> Option<PathBuf> {
+    let home = PathBuf::from(home.filter(|h| !h.is_empty())?);
+    home.is_absolute()
+        .then(|| home.join(".cache/macvmm/vmapple-slots"))
+}
+
+// ANCHOR: cli_parse_disk
+/// `--disk FILE[,ro]` (M14). The only option is a trailing `,ro`; anything else after the last
+/// comma is part of the file name, so a path containing a comma still works
+/// (`--disk 'a,b.img'`), and `--disk 'a,b.img,ro'` is `a,b.img` read-only.
+pub fn parse_disk(s: &str) -> Result<DiskSpec, String> {
+    let (path, read_only) = match s.strip_suffix(",ro") {
+        Some(p) => (p, true),
+        None => (s, false),
+    };
+    if path.is_empty() {
+        return Err("--disk needs a file name".into());
+    }
+    Ok(DiskSpec {
+        path: PathBuf::from(path),
+        read_only,
+    })
+}
+// ANCHOR_END: cli_parse_disk
+
+// ANCHOR: cli_parse_net
+/// Parse `--net unixgram:LOCAL,peer=REMOTE[,mac=XX:..]` or `unixgram:LOCAL,learn[,mac=..]`
+/// (M24, architecture §13.1). `peer=` is required unless `,learn` is given, and not both
+/// (threat model NET-2: no silent first-sender learning). Paths cannot contain `,`.
+pub fn parse_net(s: &str) -> Result<vmm::config::NetSpec, String> {
+    use vmm::config::{NetPeer, NetSpec};
+    let rest = s.strip_prefix("unixgram:").ok_or_else(|| {
+        format!("invalid --net {s:?}: the only backend is unixgram:LOCAL,peer=REMOTE")
+    })?;
+    let mut parts = rest.split(',');
+    let local = parts.next().unwrap_or_default();
+    if local.is_empty() {
+        return Err("--net unixgram needs a socket path: unixgram:LOCAL,peer=REMOTE".into());
+    }
+    let (mut peer, mut learn, mut mac) = (None, false, None);
+    for opt in parts {
+        if let Some(p) = opt.strip_prefix("peer=") {
+            if p.is_empty() || peer.is_some() {
+                return Err(format!("invalid --net {s:?}: one non-empty peer=PATH"));
+            }
+            peer = Some(PathBuf::from(p));
+        } else if let Some(m) = opt.strip_prefix("mac=") {
+            if mac.is_some() {
+                return Err(format!("invalid --net {s:?}: mac= given twice"));
+            }
+            mac = Some(vmm::net::parse_mac(m).map_err(|e| format!("--net: {e}"))?);
+        } else if opt == "learn" {
+            learn = true;
+        } else {
+            return Err(format!(
+                "invalid --net option {opt:?}: use peer=PATH, learn or mac=XX:XX:XX:XX:XX:XX"
+            ));
+        }
+    }
+    let peer = match (peer, learn) {
+        (Some(p), false) => NetPeer::Path(p),
+        (None, true) => NetPeer::Learn,
+        (Some(_), true) => {
+            return Err("--net unixgram: give peer=PATH or ,learn, not both".into());
+        }
+        (None, false) => return Err("--net unixgram needs peer=PATH (or ,learn)".into()),
+    };
+    Ok(NetSpec {
+        local: PathBuf::from(local),
+        peer,
+        mac,
+    })
+}
+// ANCHOR_END: cli_parse_net
 
 /// Parse `--serial stdio|file:F|none[,strict|,raw|,safe][,max=SIZE]` (architecture §13.1).
 /// Options are split off the end, so a file name may contain `,` as long as it does not end
 /// like an option. `max=` applies to file sinks only (LOG-4: stdout has no cap).
 pub fn parse_serial(s: &str) -> Result<SinkSpec, String> {
+    parse_sink("--serial", s)
+}
+
+/// The sink grammar shared by `--serial` and `--console` (M13); `flag` names the option in
+/// error messages.
+fn parse_sink(flag: &str, s: &str) -> Result<SinkSpec, String> {
     let mut spec = SinkSpec::default();
     let mut policy: Option<FilterPolicy> = None;
     let mut max: Option<u64> = None;
@@ -309,17 +536,15 @@ pub fn parse_serial(s: &str) -> Result<SinkSpec, String> {
         };
         if let Some(p) = p {
             if policy.replace(p).is_some() {
-                return Err(format!(
-                    "invalid --serial {s:?}: more than one filter policy"
-                ));
+                return Err(format!("invalid {flag} {s:?}: more than one filter policy"));
             }
         } else if let Some(m) = opt.strip_prefix("max=") {
-            let n = parse_size(m).map_err(|e| format!("--serial max: {e}"))?;
+            let n = parse_size(m).map_err(|e| format!("{flag} max: {e}"))?;
             if n == 0 {
-                return Err("--serial max must be at least 1 byte".into());
+                return Err(format!("{flag} max must be at least 1 byte"));
             }
             if max.replace(n).is_some() {
-                return Err(format!("invalid --serial {s:?}: max given twice"));
+                return Err(format!("invalid {flag} {s:?}: max given twice"));
             }
         } else {
             break;
@@ -336,7 +561,7 @@ pub fn parse_serial(s: &str) -> Result<SinkSpec, String> {
             }
             _ => {
                 return Err(format!(
-                    "invalid --serial {s:?}: use stdio, file:FILE or none, then optionally \
+                    "invalid {flag} {s:?}: use stdio, file:FILE or none, then optionally \
                      ,strict or ,raw and ,max=SIZE"
                 ));
             }
@@ -345,7 +570,7 @@ pub fn parse_serial(s: &str) -> Result<SinkSpec, String> {
     if let Some(m) = max {
         if spec.kind != SinkKind::File {
             return Err(format!(
-                "invalid --serial {s:?}: max= applies to file sinks only"
+                "invalid {flag} {s:?}: max= applies to file sinks only"
             ));
         }
         spec.max_bytes = m;
@@ -388,8 +613,40 @@ fn exit(code: i32) -> ExitCode {
     ExitCode::from(u8::try_from(code).unwrap_or(1))
 }
 
+/// M22 (SBX-3, SBX-4): apply `--sandbox[=best-effort]` and the optional self-test. `Err` is
+/// the line to print before exiting 1 (enforce mode could not lock down, or the self-test
+/// failed); best-effort warns and carries on unconfined. Called once every host file is open.
+fn confine(sandbox: crate::sandbox::Opts, cfg: &VmConfig) -> Result<(), String> {
+    use crate::sandbox::Mode;
+    if sandbox.mode == Mode::Off {
+        return Ok(());
+    }
+    match crate::sandbox::lockdown(cfg) {
+        Ok(_) => {}
+        Err(e) if sandbox.mode == Mode::BestEffort => err(&format!(
+            "macvmm: warning: --sandbox=best-effort: {e}; running WITHOUT the sandbox"
+        )),
+        Err(e) => return Err(format!("macvmm: --sandbox: {e}")),
+    }
+    if sandbox.selftest {
+        let line = crate::sandbox::selftest().map_err(|line| format!("macvmm: {line}"))?;
+        err(&format!("macvmm: {line}"));
+    }
+    Ok(())
+}
+
 /// `macvmm run …`.
 pub fn run(args: &[String]) -> ExitCode {
+    // M22: the sandbox flags are not part of the VM's configuration.
+    let (sandbox, args) = match crate::sandbox::split_flags(args) {
+        Ok(v) => v,
+        Err(msg) => {
+            err(&format!("macvmm: {msg}"));
+            err(RUN_USAGE.trim_end());
+            return ExitCode::from(2);
+        }
+    };
+    let args = args.as_slice();
     let cfg = match parse_run(args) {
         Ok(cfg) => cfg,
         Err(msg) => {
@@ -406,8 +663,15 @@ pub fn run(args: &[String]) -> ExitCode {
             return exit(e.exit_code());
         }
     };
-    // M9: `--dry-run` describes the boot and exits; no terminal setup, no HVF call.
+    // M9: `--dry-run` describes the boot and exits; no terminal setup, no HVF call. It still
+    // parses the untrusted kernel and initrd headers, so a `--sandbox` applies here too (SBX-4:
+    // a sandbox flag never silently does nothing).
     if cfg.dry_run {
+        if let Err(line) = confine(sandbox, &cfg) {
+            host.close_sinks(&[]);
+            err(&line);
+            return ExitCode::from(1);
+        }
         let result = vmm::machine::dry_run(&cfg, &host);
         host.close_sinks(&[]);
         return match result {
@@ -428,8 +692,20 @@ pub fn run(args: &[String]) -> ExitCode {
              unfiltered; escape sequences in it can query or reprogram your terminal",
         );
     }
-    // PROC-1: raw mode only for an interactive TTY; stdin goes only to the stdio sink.
-    let interactive = cfg.serial.kind == SinkKind::Stdio;
+    if cfg
+        .console
+        .as_ref()
+        .is_some_and(|c| c.policy == FilterPolicy::Raw)
+    {
+        // TTY-2 for the M13 console sink.
+        err(
+            "macvmm: warning: --console ...,raw: guest output reaches the destination \
+             unfiltered; escape sequences in it can query or reprogram your terminal",
+        );
+    }
+    // PROC-1: raw mode only for an interactive TTY; stdin goes only to the stdio sink (the
+    // serial or, M13, the console one: `HostIo::stdin`).
+    let interactive = host.stdin != StdinBinding::Unbound;
     let mut terminal = term::Terminal::setup(interactive);
     if terminal.is_raw() {
         err("macvmm: console attached; Ctrl-A x quits, Ctrl-A h lists the escapes");
@@ -440,6 +716,15 @@ pub fn run(args: &[String]) -> ExitCode {
     }
     if interactive && let Err(e) = term::spawn_stdin(Arc::clone(&host)) {
         err(&format!("macvmm: cannot start the stdin thread: {e}"));
+        return ExitCode::from(1);
+    }
+    // M22 (SBX-3): every host file is open and every host thread exists; lock down before the
+    // first guest instruction. vCPU creation and any reboot run under the sandbox.
+    if let Err(line) = confine(sandbox, &cfg) {
+        // SBX-4: fail closed. Nothing ran yet; undo the terminal and stop.
+        host.close_sinks(&[]);
+        terminal.restore();
+        err(&line);
         return ExitCode::from(1);
     }
     let result = vmm::run(&cfg, &host);
@@ -456,14 +741,16 @@ fn finish(
     terminal: &mut term::Terminal,
     result: vmm::Result<StopReason>,
 ) -> ExitCode {
-    let tty = terminal.stdout_is_tty() && cfg.serial.kind == SinkKind::Stdio;
+    // M13: the stdio sink is the serial or the console one (never both).
+    let stdio = host.stdio_sink();
+    let tty = terminal.stdout_is_tty() && stdio.is_some();
     host.close_sinks(if tty { term::RESET_SEQUENCE } else { &[] });
-    if tty && !host.serial.epilogue_written() {
+    if tty && !stdio.is_some_and(|s| s.epilogue_written()) {
         // The sink was off after a write error, or its writer was stuck: TTY-6 still holds.
         term::write_reset_fallback();
     }
     terminal.restore();
-    let (wrote, at_line_start) = host.serial.output_state();
+    let (wrote, at_line_start) = stdio.map_or((false, true), |s| s.output_state());
     let guest_drew = tty && wrote;
     if guest_drew && !at_line_start {
         err("");
@@ -500,6 +787,7 @@ fn finish(
             err(&format!("macvmm: stats: {line}"));
         }
         // ANCHOR_END: cli_stats_report
+        err(&crate::sandbox::rlimit_stats()); // M22 (PROC-4)
     }
     exit(code)
 }
@@ -521,6 +809,128 @@ mod tests {
         let mut a = base();
         a.extend_from_slice(extra);
         parse_run(&v(&a))
+    }
+
+    /// M24: `--net` grammar. `peer=` is required unless `,learn` (NET-2); at most four NICs;
+    /// MACs are validated; a NIC is never its own peer.
+    #[test]
+    fn net_flags() {
+        use vmm::config::NetPeer;
+        let c = with(&[
+            "--net",
+            "unixgram:/t/a.sock,peer=/t/b.sock,mac=02:6d:76:00:00:01",
+        ])
+        .unwrap();
+        let n = &c.net[0];
+        assert_eq!(n.local, PathBuf::from("/t/a.sock"));
+        assert_eq!(n.peer, NetPeer::Path(PathBuf::from("/t/b.sock")));
+        assert_eq!(n.mac, Some([2, 0x6d, 0x76, 0, 0, 1]));
+        let l = with(&["--net=unixgram:a.sock,learn"]).unwrap();
+        assert_eq!(
+            (l.net[0].peer.clone(), l.net[0].mac),
+            (NetPeer::Learn, None)
+        );
+        let e = with(&["--net", "unixgram:/t/a.sock"]).unwrap_err();
+        assert!(e.contains("needs peer="), "{e}");
+        for bad in [
+            "tap:/t/a",
+            "unixgram:",
+            "unixgram:,peer=/t/b",
+            "unixgram:/t/a,peer=",
+            "unixgram:/t/a,peer=/t/b,learn",
+            "unixgram:/t/a,peer=/t/b,peer=/t/c",
+            "unixgram:/t/a,peer=/t/b,mac=01:00:5e:00:00:01",
+            "unixgram:/t/a,peer=/t/b,mac=02:6d",
+            "unixgram:/t/a,peer=/t/b,frob",
+            "unixgram:/t/a,peer=/t/a",
+        ] {
+            assert!(with(&["--net", bad]).is_err(), "{bad}");
+        }
+        let twice = with(&[
+            "--net",
+            "unixgram:/t/a,peer=/t/b",
+            "--net",
+            "unixgram:/t/a,peer=/t/c",
+        ]);
+        assert!(twice.unwrap_err().contains("twice"));
+        let four = [
+            "--net",
+            "unixgram:/t/1,peer=/t/p",
+            "--net",
+            "unixgram:/t/2,peer=/t/p",
+            "--net",
+            "unixgram:/t/3,peer=/t/p",
+            "--net",
+            "unixgram:/t/4,peer=/t/p",
+        ];
+        assert_eq!(with(&four).unwrap().net.len(), 4);
+        let mut five = four.to_vec();
+        five.extend_from_slice(&["--net", "unixgram:/t/5,peer=/t/p"]);
+        assert!(with(&five).unwrap_err().contains("at most 4"));
+    }
+
+    /// M21: `--machine` and `--bios`. Without the feature, vmapple is a usage error naming it.
+    #[test]
+    fn machine_and_bios() {
+        use vmm::arch::layout::MachineProfile;
+        assert_eq!(
+            with(&["--machine", "virt"]).unwrap().machine,
+            MachineProfile::Virt
+        );
+        assert!(
+            with(&["--machine", "pc"])
+                .unwrap_err()
+                .contains("virt|vmapple")
+        );
+        // M18: `--bios` alone on the virt machine is a firmware boot; with an OS input it is
+        // a usage error naming the flag.
+        let fw = parse_run(&v(&["--bios", "u-boot.bin"])).unwrap();
+        assert_eq!(fw.machine, MachineProfile::Virt);
+        assert_eq!(
+            fw.boot.bios.as_deref(),
+            Some(std::path::Path::new("u-boot.bin"))
+        );
+        let e = with(&["--bios", "u-boot.bin"]).unwrap_err();
+        assert!(e.contains("cannot be combined with --bios"), "{e}");
+        for extra in [
+            &["--raw", "a.bin@0x40080000"][..],
+            &["--initrd", "rd"][..],
+            &["--cmdline", "x"][..],
+        ] {
+            let mut a = vec!["--bios", "u-boot.bin"];
+            a.extend_from_slice(extra);
+            assert!(parse_run(&v(&a)).is_err(), "{a:?}");
+        }
+        assert!(parse_run(&v(&["--bios", "u-boot.bin", "--disk", "d.img"])).is_ok());
+        let vmapple = parse_run(&v(&["--machine", "vmapple"]));
+        #[cfg(not(feature = "experimental-vmapple"))]
+        assert!(
+            vmapple
+                .unwrap_err()
+                .contains("built without experimental-vmapple")
+        );
+        #[cfg(feature = "experimental-vmapple")]
+        {
+            let c = vmapple.unwrap();
+            assert_eq!(c.machine, MachineProfile::VmApple);
+            assert_eq!(
+                c.boot.bios.as_deref(),
+                Some(std::path::Path::new(
+                    vmm::loader::firmware::AVPBOOTER_VMAPPLE2
+                ))
+            );
+            assert!(
+                c.vmapple_slots
+                    .unwrap()
+                    .ends_with(".cache/macvmm/vmapple-slots")
+            );
+            let own = parse_run(&v(&["--machine=vmapple", "--bios", "x.bin"])).unwrap();
+            assert_eq!(
+                own.boot.bios.as_deref(),
+                Some(std::path::Path::new("x.bin"))
+            );
+            assert!(parse_run(&v(&["--machine", "vmapple", "--kernel", "k"])).is_err());
+        }
     }
 
     #[test]
@@ -583,6 +993,32 @@ mod tests {
         assert!(with(&["--testdev"]).unwrap().testdev);
         assert!(!with(&[]).unwrap().testdev);
         assert!(with(&["--testdev=1"]).is_err());
+        // M14: --disk accumulates in order; `,ro` is the only option.
+        let c = with(&["--disk", "a.img", "--disk=b,c.img,ro"]).unwrap();
+        assert_eq!(
+            c.disks,
+            vec![
+                DiskSpec {
+                    path: "a.img".into(),
+                    read_only: false
+                },
+                DiskSpec {
+                    path: "b,c.img".into(),
+                    read_only: true
+                },
+            ]
+        );
+        assert!(with(&["--disk", ",ro"]).is_err());
+        assert!(with(&["--disk", ""]).is_err());
+        assert!(with(&["--disk"]).unwrap_err().contains("needs a value"));
+        let many: Vec<&str> = std::iter::repeat_n(["--disk", "d.img"], 17)
+            .flatten()
+            .collect();
+        assert!(with(&many).is_err(), "more than MAX_DISKS disks");
+        // M12: --rng is a switch.
+        assert!(with(&["--rng"]).unwrap().rng);
+        assert!(!with(&[]).unwrap().rng);
+        assert!(with(&["--rng=1"]).is_err());
     }
 
     #[test]
@@ -703,6 +1139,54 @@ mod tests {
         assert!(with(&["--stats=1"]).is_err());
     }
 
+    /// M13: `--console` takes the `--serial` grammar minus `none`; at most one stdio sink.
+    #[test]
+    fn console_flag() {
+        assert_eq!(with(&[]).unwrap().console, None);
+        let c = with(&["--console", "file:/tmp/hvc0.out,max=64K"]).unwrap();
+        let k = c.console.unwrap();
+        assert_eq!(
+            (k.kind, k.path, k.max_bytes, k.policy),
+            (
+                SinkKind::File,
+                Some(PathBuf::from("/tmp/hvc0.out")),
+                65536,
+                FilterPolicy::Safe
+            )
+        );
+        let c = with(&["--console=stdio,strict", "--serial", "file:s.txt"]).unwrap();
+        let k = c.console.unwrap();
+        assert_eq!((k.kind, k.policy), (SinkKind::Stdio, FilterPolicy::Strict));
+        assert!(with(&["--console", "stdio", "--serial", "none"]).is_ok());
+        // Both on stdio, explicitly or through the --serial default: exit code 2.
+        for args in [
+            &["--console", "stdio", "--serial", "stdio"][..],
+            &["--console", "stdio"][..],
+        ] {
+            let e = with(args).unwrap_err();
+            assert!(
+                e.contains("only one of --serial/--console may be stdio"),
+                "{e}"
+            );
+        }
+        for bad in ["none", "", "file:", "stdio,max=1K", "tty", "file:x,max=0"] {
+            let e = with(&["--serial", "none", "--console", bad]).unwrap_err();
+            assert!(e.contains("--console"), "{bad:?}: {e}");
+        }
+        assert!(
+            with(&[
+                "--serial",
+                "none",
+                "--console",
+                "stdio",
+                "--console",
+                "stdio"
+            ])
+            .unwrap_err()
+            .contains("twice")
+        );
+    }
+
     /// M9: `--initrd`, `--cmdline`, `--dry-run`.
     #[test]
     fn linux_flags() {
@@ -746,6 +1230,22 @@ mod tests {
         assert!(RUN_USAGE.contains("--dry-run"));
     }
 
+    /// M16: `--cpus` (1..=64; the host's limit is checked when the VM is built).
+    #[test]
+    fn cpus_flag() {
+        assert_eq!(with(&[]).unwrap().cpus, 1);
+        assert_eq!(with(&["--cpus", "4"]).unwrap().cpus, 4);
+        assert_eq!(with(&["--cpus=64"]).unwrap().cpus, 64);
+        for bad in ["0", "65", "-1", "+4", "0x4", "4k", "", "99999999999"] {
+            let e = with(&["--cpus", bad]).unwrap_err();
+            assert!(e.contains("--cpus"), "{bad}: {e}");
+        }
+        assert!(with(&["--cpus"]).unwrap_err().contains("needs a value"));
+        assert!(RUN_USAGE.contains("--cpus N"));
+        // The no-GIC teaching mode stays single-vCPU.
+        assert!(with(&["--cpus", "2", "--irqchip", "none"]).is_err());
+    }
+
     /// M8: the hidden `--irqchip none`; with `--cpus 2` (M16) it is refused by `validate`
     /// (`vmm::config` test `irqchip_none_restrictions`).
     #[test]
@@ -756,5 +1256,119 @@ mod tests {
         assert!(with(&["--irqchip", "gicv2"]).is_err());
         assert!(!RUN_USAGE.contains("irqchip"), "hidden flag");
         assert!(RUN_USAGE.contains("--serial SINK"));
+    }
+
+    /// Review fix (ADR-0008 decision 6): the lock directory follows `HOME` only, never the
+    /// working directory or `MACVMM_CACHE`; no absolute `HOME`, no directory (refused later).
+    #[test]
+    fn vmapple_slot_dir_is_per_user() {
+        assert_eq!(
+            vmapple_slot_dir(Some("/Users/u".into())),
+            Some(PathBuf::from("/Users/u/.cache/macvmm/vmapple-slots"))
+        );
+        assert_eq!(vmapple_slot_dir(None), None);
+        assert_eq!(vmapple_slot_dir(Some("".into())), None);
+        assert_eq!(vmapple_slot_dir(Some("relative/home".into())), None);
+    }
+    /// M22 (threat model §9.3 "cli", TEST-3): the real `run` front end, `sandbox::split_flags`
+    /// then `parse_run`, on generated argument vectors, against the invariants of
+    /// `fuzz::targets::cli::check_front_end` (sandbox tokens removed only outside a value
+    /// position, a reference model of the flag rules, no panic in `parse_run`, unknown flags
+    /// never ignored, `--dry-run` changes only `dry_run`). 10,000 iterations by default;
+    /// `MACVMM_FUZZ_SECONDS` makes it a timed fuzz run (`scripts/fuzz.sh cli`).
+    /// `split_flags` in the shape the fuzz crate can name.
+    fn split_for_fuzz(args: &[String]) -> Result<fuzz::targets::cli::Split, String> {
+        use crate::sandbox::Mode;
+        use fuzz::targets::cli::SandboxMode;
+        let (o, rest) = crate::sandbox::split_flags(args)?;
+        let mode = match o.mode {
+            Mode::Off => SandboxMode::Off,
+            Mode::Enforce => SandboxMode::Enforce,
+            Mode::BestEffort => SandboxMode::BestEffort,
+        };
+        Ok((mode, o.selftest, rest))
+    }
+
+    /// The fuzz check's notion of "takes the next argument" (`sandbox::VALUE_FLAGS`) must match
+    /// `parse_run`'s: every listed `run` flag wants a value, and no other known flag does.
+    #[test]
+    fn value_flags_match_parse_run() {
+        let known = [
+            "--mem",
+            "--kernel",
+            "--initrd",
+            "--cmdline",
+            "--dry-run",
+            "--raw",
+            "--timeout",
+            "--unhandled-mmio",
+            "--trace",
+            "--testdev",
+            "--disk",
+            "--rng",
+            "--net",
+            "--on-reset",
+            "--debug-hvc",
+            "--no-debug-hvc",
+            "--dtb-out",
+            "--serial",
+            "--console",
+            "--stats",
+            "--irqchip",
+            "--machine",
+            "--bios",
+            "--cpus",
+        ];
+        for f in known {
+            let wants = parse_run(&[f.to_string()])
+                .err()
+                .is_some_and(|e| e.contains("needs a value"));
+            assert_eq!(
+                wants,
+                crate::sandbox::VALUE_FLAGS.contains(&f),
+                "{f}: parse_run and sandbox::VALUE_FLAGS disagree"
+            );
+        }
+        // `--log` is the global flag (main.rs), which also takes the next argument.
+        assert!(crate::sandbox::VALUE_FLAGS.contains(&"--log"));
+    }
+
+    #[test]
+    fn cli_fuzz() {
+        use fuzz::rng::Rng;
+        let seed: u64 = std::env::var("MACVMM_SEED")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1);
+        let secs: Option<u64> = std::env::var("MACVMM_FUZZ_SECONDS")
+            .ok()
+            .and_then(|s| s.parse().ok());
+        let deadline = secs.map(|s| std::time::Instant::now() + Duration::from_secs(s));
+        let mut n = 0u64;
+        loop {
+            match deadline {
+                Some(d) if std::time::Instant::now() >= d => break,
+                None if n >= 10_000 => break,
+                _ => {}
+            }
+            let mut rng = Rng::derive(seed, n);
+            let len = rng.index(96);
+            let mut data = rng.bytes(len);
+            fuzz::mutate::bytes(&mut rng, &mut data, 512);
+            if let Err(e) = fuzz::targets::cli::check_front_end(
+                split_for_fuzz,
+                crate::sandbox::VALUE_FLAGS,
+                parse_run,
+                &data,
+            ) {
+                panic!("fuzz cli (parse_run): seed {seed} iteration {n}: {e}");
+            }
+            n += 1;
+        }
+        let mut out = std::io::stdout().lock();
+        let _ = std::io::Write::write_all(
+            &mut out,
+            format!("fuzz cli (parse_run): {n} iterations, 0 failures\n").as_bytes(),
+        );
     }
 }

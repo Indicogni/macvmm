@@ -15,7 +15,7 @@
 //! switch; M4 adds `--trace` ([`TraceSpec`]) and `--testdev`; M5 `--on-reset`
 //! ([`ResetAction`]) and `--debug-hvc` / `--no-debug-hvc` ([`DebugHvc`]); M8 the hidden
 //! `--irqchip none` ([`IrqChip`], architecture §9.1) and the `cpus` field its restriction
-//! needs (the `--cpus` flag itself is M16). The struct is `#[non_exhaustive]`, so adding one is
+//! needs; M16 the `--cpus` flag that sets it (1..=`MAX_CPUS`, checked in `validate`). The struct is `#[non_exhaustive]`, so adding one is
 //! additive.
 
 use crate::arch::layout::{Layout, MachineProfile, RAM_DEFAULT};
@@ -30,6 +30,44 @@ pub const MAX_RAW_INPUTS: usize = 16;
 /// The longest `--timeout` accepted: one year. `Instant + Duration` panics on overflow, so an
 /// unbounded value from the user must never reach the deadline arithmetic.
 pub const MAX_TIMEOUT: Duration = Duration::from_secs(365 * 24 * 60 * 60);
+
+/// The most `--disk` images one VM may have (M14; a named cap, RUST-4: each is an open,
+/// locked fd and a worker thread, and the 32 virtio-mmio slots are shared with the other
+/// devices).
+pub const MAX_DISKS: usize = 16;
+
+/// `--disk F[,ro]` (M14): a raw disk image behind virtio-blk, opened and locked by `HostIo`
+/// (threat model BLK-5, BLK-8, BLK-11).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DiskSpec {
+    pub path: PathBuf,
+    /// `,ro`: opened `O_RDONLY` with a shared lock; the device offers `VIRTIO_BLK_F_RO`.
+    pub read_only: bool,
+}
+
+/// The most `--net` NICs one VM may have (M24, architecture §13.1).
+pub const MAX_NETS: usize = 4;
+
+/// Who a `--net unixgram` NIC talks to (M24; threat model NET-2).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NetPeer {
+    /// `peer=PATH`: frames go there, and only datagrams from there are accepted (NET-1).
+    Path(PathBuf),
+    /// `,learn` (PLAN D17): the first sender bound at an absolute path becomes the peer, locked
+    /// and logged.
+    Learn,
+}
+
+/// `--net unixgram:LOCAL,peer=REMOTE[,mac=XX:..]` or `unixgram:LOCAL,learn` (M24): a virtio-net
+/// NIC whose wire is a Unix datagram socket bound at `local` (architecture §11.3). The socket
+/// is set up by `HostIo` (NET-3, NET-4).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NetSpec {
+    pub local: PathBuf,
+    pub peer: NetPeer,
+    /// `mac=`; `None`: `02:6d:76` plus three bytes from `HostIo.entropy`.
+    pub mac: Option<[u8; 6]>,
+}
 
 /// `--raw F@ADDR`: a flat binary loaded at a guest-physical address.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -48,6 +86,11 @@ pub struct BootSource {
     pub initrd: Option<PathBuf>,
     /// `--cmdline S` (M9): `/chosen/bootargs`, at most 2047 bytes without NUL (FDT-2).
     pub cmdline: Option<String>,
+    /// `--bios F`: a firmware ROM image, read by `HostIo` (LDR-1: at most
+    /// `loader::firmware::MAX_FIRMWARE`). M21 uses it for AVPBooter on `--machine vmapple`;
+    /// M18 puts it in flash bank 0 of the `virt` machine (U-Boot), alone: the firmware loads
+    /// the OS, so `--kernel`, `--raw`, `--initrd` and `--cmdline` are refused with it.
+    pub bios: Option<PathBuf>,
 }
 
 /// `--unhandled-mmio`: what a guest access to an IPA that is neither RAM nor a device does
@@ -98,6 +141,10 @@ pub enum IrqChip {
 
 /// The `--irqchip none` refusal (exit code 2), shared by both restriction checks.
 pub const IRQCHIP_NONE_RESTRICTION: &str = "--irqchip none needs a test guest and --cpus 1";
+
+/// The refusal of `--serial stdio` together with `--console stdio` (M13; exit code 2). The
+/// serial sink defaults to `stdio`, so `--console stdio` needs `--serial file:F` or `none`.
+pub const BOTH_STDIO: &str = "only one of --serial/--console may be stdio";
 
 /// Where a byte stream from the guest goes (`--serial stdio|file:F|none`, M6).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -183,12 +230,29 @@ pub struct VmConfig {
     pub stats: bool,
     /// `--irqchip` (M8; hidden flag, architecture §9.1).
     pub irqchip: IrqChip,
-    /// Number of vCPUs. Always 1 until `--cpus` arrives in M16; M8 needs the field for the
-    /// `--irqchip none` restriction.
+    /// Number of vCPUs (`--cpus`, M16): 1..=`MAX_CPUS` here, and at most the host's
+    /// `hv_vm_get_max_vcpu_count` when the VM is built. `--irqchip none` needs exactly 1.
     pub cpus: u32,
     /// `--dry-run` (M9): print the boot plan, memory map and DTB summary, then exit 0 without
     /// any HVF call.
     pub dry_run: bool,
+    /// `--rng` (M12): a virtio-rng device fed by the host CSPRNG (architecture §11.3), in the
+    /// slot ADR-0005 assigns it (after the disks).
+    pub rng: bool,
+    /// `--disk F[,ro]` (M14), in command-line order: disk `i` is virtio-blk in slot `i`
+    /// (ADR-0005), so the first one is always Linux's `/dev/vda`.
+    pub disks: Vec<DiskSpec>,
+    /// M21: the directory of the two vmapple SLA lock files (ADR-0008 decision 6; the CLI sets
+    /// `$HOME/.cache/macvmm/vmapple-slots`, one per user, independent of the working directory
+    /// and `MACVMM_CACHE`). Used only by `--machine vmapple`.
+    pub vmapple_slots: Option<PathBuf>,
+    /// `--console stdio|file:F[,strict|,raw][,max=SIZE]` (M13): a virtio-console whose TX goes
+    /// to this sink through its own `AnsiFilter` (TTY-1), in the slot after `--rng` (ADR-0005).
+    /// `None`: no console device. Its kind is never [`SinkKind::None`].
+    pub console: Option<SinkSpec>,
+    /// `--net` (M24), in command-line order, at most [`MAX_NETS`]: virtio-net NICs in the slots
+    /// after `--console` (ADR-0005).
+    pub net: Vec<NetSpec>,
 }
 
 impl Default for VmConfig {
@@ -209,6 +273,11 @@ impl Default for VmConfig {
             irqchip: IrqChip::default(),
             cpus: 1,
             dry_run: false,
+            rng: false,
+            disks: Vec::new(),
+            vmapple_slots: None,
+            console: None,
+            net: Vec::new(),
         }
     }
 }
@@ -221,7 +290,25 @@ impl VmConfig {
         Layout::virt()
             .ram_end(self.mem_bytes)
             .map_err(|e| Error::Config(format!("--mem: {e}")))?;
-        if self.boot.kernel.is_none() && self.boot.raw.is_empty() {
+        if self.machine != MachineProfile::Virt {
+            // M21: the vmapple board boots only its ROM and has its own rules.
+            #[cfg(feature = "experimental-vmapple")]
+            crate::machine::vmapple::validate(self)?;
+        } else if self.boot.bios.is_some() {
+            // M18: firmware boots alone (`loader::plan::plan_firmware`).
+            let others = [
+                (self.boot.kernel.is_some(), "--kernel"),
+                (!self.boot.raw.is_empty(), "--raw"),
+                (self.boot.initrd.is_some(), "--initrd"),
+                (self.boot.cmdline.is_some(), "--cmdline"),
+            ];
+            if let Some((_, flag)) = others.iter().find(|(given, _)| *given) {
+                return Err(Error::Config(format!(
+                    "{flag} cannot be combined with --bios: the firmware loads the OS itself \
+                     (from a --disk)"
+                )));
+            }
+        } else if self.boot.kernel.is_none() && self.boot.raw.is_empty() {
             return Err(Error::Config(
                 "nothing to boot: give --kernel F or --raw F@ADDR".into(),
             ));
@@ -246,6 +333,54 @@ impl VmConfig {
             return Err(Error::Config(
                 "--serial: max must be at least 1 byte".into(),
             ));
+        }
+        // M13: the console sink. Stdin is bound to the one `stdio` sink (architecture §14.4),
+        // so two would be ambiguous: refused (exit code 2).
+        if let Some(c) = &self.console {
+            if c.kind == SinkKind::Stdio && self.serial.kind == SinkKind::Stdio {
+                return Err(Error::Config(BOTH_STDIO.into()));
+            }
+            if c.kind == SinkKind::None {
+                return Err(Error::Config(
+                    "--console takes stdio or file:FILE (leave it out for no console)".into(),
+                ));
+            }
+            if c.kind == SinkKind::File && c.path.is_none() {
+                return Err(Error::Config("--console file: needs a file name".into()));
+            }
+            if c.max_bytes == 0 {
+                return Err(Error::Config(
+                    "--console: max must be at least 1 byte".into(),
+                ));
+            }
+        }
+        if self.disks.len() > MAX_DISKS {
+            return Err(Error::Config(format!(
+                "at most {MAX_DISKS} --disk images are allowed"
+            )));
+        }
+        // M24: at most four NICs, each on its own socket, never its own peer.
+        if self.net.len() > MAX_NETS {
+            return Err(Error::Config(format!(
+                "at most {MAX_NETS} --net devices are allowed"
+            )));
+        }
+        for (i, n) in self.net.iter().enumerate() {
+            if n.local.as_os_str().is_empty() {
+                return Err(Error::Config("--net unixgram: needs a socket path".into()));
+            }
+            if n.peer == NetPeer::Path(n.local.clone()) {
+                return Err(Error::Config(format!(
+                    "--net unixgram: {:?} cannot be its own peer",
+                    n.local
+                )));
+            }
+            if self.net.iter().take(i).any(|m| m.local == n.local) {
+                return Err(Error::Config(format!(
+                    "--net unixgram: {:?} given twice",
+                    n.local
+                )));
+            }
         }
         if self.boot.raw.len() > MAX_RAW_INPUTS {
             return Err(Error::Config(format!(
@@ -347,6 +482,42 @@ mod tests {
         let mut t = TraceSpec::new("t.jsonl".into());
         t.max_bytes = 0;
         c.trace = Some(t);
+        assert!(c.validate().is_err());
+    }
+
+    /// M13: at most one `stdio` sink (stdin goes to it, architecture §14.4); exit code 2.
+    #[test]
+    fn console_sink_rules() {
+        let stdio = SinkSpec::default();
+        let file = SinkSpec {
+            kind: SinkKind::File,
+            path: Some("c.out".into()),
+            ..SinkSpec::default()
+        };
+        let mut c = with_raw();
+        c.console = Some(stdio.clone());
+        let e = c.validate().unwrap_err();
+        assert!(matches!(&e, Error::Config(m) if m == BOTH_STDIO), "{e:?}");
+        assert_eq!(e.exit_code(), 2);
+        c.serial = file.clone();
+        assert!(c.validate().is_ok());
+        c.serial = SinkSpec::default();
+        c.console = Some(file.clone());
+        assert!(c.validate().is_ok());
+        c.console = Some(SinkSpec {
+            kind: SinkKind::None,
+            ..SinkSpec::default()
+        });
+        assert!(c.validate().is_err());
+        c.console = Some(SinkSpec {
+            path: None,
+            ..file.clone()
+        });
+        assert!(c.validate().is_err());
+        c.console = Some(SinkSpec {
+            max_bytes: 0,
+            ..file
+        });
         assert!(c.validate().is_err());
     }
 

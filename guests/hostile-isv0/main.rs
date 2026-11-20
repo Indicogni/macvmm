@@ -5,9 +5,10 @@
 //!
 //! | # | Access | Why the VMM must refuse |
 //! |---|---|---|
-//! | 1–3 | `stp x`, `ldp x`, `stp w` at the last element of the testdev window (MMU off) | the second element is outside the device: a pair is only emulated inside one window |
-//! | 4, 5 | `stp x`, `ldp x` at the end of `mmu::TESTDEV_ALIAS` (MMU on) | the second element's VA maps to the **PL011**: a confused deputy (F17) if the VMM followed the exit IPA + 8 or the decoded VA blindly |
-//! | 6–12 | `str q0`, `str d0`, `str s0`, `stp q0, q1`, `st1 {v0.16b}`, `ldr q0`, and `stp d0, d1` through the alias | SIMD/FP registers are not in the VMM's register file (MMIO-6) |
+//! | 1–3 | `stp x`, `ldp x`, `stp w` at the last element of the testdev window (MMU off) | the second element is in no device (an unmapped hole): a pair is only emulated inside one window (`CrossDevice`, second window none) |
+//! | 4–6 | `stp x`, `ldp x`, `stp w` at the last element of virtio-mmio slot 0 (MMU off) | the second element is the first register of slot 1, a **different real device** whose window touches slot 0's: refused by the same-device rule (`CrossDevice`, two different window bases), never sent half to each |
+//! | 7, 8 | `stp x`, `ldp x` at the end of `mmu::TESTDEV_ALIAS` (MMU on) | the second element's VA maps to the **PL011**: a confused deputy (F17) if the VMM followed the exit IPA + 8 or the decoded VA blindly. The VMM refuses it *before* the window check, because the second element does not translate to exit IPA + 8 (`PairMismatch`: "second element at 0x9000000, expected 0xb001000") |
+//! | 9–15 | `str q0`, `str d0`, `str s0`, `stp q0, q1`, `st1 {v0.16b}`, `ldr q0`, and `stp d0, d1` through the alias | SIMD/FP registers are not in the VMM's register file (MMIO-6) |
 //!
 //! After the aborts it checks that no device register changed (a store pair never
 //! half-happens) and that the loads left their destination registers alone.
@@ -22,7 +23,11 @@ use guest::println;
 
 guest::entry!(main);
 
-const CASES: u32 = 12;
+const CASES: u32 = 15;
+/// virtio-mmio slot 0 (QEMU `virt` map, `arch/layout.rs`). All 32 slots are always on the bus,
+/// empty ones included (RAZ/WI), at a 0x200 stride with no gap: slot 1 starts where slot 0 ends.
+const VIRTIO0: u64 = 0x0a00_0000;
+const VIRTIO_STRIDE: u64 = 0x200;
 const SENTINEL: u64 = 0x5e5e_5e5e_5e5e_5e5e;
 
 static ABORTS: AtomicU32 = AtomicU32::new(0);
@@ -121,7 +126,36 @@ fn main(_x0: u64) {
         "stp {r1:w}, {r2:w}, [{a}]"
     );
 
-    // 4, 5: with the MMU on, the second element's page is the PL011 (F17).
+    // 4-6: a pair across two *adjacent* real devices, virtio-mmio slots 0 and 1 (MMU off). An
+    // empty slot reads as zero, so a VMM that emulated the ldp would zero r1 and r2.
+    let v = VIRTIO0 + VIRTIO_STRIDE;
+    refused!(
+        fails,
+        "stp x across virtio slots",
+        true,
+        v - 8,
+        "stp {r1}, {r2}, [{a}]"
+    );
+    let lp = refused!(
+        fails,
+        "ldp x across virtio slots",
+        false,
+        v - 8,
+        "ldp {r1}, {r2}, [{a}]"
+    );
+    if lp != (0x1111, 0x2222) {
+        fails += 1;
+        println!("hostile-isv0: FAILED: refused ldp changed registers: {lp:x?}");
+    }
+    refused!(
+        fails,
+        "stp w across virtio slots",
+        true,
+        v - 4,
+        "stp {r1:w}, {r2:w}, [{a}]"
+    );
+
+    // 7, 8: with the MMU on, the second element's page is the PL011 (F17).
     mmu::enable();
     let edge = TESTDEV_ALIAS + 0xff8;
     refused!(
@@ -143,7 +177,7 @@ fn main(_x0: u64) {
         println!("hostile-isv0: FAILED: refused ldp changed registers: {lp:x?}");
     }
 
-    // 6-12: SIMD/FP loads and stores.
+    // 9-15: SIMD/FP loads and stores.
     refused!(fails, "str q0", true, t + 0xfe0, "str q0, [{a}]");
     refused!(fails, "str d0", true, t + 0xfe8, "str d0, [{a}]");
     refused!(fails, "str s0", true, t + 0xff0, "str s0, [{a}]");

@@ -1,0 +1,9 @@
+# scripts/capture.sh 10: run "dtc-clean" of course/checkpoints/10, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 10; never edit by hand (CURRICULUM §3.6).
+$ /bin/sh -c "$0" run --mem 64M --raw "$1" --dtb-out "$2/v.dtb" --timeout 10 >/dev/null && dtc -I dtb -O dts -o /dev/null "$2/v.dtb" 2>&1; echo "rc=$?" {macvmm} {guests}/hello.bin@0x40080000 {out}
+exit: 0
+--- stdout ---
+rc=0
+
+--- stderr ---
+

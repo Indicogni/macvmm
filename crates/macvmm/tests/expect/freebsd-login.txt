@@ -1,0 +1,25 @@
+U-Boot 2026.04
+Booting bootflow '<NULL>' with efi_mgr
+FreeBSD/arm64 EFI loader
+Loading kernel...
+Using DTB provided by EFI
+FreeBSD 15.1-RELEASE
+psci0: <ARM Power State Co-ordination Interface Driver>
+gic0: <ARM Generic Interrupt Controller v3.0>
+uart0: console (115200,n,8,1)
+vtblk0: *512 byte sectors
+Trying to mount root from ufs:/dev/gpt/rootfs
+login:
+FreeBSD 15.1-RELEASE (GENERIC)
+# uname -sr
+FreeBSD 15.1-RELEASE
+# shutdown -p now
+[stderr] flash: ignored 8-byte write of 0x40000000 at offset 0x12c668
+!vtblk0: host requires unsupported
+!mountroot>
+!Synchronous Abort
+!panic:
+![stderr] unhandled MMIO
+![stderr] unknown SMCCC
+![stderr] not emulated
+![stderr] guest fatal

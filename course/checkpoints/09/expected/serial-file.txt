@@ -1,0 +1,3 @@
+rc=0
+file: hello from guest, x0=0x*
+stdout lines with hello: 0

@@ -6,7 +6,8 @@
 //!   handlers be host-tested with a fake vCPU.
 //! - [`exit`]: classify an exit and decide what it means (pure, host-tested).
 //! - [`run_loop`]: enter the guest, handle the exit, repeat, until the VM stops.
-//! - [`manager`]: create the vCPU thread(s) and wait for the stop (one vCPU until M16).
+//! - [`manager`]: create the vCPU threads one at a time and wait for the stop (SMP, M16).
+//! - [`wait`]: a parked (PSCI OFF) vCPU's wait and the start gate (M16).
 //! - [`mmio`]: data-abort (MMIO) emulation for ISV = 1 (M4).
 //! - [`regs`] and [`dump`]: the register snapshot and the fatal-stop report (M4).
 //!
@@ -20,6 +21,7 @@ pub mod manager;
 pub mod mmio;
 pub mod regs;
 pub mod run_loop;
+pub mod wait;
 
 use crate::arch::regs::sctlr;
 use crate::arch::sysreg::SysRegState;
@@ -100,6 +102,15 @@ impl<'vm> Vcpu<'vm> {
         self.nogic_kick = Some(kick);
         self.nogic = Some(NoGicTimer::new(offset, hvf::host::timebase()));
         Ok(())
+    }
+
+    /// This vCPU's GIC redistributor base (`hv_gic_get_redistributor_base`). Only valid once
+    /// MPIDR_EL1 was written (spike finding 17), which [`Vcpu::create`] does; `vcpu::manager`
+    /// checks it equals `GICR_BASE + index × 0x2_0000` (architecture §8.1 step 2).
+    pub fn redistributor_base(&self) -> Result<u64> {
+        self.inner
+            .gic_redistributor_base()
+            .map_err(hv("get the GIC redistributor base"))
     }
 
     /// `hv_vcpu_get_exec_time` in host ticks (`--stats`, M8).

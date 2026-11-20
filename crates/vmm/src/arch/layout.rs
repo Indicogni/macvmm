@@ -35,10 +35,13 @@
 
 use core::fmt;
 
-/// Which board is being built (architecture §5.3). `VmApple` arrives in M21.
+/// Which board is being built (architecture §5.3). `VmApple` (M21) exists only with the
+/// `experimental-vmapple` feature (ADR-0008 decision 3); its map is `machine/vmapple/layout.rs`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MachineProfile {
     Virt,
+    #[cfg(feature = "experimental-vmapple")]
+    VmApple,
 }
 
 /// What a region is, which decides how the VMM treats an access to it.
@@ -46,7 +49,7 @@ pub enum MachineProfile {
 pub enum RegionKind {
     /// Guest RAM, mapped RWX at stage 2. Not in [`VIRT_REGIONS`]: its size comes from `--mem`.
     Ram,
-    /// Flash: mapped RX with `--bios`, else unmapped.
+    /// Flash: mapped RX with `--bios` (bank 0 the image, bank 1 empty; M18), else unmapped.
     Rom,
     /// In-kernel GIC distributor (HVF services it, no exits).
     GicDist,
@@ -89,6 +92,10 @@ pub struct Region {
 pub const FLASH0_BASE: u64 = 0x0000_0000;
 pub const FLASH1_BASE: u64 = 0x0400_0000;
 pub const FLASH_BANK_SIZE: u64 = 0x0400_0000;
+/// Both flash banks (M18): one read+execute `RomRegion` from `FLASH0_BASE`. Bank 1 must be
+/// readable because U-Boot `qemu_arm64` reads its environment memory-mapped from
+/// `CONFIG_ENV_ADDR = 0x0400_0000` before any driver probes (observed, `docs/compat/uboot.md`).
+pub const FLASH_SIZE: u64 = 0x0800_0000;
 pub const GICD_BASE: u64 = 0x0800_0000;
 pub const GICD_SIZE: u64 = 0x0001_0000;
 pub const GIC_MSI_BASE: u64 = 0x0802_0000;
@@ -108,7 +115,7 @@ use RegionKind::*;
 #[rustfmt::skip]
 pub const VIRT_REGIONS: &[Region] = &[
     Region { name: "flash0",      base: FLASH0_BASE,      size: FLASH_BANK_SIZE, kind: Rom,       intid: None },
-    Region { name: "flash1",      base: FLASH1_BASE,      size: FLASH_BANK_SIZE, kind: Reserved,  intid: None },
+    Region { name: "flash1",      base: FLASH1_BASE,      size: FLASH_BANK_SIZE, kind: Rom,       intid: None },
     Region { name: "gicd",        base: GICD_BASE,        size: GICD_SIZE,       kind: GicDist,   intid: None },
     Region { name: "gicv2-cpu",   base: 0x0801_0000,      size: 0x0001_0000,     kind: Reserved,  intid: None },
     Region { name: "gic-v2m",     base: GIC_MSI_BASE,     size: 0x0001_0000,     kind: GicMsi,    intid: None },

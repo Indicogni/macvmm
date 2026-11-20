@@ -1,0 +1,9 @@
+U-Boot 2026.04
+Hit any key to stop autoboot
+=> poweroff
+poweroff ...
+!Synchronous Abort
+![stderr] unhandled MMIO
+![stderr] unknown SMCCC
+![stderr] not emulated
+![stderr] guest fatal

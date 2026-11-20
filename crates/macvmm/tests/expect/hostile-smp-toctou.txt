@@ -1,0 +1,11 @@
+hostile-smp: 2 cpus, 2 virtio devices
+hostile-smp: canary 0x
+hostile-smp: live toctou blk slot 0: * recovered
+hostile-smp: canary intact after blk
+hostile-smp: live toctou rng slot 1: * recovered
+hostile-smp: canary intact after rng
+hostile-smp: survived
+[stderr] device needs reset
+[stderr] macvmm: stats: vcpu1 exits:
+!FAILED
+!guest panic

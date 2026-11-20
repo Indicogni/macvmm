@@ -1,0 +1,7 @@
+hostile-vq: RAM ends at 0x44000000
+hostile-vq: 32 empty slots attacked, * alignment faults, 0 unexpected values
+hostile-vq: survived
+[stderr] virtio-mmio: * is not an aligned 32-bit access (RAZ)
+!FAILED
+!guest exception
+![stderr] guest fatal

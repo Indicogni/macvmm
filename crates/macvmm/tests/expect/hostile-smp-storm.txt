@@ -1,0 +1,8 @@
+hostile-smp: 4 cpus, 0 virtio devices
+hostile-smp: phase 4: cpus=4 random calls=12000 unexpected=0
+hostile-smp: storm: cpu_on successes=* cpu 3 starts=* wrong answers=0
+hostile-smp: survived
+[stderr] guest: unknown SMCCC function
+[stderr] macvmm: stats: vcpu3 exits:
+!FAILED
+!guest panic

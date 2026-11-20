@@ -62,9 +62,11 @@ This repo's audience has never worked with virtualization. If a word below is ne
 
 **Status today** [verified-on-machine]:
 
-- macvmm ships no macOS guest support. The `experimental-vmapple` cargo feature exists in
-  `crates/vmm/Cargo.toml` and `crates/macvmm/Cargo.toml`, but the vmapple machine (PLAN M21, stage S1)
-  is not started; it is blocked on a lead decision about tracing Apple firmware (PLAN D4, ADR-0009).
+- macvmm ships no macOS guest support, and macOS does not boot in it. Stage S1 (PLAN M21) is done
+  behind the off-by-default cargo feature `experimental-vmapple` [verified-on-machine, 2026-11-19]:
+  `--machine vmapple` runs AVPBooter, which makes its first exit at `pc=0x103478` and 34 accesses to
+  devices macvmm does not model (33 in the `cfg` block, 1 in `pvpanic`), then makes no further exit;
+  **blocked at** the unmodelled `cfg` block (S2). Tracing scope: PLAN D4, recorded as ADR-0009.
 - The S0 companion tool `tools/vz-mac` (PLAN M20) exists: it boots Linux through VZ, creates macOS VM
   bundles, extracts the ECID and trims the auxiliary storage (M20, 2026-11-18; `docs/macos/status.md`).
   No macOS has been installed or booted with it yet.
@@ -320,7 +322,7 @@ undocumented), **hardware**, **platform** (Apple owns the mechanism), **entitlem
 | R7 | Trimmed auxiliary storage | Boot policy and NVRAM | `dd … skip=1` | XS (`vz-mac trim-aux`, done) | **platform**: only VZ creates it |
 | R8 | bdif block reads, hostile-input hardened (W5) | The booter reads aux and root disks before any kernel driver exists | `hw/vmapple/bdif.c` | S–M | none |
 | R9 | PL011 / PL031 / PL061 + power key / pvpanic at vmapple bases (W6) | Console, clock, shutdown, panic signal | stock devices | S | none |
-| R10 | Unknown-MMIO logger with a hard cap (S1) | Shows where we are when something is missing | (QEMU logs unassigned access) | XS | licensing gray area: how far tracing Apple firmware may go (PLAN D4) |
+| R10 | Unknown-MMIO logger with a hard cap (S1) | Shows where we are when something is missing | (QEMU logs unassigned access) | XS (done, M21: `machine/vmapple/unknown.rs`, cap 256) [verified-on-machine] | licensing: decided by PLAN D4 / ADR-0009 (device-access trace only) |
 | R11 | PCIe host bridge: ECAM, BAR placement, INTx (W7) | XNU finds disks and NICs by PCI enumeration | GPEX | M–L | none (reusable for EDK2/FreeBSD) |
 | R12 | virtio-pci modern transport (W8) | All kernel-visible virtio devices sit on PCI | stock | M | none (reusable) |
 | R13 | vmapple virtio-blk variant: aux/root type, BARRIER `0x10000` (W9) | The kernel mounts the root and aux disks | `hw/vmapple/virtio-blk.c` | S | none |
@@ -383,8 +385,10 @@ values other than 3 mean is unknown [unverified]. `HV_DENIED = 0xfae94007` is fr
 
 **Who controls it:** Apple. The entitlement is `com.apple.private.*`; Apple grants such keys to its
 own binaries (VZ's XPC helper has it, §2.1). There is no public request process we know of
-[unverified]. ADR-0008 forbids using these symbols inside macvmm without a new ADR; the planned
-`tools/hv-denied-probe` (PLAN M21) exists only to *demonstrate* the denial.
+[unverified]. ADR-0008 forbids using these symbols inside macvmm without a new ADR;
+`tools/hv-denied-probe` (PLAN M21) exists only to *demonstrate* the denial. Signed exactly like macvmm,
+it prints `hv_vm_config_set_isa(3): 0x00000000` and `hv_vm_create with private ISA 3: HV_DENIED
+(0xfae94007)` [verified-on-machine, 2026-11-19].
 
 **What would unblock it:** Apple documenting a public API (or a public entitlement) for macOS-guest CPU
 modes. Re-check every WWDC and every SDK's `Hypervisor.framework` headers.
@@ -546,10 +550,11 @@ grant.
 3. No Apple bits in the repo, the cache, test fixtures, releases or the course site: no AVPBooter, IPSW,
    aux image or disk image. Learners use the copies already on their Mac.
 4. No reverse engineering by this project. Device facts come from QEMU's public source and Apple's
-   public headers. **The open question** is whether observing which addresses AVPBooter touches in our
-   own VMM counts as reverse engineering under §2N; that is PLAN decision D4 (ADR-0009), and M21 waits
-   on it. Default until decided: traces only check our implementation of QEMU-documented devices, raw
-   traces of Apple firmware are never published, nothing is disassembled.
+   public headers. Whether observing which addresses AVPBooter touches in our own VMM counts as
+   reverse engineering under §2N was the open question; the lead decided it as PLAN D4, recorded as
+   ADR-0009: AVPBooter is loaded from the system path at run time, only its first device accesses are
+   logged, nothing is disassembled, and no writeup goes beyond the device-access trace (per-access
+   logs are not published; `docs/macos/status.md` carries "observed X; blocked at Y" lines only).
 5. QEMU is GPL-2.0-or-later. Facts (offsets, struct layouts) may be used; code and prose may not be
    copied. Each vmapple device module records its sources in its `//!` doc comment.
 
@@ -564,7 +569,7 @@ a captured transcript (ADR-0008 decision 1).
 | Stage | Scope | Requirements | Exit criterion (observable) | Effort | Confidence on this M5 / 27.2 host | PLAN |
 |---|---|---|---|---|---|---|
 | **S0** VZ companion | `tools/vz-mac`: Linux under VZ for comparison; `install`, `boot`, `ecid`, `trim-aux` for macOS bundles | R6, R7 | `tools/vz-mac/test.sh` passes on M9's artefacts; optionally, a manual install whose boot under **VZ** shows a macOS login, with build number and ECID recorded | 1 week (largely done) | High | **M20** (code exists; acceptance waits on M9) |
-| **S1** first probe | vmapple profile behind `experimental-vmapple`; AVPBooter loaded read-only; GIC, PL011; capped unknown-MMIO logger; `tools/hv-denied-probe` | R1–R4, R10 | stderr shows `vmapple: first exit at pc=0x1…` inside `0x10_0000..0x20_0000`, then either "N unknown MMIO accesses logged" or "stopped at unsupported HVC"; the probe prints `HV_DENIED (0xfae94007)` | 3–5 days after M17 | High for "first exit observed"; unknown beyond | **M21** (blocked on D4 / ADR-0009) |
+| **S1** first probe | vmapple profile behind `experimental-vmapple`; AVPBooter loaded read-only; GIC, PL011; capped unknown-MMIO logger; `tools/hv-denied-probe` | R1–R4, R10 | stderr shows `vmapple: first exit at pc=0x1…` inside `0x10_0000..0x20_0000`, then either "N unknown MMIO accesses logged" or "stopped at unsupported HVC"; the probe prints `HV_DENIED (0xfae94007)` | 3–5 days after M17 | High for "first exit observed"; unknown beyond | **M21**, done 2026-11-19 [verified-on-machine]: first exit at `pc=0x103478`, `34 unknown MMIO accesses logged`, then no further exit until `--timeout`; the probe prints `HV_DENIED (0xfae94007)` |
 | **S2** early platform | cfg with the bundle's ECID; bdif over the trimmed aux and the root image; PL031/PL061/pvpanic at vmapple bases; two-instance lock | R5–R9, R23, R24 | bdif reads of aux and root succeed (sector log), and execution leaves the ROM range (PC in RAM) or stops with a documented, reproducible reason | 1–2 weeks | Low–medium (personalization and `unkN` checks are unknown) | post-v1, none |
 | **S3** kernel I/O | PCIe ECAM + INTx, virtio-pci, vmapple virtio-blk, AES engine, ID-register masking; SSBS/FGT workaround **only with its own ADR** | R11–R17 | The macOS kernel enumerates PCI and issues virtio-blk reads of the root disk (trace), or reports a panic via pvpanic or the UART | 6–9 weeks | Infrastructure high; kernel progress low; macOS 12 only | post-v1; R11/R12 may come earlier for EDK2/FreeBSD; R15 is **M17** |
 | **S4** reachable guest | virtio-net with the M24 unixgram backend; optionally XHCI/HID | R19, (R20) | A captured SSH session into a **macOS 12** guest running under macvmm. This is the first point at which "boots macOS" may be written. | 4–8 weeks | Low (hardware gap B5) | post-v1 |
@@ -586,8 +591,8 @@ before S3 and S5.
 | Research: `docs/research/macos-guest.md`, this document, ADR-0008 | Written | Refresh each WWDC and each QEMU release |
 | `tools/vz-mac` (S0, M20) | Built; boots Linux under VZ; creates bundles, extracts the ECID, trims aux [verified-on-machine (M20)]. Acceptance waits on M9's initramfs. No macOS installed or booted with it yet. | Optional manual macOS install and VZ boot, recorded in `status.md` |
 | `docs/macos/inventory.md` (VZ vs macvmm) | Written from observations of VZ booting Linux | Extend with a macOS-guest column once S0 installs one |
-| `experimental-vmapple` feature | Declared in both `Cargo.toml`s; no vmapple machine code yet | S1 (M21) after D4 |
-| `tools/hv-denied-probe` | Not in the repo yet; the result is reproduced in §5.1 | Ships with M21 |
+| `experimental-vmapple` feature | S1 done (M21): `crates/vmm/src/machine/vmapple/`, `--machine vmapple`, `--bios`, the capped unknown-MMIO logger, the two-slot SLA lock; AVPBooter's first exit and 34 device accesses observed, blocked at `cfg` [verified-on-machine, 2026-11-19] | S2: cfg, bdif, pvpanic, PL031/PL061 at vmapple bases (post-v1, no boot promise) |
+| `tools/hv-denied-probe` | Ships (M21): `probe.c` + `run.sh`, prints `HV_DENIED (0xfae94007)` [verified-on-machine] | Re-run on every macOS major |
 | ISV=0 emulation | Planned (M17) for firmware | Reused by S3 |
 | PCIe / virtio-pci, AES, cfg, bdif, XHCI, PG | Not planned for v1 | S2–S5, research only, no boot promise |
 | A macOS guest booting in macvmm | **No, and never claimed** | Only with a captured S4 transcript |

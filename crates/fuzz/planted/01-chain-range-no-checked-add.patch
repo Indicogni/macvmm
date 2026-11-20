@@ -1,0 +1,24 @@
+--- a/crates/vmm/src/virtio/chain.rs
++++ b/crates/vmm/src/virtio/chain.rs
+@@ -208,14 +208,13 @@
+             if d.len == 0 {
+                 return Err(QueueError::ZeroLength { index });
+             }
+-            let overflow = QueueError::Overflow {
+-                addr: d.addr,
+-                len: d.len,
+-            };
+-            GuestAddress(d.addr)
+-                .checked_add(u64::from(d.len))
+-                .ok_or(overflow)?;
+-            if !self.mem.check_range(GuestAddress(d.addr), u64::from(d.len)) {
++            // PLANTED BUG 1 (scripts/bughunt-selftest.sh): no `checked_add`, and the buffer is
++            // judged by its first and last byte (computed with wrapping arithmetic) instead of
++            // as one span. A buffer that starts in one RAM region and ends in another passes.
++            let last = d.addr.wrapping_add(u64::from(d.len)).wrapping_sub(1);
++            if !self.mem.check_range(GuestAddress(d.addr), 1)
++                || !self.mem.check_range(GuestAddress(last), 1)
++            {
+                 return Err(QueueError::BufferOutOfRam {
+                     addr: d.addr,
+                     len: d.len,

@@ -131,6 +131,60 @@ path = "timer-nogic/main.rs"
 test = false
 bench = false
 
+[[bin]]
+name = "virtio-probe"
+path = "virtio-probe/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "hostile-mmio"
+path = "hostile-mmio/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "hostile-sysreg"
+path = "hostile-sysreg/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "hostile-tty"
+path = "hostile-tty/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "hostile-reset"
+path = "hostile-reset/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "hostile-flood"
+path = "hostile-flood/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "hostile-vq"
+path = "hostile-vq/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "smp-race"
+path = "smp-race/main.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "hostile-smp"
+path = "hostile-smp/main.rs"
+test = false
+bench = false
+
 # A guest has nowhere to unwind to: a panic prints and calls DEBUG_EXIT(1) (common/lib.rs).
 [profile.dev]
 panic = "abort"

@@ -1,0 +1,17 @@
+macvmm-initramfs: ready
+macvmm-rootfs: insmod ext4
+macvmm-rootfs: mounted ext4 /dev/vda
+macvmm-rootfs: applied * modes
+macvmm-rootfs: boot 1
+macvmm-rootfs: ownership fixed
+macvmm-rootfs: wrote /persist.bin sha256=*
+macvmm-rootfs: rebooting
+macvmm-initramfs: ready
+macvmm-rootfs: mounted ext4 /dev/vda
+macvmm-rootfs: boot 2
+macvmm-rootfs: persist ok sha256=*
+[stderr] guest reset: rebooting (boot 1)
+!EXT4-fs error
+!macvmm-rootfs: FAILED
+!macvmm-rootfs: boot 3
+![stderr] guest reset: rebooting (boot 2)

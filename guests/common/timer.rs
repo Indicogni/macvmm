@@ -70,6 +70,13 @@ pub fn ticks_to_ms(ticks: u64, freq: u64) -> u64 {
 pub fn wait_for_interrupt() {
     // SAFETY: changes only PSTATE.I and waits; the handler that may run in between is ours,
     // and `clobber_abi("C")` tells the compiler every caller-saved register may change.
-    unsafe { asm!("msr daifclr, #2", "wfi", "msr daifset, #2", clobber_abi("C")) };
+    unsafe {
+        asm!(
+            "msr daifclr, #2",
+            "wfi",
+            "msr daifset, #2",
+            clobber_abi("C")
+        )
+    };
 }
 // ANCHOR_END: guest_wait_for_interrupt

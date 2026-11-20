@@ -1,0 +1,27 @@
+# Checkpoint 05 `address-space` (CURRICULUM §5 ch05).
+id = "05"
+slug = "address-space"
+requires = ["04"]
+
+[contract]
+tests = ["contract/layout_invariants.rs"]
+
+# `mmio-poke` writes the permanently empty hole at 0x0c00_0000: a stage-2 miss the VMM must
+# refuse (exit 3, guest fatal), not ignore.
+[[run]]
+name = "mmio-poke"
+guest = "mmio-poke"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+expect_exit_code = 3
+serial = "expected/mmio-poke.txt"
+
+[journal]
+file = "journal/05.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "Stage 2 maps only what you choose; every hole is a trap. An access to an unmapped IPA is a data abort that reaches the VMM."
+spec = "PLAN §1 (the machine memory map) and arch/layout.rs; ARM ARM D8 (stage-2 translation)."
+pseudocode = "regions sorted, no overlap, 16 KiB aligned, below 1 << ipa_bits; virtio_slot(n) = (0x0a000000 + n * 0x200, 48 + n) for n < 32."
+anchor = "crates/vmm/src/arch/layout.rs."

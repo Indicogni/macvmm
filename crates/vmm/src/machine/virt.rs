@@ -8,8 +8,24 @@
 //! it (PLAN §2.1: additive, block-local edits). The devices every machine has (M6: the PL011,
 //! the PL031, the unused GIC redistributor frames) are [`register_platform`].
 //!
-//! **M11: virtio-mmio.** All 32 slots are on the bus ([`register_virtio`]); the populated
-//! ones ([`virtio_populated`], none until M12) also get a DT node.
+//! **M11: virtio-mmio.** All 32 slots are on the bus ([`register_virtio_with`]); the populated
+//! ones ([`virtio_populated`]) also get a DT node.
+//!
+//! **M12: devices in slots.** [`virtio_assignment`] packs the requested devices into slots in
+//! the ADR-0005 order (disks, rng, console, net); each populated slot gets its device model, an
+//! interrupt line on SPI 16 + slot, and a worker thread (`virtio::worker`).
+//!
+//! **M14: disks.** Each `--disk` becomes a virtio-blk ([`VirtioKind::Blk`]) in CLI order, before
+//! every other device, over the `HostIo` disk backend it names (`VirtioEnv::disks`).
+//!
+//! **M13: the console.** `--console` adds a virtio-console after `--rng`; when stdin is bound
+//! to it (`--console stdio`), its input queue's push hook rings the console worker's receiveq
+//! doorbell ([`connect_console_input`]).
+//!
+//! **M24: NICs.** Each `--net` becomes a virtio-net ([`VirtioKind::Net`]) after the console,
+//! over the `HostIo` socket it names (`VirtioEnv::nets`). Besides its worker (TX) a NIC has an
+//! RX thread (`virtio::net::spawn_rx`), attached to the worker as its `Companion`, so it is
+//! stopped and joined with the workers before guest RAM is freed (MEM-9).
 //!
 //! **M8: interrupt lines.** With the in-kernel GIC, [`platform_irqs`] wires the PL011 to SPI 1
 //! (INTID 33) and the PL031 to SPI 2 (INTID 34), each a validated `irq::GicSpi` built from the
@@ -20,18 +36,23 @@ use crate::arch::layout::{
     GICR_BASE, GICR_WINDOW_END, Layout, PL011_BASE, PL011_INTID, PL031_BASE, PL031_INTID, RAM_BASE,
     TESTDEV_BASE,
 };
+use crate::backend::entropy::Entropy;
+use crate::backend::file::BlockBackend;
 use crate::backend::serial::{SerialInput, SinkHandle};
 use crate::bus::Bus;
 use crate::config::VmConfig;
+use crate::control::VmControl;
 use crate::devices::pl011::{PL011_SIZE, Pl011};
 use crate::devices::pl031::{PL031_SIZE, Pl031};
 use crate::devices::razwi::RazWi;
 use crate::devices::testdev::{TESTDEV_SIZE, TestDev};
 use crate::error::{Error, Result};
 use crate::irq::{GicSpi, IrqLine, NullIrq, SpiLimits};
-use crate::memory::GuestAddress;
-use crate::virtio::VirtioMmio;
+use crate::memory::{GuestAddress, GuestMemoryOrdered};
 use crate::virtio::mmio::WINDOW_SIZE as VIRTIO_WINDOW;
+use crate::virtio::{
+    Blk, Console, QueueNotifier, Rng, VirtioDevice, VirtioInterrupt, VirtioMmio, Worker,
+};
 use std::sync::{Arc, Mutex};
 
 /// The RAM regions of a `virt` machine with `size` bytes of RAM (already validated by
@@ -55,42 +76,278 @@ pub fn register_devices(cfg: &VmConfig, bus: &mut Bus) -> Result<()> {
     Ok(())
 }
 
-// ANCHOR: virtio_slots
-/// The populated virtio-mmio slots for `cfg`, in slot order (ADR-0005: `--disk` in CLI order,
-/// then `--rng`, `--console`, `--net`). M11 brings the transport and no device, so every slot
-/// is empty; M12+ add one block each here and in [`register_virtio`]. The DTB describes
-/// exactly these slots (`fdt/machine.rs`).
-pub fn virtio_populated(_cfg: &VmConfig) -> Vec<usize> {
-    Vec::new()
+// ANCHOR: slot_assignment
+/// The device model in a populated virtio-mmio slot (architecture §11.3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VirtioKind {
+    /// virtio-blk (M14) over `--disk` number `n` (an index into `VirtioEnv::disks`).
+    Blk(usize),
+    /// virtio-rng (M12, `--rng`).
+    Rng,
+    /// virtio-console (M13, `--console`).
+    Console,
+    /// virtio-net (M24) over `--net` number `n` (an index into `VirtioEnv::nets`).
+    Net(usize),
 }
 
-/// Put all 32 virtio-mmio transports on `bus` (M11, architecture §11.1): a device in each
-/// slot [`virtio_populated`] names (none yet), and an empty transport (`NullDevice`: Magic,
-/// Version 2, DeviceID 0, the rest RAZ/WI) everywhere else, so firmware that probes every slot
-/// gets the answer virtio 1.2 §4.2.3.1.1 defines instead of an unhandled-MMIO stop.
-///
-/// Empty slots hold no guest-memory handle and no interrupt line: they can never activate.
+impl VirtioKind {
+    /// The short name used for the worker thread (`virtio-rng-0`) and in logs.
+    pub fn name(self) -> &'static str {
+        match self {
+            VirtioKind::Blk(_) => "blk",
+            VirtioKind::Rng => "rng",
+            VirtioKind::Console => "console",
+            VirtioKind::Net(_) => "net",
+        }
+    }
+}
+
+/// Which device goes in which slot (ADR-0005 decision 2): `--disk` in CLI order, then `--rng`,
+/// then `--console`, then `--net`, packed from slot 0. The order is fixed so that guest-visible
+/// names are stable: the first `--disk` is always slot 0 and so always Linux's `/dev/vda`,
+/// whatever other devices are added. Each milestone adds its block here, in that order.
+pub fn virtio_assignment(cfg: &VmConfig) -> Vec<(usize, VirtioKind)> {
+    let mut kinds: Vec<VirtioKind> = Vec::new();
+    // M14: one entry per `--disk`, in CLI order, first: disk 0 is always /dev/vda.
+    kinds.extend((0..cfg.disks.len()).map(VirtioKind::Blk));
+    // M12: then `--rng`.
+    if cfg.rng {
+        kinds.push(VirtioKind::Rng);
+    }
+    // M13: then `--console`.
+    if cfg.console.is_some() {
+        kinds.push(VirtioKind::Console);
+    }
+    // M24: then one entry per `--net`, in CLI order.
+    kinds.extend((0..cfg.net.len()).map(VirtioKind::Net));
+    kinds.into_iter().enumerate().collect()
+}
+// ANCHOR_END: slot_assignment
+
+/// The populated virtio-mmio slots for `cfg`, in slot order ([`virtio_assignment`]). The DTB
+/// describes exactly these slots (`fdt/machine.rs`).
+pub fn virtio_populated(cfg: &VmConfig) -> Vec<usize> {
+    virtio_assignment(cfg)
+        .into_iter()
+        .map(|(slot, _)| slot)
+        .collect()
+}
+
+/// What a populated slot needs from the machine being built (M12).
+pub struct VirtioEnv<'a> {
+    /// Guest RAM, where the rings and buffers live.
+    pub mem: Arc<dyn GuestMemoryOrdered>,
+    /// The in-kernel GIC (`None` in the `--irqchip none` mode and in host tests: then the
+    /// device lines are `NullIrq`).
+    pub gic: Option<&'a hvf::Gic>,
+    /// The host CSPRNG (`HostIo.entropy`, FDT-3).
+    pub entropy: Entropy,
+    /// The VM a worker panic stops (RUST-7).
+    pub ctl: Arc<VmControl>,
+    /// M13: the console's TX sink (`HostIo.console`); required when `--console` is given.
+    pub console: Option<SinkHandle>,
+    /// M13: the console's input queue (`HostIo.console_input`) when stdin is bound to it
+    /// (`--console stdio`), else `None`: the console then never receives.
+    pub console_input: Option<Arc<SerialInput>>,
+    /// M14: the `--disk` backends in command-line order (`HostIo.disks`: opened, checked and
+    /// locked before any HVF call); `VirtioKind::Blk(n)` serves `disks[n]`.
+    pub disks: Vec<Arc<dyn BlockBackend>>,
+    /// M24: the `--net` sockets and MACs in command-line order (`HostIo.nets`: bound and
+    /// checked before any HVF call); `VirtioKind::Net(n)` serves `nets[n]`.
+    pub nets: Vec<crate::net::NetHost>,
+}
+
+/// Put all 32 virtio-mmio transports on `bus` with no device in any of them (M11; host tests).
+/// Refuses a `cfg` that asks for a device: use [`register_virtio_with`].
 pub fn register_virtio(cfg: &VmConfig, bus: &mut Bus) -> Result<()> {
-    let populated = virtio_populated(cfg);
-    let layout = Layout::virt();
+    if !virtio_populated(cfg).is_empty() {
+        return Err(Error::Internal(
+            "register_virtio cannot build devices: use register_virtio_with",
+        ));
+    }
     for slot in 0..crate::arch::layout::VIRTIO_MMIO_SLOTS {
-        let (base, _intid) = layout
+        let (base, _intid) = Layout::virt()
             .virtio_slot(slot)
             .ok_or(Error::Internal("virtio slot outside the layout"))?;
-        if populated.contains(&slot) {
-            return Err(Error::Internal("no virtio device model exists yet (M12+)"));
-        }
-        bus.insert(
-            "virtio-mmio",
-            base,
-            VIRTIO_WINDOW,
-            Arc::new(Mutex::new(VirtioMmio::empty())),
-        )
-        .map_err(Error::Bus)?;
+        insert_transport(bus, base, VirtioMmio::empty())?;
     }
     Ok(())
 }
+
+fn insert_transport(bus: &mut Bus, base: u64, t: VirtioMmio) -> Result<()> {
+    bus.insert("virtio-mmio", base, VIRTIO_WINDOW, Arc::new(Mutex::new(t)))
+        .map_err(Error::Bus)
+}
+
+// ANCHOR: virtio_slots
+/// Put all 32 virtio-mmio transports on `bus` (M11, architecture §11.1): the device
+/// [`virtio_assignment`] names in each populated slot, each with its own interrupt line
+/// (INTID 48 + slot on the in-kernel GIC, validated like the PL011's) and its own worker
+/// thread ([`populated_slot`]), and an empty transport (`NullDevice`: Magic, Version 2,
+/// DeviceID 0, the rest RAZ/WI) everywhere else, so firmware that probes every slot gets the
+/// answer virtio 1.2 §4.2.3.1.1 defines instead of an unhandled-MMIO stop.
+///
+/// Returns the workers; the machine stops and joins them before it frees guest RAM (MEM-9).
+/// Empty slots hold no guest-memory handle and no interrupt line: they can never activate.
+pub fn register_virtio_with(
+    cfg: &VmConfig,
+    bus: &mut Bus,
+    env: &VirtioEnv<'_>,
+) -> Result<Vec<Arc<Worker>>> {
+    let assigned = virtio_assignment(cfg);
+    let layout = Layout::virt();
+    let limits = match env.gic {
+        Some(gic) => Some(SpiLimits::of(gic).map_err(|err| Error::Hv {
+            op: "query the GIC's SPI range",
+            err,
+        })?),
+        None => None,
+    };
+    let mut workers = Vec::new();
+    for slot in 0..crate::arch::layout::VIRTIO_MMIO_SLOTS {
+        let (base, intid) = layout
+            .virtio_slot(slot)
+            .ok_or(Error::Internal("virtio slot outside the layout"))?;
+        let Some(&(_, kind)) = assigned.iter().find(|(s, _)| *s == slot) else {
+            insert_transport(bus, base, VirtioMmio::empty())?;
+            continue;
+        };
+        let line: Arc<dyn IrqLine> = match (env.gic, &limits) {
+            (Some(gic), Some(limits)) => Arc::new(
+                GicSpi::new(intid, limits, gic.handle())
+                    .map_err(|e| Error::Config(format!("in-kernel GIC: {e}")))?,
+            ),
+            _ => Arc::new(NullIrq),
+        };
+        let (transport, worker) = populated_slot(kind, slot, line, env)?;
+        // M13: typed input rings the console's receiveq (architecture §14.4).
+        if let (VirtioKind::Console, Some(input)) = (kind, &env.console_input) {
+            connect_console_input(input, &worker);
+        }
+        workers.push(worker);
+        insert_transport(bus, base, transport)?;
+    }
+    Ok(workers)
+}
 // ANCHOR_END: virtio_slots
+
+/// M14: the virtio-blk model for `--disk` number `n`, over the backend `HostIo` opened.
+fn blk_device(env: &VirtioEnv<'_>, n: usize) -> Result<Arc<Mutex<dyn VirtioDevice>>> {
+    let disk = env
+        .disks
+        .get(n)
+        .ok_or(Error::Internal("--disk without an open disk image"))?;
+    Ok(Arc::new(Mutex::new(Blk::new(Arc::clone(disk), n))))
+}
+
+// ANCHOR: virtio_slot_device
+/// One populated slot (M12): the device model, its transport, and its worker thread, which
+/// is the transport's doorbell target (`QueueNotifier`), so a QueueNotify on a vCPU only sets
+/// a bit and returns (architecture §14.3 step 1). The worker's per-queue budget is the
+/// device's queue maximum (VQ-12).
+fn populated_slot(
+    kind: VirtioKind,
+    slot: usize,
+    line: Arc<dyn IrqLine>,
+    env: &VirtioEnv<'_>,
+) -> Result<(VirtioMmio, Arc<Worker>)> {
+    // M24: a NIC's typed handle, for its RX thread.
+    let mut nic: Option<(usize, Arc<Mutex<crate::virtio::Net>>)> = None;
+    let device: Arc<Mutex<dyn VirtioDevice>> = match kind {
+        VirtioKind::Blk(n) => blk_device(env, n)?,
+        VirtioKind::Rng => Arc::new(Mutex::new(Rng::new(env.entropy))),
+        VirtioKind::Console => console_device(env)?,
+        VirtioKind::Net(n) => {
+            let host = env
+                .nets
+                .get(n)
+                .ok_or(Error::Internal("--net without an open socket"))?;
+            let dev = Arc::new(Mutex::new(crate::virtio::Net::new(
+                host.mac,
+                Arc::clone(&host.backend),
+            )));
+            nic = Some((n, Arc::clone(&dev)));
+            dev
+        }
+    };
+    let budgets = crate::sync::lock(&device).queue_max_sizes().to_vec();
+    let interrupt = Arc::new(VirtioInterrupt::new(line));
+    let mut transport = VirtioMmio::new(
+        Arc::clone(&device),
+        Arc::clone(&interrupt),
+        Some(Arc::clone(&env.mem)),
+    )
+    .map_err(Error::Internal)?;
+    let worker = Worker::spawn(
+        &format!("virtio-{}-{slot}", kind.name()),
+        device,
+        Arc::clone(&interrupt),
+        budgets,
+        Arc::clone(&env.ctl),
+    )
+    .map_err(|_| Error::Internal("cannot spawn a virtio worker thread"))?;
+    if let Some((n, dev)) = nic {
+        attach_net_rx(&worker, slot, n, dev, interrupt, &env.ctl)?; // M24
+    }
+    let notifier: Arc<dyn QueueNotifier> = worker.clone();
+    transport.set_notifier(Some(notifier));
+    Ok((transport, worker))
+}
+// ANCHOR_END: virtio_slot_device
+
+// ANCHOR: net_rx_attach
+/// M24: start NIC `n`'s RX thread (`virtio::net::spawn_rx`) and attach it to the slot's worker
+/// as its `Companion`, so stopping the workers (before guest RAM is freed, MEM-9) also stops and
+/// joins it, and its counters come out in `--stats`.
+fn attach_net_rx(
+    worker: &Worker,
+    slot: usize,
+    n: usize,
+    dev: Arc<Mutex<crate::virtio::Net>>,
+    interrupt: Arc<VirtioInterrupt>,
+    ctl: &Arc<VmControl>,
+) -> Result<()> {
+    let rx = crate::virtio::net::spawn_rx(
+        &format!("virtio-net-rx-{slot}"),
+        &format!("net{n} slot {slot}"),
+        dev,
+        interrupt,
+        Arc::clone(ctl),
+    )
+    .map_err(|_| Error::Internal("cannot spawn a virtio-net RX thread"))?;
+    worker.attach(Arc::new(rx));
+    Ok(())
+}
+// ANCHOR_END: net_rx_attach
+
+/// M13: the virtio-console model over `HostIo`'s console sink and (when stdin is bound to it)
+/// its input queue.
+fn console_device(env: &VirtioEnv<'_>) -> Result<Arc<Mutex<dyn VirtioDevice>>> {
+    let sink = env
+        .console
+        .clone()
+        .ok_or(Error::Internal("--console without a console sink"))?;
+    Ok(Arc::new(Mutex::new(Console::new(
+        sink,
+        env.console_input.clone(),
+    ))))
+}
+
+// ANCHOR: console_input_hook
+/// M13 (architecture §14.4): bytes the stdin thread pushes into the console's input queue ring
+/// this boot's console worker for the receiveq, exactly as a guest QueueNotify would; the
+/// worker fills whatever RX buffers are posted (`virtio::console`, anchor `console_rx`). The
+/// hook holds a `Weak`, so it never keeps a torn-down boot's worker alive, and a doorbell for
+/// a stopped worker is a no-op; the next boot installs its own hook.
+fn connect_console_input(input: &Arc<SerialInput>, worker: &Arc<Worker>) {
+    let weak = Arc::downgrade(worker);
+    input.set_hook(Some(Arc::new(move || {
+        if let Some(w) = weak.upgrade() {
+            w.notify(crate::virtio::console::RX_QUEUE);
+        }
+    })));
+}
+// ANCHOR_END: console_input_hook
 
 /// The interrupt lines of the platform devices.
 #[derive(Clone)]
@@ -282,6 +539,105 @@ mod tests {
         }
         let row = Layout::virt().find(VIRTIO_MMIO_BASE).unwrap();
         assert_eq!(row.size, VIRTIO_MMIO_SLOTS as u64 * VIRTIO_MMIO_STRIDE);
+    }
+
+    /// M12: ADR-0005 slot order, and a populated slot answers as its device.
+    #[test]
+    fn rng_goes_in_the_first_free_slot_with_a_worker() {
+        use crate::arch::layout::{VIRTIO_MMIO_BASE, VIRTIO_MMIO_SLOTS, VIRTIO_MMIO_STRIDE};
+        use crate::bus::AccessSize;
+        use crate::memory::VecMemory;
+        let cfg = VmConfig {
+            rng: true,
+            ..VmConfig::default()
+        };
+        assert_eq!(virtio_assignment(&cfg), vec![(0, VirtioKind::Rng)]);
+        assert_eq!(virtio_populated(&cfg), vec![0]);
+        assert!(register_virtio(&cfg, &mut Bus::new()).is_err());
+        let mem = Arc::new(VecMemory::new(&[(GuestAddress(RAM_BASE), 0x10_0000)]).unwrap());
+        let env = VirtioEnv {
+            mem,
+            gic: None,
+            entropy: Entropy::os(),
+            ctl: Arc::new(VmControl::new()),
+            console: None,
+            console_input: None,
+            disks: Vec::new(),
+            nets: Vec::new(),
+        };
+        let mut bus = Bus::new();
+        let workers = register_virtio_with(&cfg, &mut bus, &env).unwrap();
+        assert_eq!(bus.len(), VIRTIO_MMIO_SLOTS);
+        assert_eq!(workers.len(), 1);
+        assert_eq!(workers.first().map(|w| w.name()), Some("virtio-rng-0"));
+        assert_eq!(bus.read(VIRTIO_MMIO_BASE + 8, AccessSize::B4), Ok(4));
+        for i in 1..VIRTIO_MMIO_SLOTS as u64 {
+            let base = VIRTIO_MMIO_BASE + i * VIRTIO_MMIO_STRIDE;
+            assert_eq!(bus.read(base + 8, AccessSize::B4), Ok(0), "slot {i}");
+        }
+        assert!(workers.iter().all(|w| !w.stop()));
+        // Without --rng nothing is populated and no worker exists.
+        let none = register_virtio_with(&VmConfig::default(), &mut Bus::new(), &env).unwrap();
+        assert!(none.is_empty());
+    }
+
+    /// M13: the console goes after `--rng` (ADR-0005), answers as DeviceID 3 with two queues,
+    /// and stdin pushed into its input queue rings its worker.
+    #[test]
+    fn console_goes_after_rng_and_its_input_rings_the_worker() {
+        use crate::arch::layout::{VIRTIO_MMIO_BASE, VIRTIO_MMIO_STRIDE};
+        use crate::backend::serial::Sink;
+        use crate::bus::AccessSize;
+        use crate::config::SinkSpec;
+        use crate::memory::VecMemory;
+        let cfg = VmConfig {
+            rng: true,
+            console: Some(SinkSpec::default()),
+            ..VmConfig::default()
+        };
+        assert_eq!(
+            virtio_assignment(&cfg),
+            vec![(0, VirtioKind::Rng), (1, VirtioKind::Console)]
+        );
+        let mem = Arc::new(VecMemory::new(&[(GuestAddress(RAM_BASE), 0x10_0000)]).unwrap());
+        let input = Arc::new(SerialInput::new());
+        let mut env = VirtioEnv {
+            mem,
+            gic: None,
+            entropy: Entropy::os(),
+            ctl: Arc::new(VmControl::new()),
+            console: None,
+            console_input: Some(Arc::clone(&input)),
+            disks: Vec::new(),
+            nets: Vec::new(),
+        };
+        // A console without its sink is a VMM bug, reported, never a panic.
+        assert!(register_virtio_with(&cfg, &mut Bus::new(), &env).is_err());
+        env.console = Some(Arc::new(Sink::none()));
+        let mut bus = Bus::new();
+        let workers = register_virtio_with(&cfg, &mut bus, &env).unwrap();
+        assert_eq!(
+            workers.iter().map(|w| w.name()).collect::<Vec<_>>(),
+            vec!["virtio-rng-0", "virtio-console-1"]
+        );
+        let base = VIRTIO_MMIO_BASE + VIRTIO_MMIO_STRIDE;
+        assert_eq!(bus.read(base + 8, AccessSize::B4), Ok(3));
+        // A push rings the console's worker (queue 0); the device is not activated, so the
+        // batch is a no-op and the bytes stay queued.
+        let before = workers[1].batches();
+        input.push(b"hi");
+        let t0 = std::time::Instant::now();
+        while workers[1].batches() == before && t0.elapsed().as_secs() < 2 {
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        assert!(workers[1].batches() > before, "the hook rang the worker");
+        assert_eq!(input.len(), 2);
+        assert!(workers.iter().all(|w| !w.stop()));
+        // After the worker is gone the hook is a no-op.
+        drop(workers);
+        drop(bus);
+        input.push(b"!");
+        assert_eq!(input.len(), 3);
     }
 
     #[test]

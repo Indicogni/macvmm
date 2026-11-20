@@ -1,0 +1,8 @@
+macvmm-initramfs: ready *
+virtio_blk virtio0: [vda] 131072 512-byte logical blocks*
+macvmm-vda: /dev/vda 131072 sectors ro=0
+macvmm-vda: sha256=*
+!macvmm-vda: FAILED
+![stderr] needs reset
+![stderr] unhandled MMIO
+![stderr] panicked

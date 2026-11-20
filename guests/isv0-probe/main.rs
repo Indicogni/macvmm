@@ -8,7 +8,7 @@
 //! are *virtual* addresses, so the VMM must also walk this guest's page tables
 //! (`crates/vmm/src/arch/stage1_walk.rs`).
 //!
-//! **The 14 checks.** Every value is read back with plain `ldr`/`str` (ISV = 1, already proven
+//! **The 16 checks.** Every value is read back with plain `ldr`/`str` (ISV = 1, already proven
 //! by `mmio-probe`), and every writeback is compared with the expected base:
 //!
 //! | # | Instruction | Checks |
@@ -21,8 +21,10 @@
 //! | 10 | `ldpsw` pre-index | sign extension and writeback |
 //! | 11 | `str x` pre-index (one register, writeback) | value and writeback |
 //! | 12 | `ldrsh x` post-index | sign extension and writeback |
-//! | 13 | `ldp x` through `mmu::TESTDEV_ALIAS` | the VMM walked the tables (VA ≠ IPA) |
+//! | 13 | `ldp x` through `mmu::TESTDEV_ALIAS` | the VMM walked the tables for the data address (VA ≠ IPA) |
 //! | 14 | `stp x, [sp, #-16]!` at EL1t | Rn = 31 is SP_EL0 there, written back |
+//! | 15 | `ldp x, [sp], #16` at EL1h | Rn = 31 is SP_EL1 there (the live stack pointer), written back |
+//! | 16 | `ldp x` run from `mmu::CODE_ALIAS` | the VMM walked the tables for the PC: its identity IPA is not RAM |
 //!
 //! Then `str q0` (a SIMD store, which the VMM must not emulate, MMIO-6) must arrive as a
 //! synchronous external abort: `ESR_EL1.EC = 0x25`, DFSC `0x10`, `WnR = 1`, `FAR_EL1` = the
@@ -33,7 +35,7 @@
 use core::arch::asm;
 use core::sync::atomic::{AtomicU64, Ordering};
 use guest::exceptions::{ExceptionFrame, set_sync_hook};
-use guest::mmu::{self, TESTDEV, TESTDEV_ALIAS};
+use guest::mmu::{self, TESTDEV, TESTDEV_ALIAS, code_alias};
 use guest::println;
 
 guest::entry!(main);
@@ -247,7 +249,73 @@ fn main(_x0: u64) {
         &[0x5151, 0x5252, t + 0xb0],
     );
 
-    println!("isv0-probe: {ok}/14 ok");
+    // 15: SP as the base at EL1h, where Rn = 31 is SP_EL1, the stack this code runs on: the
+    // VMM must read and write the live SP_EL1 (HV_SYS_REG_SP_EL1), not a stale banked copy.
+    put(0xd0, 0x6161);
+    put(0xd8, 0x6262);
+    let mut nb: u64 = t + 0xd0;
+    let (a, b): (u64, u64);
+    // SAFETY: SP_EL1 is pointed at the test device only for one trapping `ldp` with interrupts
+    // masked (DAIF from boot), and restored from `tmp` before any Rust code runs. Nothing is
+    // pushed meanwhile: an exception would be a failure anyway, reported by the VMM.
+    unsafe {
+        asm!(
+            "mov {tmp}, sp",
+            "mov sp, {b}",
+            "ldp {r1}, {r2}, [sp], #16",
+            "mov {b}, sp",
+            "mov sp, {tmp}",
+            b = inout(reg) nb,
+            r1 = out(reg) a,
+            r2 = out(reg) b,
+            tmp = out(reg) _,
+        )
+    };
+    check(
+        &mut ok,
+        "ldp x [sp], #16 at EL1h",
+        &[a, b, nb],
+        &[0x6161, 0x6262, t + 0xe0],
+    );
+
+    // 16: the faulting instruction runs from `mmu::CODE_ALIAS`, so the PC the VMM sees is a VA
+    // whose identity IPA (0x8000_0000 + ...) is not RAM. Only a VMM that walks the tables for
+    // the PC finds the `ldp`.
+    put(0xe0, 0x7171);
+    put(0xe8, 0x7272);
+    let (a, b): (u64, u64);
+    // SAFETY: `blr` jumps to the alias VA of the two-instruction stub at `1:` (same bytes,
+    // executable Normal memory, mmu.rs), which loads from the test device and returns to the
+    // `b 2f` after the `blr`. x30 is declared clobbered; the stub touches only its operands.
+    unsafe {
+        asm!(
+            "adr {tmp}, 1f",
+            "sub {tmp}, {tmp}, {ram}",
+            "add {tmp}, {tmp}, {alias}",
+            "blr {tmp}",
+            "b 2f",
+            "1:",
+            "ldp {r1}, {r2}, [{b}]",
+            "ret",
+            "2:",
+            b = in(reg) t + 0xe0,
+            r1 = out(reg) a,
+            r2 = out(reg) b,
+            tmp = out(reg) _,
+            ram = in(reg) 0x4000_0000u64,
+            alias = in(reg) code_alias(0x4000_0000),
+            out("x30") _,
+            options(nostack),
+        )
+    };
+    check(
+        &mut ok,
+        "ldp x with pc via stage-1 code alias",
+        &[a, b],
+        &[0x7171, 0x7272],
+    );
+
+    println!("isv0-probe: {ok}/16 ok");
 
     // A SIMD store is never emulated: a synchronous external abort, nothing written.
     put(0x100, 0x0123);

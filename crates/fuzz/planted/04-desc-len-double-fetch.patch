@@ -1,0 +1,15 @@
+--- a/crates/vmm/src/virtio/chain.rs
++++ b/crates/vmm/src/virtio/chain.rs
+@@ -232,7 +232,11 @@
+             } else {
+                 None
+             };
+-            return Ok(Some(d));
++            // PLANTED BUG 4 (scripts/bughunt-selftest.sh): a double fetch. `len` is read from
++            // guest memory again *after* it was validated, so a racing vCPU can swap in a
++            // length nobody checked (threat model MEM-7, TEST-4).
++            let again = self.read_desc(index)?;
++            return Ok(Some(Descriptor { len: again.len, ..d }));
+         }
+     }
+     // ANCHOR_END: chain_next_descriptor

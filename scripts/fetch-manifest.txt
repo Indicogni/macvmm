@@ -20,18 +20,31 @@ linux config-6.18.60-0-virt b7643cddcd3ba109183a2aaafa3c911d91e7d89485fd7b2caf5e
 linux Image-virt a2cecb9b6fdbd83e87bd43c8040de67300d5b8dde1fc50c34714faa272888f17 derive:unzboot:vmlinuz-virt
 # ANCHOR_END: manifest_linux
 
-# Alpine minirootfs for the ext4 root (M15). modloop-virt carries ext4.ko (architecture §19
-# item 11); its hash is TOFU until M15 pins it and records the cross-check against Alpine's
-# signed latest-releases.yaml here, with the date and method (SC-10).
+# Alpine minirootfs for the ext4 root (M15; `cargo xtask mkrootfs` checks this pin itself before
+# reading the tarball, SC-5). modloop-virt (an 18 MB squashfs of every linux-virt 6.18.60-0
+# module) carries ext4.ko (architecture §19 item 11); it is attached read-only to the guest and
+# never extracted on the host.
+# SC-10 modloop pin, first fetched and cross-checked 2026-11-19 (M15) by two independent methods:
+#  1. Alpine's RSA signature: `openssl dgst -sha1 -verify <key> -signature <sig> modloop-virt`
+#     printed "Verified OK", with <sig> = var/cache/misc/modloop-virt.SIGN.RSA.alpine-devel@
+#     lists.alpinelinux.org-616ae350.rsa.pub and <key> = etc/apk/keys/alpine-devel@lists.
+#     alpinelinux.org-616ae350.rsa.pub, both read from the sha256-pinned initramfs-virt above.
+#  2. latest-releases.yaml (v3.24/releases/aarch64, HTTPS) lists alpine-netboot-3.24.4-aarch64
+#     .tar.gz with sha256 9d10f909d41b8393a80a645e9e2af761fcb1f29b986799edeedfa269c359745e; the
+#     downloaded tarball matched it, and its boot/modloop-virt member (streamed through
+#     `tar -xzOf … | shasum -a 256`, nothing written to disk) hashed to the pin below. The
+#     tarball's GPG .asc signature was NOT checked: gpg is not installed on the dev machine.
 rootfs alpine-minirootfs-3.24.4-aarch64.tar.gz 4b14c18f7e90a063b61462ea1462a5732c154bf6adad594974fe6487cd98a8de https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/alpine-minirootfs-3.24.4-aarch64.tar.gz
-rootfs modloop-virt TOFU https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/netboot-3.24.4/modloop-virt
+rootfs modloop-virt a726889467d1d4fefa4ba1ed710f28b9db1fbd019ca3eba2d4c6c65b33536343 https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/netboot-3.24.4/modloop-virt
 
 # U-Boot qemu_arm64 from Alpine (M18). Apk churn (risk R7): append a mirror URL to this line
 # if the lead designates one.
 uboot u-boot-qemu-2026.04-r1.apk b87f1d7ab06549d123a0776f65ddd82a81ae91d9cc4b0aebf2ae811a17e1ccb0 https://dl-cdn.alpinelinux.org/alpine/v3.24/main/aarch64/u-boot-qemu-2026.04-r1.apk
 uboot u-boot.bin e0155e525781e6f781eb90a8dbd680c9ecb53b21081fffdc636c8a7da63f7f12 derive:extract-apk:u-boot-qemu-2026.04-r1.apk:usr/share/u-boot/qemu_arm64/u-boot.bin
 
-# FreeBSD 15.1 (M19). The derived sparse raw is TOFU: a regression check of a deterministic
-# transform of a pinned input, not a trust root (SC-10).
+# FreeBSD 15.1 (M19). The .xz pin agrees with the project's CHECKSUM.SHA256 (checked
+# 2026-11-19). The derived sparse raw was pinned TOFU at first build (2026-11-19, `fetch.sh --pin`,
+# and agrees with `xz -dc | shasum -a 256`): a regression check of a deterministic transform of
+# the pinned input (did xz or write-sparse change the bytes?), not a trust root (SC-10).
 freebsd FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.raw.xz 36028829cbd5a74a050d9964cd5fd391c9d12edca1c3d520cbcce257e1d999c8 https://download.freebsd.org/releases/VM-IMAGES/15.1-RELEASE/aarch64/Latest/FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.raw.xz
-freebsd freebsd-15.1-ufs.raw TOFU derive:write-sparse:FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.raw.xz
+freebsd freebsd-15.1-ufs.raw d7a05077131d07a17c3fb2faf803ff34edf511ddbf796c35934d6d2afc44b959 derive:write-sparse:FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.raw.xz

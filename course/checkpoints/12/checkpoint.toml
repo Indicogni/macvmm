@@ -1,0 +1,45 @@
+# Checkpoint 12 `gicv3` (CURRICULUM §5 ch12): the in-kernel GICv3.
+id = "12"
+slug = "gicv3"
+requires = ["11"]
+
+[contract]
+crates = ["vmm", "hvf"]
+tests = ["contract/irq_lines.rs"]
+
+# (a) Three keystrokes, three PL011 RX interrupts through the GIC (SPI 33).
+[[run]]
+name = "irq"
+guest = "irq"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+steps = ["wait:irq: ready", "send:a", "sleep:200", "send:b", "sleep:200", "send:c"]
+expect_exit_code = 0
+serial = "expected/irq.txt"
+
+# (b) The same timer test as ch11, now with the GIC in the kernel: no VTIMER and no WFI exits.
+[[run]]
+name = "timer"
+guest = "timer"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--stats", "--trace", "exits:{out}/t.jsonl:all", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/timer.txt"
+trace = "expected/timer.trace.txt"
+max_host_cpu_percent = 10
+
+# (c) The HVF contract: GIC sizes, and the timer INTIDs 27 and 30.
+[[run]]
+name = "gic-live"
+contract_hvf = "contract/hvf_gic_live.rs"
+timeout = 300
+expect_exit_code = 0
+
+[journal]
+file = "journal/12.md"
+questions = 5
+predict = true
+
+[hints]
+conceptual = "An interrupt controller turns many device lines into one CPU input with priorities and acknowledgement; HVF's in-kernel GICv3 does that without an exit per interrupt."
+spec = "GICv3 architecture specification (IHI 0069) §2 (INTID ranges: SGI 0-15, PPI 16-31, SPI 32-1019); hv_gic.h."
+pseudocode = "GicSpi::new(intid) refuses intid < 32 or > 1019 or inside the MSI range; set_level -> hv_gic_set_spi(intid, level)."
+anchor = "crates/vmm/src/irq.rs."

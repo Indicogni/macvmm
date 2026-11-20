@@ -712,8 +712,8 @@ fn isv0_probe() {
         .filter(|l| l.contains(r#""isv":false"#))
         .count();
     let isv1 = text.lines().filter(|l| l.contains(r#""isv":true"#)).count();
-    // 14 decoded accesses (plus the refused SIMD store); every plain ldr/str says isv:true.
-    assert!(isv0 >= 15, "{isv0} ISV=0 records\n{text}");
+    // 16 decoded accesses (plus the refused SIMD store); every plain ldr/str says isv:true.
+    assert!(isv0 >= 17, "{isv0} ISV=0 records\n{text}");
     assert!(isv1 > 0, "{text}");
     println!("isv0_probe: {isv0} ISV=0 records, {isv1} ISV=1 records");
     let _ = std::fs::remove_dir_all(&dir);

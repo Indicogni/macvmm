@@ -336,6 +336,23 @@ Alpine kernel config facts relevant to us [V] (`config-6.18.60-0-virt`):
   `ARM_PSCI_FW`, `ARM_ARCH_TIMER`, `SERIAL_AMBA_PL011(_CONSOLE)`, `SERIAL_EARLYCON`, `RTC_DRV_PL031`, `COMMON_CLK`, `VIRTIO`,
   `VIRTIO_PCI`, `VIRTIO_CONSOLE`, `DEVTMPFS(_MOUNT)`, `RD_GZIP`, `RD_ZSTD`, …
 - Modules (`=m`): **`VIRTIO_MMIO=m`, `VIRTIO_BLK=m`, `EXT4_FS=m`**, `SQUASHFS=m`, `ISO9660_FS=m`.
+- `HW_RANDOM=m`, `HW_RANDOM_VIRTIO=m`; the pinned `initramfs-virt` ships `virtio-rng.ko`,
+  `rng-core.ko` and `modules.dep`, so `modprobe virtio_mmio && modprobe virtio-rng` works with
+  no modloop [V: 2026-11-19, M12 `linux_rng`: `hw_random=virtio_rng.0`, 1 MiB read from
+  `/dev/hwrng` on macvmm `--rng`].
+- `VIRTIO_CONSOLE=y` with `VIRTIO_MMIO=m`: after `modprobe virtio_mmio`, a non-MULTIPORT
+  virtio-console appears as `/dev/hvc0` (port 0 is a console port; no `/dev/vport*`), and the
+  hvc tty resets termios on last close, so a raw byte stream needs the fd held open across
+  `stty raw` [V: 2026-11-19, M13 `linux_console_tx` (65536 bytes byte-exact on the host sink)
+  and `linux_console_rx` on macvmm `--console`].
+- `VIRTIO_NET=m`, `NET_FAILOVER=m`; the pinned `initramfs-virt` ships `virtio_net.ko`,
+  `net_failover.ko` and `failover.ko` with `modules.dep`, so `modprobe virtio_mmio virtio_net`
+  brings up `eth0` with no modloop. With only `VERSION_1 | MAC` offered the driver uses 12-byte
+  headers with `flags = 0`/`gso_type = 0` on TX, posts single-descriptor RX buffers, and treats
+  the link as up (no `VIRTIO_NET_F_STATUS`). Busybox `ip`, `ping`, `nc -l -p PORT`,
+  `nc -w SEC HOST PORT` and `sha256sum` are present [V: 2026-11-19, M24 `two_vms_ping_and_nc`:
+  ping 5/5 and 32 MiB over busybox `nc` with matching sha256 between two macvmm VMs on
+  `--net unixgram`, 0 RX drops].
   Consequence: virtio-mmio and virtio-blk only appear after `insmod`/`modprobe` from the initramfs.
   For a "console only" milestone this doesn't matter.
 - `MODULE_SIG=y` but `MODULE_SIG_FORCE` is not set, so stray modules still load (tainting).
@@ -447,7 +464,8 @@ yields a shell [U: from reading `/init`, not run].
 
 ### 2.4 Rootfs disk for virtio-blk
 
-Constraints: Alpine's netboot initramfs has no `ext4.ko` [V], and macOS has no `mkfs.ext4` [V: not on PATH].
+Constraints: Alpine's netboot initramfs has no `ext4.ko` [V], and macOS has no `mkfs.ext4` [V: not on PATH; Homebrew's keg-only
+e2fsprogs 1.47.4 is installed on the dev machine as of 2026-11-19, PLAN D8].
 
 1. **Milestone 1: raw block test (no filesystem).** Use a host-generated pattern file as the disk. Assert the in-guest
    `sha256sum /dev/vda` (Option A above). This needs nothing beyond the stock artifacts.
@@ -455,12 +473,24 @@ Constraints: Alpine's netboot initramfs has no `ext4.ko` [V], and macOS has no `
    - Contents: Alpine minirootfs `https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/alpine-minirootfs-3.24.4-aarch64.tar.gz`
      (sha256 `4b14c18f7e90a063b61462ea1462a5732c154bf6adad594974fe6487cd98a8de`, published in `latest-releases.yaml` and `.sha256`) [V].
    - Image builder: `brew install e2fsprogs` (keg-only, `/opt/homebrew/opt/e2fsprogs/sbin/mkfs.ext4`), then
-     `mkfs.ext4 -F -L root -d <unpacked-dir> rootfs.img 256M` [U]. Caveats: files keep the macOS uid (501), which mke2fs `-d` copies, and
-     APFS is case-insensitive by default. Extract the tarball with Python `tarfile` straight into the
-     image builder's staging dir, and fix ownership with `-E root_owner=0:0` plus in-guest `chown -R` on first boot [U].
-   - Modules: `ext4.ko` + deps (`jbd2`, `mbcache`, `crc16`/`crc32c` as modules.dep says) for **6.18.60-0-virt** live in
-     `modloop-virt` (squashfs, 17 MB, same release dir). Extract with `unsquashfs` (`brew install squashfs`). Append them to
-     the overlay cpio, `insmod` them, then `switch_root` to `/dev/vda` [U].
+     `mkfs.ext4 -F -t ext4 -L root -d <staging> -E root_owner=0:0 rootfs.img` on a pre-sized file
+     [verified-on-machine 2026-11-19, M15: e2fsprogs 1.47.4; `cargo xtask mkrootfs --size 256M` prints `mkrootfs: OK`, and
+     Linux 6.18 mounts the result r/w with no `EXT4-fs error`]. Caveats: files keep the macOS uid (501), which mke2fs `-d`
+     copies, so `/sbin/macvmm-init` runs `chown -Rh 0:0` on first boot [verified-on-machine, M15]; APFS is case-insensitive by
+     default, but the 3.24.4 minirootfs has no case-colliding names (our `tar.rs` creates with `O_EXCL`, so a collision would
+     fail the build, not overwrite) [verified-on-machine, M15]. Extraction uses our `tar.rs` (SC-7), not Python `tarfile`.
+     New finding: SC-4 keeps execute bits off on the host, so the image would have no executable files; `mkrootfs` records
+     the intended modes in `/.macvmm-modes` and the initramfs applies them in the guest before `switch_root`
+     [verified-on-machine, M15: 181 modes applied].
+   - Modules: `ext4.ko` + deps for **6.18.60-0-virt** live in `modloop-virt` (squashfs v4, xz, 17,788,928 bytes, padded to
+     4 KiB, same release dir). The deps by `modules.dep` are `jbd2`, `mbcache`, `crc16` (crc32c is built in: `CONFIG_CRC32=y`)
+     [verified-on-machine 2026-11-19, M15: the guest printed `insmod jbd2`, `insmod mbcache`, `insmod crc16`, `insmod ext4`].
+     **Refuted:** no host `unsquashfs` is needed. The modloop is attached as a second, read-only virtio-blk disk, mounted
+     in the guest (`mount -t squashfs -o ro /dev/vdb /.modloop`, squashfs.ko is in the initramfs), ext4 is `insmod`ed from
+     it, then `switch_root` to `/dev/vda` [verified-on-machine, M15 `linux_rootfs_persist`].
+   - modloop authenticity: the pinned `initramfs-virt` carries Alpine's RSA signature of the modloop
+     (`var/cache/misc/modloop-virt.SIGN.RSA.*`) and the key (`etc/apk/keys/*-616ae350.rsa.pub`); `openssl dgst -sha1 -verify`
+     says `Verified OK` for the pinned modloop [verified-on-machine 2026-11-19, M15; recorded in `scripts/fetch-manifest.txt`].
 3. **Alternative: a prebuilt raw cloud disk.** Debian 13 `debian-13-genericcloud-arm64.raw` from
    `https://cloud.debian.org/images/cloud/trixie/<dated-build>/` (SHA512SUMS published) [V for existence/hashes].
    It is a GPT disk with an ESP and ext4. It boots via **firmware** (U-Boot or EDK2, then GRUB, then the Debian kernel), so it pairs
@@ -483,7 +513,9 @@ Constraints: Alpine's netboot initramfs has no `ext4.ko` [V], and macOS has no `
   The DTB is U-Boot's *control* DT and is also what it passes to the OS (EFI configuration table, or `booti`).
   RAM size comes from the DT (`fdtdec_setup_mem_size_base()`), so **our generated DTB is the only hardware description U-Boot gets**.
 - `board_late_init()` calls `virtio_init()`, which enumerates virtio-mmio devices from DT nodes `virtio,mmio`.
-  U-Boot's virtio drivers poll and need no IRQ [U].
+  U-Boot's virtio drivers poll and need no IRQ [verified-on-machine 2026-11-19, M18: `virtio scan; virtio info` finds
+  the virtio-blk as `Device 0`; the M18 exit trace shows no interrupt-related access, and U-Boot never touches the GIC
+  beyond what HVF handles in-kernel].
 - Default env, from `strings` of the Alpine 2026.04 binary [V]: `bootcmd=bootflow scan -lb`,
   `boot_targets=qfw usb scsi virtio nvme dhcp`, `fdt_addr=0x40000000`, `scriptaddr=0x40200000`,
   `pxefile_addr_r=0x40300000`, `kernel_addr_r=0x40400000`, `ramdisk_addr_r=0x44000000`.
@@ -541,17 +573,24 @@ Boot chain: U-Boot → EFI bootmeth → `BOOTAA64.EFI` (loader.efi) → reads `/
      *reading back the query table*. That only works if the region is switched from "array/ROM mode" to MMIO for that bank.
      This is what QEMU's `pflash_cfi01` "romd" mode does (unmap on command write, remap on read-array `0xFF`).
    - Options: (a) don't describe `flash@0` in the DT at all. U-Boot then runs with no MTD and the default env
-     ("bad CRC, using default environment") [U: confirm U-Boot doesn't hang without the flash node]. (b) Implement a minimal
+     ("bad CRC, using default environment") [verified-on-machine 2026-11-19, M18: no hang; the banner says `Flash: 0
+     Bytes` and `*** Warning - bad CRC, using default environment`. **But flash bank 1 must be readable**: env_flash reads
+     `ENV_ADDR = 0x0400_0000` memory-mapped whether or not a flash node exists, so an unmapped bank 1 is an unhandled-MMIO
+     stop; macvmm maps both banks RX, bank 1 zero. Execute-in-place also does an ISV = 0 `STP` into its own `.data` in
+     flash (`save_boot_params`), so the ISV = 0 path must fetch instructions from the ROM. `docs/compat/uboot.md`]. (b) Implement a minimal
      CFI-01 state machine with romd unmap/remap. (a) is the right first step. (b) is needed for EDK2 variables.
 2. **DTB at `0x4000_0000` must be fully populated** (memory, cpus, psci, timer, gic, uart+clock, rtc, virtio).
    U-Boot doesn't synthesize hardware. Leave space after the DTB; U-Boot relocates its own copy.
 3. **GIC ITS absent:** fine for virtio-mmio. Don't emit an `msi-controller` child we don't implement. HVF has an
    MSI-frame config API (`hv_gic_config_set_msi_region_*`), which is GICv2m-like, not ITS [U].
 4. **EL choice:** at EL2 both FreeBSD and Linux switch to the EL2 timers (see above). Stay at EL1 until EL2 is deliberate.
-5. **`boot_targets` starts with `qfw` (fw_cfg).** Without a fw_cfg node it just skips that target [U].
+5. **`boot_targets` starts with `qfw` (fw_cfg).** Without a fw_cfg node it just skips that target [verified-on-machine
+   2026-11-19, M18: the autoboot scan prints `No more bootdevs`, `(0 bootflows, 0 valid)` and falls back to the prompt;
+   no access to the fw_cfg window `0x0902_0000` appears in the exit trace].
 6. **U-Boot 2026.04 enables TPM2-MMIO, SMBIOS, PCI ECAM, E1000, AHCI, NVMe** (from defconfig [S]). With no DT nodes for
    them they stay inert. The U-Boot mem_map still maps the PCIe ECAM/MMIO windows as Device memory, which is harmless if unbacked:
-   accesses would fault to us [U].
+   accesses would fault to us [verified-on-machine 2026-11-19, M18: a full boot to the prompt, `virtio scan`, `reset`
+   touched only the PL011, the virtio-mmio slots and flash; 0 accesses to the PCIe windows, 0 system-register traps].
 7. U-Boot's own **PSCI usage**: `SYSRESET_PSCI` issues `SYSTEM_RESET` via the DT method. We must implement the SMCCC
    `PSCI_VERSION` / `PSCI_FEATURES` queries, and `SMCCC_VERSION` (`0x80000000`) returning a sane value or `NOT_SUPPORTED` (-1).
    Never ignore an unknown HVC silently.
@@ -605,5 +644,7 @@ Needs, compared with U-Boot:
 1. HVF vCPU reset state: confirm `SCTLR_EL1.M=0`, the `CNTFRQ_EL0` value on M5, and that `ICC_SRE_EL1.SRE=1` with `hv_gic_create`.
 2. Redistributor size and alignment requirements from `hv_gic_get_redistributor_size()` / region base alignment. Check the headers.
 3. Does U-Boot 2026.04 `qemu_arm64` boot cleanly with **no** `flash@0` node, and with the flash mapped RX and writes ignored?
+   **Answered on machine 2026-11-19 (M18): yes**, with bank 1 mapped too (§3.3 item 1) and the ISV = 0 ROM fetch; the
+   CFI-01 state machine was not needed. `docs/compat/uboot.md`.
 4. Does Alpine's kernel pick up SVE/SME/MTE as advertised by HVF on M5, and does it need anything extra (e.g. SME traps)?
 5. Earlycon access width on PL011 (8-bit vs 32-bit). The MMIO decoder must support both.

@@ -83,6 +83,456 @@ console_shell() {
   fi
 }
 
+# ANCHOR: initramfs_rng
+# PLAN M12 `linux_rng` (course ch17): Linux's virtio-rng driver against macvmm's virtio-rng
+# (`--rng`). Alpine's linux-virt builds both as modules (CONFIG_VIRTIO_MMIO=m,
+# CONFIG_HW_RANDOM_VIRTIO=m), and initramfs-virt carries virtio-rng.ko, rng-core.ko and
+# modules.dep, so modprobe needs nothing else. If virtio_mmio is ever built in, modprobe
+# succeeds without loading anything.
+rng_test() {
+  modprobe virtio_mmio 2>/dev/null || true
+  modprobe virtio-rng || echo "macvmm-rng: FAILED modprobe virtio-rng"
+  cur=
+  i=0
+  while [ "$i" -lt 50 ]; do
+    if [ -r /sys/class/misc/hw_random/rng_current ]; then
+      cur="$(cat /sys/class/misc/hw_random/rng_current)"
+      case "$cur" in virtio_rng*) break ;; esac
+    fi
+    usleep 100000
+    i=$((i + 1))
+  done
+  echo "macvmm-rng: hw_random=$cur"
+  # `head -c` keeps reading until it has the count (a read of /dev/hwrng may return fewer
+  # bytes than asked), so a short count means the device stopped answering.
+  n="$(head -c 1048576 /dev/hwrng | wc -c)"
+  if [ "$n" -eq 1048576 ]; then
+    echo "macvmm-rng: read 1048576 bytes ok"
+  else
+    echo "macvmm-rng: FAILED read $n bytes"
+  fi
+}
+# ANCHOR_END: initramfs_rng
+
+# ANCHOR: initramfs_console
+# PLAN M13 `linux_console_tx` / `linux_console_rx` (course ch17): Linux's virtio_console
+# driver (CONFIG_VIRTIO_CONSOLE=y in linux-virt) against macvmm's `--console`. Without
+# VIRTIO_CONSOLE_F_MULTIPORT port 0 is a console port, so it appears only as the hvc tty
+# /dev/hvc0 (drivers/char/virtio_console.c init_port_console). The transport is a module
+# (CONFIG_VIRTIO_MMIO=m), so nothing binds until virtio_mmio is loaded.
+console_wait() {
+  modprobe virtio_mmio 2>/dev/null || true
+  i=0
+  while [ "$i" -lt 50 ]; do
+    [ -c /dev/hvc0 ] && return 0
+    usleep 100000
+    i=$((i + 1))
+  done
+  echo "macvmm-console: FAILED no /dev/hvc0"
+  return 1
+}
+
+# TX: 65536 bytes of "macvmm\n" through the tty to the host sink. The fd stays open across
+# `stty` (hvc resets termios on the last close, TTY_DRIVER_RESET_TERMIOS) and `raw` turns off
+# OPOST, so no "\n" becomes "\r\n" and the host file is byte-exact. hvc's close waits for its
+# output buffer to drain; the sleep only gives the host sink's writer time.
+console_tx() {
+  console_wait || return
+  exec 3<>/dev/hvc0
+  stty raw -echo <&3
+  yes macvmm | head -c 65536 >&3
+  sleep 1
+  exec 3>&-
+  echo "macvmm-console: tx done"
+}
+
+# RX: one line typed on the host's stdin (`--console stdio`) arrives on /dev/hvc0. The driver
+# posted its receive buffers at probe; `-echo` keeps the line from being echoed back to TX.
+console_rx() {
+  console_wait || return
+  exec 3<>/dev/hvc0
+  stty -echo <&3
+  echo "macvmm-console: rx ready"
+  line=
+  read -r line <&3
+  exec 3>&-
+  # Only [A-Za-z0-9_-] of the line is echoed: it is test input, not something to replay.
+  echo "macvmm-console: rx $(printf '%s' "$line" | tr -cd 'A-Za-z0-9_-')"
+}
+
+# PLAN M13 `console_stdin_escape_when_full` (TTY-10): never load virtio_mmio and never open
+# /dev/hvc0, so no receive buffer is ever posted; the host must still quit on ^A x.
+idle_test() {
+  echo "macvmm-idle: sleeping"
+  sleep 60
+}
+# ANCHOR_END: initramfs_console
+
+# ANCHOR: initramfs_vda
+# PLAN M14 (course ch18): Linux's virtio_blk driver against macvmm's virtio-blk (`--disk`).
+# Alpine's linux-virt builds both as modules (CONFIG_VIRTIO_MMIO=m, CONFIG_VIRTIO_BLK=m), and
+# initramfs-virt carries virtio_mmio.ko and virtio_blk.ko under /lib/modules/$(uname -r)/
+# kernel/drivers/{virtio,block}/ with modules.dep, so modprobe resolves them; if virtio_mmio is
+# ever built in, modprobe succeeds without loading anything. The first --disk is /dev/vda.
+vda_up() {
+  modprobe virtio_mmio 2>/dev/null || true
+  modprobe virtio_blk || echo "macvmm-vda: FAILED modprobe virtio_blk"
+  i=0
+  while [ ! -b /dev/vda ] && [ "$i" -lt 50 ]; do
+    usleep 100000
+    i=$((i + 1))
+  done
+  if [ ! -b /dev/vda ]; then
+    echo "macvmm-vda: FAILED no /dev/vda"
+    return 1
+  fi
+  echo "macvmm-vda: /dev/vda $(cat /sys/block/vda/size) sectors ro=$(cat /sys/block/vda/ro)"
+}
+
+# `vda`: hash the whole disk; the host compares it with `shasum -a 256` of the image.
+vda_read() {
+  vda_up || return
+  echo "macvmm-vda: sha256=$(sha256sum /dev/vda | cut -d' ' -f1)"
+}
+
+# `vda-write`: 1 MiB of the `yes macvmm` pattern at byte 8 MiB, flushed (conv=fsync is a
+# virtio-blk FLUSH, BLK-9). The pattern is staged in the rootfs (RAM) first, so `dd` reads
+# whole 1 MiB blocks and not a pipe's short reads.
+vda_write() {
+  vda_up || return
+  yes macvmm | head -c 1048576 > /tmp/pattern
+  if dd if=/tmp/pattern of=/dev/vda bs=1048576 seek=8 count=1 conv=fsync 2>/dev/null; then
+    echo "macvmm-vda: write done"
+  else
+    echo "macvmm-vda: FAILED write"
+  fi
+}
+
+# ANCHOR_END: initramfs_vda
+
+# ANCHOR: initramfs_vda_ro_soak
+# `vda-ro`: with `--disk F,ro` the device offers VIRTIO_BLK_F_RO, Linux marks the disk
+# read-only and refuses the open for writing (EROFS); the host checks the image is unchanged.
+vda_ro() {
+  vda_up || return
+  if dd if=/dev/zero of=/dev/vda bs=512 count=1 conv=fsync 2>/dev/null; then
+    echo "macvmm-vda-ro: FAILED write accepted"
+  else
+    echo "macvmm-vda-ro: write rejected"
+  fi
+}
+
+# `vda-soak` (PLAN M14, the lost-wakeup check of architecture §11.2 item 9): 20 rounds of
+# 64 MiB of O_DIRECT reads, each followed by 1 s idle, so the driver turns used-buffer
+# interrupts off while busy and back on (virtqueue_enable_cb) when idle. A lost wakeup hangs
+# a read, and the host test fails on its timeout.
+vda_soak() {
+  vda_up || return
+  ok=0
+  r=1
+  while [ "$r" -le 20 ]; do
+    if dd if=/dev/vda of=/dev/null bs=4k count=16384 iflag=direct 2>/dev/null; then
+      ok=$((ok + 1))
+    else
+      echo "macvmm-vda: FAILED soak round $r"
+    fi
+    sleep 1
+    r=$((r + 1))
+  done
+  echo "macvmm-vda: soak $ok/20 ok"
+}
+# ANCHOR_END: initramfs_vda_ro_soak
+
+# ANCHOR: initramfs_net
+# PLAN M24 `two_vms_ping_and_nc` (course ch19): two VMs joined by `--net unixgram`, each running
+# Linux's own virtio_net driver. initramfs-virt carries virtio_net.ko, net_failover.ko and
+# failover.ko with modules.dep (verified), so `modprobe virtio_net` pulls in the rest. `net-b`
+# (10.0.0.2) listens with busybox nc; `net-a` (10.0.0.1) pings it, then sends 32 MiB of
+# /dev/urandom. Both print the sha256 so the e2e test can compare them.
+net_up() {
+  modprobe virtio_mmio 2>/dev/null || true
+  modprobe virtio_net || echo "macvmm-net: FAILED modprobe virtio_net"
+  i=0
+  while [ ! -e /sys/class/net/eth0 ] && [ "$i" -lt 50 ]; do
+    usleep 100000
+    i=$((i + 1))
+  done
+  ip link set lo up
+  if ip addr add "$1/24" dev eth0 && ip link set eth0 up; then
+    echo "macvmm-net: eth0 $1 up mac $(cat /sys/class/net/eth0/address)"
+  else
+    echo "macvmm-net: FAILED eth0 $1"
+  fi
+}
+
+net_a() {
+  net_up 10.0.0.1
+  # Up to 10 s for B to answer (it is already listening when A boots, but ARP and its link
+  # may take a moment).
+  i=0
+  while ! ping -c 1 -W 1 10.0.0.2 >/dev/null 2>&1; do
+    i=$((i + 1))
+    if [ "$i" -ge 10 ]; then
+      echo "macvmm-net: FAILED no answer from 10.0.0.2"
+      break
+    fi
+  done
+  got="$(ping -c 5 -i 0.2 10.0.0.2 | grep -o '[0-9]* packets received' | cut -d' ' -f1)"
+  if [ "$got" = 5 ]; then
+    echo "macvmm-net: ping 5/5 ok"
+  else
+    echo "macvmm-net: FAILED ping ${got:-0}/5"
+  fi
+  head -c 33554432 /dev/urandom > /tmp/x
+  sum="$(sha256sum /tmp/x | cut -d' ' -f1)"
+  # -w 5: after our stdin ends, wait at most 5 s for the peer to close (busybox nc does not
+  # always half-close on EOF), so the transfer always terminates.
+  if nc -w 5 10.0.0.2 5000 < /tmp/x; then
+    echo "macvmm-net: sent $(wc -c < /tmp/x) bytes sha256=$sum"
+  else
+    echo "macvmm-net: FAILED nc send"
+  fi
+}
+
+net_b() {
+  net_up 10.0.0.2
+  nc -l -p 5000 > /tmp/y &
+  pid=$!
+  usleep 300000
+  echo "macvmm-net: listening"
+  wait "$pid"
+  echo "macvmm-net: received $(wc -c < /tmp/y) bytes sha256=$(sha256sum /tmp/y | cut -d' ' -f1)"
+}
+# ANCHOR_END: initramfs_net
+
+# ANCHOR: initramfs_rootfs_modules
+# PLAN M15 `linux_rootfs_persist` (course ch18 part 2): boot into an ext4 root on /dev/vda.
+# Alpine's linux-virt builds ext4 as a module (CONFIG_EXT4_FS=m) and initramfs-virt does not
+# carry it (verified), so the test attaches Alpine's modloop-virt, a squashfs of every module,
+# as a second, read-only disk (/dev/vdb: `--disk` order is slot order, ADR-0005). squashfs.ko,
+# virtio_mmio.ko and virtio_blk.ko are in the initramfs, so modprobe finds them; the modloop is
+# then mounted read-only and ext4 is loaded from it with insmod, dependencies first.
+rootfs_wait() {
+  i=0
+  while [ ! -b "/dev/$1" ] && [ "$i" -lt 50 ]; do
+    usleep 100000
+    i=$((i + 1))
+  done
+  [ -b "/dev/$1" ] || { echo "macvmm-rootfs: FAILED no /dev/$1"; return 1; }
+}
+
+# insmod module $1 and its dependencies from the module tree $2. A modules.dep line is
+# `kernel/fs/ext4/ext4.ko: kernel/fs/jbd2/jbd2.ko kernel/fs/mbcache.ko …`: the module, then
+# what it needs, listed so that loading them from last to first satisfies every symbol (the
+# order modprobe uses; kmod's depmod.c writes it that way, see modules.dep(5)). A module
+# already loaded (listed in /proc/modules, which shows loadable modules only, proc(5)) is
+# skipped; built-in modules (modules.builtin, /sys/module) never appear in modules.dep, so
+# they are never attempted.
+rootfs_insmod() {
+  line="$(grep -E "(^|/)$1\.ko(\.[a-z]+)?:" "$2/modules.dep" | head -n 1)"
+  [ -n "$line" ] || { echo "macvmm-rootfs: FAILED $1 not in $2/modules.dep"; return 1; }
+  todo="${line%%:*}"
+  for dep in ${line#*:}; do
+    todo="$dep $todo"
+  done
+  for m in $todo; do
+    base="${m##*/}"
+    base="${base%%.ko*}"
+    if grep -q "^$(echo "$base" | tr - _) " /proc/modules; then
+      continue
+    fi
+    insmod "$2/$m" || { echo "macvmm-rootfs: FAILED insmod $m"; return 1; }
+    echo "macvmm-rootfs: insmod $base"
+  done
+}
+
+# ANCHOR_END: initramfs_rootfs_modules
+
+# ANCHOR: initramfs_rootfs
+# Apply the intended file modes `cargo xtask mkrootfs` recorded in /.macvmm-modes (the host
+# stages files without execute bits, threat model SC-4), here inside the guest, then delete
+# the list. Only `<octal mode> <relative path of [A-Za-z0-9._@+/-]>` lines are accepted.
+rootfs_modes() {
+  list=/newroot/.macvmm-modes
+  [ -f "$list" ] || return 0
+  n=0
+  while read -r mode path; do
+    case "$mode" in '#'*|'') continue ;; esac
+    case "$mode" in
+      *[!0-7]*) echo "macvmm-rootfs: FAILED bad mode line"; continue ;;
+    esac
+    case "$path" in
+      ''|/*|*..*|*[!A-Za-z0-9._@+/-]*) echo "macvmm-rootfs: FAILED bad path line"; continue ;;
+    esac
+    chmod "$mode" "/newroot/$path" && n=$((n + 1))
+  done < "$list"
+  rm -f "$list"
+  sync
+  echo "macvmm-rootfs: applied $n modes"
+}
+
+rootfs_boot() {
+  modprobe virtio_mmio 2>/dev/null || true
+  modprobe virtio_blk || echo "macvmm-rootfs: FAILED modprobe virtio_blk"
+  modprobe squashfs || echo "macvmm-rootfs: FAILED modprobe squashfs"
+  rootfs_wait vda || return
+  rootfs_wait vdb || return
+  mkdir -p /.modloop /newroot
+  mount -t squashfs -o ro /dev/vdb /.modloop || { echo "macvmm-rootfs: FAILED mount modloop"; return; }
+  rootfs_insmod ext4 "/.modloop/modules/$(uname -r)" || return
+  umount /.modloop
+  mount -t ext4 /dev/vda /newroot || { echo "macvmm-rootfs: FAILED mount /dev/vda"; return; }
+  echo "macvmm-rootfs: mounted ext4 /dev/vda"
+  rootfs_modes
+  [ -x /newroot/sbin/macvmm-init ] || { echo "macvmm-rootfs: FAILED no /sbin/macvmm-init"; return; }
+  # The kernel filesystems move with us; switch_root then empties the initramfs and makes
+  # /newroot the root (busybox switch_root: chroot + exec, keeping PID 1).
+  for fs in dev proc sys; do
+    mount --move "/$fs" "/newroot/$fs"
+  done
+  exec switch_root /newroot /sbin/macvmm-init
+}
+# ANCHOR_END: initramfs_rootfs
+
+# ANCHOR: initramfs_smp
+# PLAN M16 (course ch20): Linux brings up every `--cpus` vCPU through PSCI CPU_ON (the DT
+# says enable-method = "psci", method = "hvc"), takes them down and up again through CPU_OFF
+# and AFFINITY_INFO (cpu hotplug), and runs work on all of them at once.
+smp_ncpus() {
+  n="$(nproc 2>/dev/null)"
+  case "$n" in
+    ''|*[!0-9]*) n="$(grep -c '^processor' /proc/cpuinfo)" ;;
+  esac
+  echo "$n"
+}
+
+# The per-CPU counts of the /proc/interrupts line whose name matches $1, summed over the
+# lines, as "cpus-with-a-nonzero-count total". Columns 2..n+1 are the n online CPUs.
+smp_irq_spread() {
+  awk -v n="$(smp_ncpus)" -v pat="$1" '
+    $0 ~ pat {
+      for (i = 2; i <= n + 1; i++) { c[i] += $i; t += $i }
+    }
+    END {
+      k = 0
+      for (i = 2; i <= n + 1; i++) if (c[i] > 0) k++
+      printf "%d %d\n", k, t
+    }' /proc/interrupts
+}
+
+# Keep every CPU busy for about one second, so each takes timer ticks and IPIs (NOHZ idle
+# CPUs may otherwise take none).
+smp_spin_all() {
+  n="$(smp_ncpus)"
+  c=0
+  while [ "$c" -lt "$n" ]; do
+    (end=$(( $(cut -d. -f1 /proc/uptime) + 2 )); while [ "$(cut -d. -f1 /proc/uptime)" -lt "$end" ]; do :; done) &
+    c=$((c + 1))
+  done
+  wait
+}
+
+# `smp`: how many CPUs Linux runs on, and evidence that each one takes its timer interrupt
+# (PPI 27, "arch_timer") and that IPIs (GICv3 SGIs, the "IPI<n>" lines) are delivered.
+smp_test() {
+  echo "macvmm-smp: nproc=$(smp_ncpus)"
+  echo "macvmm-smp: online=$(cat /sys/devices/system/cpu/online)"
+  smp_spin_all
+  spread="$(smp_irq_spread arch_timer)"
+  echo "macvmm-smp: timer irqs on ${spread%% *} cpus"
+  spread="$(smp_irq_spread '^ *IPI[0-9]+:')"
+  echo "macvmm-smp: ipis on ${spread%% *} cpus total ${spread##* }"
+}
+# ANCHOR_END: initramfs_smp
+
+# ANCHOR: initramfs_smp_hotplug
+
+# `smp-hotplug`: three rounds of taking every secondary CPU offline (PSCI CPU_OFF on the
+# dying CPU, AFFINITY_INFO polled by the killer: drivers/firmware/psci/psci.c psci_cpu_kill)
+# and online again (CPU_ON).
+smp_hotplug() {
+  n="$(smp_ncpus)"
+  ok=1
+  r=1
+  while [ "$r" -le 3 ]; do
+    c=1
+    while [ "$c" -lt "$n" ]; do
+      f="/sys/devices/system/cpu/cpu$c/online"
+      if ! echo 0 > "$f" || [ "$(cat "$f")" != 0 ]; then
+        echo "macvmm-smp: FAILED cpu$c offline (round $r)"
+        ok=0
+      fi
+      c=$((c + 1))
+    done
+    left="$(smp_ncpus)"
+    [ "$left" = 1 ] || { echo "macvmm-smp: FAILED $left cpus online after offlining"; ok=0; }
+    c=1
+    while [ "$c" -lt "$n" ]; do
+      f="/sys/devices/system/cpu/cpu$c/online"
+      if ! echo 1 > "$f" || [ "$(cat "$f")" != 1 ]; then
+        echo "macvmm-smp: FAILED cpu$c online (round $r)"
+        ok=0
+      fi
+      c=$((c + 1))
+    done
+    echo "macvmm-smp: round $r: $(smp_ncpus) cpus online"
+    r=$((r + 1))
+  done
+  [ "$(smp_ncpus)" = "$n" ] || ok=0
+  if [ "$ok" = 1 ]; then echo "macvmm-smp: hotplug ok"; else echo "macvmm-smp: FAILED hotplug"; fi
+}
+# ANCHOR_END: initramfs_smp_hotplug
+
+# ANCHOR: initramfs_smp_stress
+
+# `smp-stress`: for 30 s, one worker per CPU (pinned with taskset when the initramfs has it;
+# Alpine's busybox does not, so the scheduler spreads them, and the report says on how many
+# CPUs the output was produced) reads
+# the disk with O_DIRECT and prints a line after each pass, so the virtio-blk queue, the
+# worker thread, the PL011 and the GIC are all hit from every vCPU at once. RCU stalls and
+# soft lockups would be printed by the kernel; the host test forbids them.
+smp_stress() {
+  vda_up || return
+  n="$(smp_ncpus)"
+  sectors="$(cat /sys/block/vda/size)"
+  blocks=$((sectors / 128))   # 64 KiB blocks
+  [ "$blocks" -gt 16 ] || { echo "macvmm-smp: FAILED disk too small"; return; }
+  pin=1
+  taskset 1 true 2>/dev/null || pin=0
+  echo "macvmm-smp: stress: $n workers for 30 s, pinned=$pin"
+  end=$(( $(cut -d. -f1 /proc/uptime) + 30 ))
+  # The worker is its own script so `taskset MASK sh …` pins exactly that process.
+  cat > /tmp/smp-worker <<'WORKER'
+c="$1"; end="$2"; blocks="$3"; i=0
+while [ "$(cut -d. -f1 /proc/uptime)" -lt "$end" ]; do
+  skip=$(( (c * 37 + i * 13) % (blocks - 16) ))
+  if dd if=/dev/vda of=/dev/null bs=64k count=16 skip="$skip" iflag=direct 2>/dev/null; then
+    # Field 39 of /proc/self/stat is the CPU that `cut` itself ran on (proc(5)): which
+    # CPUs the workers' output really came from, pinned or not.
+    on="$(cut -d' ' -f39 /proc/self/stat)"
+    echo "$on" >> "/tmp/smp-cpus.$c"
+    echo "macvmm-smp: cpu$c pass $i on cpu$on"
+  else
+    echo "macvmm-smp: FAILED cpu$c read at block $skip"
+  fi
+  i=$((i + 1))
+done
+WORKER
+  c=0
+  while [ "$c" -lt "$n" ]; do
+    if [ "$pin" = 1 ]; then
+      taskset "$(printf '%x' $((1 << c)))" sh /tmp/smp-worker "$c" "$end" "$blocks" &
+    else
+      sh /tmp/smp-worker "$c" "$end" "$blocks" &
+    fi
+    c=$((c + 1))
+  done
+  wait
+  echo "macvmm-smp: stress output from $(cat /tmp/smp-cpus.* | sort -u | wc -l) cpus"
+  echo "macvmm-smp: stress done"
+}
+# ANCHOR_END: initramfs_smp_stress
+
 # ANCHOR: initramfs_dispatch
 case "$test_case" in
   boot)
@@ -123,6 +573,20 @@ case "$test_case" in
     printf '\n'
     echo "macvmm-tty: end"
     off ;;
+  rng) rng_test; off ;;
+  console-tx) console_tx; off ;;
+  console-rx) console_rx; off ;;
+  idle) idle_test; off ;;
+  vda) vda_read; off ;;            # PLAN M14 (initramfs_vda)
+  vda-write) vda_write; off ;;
+  vda-ro) vda_ro; off ;;
+  vda-soak) vda_soak; off ;;
+  net-a) net_a; off ;;
+  net-b) net_b; off ;;
+  smp) smp_test; off ;;              # PLAN M16 (initramfs_smp)
+  smp-hotplug) smp_hotplug; off ;;
+  smp-stress) smp_stress; off ;;
+  rootfs) rootfs_boot; off ;;     # PLAN M15 (initramfs_rootfs)
   *)
     echo "macvmm-initramfs: unknown test case $test_case"
     off ;;

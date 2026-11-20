@@ -1,0 +1,10 @@
+smp: Brought up 1 node, 4 CPUs
+macvmm-vda: /dev/vda 131072 sectors ro=1
+macvmm-smp: stress: 4 workers for 30 s
+macvmm-smp: stress output from 4 cpus
+macvmm-smp: stress done
+!FAILED
+!Kernel panic
+!rcu: INFO
+!soft lockup
+!unknown SMCCC

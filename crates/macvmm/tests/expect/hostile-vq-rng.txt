@@ -1,0 +1,10 @@
+hostile-vq: RAM ends at 0x44000000
+hostile-vq: rng slot 0: 12 attacks ended in needs-reset, recovered
+hostile-vq: 31 empty slots attacked, * alignment faults, 0 unexpected values
+hostile-vq: survived
+[stderr] guest: virtio: queue 0 failed, device needs reset: virtqueue: ChainTooLong
+[stderr] guest: virtio-mmio: queue 0 refused at DRIVER_OK: virtqueue: RingOutOfRam
+!FAILED
+!guest exception
+![stderr] guest fatal
+![stderr] panicked

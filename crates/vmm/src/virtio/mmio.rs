@@ -19,6 +19,13 @@
 //! - **DRIVER_OK** commits to the ring addresses: every ready queue is checked with
 //!   `Queue::validate`, then the device is activated. A failure sets DEVICE_NEEDS_RESET(64) and
 //!   raises a configuration interrupt (§2.1.2) instead of touching a bad ring.
+//! - **ACKNOWLEDGE is implied by DRIVER** (M18, a compatibility rule). U-Boot 2026.04 sets
+//!   ACKNOWLEDGE once when it binds the transport, later resets the device (Status 0) when it
+//!   probes the driver, and then writes DRIVER alone (observed with `--trace`,
+//!   `docs/compat/uboot.md`); QEMU accepts that. ACKNOWLEDGE only says "the guest found a
+//!   virtio device" (§2.1) and gates nothing in the device, so a write that sets DRIVER is
+//!   taken as also setting ACKNOWLEDGE. Every step that commits to something (FEATURES_OK,
+//!   DRIVER_OK) keeps its order check unchanged.
 //! - **Writing 0** resets the device (§4.2.2 Status). It takes the device mutex, so it waits
 //!   for an in-flight worker batch (M12) to finish, then drops the queues and the memory handle:
 //!   nothing uses the old ring addresses afterwards (VQ-14). FAILED(128) is latched.
@@ -39,6 +46,14 @@
 //! device's worker thread, architecture §14.1). Without one (M11, and host tests) the transport
 //! processes the queue inline on the calling vCPU thread, at most [`INLINE_BATCHES`] batches of
 //! `N` chains (VQ-12), and turns any error into DEVICE_NEEDS_RESET (VQ-10).
+//!
+//! **A dead device (RUST-7).** If a thread panicked while holding the device mutex (a macvmm
+//! bug, normally in a worker's `process_queue`), the mutex is poisoned and the device state may
+//! be half-updated. The panic has already asked the VM to stop, but vCPUs keep taking MMIO
+//! exits until they are kicked. The transport therefore never touches a poisoned device again:
+//! every register reads as zero and ignores writes, and no device method is called. It locks
+//! the device with `Mutex::lock` and treats `Err(PoisonError)` as dead, not with the
+//! poison-recovering `sync::lock`, which is for the shutdown path only.
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
@@ -54,7 +69,7 @@ use crate::bus::{AccessSize, MmioDevice};
 use crate::irq::{IrqLine, NullIrq};
 use crate::memory::{GuestAddress, GuestMemoryOrdered};
 use crate::sync::lock;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 // ANCHOR: virtio_mmio_registers
 /// Register offsets (virtio 1.2 §4.2.2, table "MMIO Device Register Layout").
@@ -81,6 +96,17 @@ pub mod reg {
     pub const QUEUE_DRIVER_HIGH: u64 = 0x094;
     pub const QUEUE_DEVICE_LOW: u64 = 0x0a0;
     pub const QUEUE_DEVICE_HIGH: u64 = 0x0a4;
+    /// Shared-memory region selector (§4.2.2 SHMSel). Writes are ignored: no v1 device has a
+    /// shared-memory region (§2.10), so every ID names a region that does not exist.
+    pub const SHM_SEL: u64 = 0x0ac;
+    /// The selected region's length (§4.2.2 SHMLenLow/High): all-ones ("-1") for a region
+    /// that does not exist, which is how Linux `vm_get_shm_region` tells it is absent.
+    pub const SHM_LEN_LOW: u64 = 0x0b0;
+    pub const SHM_LEN_HIGH: u64 = 0x0b4;
+    /// The selected region's base (§4.2.2 SHMBaseLow/High): `0xffff_ffff_ffff_ffff` for a
+    /// region that does not exist.
+    pub const SHM_BASE_LOW: u64 = 0x0b8;
+    pub const SHM_BASE_HIGH: u64 = 0x0bc;
     /// RAZ/WI: `VIRTIO_F_RING_RESET` is not offered (VQ-15).
     pub const QUEUE_RESET: u64 = 0x0c0;
     pub const CONFIG_GENERATION: u64 = 0x0fc;
@@ -96,6 +122,9 @@ pub const MMIO_VERSION: u32 = 2;
 pub const VENDOR_ID: u32 = 0x4d56_4d4d;
 /// The size of one transport window (PLAN §1: slots are 0x200 apart).
 pub const WINDOW_SIZE: u64 = 0x200;
+/// What each SHMLen/SHMBase half reads for a shared-memory region that does not exist
+/// (§4.2.2): together the halves make the 64-bit `-1` / `0xffff_ffff_ffff_ffff`.
+pub const NO_SHM_REGION: u32 = u32::MAX;
 // ANCHOR_END: virtio_mmio_registers
 
 /// Without a [`QueueNotifier`], one QueueNotify processes at most this many batches of `N`
@@ -269,6 +298,23 @@ impl VirtioMmio {
         self.interrupt.signal_config();
     }
 
+    /// The device, or `None` if a panic poisoned its mutex: a dead device is never called again
+    /// (module docs, RUST-7).
+    fn live_device(&self) -> Option<MutexGuard<'_, dyn VirtioDevice + 'static>> {
+        match self.device.lock() {
+            Ok(d) => Some(d),
+            Err(_) => {
+                dead_device_warning();
+                None
+            }
+        }
+    }
+
+    /// True if a panic poisoned the device mutex (module docs, RUST-7).
+    pub fn is_dead(&self) -> bool {
+        self.device.is_poisoned()
+    }
+
     /// The selected queue, if QueueSel names one.
     fn selected(&self) -> Option<&Queue> {
         self.queues.get(usize::try_from(self.queue_sel).ok()?)
@@ -278,7 +324,10 @@ impl VirtioMmio {
     fn selected_writable(&mut self, what: &str) -> Option<&mut Queue> {
         let frozen = self.status & st::DRIVER_OK != 0;
         let sel = self.queue_sel;
-        let Some(q) = usize::try_from(sel).ok().and_then(|i| self.queues.get_mut(i)) else {
+        let Some(q) = usize::try_from(sel)
+            .ok()
+            .and_then(|i| self.queues.get_mut(i))
+        else {
             crate::guest_warn!("virtio-mmio: {what} for queue {sel:?}, which does not exist");
             return None;
         };
@@ -317,6 +366,11 @@ impl VirtioMmio {
             reg::QUEUE_READY => self.selected().map_or(0, |q| u32::from(q.ready())),
             reg::INTERRUPT_STATUS => self.interrupt.status(),
             reg::STATUS => self.status(),
+            // §4.2.2: "Reading from a non-existent region ... results in a length of -1" and
+            // a base of all-ones. Reading 0 here would tell Linux region 0 exists, at 0, empty.
+            reg::SHM_LEN_LOW | reg::SHM_LEN_HIGH | reg::SHM_BASE_LOW | reg::SHM_BASE_HIGH => {
+                NO_SHM_REGION
+            }
             reg::QUEUE_RESET => 0,
             reg::CONFIG_GENERATION => self.config_generation,
             _ => {
@@ -361,6 +415,9 @@ impl VirtioMmio {
             reg::QUEUE_NOTIFY => self.notify(v),
             reg::INTERRUPT_ACK => self.interrupt.ack(v & INT_MASK),
             reg::STATUS => self.write_status(v),
+            reg::SHM_SEL => {
+                crate::guest_debug!("virtio-mmio: SHMSel {v:?} ignored: no shared-memory regions")
+            }
             reg::QUEUE_DESC_LOW | reg::QUEUE_DESC_HIGH => {
                 self.write_ring_addr(offset, v, Queue::desc_table, Queue::set_desc_table)
             }
@@ -383,7 +440,9 @@ impl VirtioMmio {
             return None;
         }
         let sel = self.queue_sel;
-        let q = usize::try_from(sel).ok().and_then(|i| self.queues.get_mut(i));
+        let q = usize::try_from(sel)
+            .ok()
+            .and_then(|i| self.queues.get_mut(i));
         if q.is_none() {
             crate::guest_warn!("virtio-mmio: QueueReady for queue {sel:?}, which does not exist");
         }
@@ -444,6 +503,12 @@ impl VirtioMmio {
             );
             return;
         }
+        // M18 (module docs): DRIVER implies ACKNOWLEDGE, which gates nothing (U-Boot quirk).
+        let v = if v & st::DRIVER != 0 {
+            v | st::ACKNOWLEDGE
+        } else {
+            v
+        };
         // Bits are only ever added, and only in the order of STATUS_STEPS.
         if self.status & !v != 0 || !STATUS_STEPS.contains(&v) {
             crate::guest_warn!(
@@ -482,7 +547,11 @@ impl VirtioMmio {
             crate::guest_warn!("virtio-mmio: FEATURES_OK refused: VIRTIO_F_VERSION_1 not accepted");
             return false;
         }
-        lock(&self.device).ack_features(accepted);
+        let Some(mut device) = self.live_device() else {
+            return false;
+        };
+        device.ack_features(accepted);
+        drop(device);
         let indirect = accepted & features::INDIRECT_DESC != 0;
         for q in &mut self.queues {
             q.set_indirect(indirect);
@@ -507,11 +576,11 @@ impl VirtioMmio {
                 return;
             }
         }
-        let r = lock(&self.device).activate(
-            mem,
-            self.queues.clone(),
-            Arc::clone(&self.interrupt),
-        );
+        let Some(mut device) = self.live_device() else {
+            return;
+        };
+        let r = device.activate(mem, self.queues.clone(), Arc::clone(&self.interrupt));
+        drop(device);
         if let Err(e) = r {
             crate::guest_warn!("virtio-mmio: activation failed: {e}");
             self.interrupt.set_needs_reset();
@@ -519,9 +588,14 @@ impl VirtioMmio {
     }
 
     /// Status ← 0 (VQ-14): the device mutex is taken first, so an in-flight worker batch
-    /// finishes before the queues and the memory handle are dropped.
+    /// finishes before the queues and the memory handle are dropped. A dead device (RUST-7) is
+    /// left alone: the VM is stopping.
     fn reset(&mut self) {
-        lock(&self.device).reset();
+        let Some(mut device) = self.live_device() else {
+            return;
+        };
+        device.reset();
+        drop(device);
         self.queues = self.max_sizes.iter().map(|&n| Queue::new(n)).collect();
         self.status = 0;
         self.device_features_sel = 0;
@@ -562,11 +636,10 @@ impl VirtioMmio {
 
     /// Process queue `index` on this thread (no worker yet: M11, host tests).
     fn process_inline(&self, index: usize) {
-        let budget = self
-            .queues
-            .get(index)
-            .map_or(0, |q| q.size());
-        let mut d = lock(&self.device);
+        let budget = self.queues.get(index).map_or(0, |q| q.size());
+        let Some(mut d) = self.live_device() else {
+            return;
+        };
         for _ in 0..INLINE_BATCHES {
             match d.process_queue(index, budget) {
                 Ok(QueueProgress::Drained) => return,
@@ -584,8 +657,10 @@ impl VirtioMmio {
             return 0;
         };
         let mut buf = [0u8; 8];
-        if let Some(dst) = buf.get_mut(..n) {
-            lock(&self.device).read_config(off, dst);
+        if let Some(dst) = buf.get_mut(..n)
+            && let Some(device) = self.live_device()
+        {
+            device.read_config(off, dst);
         }
         u64::from_le_bytes(buf)
     }
@@ -595,8 +670,10 @@ impl VirtioMmio {
             return;
         };
         let bytes = value.to_le_bytes();
-        if let Some(src) = bytes.get(..n) {
-            lock(&self.device).write_config(off, src);
+        if let Some(src) = bytes.get(..n)
+            && let Some(mut device) = self.live_device()
+        {
+            device.write_config(off, src);
         }
     }
 
@@ -605,8 +682,7 @@ impl VirtioMmio {
     fn config_range(&self, offset: u64, size: AccessSize) -> Option<(u32, usize)> {
         let off = offset.checked_sub(reg::CONFIG)?;
         let end = off.checked_add(size.bytes());
-        if self.device_id == DEVICE_ID_NONE || end.is_none_or(|e| e > u64::from(self.config_len))
-        {
+        if self.device_id == DEVICE_ID_NONE || end.is_none_or(|e| e > u64::from(self.config_len)) {
             crate::guest_warn!(
                 "virtio-mmio: config access of {:?} bytes at {off:#x} outside the {:?}-byte config space (RAZ/WI)",
                 size.bytes(),
@@ -629,6 +705,12 @@ pub fn report_error(interrupt: &VirtioInterrupt, queue: usize, err: &VirtioError
     interrupt.set_needs_reset();
 }
 
+/// The warning for an access to a dead device. A macvmm bug made it dead, but the guest decides
+/// how often it is touched, so the message is rate-limited like a guest warning (LOG-1).
+fn dead_device_warning() {
+    crate::guest_warn!("virtio-mmio: access to a device that panicked ignored (RAZ/WI, RUST-7)");
+}
+
 /// `[low 32 bits, high 32 bits]` of `v`.
 fn split(v: u64) -> [u32; 2] {
     let b = v.to_le_bytes();
@@ -648,6 +730,10 @@ fn join(lo: u32, hi: u32) -> u64 {
 
 impl MmioDevice for VirtioMmio {
     fn read(&mut self, offset: u64, size: AccessSize) -> u64 {
+        if self.is_dead() {
+            dead_device_warning();
+            return 0;
+        }
         if offset >= reg::CONFIG {
             return self.read_config(offset, size);
         }
@@ -663,6 +749,10 @@ impl MmioDevice for VirtioMmio {
     }
 
     fn write(&mut self, offset: u64, size: AccessSize, value: u64) {
+        if self.is_dead() {
+            dead_device_warning();
+            return;
+        }
         if offset >= reg::CONFIG {
             self.write_config(offset, size, value);
             return;

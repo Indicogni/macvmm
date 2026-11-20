@@ -26,9 +26,24 @@
 //! FEAT_LPA2), 64 KiB granules, `TxSZ` outside 16..=39, a disabled walk (`EPDx`), reserved
 //! `IPS`, and descriptors the architecture calls invalid or reserved. The caller treats any
 //! [`WalkError`] as "cannot emulate": it injects an abort or prints "PC not mapped" in a dump.
-//! Permissions, the access flag and memory attributes are *not* checked: the guest's own access
-//! already passed stage 1 when it faulted at stage 2, and the exit IPA cross-check (MMIO-4)
-//! catches a guest that changed its tables since.
+//! Permissions, the access flag and memory attributes are *not* checked. The hardware already
+//! checked them for the faulting access before it faulted at stage 2, but only for the page or
+//! block that holds the faulting address. So [`Translation::mapping_size`] goes back to the
+//! caller, and `arch/insn.rs` refuses any access (a pair's second element included) that leaves
+//! that mapping (`Refusal::CrossesMapping`). The exit IPA cross-check (MMIO-4) catches a guest
+//! that changed its tables since.
+//!
+//! **Instruction fetch from flash ROM** ([`fetch_insn_rom`], M18). The walk and
+//! [`fetch_insn`] read through `GuestMemory`, which by design (MEM-3) excludes the flash ROM at
+//! `0x0`. But execute-in-place firmware runs *from* flash before it relocates to RAM (U-Boot
+//! `qemu_arm64` and EDK2 `ArmVirtQemu` SEC/PEI start at `0x0`), and U-Boot's very first
+//! stores are an ISV = 0 `STP` pair (`save_boot_params` in
+//! `board/emulation/qemu-arm/lowlevel_init.S` saves `x0..x3` into its own `.data`, which is in
+//! flash; observed on machine, `docs/compat/uboot.md`). So when the PC's IPA is not RAM,
+//! [`fetch_insn_rom`] asks a read-only [`InsnRom`] hook beside `GuestMemory`: one aligned
+//! 4-byte, bounds-checked read of the ROM's host copy (`memory::RomRegion::read_u32`).
+//! `GuestMemory` itself is never widened, so virtio DMA still cannot reach firmware. Page
+//! tables are still read only from RAM: a table in ROM is refused as before.
 //!
 //! **Hostile tables (MMIO-5).** The tables are guest memory, so every descriptor is read with
 //! one [`GuestMemory::read_u64`] (bounds-checked, RAM only: a table in MMIO or outside RAM is
@@ -417,6 +432,12 @@ pub fn translate(
 }
 // ANCHOR_END: stage1_walk
 
+/// A read-only source of instruction words outside RAM: flash ROM (M18, module docs).
+pub trait InsnRom: Sync {
+    /// The little-endian word at 4-byte-aligned IPA `ipa`, or `None` outside the ROM.
+    fn read_insn(&self, ipa: u64) -> Option<u32>;
+}
+
 /// Why [`fetch_insn`] could not read the instruction at a PC.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FetchError {
@@ -425,8 +446,8 @@ pub enum FetchError {
     Misaligned { pc: u64 },
     /// The PC does not translate.
     Walk(WalkError),
-    /// The PC translates to an IPA outside guest RAM (flash ROM is not reachable through
-    /// `GuestMemory`, MEM-3).
+    /// The PC translates to an IPA outside guest RAM (and outside the ROM, if one was given
+    /// to [`fetch_insn_rom`]). Flash ROM is not reachable through `GuestMemory` (MEM-3).
     NotRam { pc: u64, ipa: u64 },
 }
 
@@ -460,3 +481,22 @@ pub fn fetch_insn(
         .map_err(|_: MemoryError| FetchError::NotRam { pc, ipa: t.ipa })
 }
 // ANCHOR_END: stage1_fetch_insn
+
+// ANCHOR: stage1_fetch_insn_rom
+/// [`fetch_insn`], then, if the PC's IPA is not RAM, the read-only ROM hook `rom` (module docs,
+/// M18). The translation is the same (tables from RAM only); only the final word may come
+/// from the ROM. `None` behaves exactly like [`fetch_insn`].
+pub fn fetch_insn_rom(
+    mem: &dyn GuestMemory,
+    rom: Option<&dyn InsnRom>,
+    regs: &TranslationRegs,
+    pc: u64,
+) -> Result<u32, FetchError> {
+    match (fetch_insn(mem, regs, pc), rom) {
+        (Err(FetchError::NotRam { pc, ipa }), Some(rom)) => {
+            rom.read_insn(ipa).ok_or(FetchError::NotRam { pc, ipa })
+        }
+        (other, _) => other,
+    }
+}
+// ANCHOR_END: stage1_fetch_insn_rom

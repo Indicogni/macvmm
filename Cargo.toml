@@ -1,7 +1,12 @@
 # ANCHOR: workspace_manifest
 [workspace]
 resolver = "3"
-members = ["crates/hvf", "crates/vmm", "crates/macvmm", "crates/xtask"]
+members = ["crates/hvf", "crates/vmm", "crates/macvmm", "crates/xtask", "crates/fuzz"]
+# A plain `cargo build` (no `-p`, no `--workspace`) builds these only. `crates/fuzz` is left out
+# because it depends on `vmm` with `test-util`, and Cargo unifies features across the packages of
+# one build: with it, the shipped `macvmm` would link the FDT reader and the test doubles
+# (threat model FDT-1, RR14). `--workspace` (scripts/check.sh) and `-p fuzz` still build it.
+default-members = ["crates/hvf", "crates/vmm", "crates/macvmm", "crates/xtask"]
 # Separate build worlds: bare-metal guests (own workspace, aarch64-unknown-none), throwaway spikes,
 # and the Swift companion tool.
 exclude = ["guests", "spikes", "tools"]

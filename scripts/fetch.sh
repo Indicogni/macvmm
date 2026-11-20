@@ -14,6 +14,9 @@
 #   hash matched in this run. A kind xtask does not implement yet exits 64 and is reported as
 #   PENDING without failing the run.
 # - TOFU entries are refused until pinned (SC-10).
+# - `derive:write-sparse` (M19, the FreeBSD image) first checks that the cache's file system has
+#   at least 8 GiB free (MIN_FREE_KIB_SPARSE), then `cargo xtask derive write-sparse` runs
+#   `xz -dc` with its output capped at 16 GiB (SC-6; over the cap the file is deleted).
 # - The `linux` set ends by building initramfs-test.img from the verified initramfs-virt and
 #   scripts/initramfs/init (PLAN M9; hash printed, not pinned).
 # Works with macOS's /bin/bash 3.2 (no associative arrays).
@@ -27,6 +30,9 @@ MANIFEST="$REPO_ROOT/scripts/fetch-manifest.txt"
 # Largest single download we accept: the FreeBSD .raw.xz is ~600 MB (guest-boot.md §5).
 MAX_DOWNLOAD_BYTES=4294967296
 EX_PENDING=64
+# M19: free space required before decompressing a sparse image (the FreeBSD raw is ~6 GiB
+# logical; holes make it smaller on APFS, but a file system without holes needs it all).
+MIN_FREE_KIB_SPARSE=$((8 * 1024 * 1024))
 
 usage() {
   printf 'usage: scripts/fetch.sh [--manifest FILE] SET...\n       scripts/fetch.sh [--manifest FILE] --pin NAME\n' >&2
@@ -167,6 +173,15 @@ run_derive() {
     return 1
   fi
   rm -f -- "$part"
+  if [[ "$kind" == "write-sparse" ]]; then
+    # SC-6 (M19): refuse to start a multi-GiB decompression on a nearly full disk.
+    local avail
+    avail="$(df -Pk -- "$CACHE" | awk 'NR==2 {print $4}')"
+    if ! [[ "$avail" =~ ^[0-9]+$ ]] || (( avail < MIN_FREE_KIB_SPARSE )); then
+      printf 'fetch: FAILED %s (needs at least 8 GiB free in %s, have %s KiB)\n' "${E_NAME[$i]}" "$CACHE" "${avail:-?}" >&2
+      return 1
+    fi
+  fi
   rc=0
   out="$(cd -- "$REPO_ROOT" && cargo run --locked --quiet -p xtask -- derive -- "$kind" "$CACHE/$input" "$part" ${arg:+"$arg"})" || rc=$?
   if (( rc == EX_PENDING )); then

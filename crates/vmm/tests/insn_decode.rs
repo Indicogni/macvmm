@@ -16,7 +16,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use vmm::arch::insn::{
-    BusAccess, Commit, Direction, ExitFacts, Gpr, Index, Insn, Isv0Bus, Isv0Error, LoadExt,
+    BusAccess, Commit, Direction, ExitFacts, Gpr, Index, Insn, Isv0Bus, Isv0Error, LoadExt, Mapped,
     MemInsn, Offset, Operands, Refusal, SpSel, Unsupported, decode, emulate_isv0, execute,
     plan_isv0,
 };
@@ -345,8 +345,16 @@ const PAGE_VA: u64 = 0xffff_0000_1000_0000;
 const DEV_IPA: u64 = 0x0b00_0000;
 
 /// A stage-1 map with one 4 KiB page: `PAGE_VA` → `DEV_IPA`.
-fn one_page(va: u64) -> Option<u64> {
-    (va >> 12 == PAGE_VA >> 12).then_some(DEV_IPA | (va & 0xfff))
+fn one_page(va: u64) -> Option<Mapped> {
+    (va >> 12 == PAGE_VA >> 12).then_some(page(DEV_IPA | (va & 0xfff)))
+}
+
+/// A translation that lies in a 4 KiB stage-1 page.
+fn page(ipa: u64) -> Mapped {
+    Mapped {
+        ipa,
+        mapping_size: 0x1000,
+    }
 }
 
 /// A mock MMIO bus for the ISV = 0 tests: device windows, preset read values, an optional
@@ -482,7 +490,7 @@ fn isv0_ipa_mismatch_aborts() {
         rt: 5,
         ..Operands::default()
     };
-    let two_pages = |va: u64| Some(DEV_IPA + (va - PAGE_VA));
+    let two_pages = |va: u64| Some(page(DEV_IPA + (va - PAGE_VA)));
     let exit = ExitFacts {
         ipa: DEV_IPA + 8,
         wnr: true,
@@ -582,7 +590,7 @@ fn isv0_pair_across_devices_aborts() {
     const A: u64 = 0x0a00_0000; // two adjacent 0x200 windows, like the virtio-mmio slots
     const B: u64 = A + 0x200;
     let two_devs = || MockBus::new(&[(A, 0x200), (B, 0x200)]);
-    let ident = |va: u64| Some(va);
+    let ident = |va: u64| Some(Mapped::identity(va));
     // stp x1, x2, [x3] with x3 = A + 0x1f8: element 1 is A's last word, element 2 is B's first.
     let stp = mem(0xa9000861);
     let ops = Operands {
@@ -772,11 +780,11 @@ fn plan_pair_must_stay_contiguous() {
     );
     // The second element maps, but not to exit IPA + 8.
     let scattered = |va: u64| {
-        Some(if va & 0xfff == 0 {
+        Some(page(if va & 0xfff == 0 {
             0x5000
         } else {
             DEV_IPA + (va & 0xfff)
-        })
+        }))
     };
     assert_eq!(
         plan_isv0(&m, &ops, exit, &mut { scattered }, &dev()),
@@ -786,7 +794,7 @@ fn plan_pair_must_stay_contiguous() {
         })
     );
     // An exit IPA at the top of the address space cannot have a second element.
-    let ident = |va: u64| Some(va);
+    let ident = |va: u64| Some(Mapped::identity(va));
     let ops = Operands {
         base: u64::MAX - 7,
         ..Operands::default()
@@ -808,6 +816,73 @@ fn plan_pair_must_stay_contiguous() {
         plan_isv0(&m, &ops, exit, &mut one_page, &dev()),
         Err(Refusal::Untranslatable { va: 0x1234_5000 })
     );
+}
+
+/// MMIO-4 review fix: the hardware checked stage-1 permissions only for the page that holds
+/// the faulting element. A pair whose second element falls on the next 4 KiB page is refused,
+/// even though that page maps contiguously onto the same 8 KiB device window (its descriptor
+/// could be read-only or kernel-only). Inside one 2 MiB block, or with the MMU off, the same
+/// pair is emulated.
+#[test]
+fn isv0_pair_across_stage1_pages_aborts() {
+    let big = || MockBus::new(&[(DEV_IPA, 0x2000)]);
+    // stp x1, x2, [x3] at PAGE_VA + 0xff8: element 2 is the first word of the next VA page.
+    let stp = mem(0xa9000861);
+    let ops = Operands {
+        base: PAGE_VA + 0xff8,
+        rt: 0x11,
+        rt2: 0x22,
+        ..Operands::default()
+    };
+    let exit = ExitFacts {
+        ipa: DEV_IPA + 0xff8,
+        wnr: true,
+    };
+    let two_pages = |va: u64| Some(page(DEV_IPA + (va - PAGE_VA)));
+    let mut bus = big();
+    assert_eq!(
+        emulate_isv0(&stp, &ops, exit, &mut { two_pages }, &mut bus),
+        Err(Isv0Error::Refused(Refusal::CrossesMapping {
+            va: PAGE_VA + 0xff8,
+            len: 16,
+            mapping_size: 0x1000
+        }))
+    );
+    assert!(bus.log.is_empty(), "page-crossing pair touched the device");
+    // A single access that crosses the page is refused the same way (str x1, [x3, #-4]!).
+    let str_x = mem(0xf81fcc61);
+    let ops1 = Operands {
+        base: PAGE_VA + 0x1000,
+        rt: 0x11,
+        ..Operands::default()
+    };
+    let exit1 = ExitFacts {
+        ipa: DEV_IPA + 0xffc,
+        wnr: true,
+    };
+    assert!(matches!(
+        plan_isv0(&str_x, &ops1, exit1, &mut { two_pages }, &big()),
+        Err(Refusal::CrossesMapping { len: 8, .. })
+    ));
+    // Control: one 2 MiB block holds both elements, so one descriptor covers the whole pair.
+    let block = |va: u64| {
+        Some(Mapped {
+            ipa: DEV_IPA + (va - PAGE_VA),
+            mapping_size: 0x20_0000,
+        })
+    };
+    let mut bus = big();
+    assert!(emulate_isv0(&stp, &ops, exit, &mut { block }, &mut bus).is_ok());
+    assert_eq!(bus.log.len(), 2, "{:?}", bus.log);
+    // Control: MMU off, no stage-1 permissions to bypass.
+    let ops = Operands {
+        base: DEV_IPA + 0xff8,
+        ..ops
+    };
+    let mut bus = big();
+    let ident = |va: u64| Some(Mapped::identity(va));
+    assert!(emulate_isv0(&stp, &ops, exit, &mut { ident }, &mut bus).is_ok());
+    assert_eq!(bus.log.len(), 2, "{:?}", bus.log);
 }
 
 #[test]

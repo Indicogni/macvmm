@@ -13,7 +13,7 @@
 //! - Every guest-controlled value is hostile and checked at the point of use.
 //!
 //! Modules arrive milestone by milestone (PLAN §2): `memory`, `arch` (M2), `vcpu`, `loader`
-//! (M3), `bus`, `devices`, `trace`, `stats` (M4–M6), `fdt` (M7), `irq` (M8), `virtio` (M11+). Each `mod` line is
+//! (M3), `bus`, `devices`, `trace`, `stats` (M4–M6), `fdt` (M7), `irq` (M8), `virtio` (M11+), `net` (M24). Each `mod` line is
 //! added by the milestone that creates the module (additive edits only, PLAN §2.1).
 #![deny(unsafe_code)]
 
@@ -31,6 +31,7 @@ pub mod loader;
 pub mod log;
 pub mod machine;
 pub mod memory;
+pub mod net;
 pub mod psci;
 pub mod smccc;
 pub mod stats;
@@ -71,6 +72,11 @@ pub fn run(cfg: &VmConfig, host: &HostIo) -> Result<StopReason> {
         host,
         std::time::Instant::now,
         |cfg, host, generation, deadline| {
+            // M21: the experimental vmapple board has its own build and run (ADR-0008).
+            #[cfg(feature = "experimental-vmapple")]
+            if cfg.machine == arch::layout::MachineProfile::VmApple {
+                return machine::vmapple::boot(cfg, host, generation, deadline);
+            }
             let machine = machine::Machine::build(cfg, host, generation)?;
             crate::debug!("boot plan (generation {generation}):\n{}", machine.plan());
             machine.run(deadline)

@@ -25,7 +25,9 @@ impl GuestAddress {
     /// `addr = u64::MAX - 3, len = 8` gets `None` here, not a small wrapped address that
     /// happens to land inside RAM.
     pub fn checked_add(self, off: u64) -> Option<GuestAddress> {
+        // LEARNER: checked_add_body
         self.0.checked_add(off).map(GuestAddress)
+        // LEARNER_END: checked_add_body
     }
 
     /// `self - base`, or `None` if `self` lies below `base`.

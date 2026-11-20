@@ -254,4 +254,45 @@ last exits: 1 (oldest first)
         // A machine-level verdict: no report at all.
         assert_eq!(format_fatal(&GuestFatal::machine("reset storm")), "");
     }
+
+    /// PLAN M17 "show the instruction at the PC through the walk": with the MMU on in the
+    /// dump, the PC is a VA. VA `RAM + 0x6000` maps to IPA `RAM + 0x5000`; the identity IPA
+    /// holds a different word, which only a dump that skipped the walk would print.
+    #[test]
+    fn insn_at_pc_walks_stage1() {
+        use crate::memory::{GuestAddress, VecMemory};
+        const RAM: u64 = 0x4000_0000;
+        const TABLE: u64 = 0b11; // a table at levels 1–2, a page at level 3 (D8.3)
+        let (l1, l2, l3) = (RAM + 0x1000, RAM + 0x2000, RAM + 0x3000);
+        let (pc_va, pc_ipa) = (RAM + 0x6000, RAM + 0x5000);
+        let mem = VecMemory::new(&[(GuestAddress(RAM), 1 << 20)]).unwrap();
+        for (table, index, v) in [
+            (l1, 1, l2 | TABLE),
+            (l2, 0, l3 | TABLE),
+            (l3, 6, pc_ipa | TABLE),
+        ] {
+            mem.write_u64(GuestAddress(table + index * 8), v).unwrap();
+        }
+        mem.write_u32(GuestAddress(pc_ipa), 0xa940_0801).unwrap(); // ldp x1, x2, [x0]
+        mem.write_u32(GuestAddress(pc_va), 0xd503_201f).unwrap(); // nop, at the identity IPA
+        let d = RegDump {
+            pc: pc_va,
+            sctlr_el1: 1,
+            // T0SZ = 25 (levels 1–3), TG0 = 4K, IPS = 48 bits, EPD1.
+            tcr_el1: 25 | (0b101 << 32) | (1 << 23),
+            ttbr0_el1: l1,
+            ..RegDump::default()
+        };
+        assert_eq!(insn_at_pc(&mem, Some(&d), pc_va), Some(0xa940_0801));
+        // Without a dump the MMU state is unknown and the PC is read as an IPA.
+        assert_eq!(insn_at_pc(&mem, None, pc_va), Some(0xd503_201f));
+        // MMU off in the dump: identity.
+        let off = RegDump {
+            sctlr_el1: 0,
+            ..d.clone()
+        };
+        assert_eq!(insn_at_pc(&mem, Some(&off), pc_va), Some(0xd503_201f));
+        // A PC VA that does not translate: nothing to show.
+        assert_eq!(insn_at_pc(&mem, Some(&d), pc_va + 0x1000), None);
+    }
 }

@@ -63,7 +63,10 @@ fn main(_x0: u64) {
         if good {
             ok += 1;
         }
-        println!("timer: interval {i} = {ms} ms {}", if good { "ok" } else { "OUT OF RANGE" });
+        println!(
+            "timer: interval {i} = {ms} ms {}",
+            if good { "ok" } else { "OUT OF RANGE" }
+        );
     }
     println!(
         "timer: irqs={} spurious={}",

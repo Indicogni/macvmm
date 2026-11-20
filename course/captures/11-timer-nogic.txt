@@ -1,0 +1,26 @@
+# scripts/capture.sh 11: run "timer-nogic" of course/checkpoints/11, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 11; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --irqchip none --mem 64M --raw {guests}/timer-nogic.bin@0x40080000 --stats --trace exits:{out}/t.jsonl:all --timeout 10
+exit: 0
+--- stdout ---
+timer-nogic: cntfrq=24000000
+timer-nogic: pfr0.gic=0
+timer-nogic: interval 0 = 103 ms ok
+timer-nogic: interval 1 = 106 ms ok
+timer-nogic: interval 2 = 103 ms ok
+timer-nogic: interval 3 = 110 ms ok
+timer-nogic: interval 4 = 110 ms ok
+timer-nogic: interval 5 = 100 ms ok
+timer-nogic: interval 6 = 110 ms ok
+timer-nogic: interval 7 = 110 ms ok
+timer-nogic: interval 8 = 110 ms ok
+timer-nogic: interval 9 = 100 ms ok
+timer-nogic: irqs=10 stale=336319
+timer-nogic: 10/10 intervals within 95..150 ms
+
+--- stderr ---
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=494 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 10, wfx 10, total 525: canceled 10, vtimer 10, wfx 10, hvc 495
+macvmm: stats: vcpu0 time: exec 0.014 s, wfi n/a
+macvmm: stats: host cpu 0.018 s over 1.081 s wall (2%)
+

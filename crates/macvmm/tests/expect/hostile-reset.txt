@@ -1,0 +1,4 @@
+hostile-reset: boot 0
+hostile-reset: boot 10
+[stderr] macvmm: guest fatal: reset storm: more than 10 resets within 10 s
+!guest exception

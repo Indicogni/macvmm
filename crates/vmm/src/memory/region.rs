@@ -206,6 +206,7 @@ impl RegionTable {
     /// - `len == 0`, a range outside every region, or one that crosses a region boundary
     ///   (even into an adjacent region) is [`MemoryError::OutOfBounds`].
     pub fn locate(&self, addr: GuestAddress, len: u64) -> Result<Located, MemoryError> {
+        // LEARNER: locate_bounds_check
         let a = addr.0;
         let end = a
             .checked_add(len)
@@ -226,6 +227,7 @@ impl RegionTable {
         }
         let offset = addr.offset_from(span.base).ok_or(oob)?;
         Ok(Located { index, offset })
+        // LEARNER_END: locate_bounds_check
     }
     // ANCHOR_END: guest_ram_bounds_check
 

@@ -5,10 +5,21 @@ Apple Silicon Macs. It is a teaching codebase first (the course lives at
 <https://indicogni.com/build-your-own/vmm/>) and is built to be productizable: hand-written FFI,
 `unsafe` quarantined to two modules, every guest-controlled value treated as hostile.
 
-Status: Gate G1 (milestone M10). The stock Alpine `linux-virt` 6.18 kernel boots with our
-generated device tree and test initramfs to a busybox shell on the emulated PL011 and powers
-off through PSCI. No disk yet (virtio is Phase 2). See `docs/PLAN.md` for the milestones and
-`docs/architecture.md` for the design.
+Status: v1 (milestone M23, the fresh-clone gate; `docs/validation/fresh-clone-v1.md` is the
+verbatim run). On a QEMU-`virt`-compatible machine model with a generated device tree:
+
+- **Linux/arm64** (stock Alpine `linux-virt` 6.18) boots directly to a shell, with virtio-blk
+  (an ext4 root that survives a reboot), virtio-rng, virtio-console, virtio-net over a Unix
+  datagram socket, and up to 64 vCPUs through PSCI.
+- **U-Boot** (`qemu_arm64`) runs from an emulated flash ROM, and **FreeBSD 15.1/arm64** boots
+  through it (U-Boot's EFI) to a login prompt.
+- **macOS guests** are a stretch goal and do **not** boot: `tools/vz-mac` shows the
+  Virtualization.framework path, and an experimental `vmapple` board runs Apple's AVPBooter
+  until it stalls on a device macvmm does not model yet, the `cfg` block (`docs/macos/status.md`).
+- Hardening: a threat model (`docs/security/threat-model.md`), hostile-input tests,
+  dependency-free fuzzers (`scripts/fuzz.sh`), an opt-in `--sandbox` and resource limits.
+
+See `docs/PLAN.md` for the milestones and `docs/architecture.md` for the design.
 
 ## Prerequisites
 
@@ -25,27 +36,46 @@ No `sudo` is needed, and nothing is installed outside the repository and rustup.
 
 ## Quickstart
 
+Clone the repository and `cd` into it, then:
+
 <!-- ANCHOR: quickstart -->
 ```sh
-git clone <this repository> macvmm && cd macvmm
 scripts/setup.sh                 # checks the Mac, completes the Rust toolchain; ends "setup: OK"
-scripts/doctor.sh                # a 20-line C probe: is the hypervisor usable at all?
+scripts/doctor.sh                # a 20-line C probe: is the hypervisor usable at all? "DOCTOR OK"
 cargo run -p macvmm -- doctor    # builds, signs and runs macvmm; ends "DOCTOR OK"
-scripts/check.sh                 # the full quality gate; ends "CHECK OK"
 scripts/fetch.sh linux           # Alpine's kernel + initramfs over HTTPS, sha256-pinned
 scripts/run-linux.sh             # boots Linux to "/ # " on the PL011 (Ctrl-A x quits)
 ```
+<!-- ANCHOR_END: quickstart -->
 
-At the prompt, `uname -a` prints `Linux (none) 6.18.60-0-virt … aarch64 Linux`, and
-`poweroff -f` ends macvmm with exit code 0 and your terminal restored. The same boot without
-the wrapper:
+At the `/ # ` prompt, `echo macvmm-shell: $((6*7))` prints `macvmm-shell: 42`, `uname -a`
+prints `Linux (none) 6.18.60-0-virt … aarch64 Linux`, and `poweroff -f` ends macvmm with exit
+code 0 and your terminal restored. `scripts/fresh-clone-check.sh` runs this block literally,
+from a fresh copy and an empty download cache, and types those same lines.
+
+The same boot without the wrapper, then the checks:
 
 ```sh
 cargo run -p macvmm -- run --kernel .cache/macvmm/Image-virt \
     --initrd .cache/macvmm/initramfs-test.img --mem 512M
-scripts/test-e2e.sh guests linux # Gate G1: the bare-metal guests and the Linux suite
+scripts/check.sh                 # the full host quality gate; ends "CHECK OK"
+scripts/test-e2e.sh guests linux # the bare-metal test guests and the Linux suite
 ```
-<!-- ANCHOR_END: quickstart -->
+
+## More guests and tests
+
+```sh
+scripts/fetch.sh uboot rootfs    # U-Boot (from Alpine's package) and the root-filesystem inputs
+cargo xtask mkrootfs --out .cache/macvmm/rootfs.img --size 256M   # needs e2fsprogs
+cargo run -p macvmm -- run --bios .cache/macvmm/u-boot.bin --mem 512M   # the U-Boot prompt
+scripts/fetch.sh freebsd         # about 600 MB download, 6.5 GB sparse image; see docs/compat/freebsd.md
+scripts/test-e2e.sh all          # every end-to-end suite (needs all four sets above)
+scripts/checkpoint.sh all --ref  # the course's chapter checkpoints against this code
+scripts/learner init             # start your own VMM in ./learner (course/checkpoints/README.md)
+```
+
+`scripts/fresh-clone-check.sh --from-worktree --with-freebsd` (or `--from-git URL`) is the
+release gate: it does all of the above in a fresh copy and ends with `FRESH CLONE OK`.
 
 `cargo run` and `cargo test` go through `scripts/sign-and-run.sh` (configured in
 `.cargo/config.toml`), which ad-hoc signs each binary before running it. Without that step
@@ -91,8 +121,11 @@ over HTTPS only, checks each against a pinned sha256, and stores it in `.cache/m
 ## Repository layout
 
 `crates/hvf` FFI and safe wrappers · `crates/vmm` the VMM library · `crates/macvmm` the CLI ·
-`crates/xtask` repository tooling (anchor check, security audit) · `scripts/` setup, signing,
-fetch, checks · `docs/` architecture, plan, ADRs, threat model · `course/` lesson sources.
+`crates/xtask` repository tooling (anchor check, security audit, rootfs, checkpoints) ·
+`crates/fuzz` the dependency-free fuzzers · `guests/` bare-metal Rust test guests ·
+`tools/vz-mac` the Virtualization.framework companion (Swift) · `scripts/` setup, signing,
+fetch, checks, e2e · `docs/` architecture, plan, ADRs, threat model, validation ·
+`course/` lesson sources, primers, checkpoints, scaffolds.
 
 ## Licence
 

@@ -1,0 +1,16 @@
+# Your VMM's workspace (CURRICULUM §3.1). Same crate names and lints as the reference, so the
+# checkpoint harness (scripts/checkpoint.sh) and the lessons' contracts apply to your code.
+# This directory is your own git repository; the course repository ignores it.
+[workspace]
+resolver = "3"
+members = ["crates/hvf", "crates/vmm", "crates/macvmm"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+publish = false
+
+# Overflow in guest-address arithmetic must stop the VMM, not wrap (threat model RUST-2).
+[profile.release]
+overflow-checks = true
+panic = "unwind"

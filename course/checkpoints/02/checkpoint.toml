@@ -1,0 +1,26 @@
+# Checkpoint 02 `first-exit` (CURRICULUM §5 ch02).
+id = "02"
+slug = "first-exit"
+requires = ["01"]
+
+[contract]
+crates = ["hvf"]
+tests = ["contract/exit_layout.rs"]
+
+[[run]]
+name = "first-exit"
+args = ["first-exit"]
+timeout = 10
+expect_exit_code = 0
+serial = "expected/first-exit.txt"
+
+[journal]
+file = "journal/02.md"
+questions = 5
+predict = true
+
+[hints]
+conceptual = "The guest runs until it does something only EL2 may decide; hv_vcpu_run returns and the framework's exit struct tells you what happened."
+spec = "hv_vcpu_types.h (hv_vcpu_exit_t); ARM ARM ESR_EL2: EC in bits 31:26, EC 0x16 = HVC from AArch64."
+pseudocode = "map one page at 0x40000000, write `mov x0, #42; hvc #0`, set PC and CPSR=0x3c5, run, print reason/syndrome/pc/x0."
+anchor = "crates/hvf/src/ffi.rs anchor ffi_vcpu_exit_t, and the first-exit command in crates/macvmm."

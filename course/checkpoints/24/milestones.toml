@@ -1,0 +1,25 @@
+# Chapter 24 (vmapple), checkpoint L2(b): the reference implementation's observed progress on
+# `--machine vmapple` (PLAN M21, CURRICULUM ch24). A run of the feature build with
+#   --bios <AVPBooter path> --mem 4G --unhandled-mmio log --trace exits:{out}/avp.jsonl --timeout 20
+# must reach at least `milestone`. Observations only (ADR-0009): no per-access log, no ROM bytes,
+# and never a claim that macOS boots (ADR-0008 decision 1). Written by the M21 hand-off.
+id = "24"
+observed = "2026-11-19"
+host = "Apple M5 Pro, macOS 27.2.1 (26B131), Virtualization.framework 308.2.7"
+avpbooter_sha256_prefix = "9cefbfa5e7478945"
+
+# The milestones, in order; each implies the ones before it.
+#   first-exit-in-rom    stderr has `vmapple: first exit at pc=0x1*` inside 0x100000..0x200000
+#   unknown-mmio-logged  stderr has `vmapple: * unknown MMIO accesses logged`, or
+#                        `vmapple: stopped at unsupported HVC 0x*`
+#   (S2, not reached)    cfg-modelled, bdif-read, pc-in-ram
+milestones = ["first-exit-in-rom", "unknown-mmio-logged"]
+milestone = "unknown-mmio-logged"
+
+[reference]
+first_exit_pc = "0x103478"
+unknown_mmio_logged = 34
+regions = ["cfg", "pvpanic"]
+stop = "timeout"
+exit_code = 5
+blocked_at = "the cfg block (S2): not modelled, reads return 0"

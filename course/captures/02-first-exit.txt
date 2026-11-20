@@ -1,0 +1,11 @@
+# scripts/capture.sh 02: run "first-exit" of course/checkpoints/02, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 02; never edit by hand (CURRICULUM §3.6).
+$ macvmm first-exit
+exit: 0
+--- stdout ---
+first-exit: mapped 16 KiB at IPA 0x40000000
+first-exit: exit reason=EXCEPTION syndrome=0x5a000000 ec=0x16 (HVC64) imm=0x0
+first-exit: pc=0x40000008 x0=0x2a
+
+--- stderr ---
+

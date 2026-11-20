@@ -1,0 +1,2 @@
+"reason":"exception","ec":"0x16"
+"fn":"PSCI_SYSTEM_OFF","action":"psci"

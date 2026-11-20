@@ -78,8 +78,11 @@ and never claim a macOS boot that was not observed.
    anything from the IPSW on the host. A user-supplied `--ipsw F` is preferred and documented
    first. This is the only exception to the "sha256-pinned downloads" rule in `CLAUDE.md`.
 6. **SLA guard.** The vmapple profile takes one of two lock files,
-   `${MACVMM_CACHE}/vmapple-slots/{0,1}.lock`, with `File::try_lock`, and refuses to start a third
-   instance. The VZ tool relies on VZ's own two-VM limit.
+   `$HOME/.cache/macvmm/vmapple-slots/{0,1}.lock` (one directory per user, independent of the
+   working directory and of `MACVMM_CACHE`; M21 review fix), with `File::try_lock`, and refuses to
+   start a third instance. The guard is advisory and per user: a `0700` directory cannot see
+   another user's VMs, and HVF, unlike VZ, enforces no limit itself. The VZ tool relies on VZ's own
+   two-VM limit.
 7. **Reusable work is scheduled by the guests that need it, not by macOS.** The ISV=0 decoder
    (M17) ships because firmware needs it. PCIe/virtio-pci (W7/W8), CPU-feature masking (W15) and
    the cfg/bdif/pvpanic devices (S2) stay post-v1 research with no boot promise.

@@ -90,7 +90,7 @@ pub fn run(vcpu: &mut Vcpu<'_>, env: &ExitEnv<'_>, obs: &Observe<'_>, log: &mut 
             &exit,
             vcpu.pc().ok(),
         );
-        let action = exit::handle(vcpu, env, &exit, &raw, &mut rec);
+        let action = exit::handle_watched(vcpu, env, &exit, &raw, &mut rec);
         if let Some(trace) = obs.trace {
             trace.record(&rec);
         }

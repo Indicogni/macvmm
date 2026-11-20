@@ -2079,12 +2079,15 @@ sha256 with `shasum -a 256`.
 
 **Security tests**
 
-- Host: `psci_smp` (above), run 100 times in a loop under `--release`.
+- Host: `psci_smp` (above), run 100 times in a loop under `--release`:
+  `scripts/test-psci-smp-loop.sh` (fails at the first failing run).
 - On machine: `hostile_smccc_storm` (TEST-7 phase 4): 4 vCPUs issue random `x0`, CPU_ON to bad
   MPIDRs and entry points, and a CPU_ON storm at one target → no VMM error, exit 0.
 - On machine: `hostile_vq_live_toctou` (phase 5, live TOCTOU): vCPU 1 rewrites rng and blk
   descriptors in a tight loop while vCPU 0 notifies, for 10 s → NEEDS_RESET or success, never
-  exit 1, and no access outside RAM (`--trace` shows none).
+  exit 1, and no access outside RAM (`--trace` shows none). Device-side oracle: the guest's
+  canary (16 MiB of patterned RAM no descriptor names, DEBUG_MEMHASH before and after each
+  round) must be unchanged (`canary intact` markers).
 
 **Anchors:** `vcpu_sequential_create`, `vcpu_park_wait`, `psci_cpu_on_mailbox`, `mpidr_for_index`,
 `kick_all_vcpus`.
@@ -2142,16 +2145,20 @@ sha256 with `shasum -a 256`.
 
 | Test | Args | Expect | Exit |
 |---|---|---|---|
-| `isv0_probe` | `--testdev --kernel <isv0-probe> --trace exits:$T/i.jsonl:mmio` | `isv0-probe: mmu on` · `isv0-probe: 14/14 ok` (stp, ldp, ldpsw, pre- and post-index forms; values and writeback checked) · `isv0-probe: simd store -> sync external abort ok`. The trace contains `"isv":false`. | 0 |
+| `isv0_probe` | `--testdev --kernel <isv0-probe> --trace exits:$T/i.jsonl:mmio` | `isv0-probe: mmu on` · `isv0-probe: 16/16 ok` (stp, ldp, ldpsw, pre- and post-index forms; values and writeback checked; Rn = 31 at EL1t and EL1h; a data alias and a PC alias through stage 1) · `isv0-probe: simd store -> sync external abort ok`. The trace contains `"isv":false`. | 0 |
 
 All earlier e2e tests still pass.
 
 **Security checklist** (threat model §10.2 M17)
 
 - [ ] MMIO-4 (F17): the exit IPA is authoritative; the decoded base + offset must translate to
-      the same IPA page and the direction must match `WnR`, else inject an abort; LDP/STP's second
-      access must hit the same device; writeback only after both accesses succeed; Rn = Rt
-      writeback forms rejected; Rn = 31 writeback to the selected SP.
+      the same IPA page, the direction must match `WnR`, and the decode must agree with `ESR.CM`
+      in both directions (cache maintenance needs CM = 1; a load, store or prefetch needs
+      CM = 0), else inject an abort; the whole access, a pair's second element included, must
+      stay inside the faulting element's stage-1 page or block (the only permissions the
+      hardware checked); LDP/STP's second access must hit the same device; writeback only after
+      both accesses succeed; Rn = Rt writeback forms rejected; Rn = 31 writeback to the selected
+      SP (SP_EL0 at EL1t, SP_EL1 at EL1h; both on machine, isv0-probe checks 14 and 15).
 - [ ] MMIO-5: the walk is bounded by levels, reads only through `GuestMemory`, rejects T0SZ/T1SZ
       out of range, tables outside RAM and 52-bit addressing, never recurses.
 - [ ] MMIO-6: unsupported classes → synchronous external abort, never a panic.
@@ -2232,6 +2239,25 @@ All earlier e2e tests still pass.
 - On machine: `uboot_prompt` (above) with the default `safe` serial policy.
 
 **Anchors:** `firmware_load_rom`, `flash_write_ignored`, `bootplan_firmware`.
+
+**Known risk (from the M17 review): no ISV = 0 emulation while the PC is in flash.**
+`stage1_walk::fetch_insn` reads the instruction only through `GuestMemory`, which by design
+(MEM-3) excludes the ROM at `0x0`. So any ISV = 0 access (a pair, a writeback form) made while
+the PC is in flash, such as U-Boot or EDK2 SEC/PEI running in place before relocation, gets an
+injected synchronous external abort, even when the access is a legal pair store to a device.
+It shows up as a guest `"Synchronous Abort"` with `EC 0x25`, `DFSC 0x10`, `ELR` in `0x0..` and
+a `pc 0x... translates to 0x..., outside RAM` warning on stderr. If `uboot_prompt` hits it, the
+fix is a bounds-checked, read-only `RomRegion::read_u32` fetch hook that `fetch_insn` tries
+after `GuestMemory`. Never widen `GuestMemory` to cover ROM, because that would make firmware
+reachable by virtio DMA (`rom_unreachable_by_dma`).
+
+**Outcome (M18, 2026-11-19, on machine).** Path 1 (no `flash@0`, writes ignored) was enough; no
+CFI-01. The known risk did occur (U-Boot's first stores are an ISV = 0 `STP` pair from flash)
+and was fixed as described (`stage1_walk::fetch_insn_rom`, `RomRegion::read_u32`). Two changes
+beyond the list above, recorded in `docs/compat/uboot.md`: flash bank 1 is mapped RX (zero)
+with `--bios`, because U-Boot reads its environment from `0x0400_0000` memory-mapped
+(architecture §5.1 table updated), and the virtio-mmio transport takes a Status write that sets
+DRIVER as also setting ACKNOWLEDGE (U-Boot writes DRIVER alone after a reset).
 
 ---
 
@@ -2374,6 +2400,8 @@ write "FreeBSD boots" unless `freebsd_login` passed.
     256 accesses.
   - A two-instance SLA lock using `${MACVMM_CACHE:-./.cache/macvmm}/vmapple-slots/{0,1}.lock` and
     `File::try_lock` (ADR-0008 decision 6).
+    (Review fix, 2026-11-19: built as `$HOME/.cache/macvmm/vmapple-slots`, so the limit is per
+    user, not per working directory or `MACVMM_CACHE`.)
 - `crates/vmm/src/loader/firmware.rs`: AVPBooter is **read at run time** from
   `/System/Library/Frameworks/Virtualization.framework/Versions/A/Resources/AVPBooter.vmapple2.bin`
   into a host allocation, and never copied to disk.
@@ -2446,8 +2474,9 @@ write "FreeBSD boots" unless `freebsd_login` passed.
   - a missing hop budget;
   - an off-by-one in `used.idx` (`% N`);
   - (rev 1.1) a double fetch of `desc.len`: the walker re-reads it from guest memory after
-    validation. Only `virtqueue_race` or `virtqueue_toctou` can catch it, which proves those
-    targets have teeth.
+    validation. Both the access log (the `virtqueue` target: a descriptor read twice in one pop)
+    and the racer alone (the hidden `virtqueue_race_only` variant, which drops the log checks)
+    must find it; the second run is what proves the racer has teeth (threat model TEST-4).
 - `crates/hvf/src/host.rs`: `sandbox_init_profile` and `RLIMIT_NOFILE` lowering.
   `crates/macvmm/src/sandbox.rs` (the SBPL profile as a `const &str`, anchored) and a
   `scripts/sandbox-exec-fallback.sh` wrapper (`sandbox-exec -p <profile> -D …`) used only if
@@ -2590,7 +2619,10 @@ write "FreeBSD boots" unless `freebsd_login` passed.
   Any violation, timeout or send error → drop, count, `add_used(head, 0)`.
 - **RX** (backend thread): `recv` with `set_read_timeout(100 ms)`, so the thread sees the stop
   flag and joins promptly. Receive into a 2048-byte buffer (the macOS `maxdgram`) and drop any
-  datagram longer than 1514 or shorter than 14 bytes. Lock the device; if no RX chain is
+  datagram longer than 1514 or shorter than 14 bytes. (`maxdgram` is only the default
+  `SO_SNDBUF`, not a cap: a sender with a bigger send buffer can send more `[V]`; `recv`
+  truncates it to 2048 > 1514, so it is still dropped. `const` assertion
+  `RX_BUFFER > ETH_MAX_FRAME`.) Lock the device; if no RX chain is
   posted, drop and count. Otherwise the chain must be writable-only with capacity ≥ 12 + frame;
   write a zeroed header with `num_buffers = 1`, then the frame; `add_used(head, 12 + len)`; signal.
   A too-small chain gets `add_used(head, 0)` and a drop count.
@@ -2660,7 +2692,9 @@ Record the `--stats` drop counters of `two_vms_ping_and_nc` in the hand-off repo
 - Host: `virtio_net_hostile` ≥ 12 (above).
 - Host: `unixgram.rs` with the rev 1.2 cases above; `net_peer_check` is the third-socket case.
 - Host: the `net` fuzz target (frames and chains; caps and no panic), added to `crates/fuzz`
-  next to the M22 targets.
+  next to the M22 targets. **Substituted, not done:** `crates/fuzz` does not exist yet; the
+  10,000-iteration property test `random_chains_and_frames_keep_the_caps`
+  (`virtio_net_hostile.rs`) stands in until M22 lands it.
 - On machine: `two_vms_ping_and_nc`, `net_bind_refuses_file`, `net_requires_peer`,
   `net_foreign_sender_dropped` and `net_refuses_live_socket` (above).
 

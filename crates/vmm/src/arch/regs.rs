@@ -149,6 +149,7 @@ pub const fn current_el_value(el: u8) -> u64 {
     ((el & 3) as u64) << 2
 }
 
+// ANCHOR: mpidr_for_index
 /// MPIDR_EL1 for vCPU `index` (architecture §8.1; ARM ARM D19.2.101 `MPIDR_EL1`): bit 31 is
 /// RES1, Aff1 = index / 16, Aff0 = index % 16. Sixteen CPUs per cluster, like QEMU `virt`,
 /// because GICv3 SGIs target at most 16 Aff0 values per cluster (IHI 0069, §12.11.31
@@ -157,6 +158,7 @@ pub fn mpidr(index: usize) -> u64 {
     let i = u64::try_from(index).unwrap_or(u64::MAX);
     (1 << 31) | (((i / 16) & 0xff) << 8) | (i % 16)
 }
+// ANCHOR_END: mpidr_for_index
 
 #[cfg(test)]
 mod tests {
@@ -190,5 +192,14 @@ mod tests {
         assert_eq!(mpidr(15), 0x8000_000f);
         assert_eq!(mpidr(16), 0x8000_0100);
         assert_eq!(mpidr(63), 0x8000_030f);
+    }
+
+    /// PLAN M16 "Acceptance: host" `mpidr_for_index`.
+    #[test]
+    fn mpidr_for_index() {
+        assert_eq!(mpidr(0), 0x8000_0000);
+        assert_eq!(mpidr(17), 0x8000_0101);
+        // Aff3 and Aff2 stay 0 for every --cpus value, so the DT uses one address cell.
+        assert!((0..64).all(|i| mpidr(i) & 0xff_00ff_0000 == 0));
     }
 }

@@ -1,0 +1,13 @@
+smp: Brought up 1 node, 4 CPUs
+macvmm-initramfs: ready
+psci: CPU1 killed (polled
+CPU1: Booted secondary processor 0x0000000001
+macvmm-smp: round 1: 4 cpus online
+macvmm-smp: round 2: 4 cpus online
+macvmm-smp: round 3: 4 cpus online
+macvmm-smp: hotplug ok
+!FAILED
+!Kernel panic
+!rcu: INFO
+!unknown SMCCC
+!may not have shut down cleanly

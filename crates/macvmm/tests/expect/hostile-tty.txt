@@ -1,0 +1,5 @@
+hostile-tty: begin
+hostile-tty: 22 attack strings sent
+hostile-tty: end
+[stderr] stats: *serial_filtered=*
+!guest exception

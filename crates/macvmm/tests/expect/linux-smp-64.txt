@@ -1,0 +1,8 @@
+smp: Brought up 1 node, 64 CPUs
+macvmm-smp: nproc=64
+macvmm-smp: online=0-63
+macvmm-smp: timer irqs on 64 cpus
+[stderr] macvmm: stats: vcpu63 exits:
+!FAILED
+!Kernel panic
+!rcu: INFO

@@ -1,0 +1,52 @@
+# Checkpoint 03 `test-guests` (CURRICULUM §5 ch03). Chapters before 13 load flat binaries
+# (`{guest_raw}` = <guest>.bin@0x40080000): learners write the ELF loader in ch13.
+id = "03"
+slug = "test-guests"
+requires = ["02"]
+
+[contract]
+tests = ["contract/raw_loader.rs"]
+
+[[run]]
+name = "hello"
+guest = "hello"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/hello.txt"
+
+# The first time exits are counted: one HVC record per printed byte plus the final one.
+[[run]]
+name = "hello-trace"
+guest = "hello"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--trace", "exits:{out}/h.jsonl:hvc", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/hello.txt"
+trace = "expected/hello.trace.txt"
+count_trace = "\"ec\":\"0x16\""
+count_equals_stdout_bytes_plus = 1
+
+# A 4-byte `b .` (0x14000000, little endian) never exits on its own.
+[[run]]
+name = "timeout"
+blob_hex = "00000014"
+args = ["run", "--mem", "64M", "--raw", "{blob_raw}", "--timeout", "1"]
+expect_exit_code = 5
+serial = "expected/timeout.txt"
+
+[[run]]
+name = "exit-bench"
+guest = "exit-bench"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "30"]
+expect_exit_code = 0
+serial = "expected/exit-bench.txt"
+
+[journal]
+file = "journal/03.md"
+questions = 3
+predict = true
+
+[hints]
+conceptual = "A test guest is a few hundred bytes of your own code; every byte it prints is one HVC exit, so you can count exits before you can measure them."
+spec = "SMCCC (course/primers/smccc.md): the macvmm debug calls DEBUG_PUTC 0xC6000001 and DEBUG_EXIT 0xC6000002 (architecture §8.6)."
+pseudocode = "parse F@ADDR, check ADDR+len stays inside RAM with checked_add, copy, set PC=ADDR; in the loop: EC 0x16 -> match x0 -> putc / exit."
+anchor = "crates/vmm/src/loader/raw.rs (parse_spec, check_placement)."

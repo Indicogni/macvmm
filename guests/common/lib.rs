@@ -15,7 +15,9 @@
 //! - [`exceptions`]: the full 16-entry vector table: hooks to catch a synchronous exception
 //!   and resume, otherwise report it and stop the VM (M4), and an IRQ hook (M8);
 //! - [`gic`]: GICv3 bring-up (distributor, redistributor by affinity, CPU interface) (M8);
-//! - [`timer`]: the EL1 virtual timer and an IRQ-window `wfi` (M8).
+//! - [`timer`]: the EL1 virtual timer and an IRQ-window `wfi` (M8);
+//! - [`hostile`]: the PRNG, exact-width MMIO and the fault counter of the `hostile-*` guests
+//!   (TEST-7, M11).
 //!
 //! **Panics** print `guest panic: <message>` and call `DEBUG_EXIT(1)`, so macvmm exits 6 and
 //! the harness shows why. `unsafe` is allowed in guests (architecture §4), but every block has
@@ -26,6 +28,7 @@ pub mod console;
 pub mod exceptions;
 pub mod fdt;
 pub mod gic;
+pub mod hostile;
 pub mod hvc;
 pub mod mmu;
 pub mod psci;

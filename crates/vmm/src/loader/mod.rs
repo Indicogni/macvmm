@@ -16,7 +16,9 @@
 //!   decompressor (LDR-4) and `scripts/fetch.sh linux` unwraps it on the host;
 //! - anything else is raw, allowed only through `--raw F@ADDR` ([`raw`]).
 //!
-//! [`plan`] decides where everything goes (pure and printable) and then loads it.
+//! [`plan`] decides where everything goes (pure and printable) and then loads it. M18 adds
+//! the other kind of boot, firmware in flash ([`firmware`], [`plan::plan_firmware`]): the VMM
+//! loads only the ROM and the device tree, and the firmware finds and loads the OS itself.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -25,12 +27,13 @@
 )]
 
 pub mod elf;
+pub mod firmware;
 pub mod image;
 pub mod initrd;
 pub mod plan;
 pub mod raw;
 
-pub use plan::{BootInputs, BootPlan, Placement, load_dtb, plan};
+pub use plan::{BootInputs, BootPlan, Placement, load_dtb, plan, plan_firmware};
 
 use crate::memory::MemoryError;
 use core::fmt;
@@ -155,6 +158,8 @@ pub enum LoaderError {
     NoImage,
     /// A guest-memory write was refused (cannot happen after planning; kept total).
     Memory(MemoryError),
+    /// M18: the `--bios` image does not fit its flash bank (LDR-1).
+    Firmware(firmware::FirmwareError),
 }
 
 impl fmt::Display for LoaderError {
@@ -258,6 +263,7 @@ impl fmt::Display for LoaderError {
             ),
             NoImage => f.write_str("nothing to boot"),
             Memory(e) => write!(f, "guest memory: {e}"),
+            Firmware(e) => write!(f, "--bios: {e}"),
         }
     }
 }

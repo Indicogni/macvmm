@@ -1,0 +1,14 @@
+dtb-reader: x0=0x40000000
+dtb-reader: magic ok
+dtb-reader: model=macvmm-virt
+dtb-reader: memory@40000000 reg=0x40000000+0x4000000
+dtb-reader: pl011@9000000 compatible=arm,pl011
+dtb-reader: cpus=1
+dtb-reader: stdout-path=/pl011@9000000
+dtb-reader: rng-seed nonzero
+dtb-reader: kaslr-seed nonzero
+dtb-reader: done
+!dtb-reader: FAIL
+!guest panic
+!guest fatal
+!unhandled

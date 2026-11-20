@@ -82,9 +82,14 @@ fn pad4(v: &mut Vec<u8>) {
     }
 }
 
-/// Check an archive path: relative, `/`-separated, no empty, `.` or `..` component.
+/// Check an archive path: relative, `/`-separated, no empty, `.` or `..` component, and not
+/// under the end-of-archive name `TRAILER!!!` (whose parent directory entry would carry that
+/// name). The kernel's unpacker stops at the first entry so named (`buffer-format.rst`), so
+/// such an entry would silently drop every later one (found by the M22 `cpio` fuzz target;
+/// regression case in `tests/cpio.rs`).
 pub fn check_name(name: &str) -> Result<(), CpioError> {
     let bad = name.is_empty()
+        || name.split('/').next() == Some("TRAILER!!!")
         || name.len() > MAX_NAME
         || name.starts_with('/')
         || name.contains('\0')

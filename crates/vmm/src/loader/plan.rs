@@ -27,6 +27,18 @@
 //! the command line is checked against FDT-2 here, so a bad one is exit code 2 before any VM
 //! exists. The plan is pure and deterministic; `tests/bootplan.rs` checks it with 10,000
 //! random size combinations (LDR-5).
+//!
+//! **M18: the firmware boot** ([`plan_firmware`]). With `--bios` nothing is loaded into RAM
+//! but the device tree: the image goes into flash bank 0 (`loader::firmware`), and the vCPU
+//! starts where a real Cortex-A core starts after reset on QEMU's `virt` board, at the bottom
+//! of flash (`PC = FLASH0_BASE = 0`; QEMU `hw/arm/boot.c` enters `-bios` firmware at the flash
+//! base). The device tree still sits at the start of RAM with `x0` pointing at it: QEMU puts
+//! it there for firmware too, and U-Boot's `qemu-arm` board finds it at that address
+//! (`board/emulation/qemu-arm/qemu-arm.c`, `board_fdt_blob_setup`), while firmware that
+//! follows the Linux convention reads `x0`. The slot may use the full 2 MiB (no image above
+//! it), and `CPSR = 0x3c5` (EL1h, DAIF masked) is the reset state firmware expects at EL1:
+//! the guest has no EL2 here (architecture §8.4). `--initrd`, `--cmdline`, `--kernel` and
+//! `--raw` are refused with `--bios` (`config.rs`): the firmware loads the OS from a disk.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -102,6 +114,8 @@ pub struct BootPlan {
     pub initrd: Option<(u64, u64)>,
     /// `/chosen/bootargs` (M9): `--cmdline`, or [`default_cmdline`] for an Image.
     pub bootargs: Option<String>,
+    /// M18: the `--bios` image in flash bank 0 (outside RAM: not one of `images`).
+    pub firmware: Option<Placement>,
 }
 
 /// The row label of a placement in the printed plan.
@@ -116,6 +130,8 @@ fn label(what: &str) -> &'static str {
         "raw"
     } else if what.starts_with("device tree") {
         "dtb"
+    } else if what.starts_with("firmware") {
+        "flash0"
     } else {
         "image"
     }
@@ -133,7 +149,11 @@ impl fmt::Display for BootPlan {
             self.ram.base,
             self.ram.size >> 20
         )?;
-        let rows = core::iter::once(&self.dtb).chain(&self.images);
+        let rows = self
+            .firmware
+            .iter()
+            .chain(core::iter::once(&self.dtb))
+            .chain(&self.images);
         for p in rows {
             let end = p.addr.saturating_add(p.len);
             writeln!(
@@ -277,8 +297,46 @@ pub fn plan(ram: RamRange, inputs: &BootInputs<'_>) -> Result<BootPlan, LoaderEr
         image: arm_image,
         initrd: initrd_range,
         bootargs,
+        firmware: None,
     })
 }
+
+// ANCHOR: bootplan_firmware
+/// Plan a firmware boot (M18, module docs): `image` goes into the flash bank `rom`
+/// (`(base, size)`, checked here against LDR-1), RAM holds only the device tree, and the
+/// vCPU starts at the bottom of flash with `x0` = the DTB. Pure, like [`plan`].
+pub fn plan_firmware(
+    ram: RamRange,
+    rom: (u64, u64),
+    image: &[u8],
+) -> Result<BootPlan, LoaderError> {
+    let (rom_base, rom_size) = rom;
+    super::firmware::check_rom_image(image, rom_size).map_err(LoaderError::Firmware)?;
+    let len = u64::try_from(image.len()).unwrap_or(u64::MAX);
+    Ok(BootPlan {
+        entry: rom_base, // the reset vector: the first word of flash
+        cpsr: CPSR_EL1H_DAIF_MASKED,
+        x0: ram.base, // the DTB (booting.rst §4; U-Boot qemu-arm reads it at the RAM base)
+        ram,
+        dtb: Placement {
+            what: "device tree (reserved)".into(),
+            addr: ram.base,
+            len: DTB_MAX.min(ram.size),
+        },
+        dtb_limit: DTB_MAX.min(ram.size),
+        images: Vec::new(),
+        elf: None,
+        image: None,
+        initrd: None,
+        bootargs: None,
+        firmware: Some(Placement {
+            what: format!("firmware (flash bank 0, {rom_size:#x}-byte ROM, rest zero)"),
+            addr: rom_base,
+            len,
+        }),
+    })
+}
+// ANCHOR_END: bootplan_firmware
 
 impl BootPlan {
     /// Size the device-tree slot to a `len`-byte blob, which must fit in
@@ -362,6 +420,41 @@ mod tests {
             },
         )
         .unwrap()
+    }
+
+    /// M18: the firmware plan: PC = the flash base, x0 = the DTB at the RAM base, nothing in
+    /// RAM but the 2 MiB DTB slot, and the LDR-1 size rules.
+    #[test]
+    fn firmware_plan_enters_flash_with_x0_the_dtb() {
+        use crate::arch::layout::{FLASH_BANK_SIZE, FLASH0_BASE};
+        use crate::loader::firmware::FirmwareError;
+        let rom = (FLASH0_BASE, FLASH_BANK_SIZE);
+        let mut p = plan_firmware(RAM, rom, &[0x14; 4096]).unwrap();
+        assert_eq!((p.entry, p.x0, p.cpsr), (FLASH0_BASE, RAM_BASE, 0x3c5));
+        assert!(p.images.is_empty());
+        assert_eq!(p.dtb_limit, DTB_MAX);
+        let fw = p.firmware.clone().unwrap();
+        assert_eq!((fw.addr, fw.len), (FLASH0_BASE, 4096));
+        p.set_dtb_len(DTB_MAX).unwrap();
+        let text = p.to_string();
+        assert!(text.contains("flash0  0x0..0x1000  firmware"), "{text}");
+        assert!(text.contains("pc=0x0 x0=0x40000000"), "{text}");
+        assert_eq!(
+            plan_firmware(RAM, rom, &[]),
+            Err(LoaderError::Firmware(FirmwareError::Empty))
+        );
+        let big = vec![0u8; usize::try_from(FLASH_BANK_SIZE).unwrap() + 1];
+        assert_eq!(
+            plan_firmware(RAM, rom, &big),
+            Err(LoaderError::Firmware(FirmwareError::TooLarge {
+                len: FLASH_BANK_SIZE + 1,
+                rom: FLASH_BANK_SIZE
+            }))
+        );
+        // A full bank fits exactly.
+        big.get(..big.len() - 1)
+            .map(|full| plan_firmware(RAM, rom, full).unwrap())
+            .unwrap();
     }
 
     /// M7: x0 is the DTB address; the slot is sized to the blob and capped by the lowest

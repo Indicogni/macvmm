@@ -26,7 +26,7 @@
 //! | `sysreg` | string | trapped system register name, when `hvf` or `arch::sysreg` knows it |
 //! | `sysreg_enc` | hex string | trapped system register: its `hv_sys_reg_t` encoding (`op0<<14 \| op1<<11 \| CRn<<7 \| CRm<<3 \| op2`), always present on EC 0x18, so an unnamed register is still identified |
 //! | `fn` | string | SMCCC function name |
-//! | `action` | string | `mmio`, `psci`, `smccc`, `sysreg`, `inject_undef`, `inject_abort`, `stop` |
+//! | `action` | string | `mmio`, `psci`, `smccc`, `sysreg`, `inject_undef`, `inject_abort`, `skip` (ISV = 0 `PRFM` or cache maintenance stepped over, no bus access), `stop` |
 //! | `isv` | bool | data abort: `true` when the syndrome described the access, `false` when the VMM decoded the instruction (ISV = 0, M17) |
 //! | `boot` | integer | reboot generation, only when > 0 |
 //!
@@ -116,6 +116,9 @@ pub enum Action {
     Sysreg,
     InjectUndef,
     InjectAbort,
+    /// An ISV = 0 data abort the VMM handled without any bus access by stepping over the
+    /// instruction: `PRFM`, or cache maintenance by VA under `ESR.CM = 1` (M17, MMIO-6).
+    Skip,
     Stop,
 }
 
@@ -128,6 +131,7 @@ impl Action {
             Action::Sysreg => "sysreg",
             Action::InjectUndef => "inject_undef",
             Action::InjectAbort => "inject_abort",
+            Action::Skip => "skip",
             Action::Stop => "stop",
         }
     }

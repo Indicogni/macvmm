@@ -1,0 +1,59 @@
+# scripts/capture.sh 07: run "self-fault" of course/checkpoints/07, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 07; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --mem 64M --raw {guests}/self-fault.bin@0x40080000 --timeout 10
+exit: 3
+--- stdout ---
+self-fault: SCTLR_EL1.A=1, VBAR_EL1=0, loading 8 bytes from 0x40082a21
+
+--- stderr ---
+macvmm: guest fatal: instruction abort at pc 0x200: translation fault at IPA 0x200 (ifsc 0x6)
+vcpu0: instruction abort (EC 0x20): IFSC=0x6 S1PTW=0 (translation fault)
+  esr=0x82000006 ipa=0x200
+  x0=0x0000000000000000 x1=0x000000000000000a x2=0x0000000000000000 x3=0x0000000000000000
+  x4=0x0000000000000002 x5=0x0000000000000008 x6=0x0000000000000000 x7=0x0000000000000000
+  x8=0x0000000030000182 x9=0x0000000000000000 x10=0x0000000000000078 x11=0x0000000040082d10
+  x12=0x0000000000000034 x13=0x0000000040092d39 x14=0x0000000000000000 x15=0x0000000000000000
+  x16=0x0000000000000000 x17=0x0000000000000000 x18=0x0000000040092d50 x19=0x0000000040082a21
+  x20=0x0000000000000000 x21=0x0000000000000000 x22=0x0000000000000000 x23=0x0000000000000000
+  x24=0x0000000000000000 x25=0x0000000000000000 x26=0x0000000000000000 x27=0x0000000000000000
+  x28=0x0000000000000000 x29=0x0000000000000000 x30=0x000000004008107c
+  sp_el0=0x0 sp_el1=0x40092de0
+  pc=0x200 cpsr=0x824003c5 (EL1h, DAIF, Nzcv)
+  ELR_EL1=0x40081094 SPSR_EL1=0x800003c5 ESR_EL1=0x96000021 (EC 0x25: data abort, same EL) FAR_EL1=0x40082a21
+  VBAR_EL1=0x0 SCTLR_EL1=0x30000182 TCR_EL1=0x0 TTBR0_EL1=0x0 TTBR1_EL1=0x0
+  note: pc is VBAR_EL1 + 0x200, an exception vector: the guest took an exception at EL1 first, so ELR_EL1 and ESR_EL1 describe the first fault
+  insn at pc: not readable (the pc does not translate to RAM)
+last exits: 32 (oldest first)
+  {"t_ns":242083,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":244375,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":246000,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":247875,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":250083,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":251708,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":261000,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":263291,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":265333,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":267583,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":269250,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":270958,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":273791,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":275416,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":277083,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":278791,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":281000,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":284500,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":286125,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":287708,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":291041,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":292833,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":295750,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":297375,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":299041,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":304791,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":312708,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":314500,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":317291,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":318916,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x400811a4","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":320625,"vcpu":0,"reason":"exception","ec":"0x16","pc":"0x40081124","imm":0,"fn":"DEBUG_PUTC","action":"smccc"}
+  {"t_ns":323625,"vcpu":0,"reason":"exception","ec":"0x20","pc":"0x200","ipa":"0x200","action":"stop"}
+

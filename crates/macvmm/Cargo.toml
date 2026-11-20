@@ -14,6 +14,9 @@ vmm = { path = "../vmm" }
 # `test-util` (threat model FDT-1: the shipped binary has no DTB parser).
 [dev-dependencies]
 vmm = { path = "../vmm", features = ["test-util"] }
+# M22: the argv generator and invariant of the `cli` fuzz target, which drives the real
+# `parse_run` from the unit test `cli_fuzz` (the binary crate cannot be linked by `crates/fuzz`).
+fuzz = { path = "../fuzz" }
 
 [features]
 # End-to-end tests that boot guests on this Mac (`scripts/test-e2e.sh`).

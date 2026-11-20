@@ -1,0 +1,36 @@
+# Checkpoint 01 `ffi` (CURRICULUM §5 ch01).
+id = "01"
+slug = "ffi"
+requires = ["00"]
+
+[contract]
+crates = ["hvf"]
+tests = ["contract/hv_errors.rs"]
+
+# (a) `cargo run -p macvmm -- doctor` through the signing runner (.cargo/config.toml).
+[[run]]
+name = "doctor"
+command = ["cargo", "run", "--quiet", "-p", "macvmm", "--", "doctor"]
+timeout = 300
+expect_exit_code = 0
+serial = "expected/doctor.txt"
+
+# (b) The same binary signed with no entitlements (PLAN M0's negative test).
+[[run]]
+name = "doctor-denied"
+args = ["doctor"]
+sign = "no-entitlements"
+timeout = 30
+expect_exit_code = 1
+serial = "expected/doctor-denied.txt"
+
+[journal]
+file = "journal/01.md"
+questions = 5
+predict = true
+
+[hints]
+conceptual = "Every hv_* call returns hv_return_t; a VMM that prints -85377017 teaches nothing, so decode it into a named error and keep unknown codes verbatim."
+spec = "hv_kern_types.h in the SDK: each code is err_local | err_sub(0xba5) | n = 0xfae94000 | n."
+pseudocode = "match code { HV_ERROR => Error, ..., other => Unknown(other as u32) }; Display prints NAME (0x%08x)."
+anchor = "crates/hvf/src/error.rs, anchor hv_error_from_code."

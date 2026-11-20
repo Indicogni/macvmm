@@ -15,7 +15,8 @@
 //!
 //! **PSCI state lives here** (M5). `VmControl` also owns the boot's [`Psci`] table (who is on,
 //! the CPU_ON mailboxes), because a stop must wake a parked vCPU: `request_stop` sets the flag,
-//! wakes every parked vCPU, then kicks the running ones. One vCPU runs until SMP (M16).
+//! wakes every parked vCPU, then kicks the running ones. With SMP (M16) there is one PSCI row
+//! per `--cpus` vCPU, each behind its own mutex (`psci.rs`).
 //!
 //! **Exit codes** ([`StopReason::exit_code`], anchored as `exit_codes`) are architecture
 //! §13.2's table, the contract with scripts and the e2e harness:
@@ -233,14 +234,25 @@ impl VmControl {
             first
         };
         self.stopping.store(true, Ordering::SeqCst); // the flag before the kick (module docs)
-        self.psci.wake_all(); // parked vCPUs (PSCI OFF) re-check the flag
-        let handles = lock(&self.handles).clone();
-        kick(&handles); // running vCPUs return CANCELED
+        self.kick_all_vcpus();
         self.changed.notify_all();
         first
     }
     // ANCHOR_END: request_stop
     // ANCHOR_END: vm_control_request_stop
+
+    // ANCHOR: kick_all_vcpus
+    /// Make every vCPU look at the stop flag (architecture §14.5, steps 3 and 4): wake the
+    /// parked ones (PSCI OFF, waiting in `vcpu::wait` on their target's condition variable),
+    /// then force the running ones out of `hv_vcpu_run` with one `hv_vcpus_exit` over every
+    /// registered handle. The kick is sticky (spike finding 19): a vCPU about to enter the
+    /// guest returns `CANCELED` at once. With N vCPUs this is one framework call, not N.
+    fn kick_all_vcpus(&self) {
+        self.psci.wake_all();
+        let handles = lock(&self.handles).clone();
+        kick(&handles);
+    }
+    // ANCHOR_END: kick_all_vcpus
 
     /// Block until a stop is requested or `deadline` passes. Returns true if stopped.
     pub fn wait_until(&self, deadline: Option<Instant>) -> bool {

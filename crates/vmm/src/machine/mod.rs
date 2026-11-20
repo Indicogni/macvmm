@@ -14,7 +14,9 @@
 //! 4. copy the images, then the DTB, into RAM through `GuestMemory` (`loader::plan::load`,
 //!    `loader::load_dtb`);
 //! 5. build the MMIO bus with the devices `cfg` asks for (`virt::register_devices`), the
-//!    PL011 and PL031 wired to SPIs 1 and 2 of the GIC (M8, `virt::platform_irqs`);
+//!    PL011 and PL031 wired to SPIs 1 and 2 of the GIC (M8, `virt::platform_irqs`), and the
+//!    virtio devices in their slots, each with its worker thread (M12,
+//!    `virt::register_virtio_with`; the workers are joined before RAM is freed);
 //! 6. capture the boot's virtual-counter offset (`timer::boot_offset`, architecture §8.1),
 //!    which is also time zero of this boot's exit trace.
 //!
@@ -25,6 +27,16 @@
 //! If anything after step 2 fails, the half-built machine is torn down in the MEM-9/MEM-11
 //! order before the error is returned, so a failed build never leaks a mapped VM.
 //!
+//! **M18: firmware** (`--bios`). Step 1 plans a firmware boot (`loader::plan_firmware`: PC
+//! at the flash base, `x0` = the DTB, nothing else in RAM); step 3 also allocates both flash
+//! banks as one 128 MiB [`RomRegion`], copies the image into bank 0 (the rest reads as zero,
+//! `loader::firmware::load_rom`) and maps it **read+execute** (MEM-3: it is not part of
+//! `GuestMemory`, so no device can DMA into it). Bank 1 is mapped too, empty, because U-Boot
+//! reads its environment from it (`docs/compat/uboot.md`). Step 5 puts a write-ignore
+//! [`crate::devices::flash::FlashDevice`] on the bus over each bank, so a guest store to the
+//! ROM is answered (MMIO-10) instead of stopping the VM. The ROM is unmapped and freed in the
+//! same teardown as RAM (`vm::teardown`).
+//!
 //! **Run** ([`Machine::run`]) starts the vCPU thread(s), waits for the stop or the run's
 //! `--timeout` deadline (one absolute `Instant` for every boot, from the reboot loop), and
 //! tears the VM down. A teardown failure is an `Err` (exit code 1, never a reboot: MEM-11, flaw F22).
@@ -33,8 +45,13 @@
 //! (M5) calls `build` again with the same `HostIo` and `generation + 1`.
 
 pub mod virt;
+// M21: the experimental macOS-guest board (ADR-0008 decision 3), off by default.
+#[cfg(feature = "experimental-vmapple")]
+pub mod vmapple;
 
-use crate::arch::layout::{Layout, RAM_BASE};
+use crate::arch::layout::{
+    FLASH_BANK_SIZE, FLASH_SIZE, FLASH0_BASE, FLASH1_BASE, Layout, RAM_BASE,
+};
 use crate::backend::hostio::HostIo;
 use crate::backend::serial::{SerialInput, SinkHandle};
 use crate::bus::Bus;
@@ -44,12 +61,13 @@ use crate::error::{Error, Result};
 use crate::fdt::{self, MachineDesc};
 use crate::hostctl::HostCtl;
 use crate::loader::{self, BootInputs, BootPlan, RamRange};
-use crate::memory::GuestRam;
+use crate::memory::{GuestAddress, GuestRam, RomRegion};
 use crate::stats::BootStats;
 use crate::trace::{Clock, Trace};
 use crate::vcpu::exit::ExitEnv;
 use crate::vcpu::run_loop::Observe;
 use crate::vcpu::{BootParams, manager};
+use crate::virtio::Worker;
 use crate::vm;
 use hvf::{Capabilities, Gic, Vm};
 use std::sync::{Arc, Mutex};
@@ -61,8 +79,12 @@ pub struct Machine {
     /// `None` only in the `--irqchip none` teaching mode.
     gic: Option<Gic>,
     irqchip: IrqChip,
+    /// M16: the number of vCPUs (`--cpus`).
+    cpus: usize,
     stats: bool,
     ram: Arc<GuestRam>,
+    /// M18: flash bank 0 with the `--bios` image, mapped read+execute (`None` without it).
+    rom: Option<RomRegion>,
     plan: BootPlan,
     bus: Bus,
     serial: SinkHandle,
@@ -75,6 +97,12 @@ pub struct Machine {
     /// point of the CLI's stdin and signal threads.
     serial_input: Arc<SerialInput>,
     hostctl: Arc<HostCtl>,
+    /// M12: this boot's stop control. Created at build time because the virtio workers need
+    /// it before the vCPUs exist: a worker panic stops the VM (RUST-7).
+    ctl: Arc<VmControl>,
+    /// M12: one worker thread per populated virtio slot; stopped and joined before guest RAM
+    /// is freed (MEM-9).
+    workers: Vec<Arc<Worker>>,
 }
 
 impl core::fmt::Debug for Machine {
@@ -91,6 +119,9 @@ impl core::fmt::Debug for Machine {
 /// arm64 Image (M9), `--bios` (M18) and `--machine vmapple` (M21) are real OSes or firmware,
 /// so the extra surface stays off. Decided from the `HostIo` bytes, never a path (HOSTIO-1).
 pub fn is_test_guest(cfg: &VmConfig, host: &HostIo) -> bool {
+    if host.bios.is_some() {
+        return false; // M18: firmware is never a test guest (HC-2)
+    }
     let kernel_is_test = match host.kernel.as_deref() {
         Some(k) => loader::detect(k) == loader::ImageKind::Elf,
         None => true, // `--raw` only
@@ -120,6 +151,14 @@ pub fn plan_boot(cfg: &VmConfig, host: &HostIo) -> Result<BootPlan> {
         base: RAM_BASE,
         size: cfg.mem_bytes,
     };
+    // M18: `--bios` is a firmware boot (`config.rs` refused every other input with it).
+    if let Some(bios) = host.bios.as_deref() {
+        return Ok(loader::plan_firmware(
+            ram,
+            (FLASH0_BASE, FLASH_BANK_SIZE),
+            bios,
+        )?);
+    }
     Ok(loader::plan(ram, &boot_inputs(cfg, host))?)
 }
 
@@ -134,8 +173,8 @@ pub fn device_tree(
     plan: &mut BootPlan,
     generation: u64,
 ) -> Result<Vec<u8>> {
-    let mut desc =
-        MachineDesc::from_entropy(1, cfg.mem_bytes, &host.entropy).map_err(Error::Entropy)?;
+    let mut desc = MachineDesc::from_entropy(cfg.cpus, cfg.mem_bytes, &host.entropy)
+        .map_err(Error::Entropy)?;
     // M9: the kernel command line and the initrd range go to `/chosen`.
     desc.bootargs.clone_from(&plan.bootargs);
     desc.initrd = plan.initrd;
@@ -158,6 +197,10 @@ pub fn device_tree(
 /// prints seed bytes (FDT-4): the summary names the seeds but not their values.
 pub fn dry_run(cfg: &VmConfig, host: &HostIo) -> Result<String> {
     use core::fmt::Write as _;
+    #[cfg(feature = "experimental-vmapple")]
+    if cfg.machine == crate::arch::layout::MachineProfile::VmApple {
+        return vmapple::dry_run(cfg, host); // M21: no DTB, no boot plan
+    }
     let mut plan = plan_boot(cfg, host)?;
     let dtb = device_tree(cfg, host, &mut plan, 0)?;
     let mut out = String::new();
@@ -223,6 +266,53 @@ pub fn dry_run(cfg: &VmConfig, host: &HostIo) -> Result<String> {
     Ok(out)
 }
 
+/// Stop and join every worker (each finishes its current batch, VQ-12). True if any panicked.
+/// M16: refuse `--cpus` above what this host allows per VM (`hv_vm_get_max_vcpu_count`,
+/// [`Capabilities::max_vcpus`]). `config.rs` already capped it at `MAX_CPUS`; this is the host's
+/// own limit, checked before the VM exists so the error names the flag instead of surfacing
+/// later as a failed `hv_vcpu_create`. A pure function so a host test can cover a limit this
+/// Mac does not have.
+pub fn check_cpus(cpus: u32, host_max: u32) -> Result<()> {
+    if cpus > host_max {
+        return Err(Error::Config(format!(
+            "--cpus {cpus}: this host allows at most {host_max} vCPUs per VM"
+        )));
+    }
+    Ok(())
+}
+
+// ANCHOR: machine_load_firmware
+/// M18: copy `--bios` into flash bank 0 (the rest of the flash reads as zero), map both banks
+/// read+execute, and put a write-ignore flash device over each bank (module docs). A no-op
+/// without `--bios`.
+fn load_firmware(
+    rom: Option<&RomRegion>,
+    host: &HostIo,
+    vm: &hvf::Vm,
+    bus: &mut Bus,
+) -> Result<()> {
+    let (Some(rom), Some(image)) = (rom, host.bios.as_deref()) else {
+        return Ok(());
+    };
+    loader::firmware::load_rom(rom, image).map_err(|e| Error::Config(format!("--bios: {e}")))?;
+    rom.map(vm)?;
+    for (name, base) in [("flash0", FLASH0_BASE), ("flash1", FLASH1_BASE)] {
+        bus.insert(
+            name,
+            base,
+            FLASH_BANK_SIZE,
+            Arc::new(Mutex::new(crate::devices::flash::FlashDevice::new())),
+        )
+        .map_err(Error::Bus)?;
+    }
+    Ok(())
+}
+// ANCHOR_END: machine_load_firmware
+
+fn stop_workers(workers: &[Arc<Worker>]) -> bool {
+    crate::virtio::worker::stop_all(workers)
+}
+
 impl Machine {
     /// Build boot `generation` of the machine (module docs).
     pub fn build(cfg: &VmConfig, host: &HostIo, generation: u64) -> Result<Machine> {
@@ -236,6 +326,8 @@ impl Machine {
             op: "probe capabilities",
             err,
         })?;
+        // M16: `--cpus` is at most `MAX_CPUS` (config.rs) and at most what this host allows.
+        check_cpus(cfg.cpus, caps.max_vcpus)?;
         let (vm, gic) = vm::create_vm_with(layout, ram_end, &caps, cfg.irqchip)?;
         // ANCHOR: machine_gic_checks
         // Architecture §9 startup assertions, before any memory exists: on a mismatch, dropping
@@ -250,23 +342,78 @@ impl Machine {
             vm::ipa_bits(layout, ram_end),
         )?);
         let inputs = boot_inputs(cfg, host);
+        let cpus = usize::try_from(cfg.cpus).map_err(|_| Error::Internal("cpus"))?;
         let mut bus = Bus::new();
+        // M16: one PSCI row per vCPU, with the MPIDR that vCPU gets and the DT `cpu@N` names.
+        let mpidrs: Vec<u64> = (0..cpus).map(crate::vcpu::mpidr_for).collect();
+        let ctl = Arc::new(VmControl::with_cpus(&mpidrs));
+        let mut workers = Vec::new();
+        // M18: flash bank 0 for `--bios` (module docs). Allocated before anything is mapped,
+        // so a failure here only has to drop the VM and RAM.
+        let rom = match host.bios.as_deref() {
+            Some(_) => match RomRegion::new(
+                GuestAddress(FLASH0_BASE),
+                FLASH_SIZE,
+                vm::ipa_bits(layout, ram_end),
+            ) {
+                Ok(rom) => Some(rom),
+                Err(e) => {
+                    vm::teardown(vm, gic, ram, None)?;
+                    return Err(e);
+                }
+            },
+            None => None,
+        };
         let loaded = ram
             .map(&vm)
+            .and_then(|()| load_firmware(rom.as_ref(), host, &vm, &mut bus))
             .and_then(|()| Ok(loader::plan::load(&plan, &inputs, &*ram)?))
             .and_then(|()| Ok(loader::load_dtb(&plan, &dtb, &*ram)?))
             .and_then(|()| virt::register_devices(cfg, &mut bus))
-            .and_then(|()| virt::register_virtio(cfg, &mut bus))
+            .and_then(|()| {
+                // M12: devices in their ADR-0005 slots, each with a worker thread.
+                let env = virt::VirtioEnv {
+                    mem: ram.clone(),
+                    gic: gic.as_ref(),
+                    entropy: host.entropy,
+                    ctl: Arc::clone(&ctl),
+                    // M13: the console's sink, and its input when stdin is bound to it.
+                    console: host.console.clone(),
+                    console_input: (host.stdin == crate::backend::serial::StdinBinding::Console)
+                        .then(|| Arc::clone(&host.console_input)),
+                    // M14: the disk images HostIo opened and locked, in --disk order.
+                    disks: host
+                        .disks
+                        .iter()
+                        .cloned()
+                        .map(|d| d as Arc<dyn crate::backend::file::BlockBackend>)
+                        .collect(),
+                    // M24: the NICs' sockets and MACs HostIo set up, in --net order.
+                    nets: host.nets.clone(),
+                };
+                workers = virt::register_virtio_with(cfg, &mut bus, &env)?;
+                Ok(())
+            })
             .and_then(|()| virt::platform_irqs(gic.as_ref()))
             .and_then(|irqs| {
-                virt::register_platform_with(&mut bus, &host.serial, &host.serial_input, 1, irqs)
+                virt::register_platform_with(
+                    &mut bus,
+                    &host.serial,
+                    &host.serial_input,
+                    cfg.cpus,
+                    irqs,
+                )
             });
         let uart = match loaded {
             Ok(uart) => uart,
             Err(e) => {
                 // Tear the half-built VM down safely; the build error is the one to report,
                 // unless teardown itself failed (then memory was leaked: the bigger problem).
-                vm::teardown(vm, gic, ram, None)?;
+                // The workers and the transports hold guest RAM: join and drop them first.
+                stop_workers(&workers);
+                drop(workers);
+                drop(bus);
+                vm::teardown(vm, gic, ram, rom)?;
                 return Err(e);
             }
         };
@@ -282,8 +429,10 @@ impl Machine {
             vm,
             gic,
             irqchip: cfg.irqchip,
+            cpus,
             stats: cfg.stats,
             ram,
+            rom,
             plan,
             bus,
             serial: Arc::clone(&host.serial),
@@ -294,6 +443,8 @@ impl Machine {
             vtimer_offset: crate::timer::boot_offset(),
             serial_input: Arc::clone(&host.serial_input),
             hostctl: Arc::clone(&host.hostctl),
+            ctl,
+            workers,
         })
     }
 
@@ -307,7 +458,7 @@ impl Machine {
     /// `--timeout`, computed once by the reboot loop (`vmm::run_with`), so a reboot never
     /// re-arms it; one already in the past stops the boot at once.
     pub fn run(self, deadline: Option<Instant>) -> Result<StopReason> {
-        let ctl = Arc::new(VmControl::new());
+        let ctl = Arc::clone(&self.ctl);
         // M6: while this boot runs, a user quit (Ctrl-A x, SIGTERM) stops it.
         let attached = self.hostctl.attach(&ctl);
         let env = ExitEnv {
@@ -318,6 +469,12 @@ impl Machine {
             generation: self.generation,
             debug_calls: self.debug_calls,
             unhandled_mmio: self.unhandled_mmio,
+            watch: None,
+            // M18: the ISV = 0 path may fetch instructions from the ROM (read-only).
+            rom: self
+                .rom
+                .as_ref()
+                .map(|r| r as &dyn crate::arch::stage1_walk::InsnRom),
         };
         let boot = BootParams {
             pc: self.plan.entry,
@@ -332,6 +489,9 @@ impl Machine {
         let per_vcpu = Mutex::new(Vec::new());
         let setup = manager::VcpuSetup {
             boot: &boot,
+            cpus: self.cpus,
+            redistributors: (self.irqchip == IrqChip::InKernelGicV3)
+                .then_some(crate::arch::layout::GICR_BASE),
             vtimer_offset: self.vtimer_offset,
             irqchip: self.irqchip,
             stats: &per_vcpu,
@@ -339,6 +499,9 @@ impl Machine {
         let cpu0 = hvf::host::process_cpu_time();
         let t0 = Instant::now();
         let reason = manager::run_vcpus(&self.vm, &setup, &env, &obs, deadline);
+        // M12 (architecture §14.5): the vCPUs are joined; stop the virtio workers. RUST-7: a
+        // worker panic is the verdict even if a guest stop was posted just before it.
+        let reason = crate::virtio::worker::final_reason(reason, stop_workers(&self.workers));
         let wall = t0.elapsed();
         let cpu1 = hvf::host::process_cpu_time();
         drop(attached);
@@ -351,12 +514,33 @@ impl Machine {
                 wall,
                 host_cpu: cpu0.zip(cpu1).map(|(a, b)| b.saturating_sub(a)),
             };
-            self.hostctl.set_stats(stats.report());
+            let mut lines = stats.report();
+            // M24: each NIC's counters (`net0 slot 1: tx_packets=… rx_dropped_foreign=…`),
+            // from the companions the workers stopped above.
+            lines.extend(self.workers.iter().flat_map(|w| w.companion_stats()));
+            self.hostctl.set_stats(lines);
         }
         // M11: the bus owns the virtio transports, and an activated device holds an
-        // `Arc` of guest RAM; drop them first so teardown can free RAM (MEM-9, D20).
+        // `Arc` of guest RAM; drop them first so teardown can free RAM (MEM-9, D20). M12: the
+        // workers (already joined above) hold the devices too.
+        drop(self.workers);
         drop(self.bus);
-        vm::teardown(self.vm, self.gic, self.ram, None)?;
+        vm::teardown(self.vm, self.gic, self.ram, self.rom)?;
         Ok(reason)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::check_cpus;
+
+    #[test]
+    fn cpus_above_the_host_limit_are_refused() {
+        let err = check_cpus(4, 2).unwrap_err().to_string();
+        assert!(err.contains("--cpus 4"), "{err}");
+        assert!(err.contains("at most 2"), "{err}");
+        assert!(check_cpus(2, 2).is_ok());
+        assert!(check_cpus(1, 64).is_ok());
+        assert!(check_cpus(65, 64).is_err());
     }
 }

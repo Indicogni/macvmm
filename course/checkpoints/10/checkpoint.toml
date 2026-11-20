@@ -1,0 +1,43 @@
+# Checkpoint 10 `device-tree` (CURRICULUM §5 ch10).
+id = "10"
+slug = "device-tree"
+requires = ["09"]
+
+[contract]
+tests = ["contract/fdt_writer.rs"]
+
+[[run]]
+name = "dtb-reader"
+guest = "dtb-reader"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/dtb-reader.txt"
+
+# booting.rst §4: x0 holds the DTB's physical address at entry.
+[[run]]
+name = "hello-x0"
+guest = "hello"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/hello-x0.txt"
+
+# The independent reader: dtc must accept the blob without a warning (INFO when dtc is absent).
+[[run]]
+name = "dtc-clean"
+guest = "hello"
+requires_tool = "dtc"
+command = ["/bin/sh", "-c", "\"$0\" run --mem 64M --raw \"$1\" --dtb-out \"$2/v.dtb\" --timeout 10 >/dev/null && dtc -I dtb -O dts -o /dev/null \"$2/v.dtb\" 2>&1; echo \"rc=$?\"", "{macvmm}", "{guest_raw}", "{out}"]
+timeout = 20
+expect_exit_code = 0
+serial = "expected/dtc-clean.txt"
+
+[journal]
+file = "journal/10.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "The DTB is the VMM's promise to the guest: every device it lists must exist at that address, and nothing else should be assumed."
+spec = "Devicetree Specification v0.4 §5 (the flattened format: header, structure block tokens, strings block); booting.rst §2.3."
+pseudocode = "begin_node/property/end_node append FDT_* tokens aligned to 4; strings are deduplicated; finish() writes the header with offsets and sizes."
+anchor = "crates/vmm/src/fdt/writer.rs and crates/vmm/src/fdt/machine.rs."

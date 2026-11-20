@@ -19,6 +19,14 @@
 //! (counted by their `"dtb"` key), and every `"dtb"` value an even-length lowercase hex string
 //! of at most 2 MiB of bytes whose first word is the FDT magic, except that hostile vectors
 //! (those with a non-null `"error"`) may start with anything.
+//!
+//! **M11 adds the virtqueue corpus** ([`run_virtqueue`]):
+//! `crates/vmm/tests/data/virtqueue_vectors.json`, which `crates/vmm/tests/virtqueue_hostile.rs`
+//! regenerates from its hostile ring cases and the real `virtio::{queue,chain}` code, is copied
+//! to `course/site/labs/vectors/virtqueue.json` for the ch16 virtqueue lab. Its check: at most
+//! [`MAX_VECTORS_BYTES`], balanced, at least [`MIN_VIRTQUEUE_VECTORS`] vectors (counted by their
+//! `"outcome"` key), every `"addr"`/ring value `0x` + 1–16 lowercase hex digits, and every
+//! outcome either a chain summary, `empty` or an `error`.
 
 use std::fs;
 use std::io;
@@ -217,9 +225,132 @@ pub fn run_fdt(root: &Path, check: bool) -> io::Result<Result<Outcome, String>> 
     Ok(Ok(Outcome::Written { vectors, path: dst }))
 }
 
+/// The virtqueue corpus (M11), relative to the repository root.
+pub const VQ_SOURCE: &str = "crates/vmm/tests/data/virtqueue_vectors.json";
+/// Its published copy.
+pub const VQ_TARGET: &str = "course/site/labs/vectors/virtqueue.json";
+/// PLAN M11: the hostile corpus has at least 40 cases.
+pub const MIN_VIRTQUEUE_VECTORS: usize = 40;
+
+/// `0x` + 1–16 lowercase hex digits.
+fn is_hex_u64(v: &str) -> bool {
+    v.strip_prefix("0x").is_some_and(|d| {
+        !d.is_empty()
+            && d.len() <= 16
+            && d.chars()
+                .all(|c| c.is_ascii_digit() || ('a'..='f').contains(&c))
+    })
+}
+
+// ANCHOR: vectors_virtqueue
+/// Validate the virtqueue corpus text (module docs); returns the number of vectors.
+pub fn validate_virtqueue(text: &str) -> Result<usize, String> {
+    if !balanced(text) {
+        return Err("unbalanced brackets or an unterminated string".into());
+    }
+    for key in [
+        "\"addr\": \"",
+        "\"desc_table\": \"",
+        "\"avail_ring\": \"",
+        "\"used_ring\": \"",
+    ] {
+        for part in text.split(key).skip(1) {
+            let value = part.split('"').next().unwrap_or("");
+            if !is_hex_u64(value) {
+                return Err(format!(
+                    "{key}{value:?} is not 0x + 1-16 lowercase hex digits"
+                ));
+            }
+        }
+    }
+    let mut n = 0usize;
+    for part in text.split("\"outcome\": ").skip(1) {
+        n += 1;
+        if !["{\"readable\": ", "{\"empty\": true}", "{\"error\": \""]
+            .iter()
+            .any(|p| part.starts_with(p))
+        {
+            return Err(format!("vector {n}: unknown outcome"));
+        }
+    }
+    if n < MIN_VIRTQUEUE_VECTORS {
+        return Err(format!(
+            "{n} virtqueue vectors, need at least {MIN_VIRTQUEUE_VECTORS}"
+        ));
+    }
+    Ok(n)
+}
+// ANCHOR_END: vectors_virtqueue
+
+/// Export (or with `check`, verify) the virtqueue corpus under `root` (M11).
+pub fn run_virtqueue(root: &Path, check: bool) -> io::Result<Result<Outcome, String>> {
+    let src = root.join(VQ_SOURCE);
+    if fs::metadata(&src)?.len() > MAX_VECTORS_BYTES {
+        return Ok(Err(format!(
+            "{VQ_SOURCE} exceeds {MAX_VECTORS_BYTES} bytes"
+        )));
+    }
+    let text = fs::read_to_string(&src)?;
+    let vectors = match validate_virtqueue(&text) {
+        Ok(n) => n,
+        Err(e) => return Ok(Err(format!("{VQ_SOURCE}: {e}"))),
+    };
+    let dst = root.join(VQ_TARGET);
+    if fs::read_to_string(&dst).ok().as_deref() == Some(text.as_str()) {
+        return Ok(Ok(Outcome::UpToDate { vectors }));
+    }
+    if check {
+        return Ok(Err(format!(
+            "{VQ_TARGET} is out of date: run `cargo xtask export-vectors`"
+        )));
+    }
+    if let Some(dir) = dst.parent() {
+        fs::create_dir_all(dir)?;
+    }
+    fs::write(&dst, &text)?;
+    Ok(Ok(Outcome::Written { vectors, path: dst }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// M11: the virtqueue corpus rules, and the repository's copy is valid and published.
+    #[test]
+    fn virtqueue_corpus() {
+        let v = |addr: &str, out: &str| format!("{{\"addr\": \"{addr}\", \"outcome\": {out}}}");
+        let corpus = |items: Vec<String>| format!("{{\"vectors\": [{}]}}", items.join(","));
+        let good: Vec<String> = (0..40)
+            .map(|i| {
+                v(
+                    "0x40000000",
+                    [
+                        "{\"empty\": true}",
+                        "{\"error\": \"x\"}",
+                        "{\"readable\": 1}",
+                    ][i % 3],
+                )
+            })
+            .collect();
+        assert_eq!(validate_virtqueue(&corpus(good.clone())), Ok(40));
+        assert!(validate_virtqueue(&corpus(good[..39].to_vec())).is_err());
+        for bad in [
+            v("40000000", "{\"empty\": true}"),
+            v("0xABC", "{\"empty\": true}"),
+            v("0x1", "{\"maybe\": 1}"),
+        ] {
+            let mut items = good.clone();
+            items.push(bad.clone());
+            assert!(validate_virtqueue(&corpus(items)).is_err(), "{bad}");
+        }
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let text = fs::read_to_string(root.join(VQ_SOURCE)).unwrap();
+        assert!(validate_virtqueue(&text).unwrap() >= MIN_VIRTQUEUE_VECTORS);
+        assert!(matches!(
+            run_virtqueue(&root, true).unwrap(),
+            Ok(Outcome::UpToDate { .. })
+        ));
+    }
 
     /// M7: the FDT corpus rules, and the repository's copy is valid and published.
     #[test]

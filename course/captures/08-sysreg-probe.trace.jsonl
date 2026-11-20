@@ -1,0 +1,6 @@
+{"t_ns":383833,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081244","value":"0x0","sysreg":"LORID_EL1","sysreg_enc":"0xc527","action":"sysreg"}
+{"t_ns":533000,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081048","sysreg":"MDCCSR_EL0","sysreg_enc":"0x9808","action":"inject_undef"}
+{"t_ns":806916,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400812ec","value":"0x1","sysreg":"OSLAR_EL1","sysreg_enc":"0x8084","action":"sysreg"}
+{"t_ns":811583,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x400812f4","value":"0xa","sysreg":"OSLSR_EL1","sysreg_enc":"0x808c","action":"sysreg"}
+{"t_ns":816125,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x40081304","value":"0x0","sysreg":"OSLAR_EL1","sysreg_enc":"0x8084","action":"sysreg"}
+{"t_ns":819875,"vcpu":0,"reason":"exception","ec":"0x18","pc":"0x4008131c","value":"0x8","sysreg":"OSLSR_EL1","sysreg_enc":"0x808c","action":"sysreg"}

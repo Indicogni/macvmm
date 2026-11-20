@@ -23,6 +23,18 @@ virtqueues, GIC/PSCI, MMIO decoding.
 | Program | Run by | Why | Guard |
 |---|---|---|---|
 | `/usr/bin/gzip -dc` (ships with macOS) | `cargo xtask unzboot` (M9), via `scripts/fetch.sh` | inflate the gzip payload of Alpine's EFI zboot `vmlinuz-virt`; writing an inflater is not a lesson topic and would add VMM-adjacent parser surface | absolute path, no shell, empty environment; only after the input's sha256 matched (SC-5); output capped at 256 MiB (SC-6); never run by the VMM (LDR-4) |
+| `/usr/bin/sandbox-exec` (ships with macOS, deprecated) | `scripts/sandbox-exec-fallback.sh` (M22) | the exec-time fallback if `macvmm run --sandbox` (`sandbox_init`) stops working (threat model SBX-1) | absolute path; user paths passed as `-D` parameters, never pasted into the profile; refuses `--sandbox` in the wrapped command |
+| `/usr/bin/true` | `macvmm run --sandbox --sandbox-selftest` only (M22), via `posix_spawn` with an empty environment | the "spawn denied" probe of the sandbox self-test (SBX-3 item 4): it runs only **after** the lockdown, where the spawn must fail; if it succeeds macvmm exits 1 | the only process creation on the `run` path, behind a hidden flag (PROC-3 exception, threat model §5 S27) |
+| `patch`, `shasum` (ship with macOS) | `scripts/bughunt-selftest.sh` (M22) | apply the planted-bug patches (TEST-4) to a scratch copy under `mktemp -d`, and prove the working tree's patched files are unchanged | never run on the working tree |
+
+## `crates/fuzz` (M22)
+
+The fuzz crate has **no third-party dependency**: it depends only on our own `vmm` (with the
+`test-util` feature, for `VecMemory`, `TestIrq` and the FDT reader) and `xtask` (the archive
+parsers), and brings its own xorshift PRNG and mutators. `macvmm` names it only as a
+dev-dependency (the `cli_fuzz` unit test). The optional libFuzzer wrapper of threat model TEST-5
+(`libfuzzer-sys`, nightly) is not part of the workspace and is not built by `scripts/check.sh`;
+adding it needs a row here.
 
 ## Outside the Cargo workspace: `tools/vz-mac` (M20)
 

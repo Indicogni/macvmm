@@ -1,0 +1,34 @@
+# Checkpoint 06 `vcpu-state` (CURRICULUM §5 ch06).
+id = "06"
+slug = "vcpu-state"
+requires = ["05"]
+
+[contract]
+tests = ["contract/dump_format.rs"]
+
+[[run]]
+name = "regcheck"
+guest = "regcheck"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/regcheck.txt"
+
+# SCTLR_EL1.A = 1 and VBAR_EL1 = 0: the unaligned load faults at EL1, the vector at 0x200 is
+# outside RAM, and the instruction abort there is what the VMM sees (exit 3).
+[[run]]
+name = "self-fault"
+guest = "self-fault"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+expect_exit_code = 3
+serial = "expected/self-fault.txt"
+
+[journal]
+file = "journal/06.md"
+questions = 4
+predict = true
+
+[hints]
+conceptual = "Reset state is a contract: EL1h with DAIF masked, MMU off, MPIDR naming the CPU. When a guest dies, the dump is your evidence."
+spec = "ARM ARM C5.2.18 (SPSR/PSTATE layout), D1.10.2 (exception vectors); booting.rst §4 (CPU state at entry)."
+pseudocode = "cpsr = 0x3c5; MPIDR_EL1 = 0x80000000 | aff; on a fatal exit print x0..x30 four per line, then pc/cpsr, ELR/SPSR/ESR/FAR, VBAR/SCTLR."
+anchor = "crates/vmm/src/vcpu/dump.rs, anchor regdump_format."

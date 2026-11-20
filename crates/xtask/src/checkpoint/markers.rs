@@ -26,6 +26,12 @@
 /// The search tries each occurrence of the first literal piece in turn; after it, each later
 /// piece takes its earliest occurrence on the same line, which is always the best choice for
 /// what follows (a `*` never crosses a newline).
+///
+/// **Linear time.** The haystack is output of the code under test (up to 16 MiB of stdout and
+/// 32 MiB of trace), so the search must not be quadratic in it. Two rules keep it linear: a
+/// later piece is searched only up to the end of the current line, and when a later piece is
+/// missing, every later candidate on that line fails too (its pieces can only match at the same
+/// or later positions), so the search jumps to the next line instead of the next candidate.
 pub fn find_wild(hay: &str, pat: &str, from: usize) -> Option<usize> {
     let mut parts = pat.split('*');
     let first = parts.next().unwrap_or("");
@@ -34,14 +40,15 @@ pub fn find_wild(hay: &str, pat: &str, from: usize) -> Option<usize> {
     while start <= hay.len() {
         let at = start.checked_add(hay.get(start..)?.find(first)?)?;
         let mut pos = at.checked_add(first.len())?;
+        let line_end = match hay.get(pos..)?.find('\n') {
+            Some(i) => pos.checked_add(i)?,
+            None => hay.len(),
+        };
         let mut ok = true;
         for part in &rest {
-            let tail = hay.get(pos..)?;
-            match tail.find(part) {
-                Some(i) if !tail.get(..i)?.contains('\n') => {
-                    pos = pos.checked_add(i)?.checked_add(part.len())?;
-                }
-                _ => {
+            match hay.get(pos..line_end)?.find(part) {
+                Some(i) => pos = pos.checked_add(i)?.checked_add(part.len())?,
+                None => {
                     ok = false;
                     break;
                 }
@@ -50,7 +57,8 @@ pub fn find_wild(hay: &str, pat: &str, from: usize) -> Option<usize> {
         if ok {
             return Some(pos);
         }
-        start = next_boundary(hay, at.checked_add(first.len().max(1))?);
+        // A missing later piece fails every candidate on this line: try the next line.
+        start = line_end.checked_add(1)?;
     }
     None
 }
@@ -202,14 +210,17 @@ pub struct Fixture {
     pub ok: bool,
 }
 
+/// A fixture being parsed: name, the spec/stdout/stderr lines, and the expectation.
+type Partial<'a> = Option<(String, [Vec<&'a str>; 3], Option<bool>)>;
+
 /// Parse the fixture table format: blocks started by `=== <name>`, each with `--- spec`,
 /// `--- stdout`, `--- stderr` sections (lines joined with `\n`, no final newline; the escape
 /// `\n` inside a line is not interpreted) and `--- expect` followed by `ok` or `err`.
 pub fn parse_fixtures(text: &str) -> Result<Vec<Fixture>, String> {
     let mut out = Vec::new();
-    let mut cur: Option<(String, [Vec<&str>; 3], Option<bool>)> = None;
+    let mut cur: Partial<'_> = None;
     let mut section: Option<usize> = None;
-    let mut finish = |cur: &mut Option<(String, [Vec<&str>; 3], Option<bool>)>| {
+    let mut finish = |cur: &mut Partial<'_>| {
         if let Some((name, [spec, so, se], ok)) = cur.take() {
             let ok = ok.ok_or(format!("fixture {name:?} has no `--- expect`"))?;
             out.push(Fixture {
@@ -225,7 +236,11 @@ pub fn parse_fixtures(text: &str) -> Result<Vec<Fixture>, String> {
     for (i, line) in text.lines().enumerate() {
         if let Some(name) = line.strip_prefix("=== ") {
             finish(&mut cur)?;
-            cur = Some((name.trim().to_owned(), [Vec::new(), Vec::new(), Vec::new()], None));
+            cur = Some((
+                name.trim().to_owned(),
+                [Vec::new(), Vec::new(), Vec::new()],
+                None,
+            ));
             section = None;
             continue;
         }
@@ -233,7 +248,10 @@ pub fn parse_fixtures(text: &str) -> Result<Vec<Fixture>, String> {
             if line.starts_with('#') || line.trim().is_empty() {
                 continue;
             }
-            return Err(format!("line {}: text before the first `===`", i.saturating_add(1)));
+            return Err(format!(
+                "line {}: text before the first `===`",
+                i.saturating_add(1)
+            ));
         };
         match line {
             "--- spec" => section = Some(0),
@@ -271,6 +289,7 @@ pub fn parse_fixtures(text: &str) -> Result<Vec<Fixture>, String> {
 }
 
 #[cfg(test)]
+#[allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
 mod tests {
     use super::*;
 
@@ -281,5 +300,31 @@ mod tests {
         let m = check("a\nz\n", "a", "").unwrap_err();
         assert_eq!((m.line, m.marker.as_str()), (2, "z"));
         assert_eq!(m.tally.matched, 1);
+    }
+
+    /// A hostile haystack at the 16 MiB stream cap (many first-piece hits, the later piece
+    /// never present, on many lines and on one line) is judged in linear time.
+    #[test]
+    fn wildcard_search_is_linear() {
+        let cap = 16 * 1024 * 1024;
+        let lines = "mmio-probe: foo\n".repeat(cap / 16);
+        let one_line = "mmio-probe: foo ".repeat(cap / 16);
+        let t = std::time::Instant::now();
+        assert!(check("mmio-probe: * ok\n", &lines, "").is_err());
+        assert!(check("mmio-probe: * ok\n", &one_line, "").is_err());
+        assert!(check("!mmio-probe: * ok\n", &lines, &one_line).is_ok());
+        assert!(
+            t.elapsed() < std::time::Duration::from_secs(20),
+            "{:?}",
+            t.elapsed()
+        );
+        // Same answers as before on the cases the rewrite changed.
+        assert_eq!(find_wild("ab\naXb", "a*b", 0), Some(2));
+        assert_eq!(find_wild("aX\naYb", "a*b", 0), Some(6));
+        assert_eq!(find_wild("a a b", "a*b", 0), Some(5));
+        assert_eq!(find_wild("xaq\nab", "a*b", 0), Some(6));
+        assert_eq!(find_wild("abc", "*", 1), Some(1));
+        assert_eq!(find_wild("abc", "", 3), Some(3));
+        assert_eq!(find_wild("a\n", "a*z", 0), None);
     }
 }

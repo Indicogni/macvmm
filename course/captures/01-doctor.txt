@@ -1,0 +1,19 @@
+# scripts/capture.sh 01: run "doctor" of course/checkpoints/01, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 01; never edit by hand (CURRICULUM §3.6).
+$ cargo run --quiet -p macvmm -- doctor
+exit: 0
+--- stdout ---
+macvmm doctor
+codesign entitlements: com.apple.security.hypervisor only
+hardened runtime: yes
+hv_vm_create: OK
+max IPA: 40 bits (default 36)
+EL2 supported: yes
+max vCPUs: 64
+in-kernel GICv3 (hv_gic_create): OK
+page size: 16384
+vm create/destroy x100: OK
+DOCTOR OK
+
+--- stderr ---
+

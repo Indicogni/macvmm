@@ -335,7 +335,7 @@ are given as `SPI n → INTID 32+n`. All device lines are level-high. The DT enc
 | Region | Base | Size | Stage-2 mapping | Interrupt | DT node | First milestone |
 |---|---|---|---|---|---|---|
 | Flash bank 0 (firmware code) | `0x0000_0000` | `0x0400_0000` (64 MiB) | READ+EXEC with `--bios`, else unmapped | — | none until CFI (ADR-0007) | M18 |
-| Flash bank 1 (firmware vars) | `0x0400_0000` | `0x0400_0000` | unmapped (EDK2 later) | — | — | post-v1 |
+| Flash bank 1 (firmware vars) | `0x0400_0000` | `0x0400_0000` | READ+EXEC, all zero, with `--bios` (M18: U-Boot reads its env here memory-mapped, `docs/compat/uboot.md`); else unmapped. Writable vars for EDK2 later | — | none until CFI | M18 |
 | GIC distributor | `0x0800_0000` | `0x0001_0000` | HVF in-kernel | — | `intc@8000000` reg[0] | M8 |
 | *reserved* (QEMU GICv2 CPU/HYP/VCPU) | `0x0801_0000` | `0x0001_0000` | unmapped | — | — | never |
 | GICv2m MSI frame | `0x0802_0000` | `0x0001_0000` | HVF in-kernel **only with PCI** | SPI 48–111 → INTID 80–143 | `v2m@8020000` (PCI only) | post-v1 |
@@ -387,7 +387,7 @@ flowchart TB
   U["0x0901_0000 PL031 (INTID 34) · 0x0900_0000 PL011 (INTID 33)"]
   RD["0x080A_0000 GICR ncpus×128 KiB (in-kernel) + RAZ/WI to 0x0900_0000"]
   D["0x0802_0000 v2m MSI (PCI only) · 0x0800_0000 GICD 64 KiB (in-kernel)"]
-  F["0x0400_0000 flash bank 1 (vars, later) · 0x0000_0000 flash bank 0 (RX, --bios)"]
+  F["0x0400_0000 flash bank 1 (RX zero, --bios) · 0x0000_0000 flash bank 0 (RX, --bios)"]
   R --- E --- H --- T --- V --- U --- RD --- D --- F
 ```
 
@@ -409,6 +409,13 @@ The values are taken from `docs/research/macos-guest.md` §3.1 and are not verif
 | RAM | `0x7000_0000` | configured | — |
 
 In S1, everything that is not RAM, ROM, GIC or PL011 is handled by an `UnknownMmio` logger (RAZ/WI).
+
+**(M21, as built.)** `machine/vmapple/mod.rs` has its own build and run (no DTB, no boot plan),
+dispatched from `vmm::run` and `machine::dry_run` when `cfg.machine == VmApple`. It hooks the
+shared exit path through `vcpu::exit::ExitWatch` (`ExitEnv::watch`, `None` on `virt`): the
+first exit's PC, a stop on an HVC/SMC macvmm has no answer for, and accesses to no device
+(`UnclaimedAccess`) for the 256-entry logger. `HostIo` reads `--bios` (≤ 64 MiB) and takes one
+of the two SLA lock files (`take_slot`) before any HVF call.
 
 ### 5.3 `MachineProfile`
 
@@ -471,6 +478,9 @@ pub trait GuestMemoryOrdered: GuestMemory {
     fn read_u16_acquire(&self, addr: GuestAddress) -> Result<u16, MemoryError>;
     /// Release-ordered 16-bit store (virtqueue used.idx). addr must be 2-aligned.
     fn write_u16_release(&self, addr: GuestAddress, val: u16) -> Result<(), MemoryError>;
+    /// (M11) The §11.2 item 9 full fence. Provided: `fence(SeqCst)`. VecMemory overrides it to
+    /// also log a fence record, so `used_idx_release_order` can check where it sits.
+    fn fence_seq_cst(&self) { /* fence(SeqCst) */ }
 }
 
 pub enum MemoryError { Overflow { addr: u64, len: u64 }, OutOfBounds { addr: u64, len: u64 }, Unaligned { addr: u64 } }
@@ -612,6 +622,11 @@ pub struct SysRegAccess { pub op0: u8, pub op1: u8, pub crn: u8, pub crm: u8, pu
 pub struct MmioAccess { pub ipa: u64, pub size: AccessSize, pub write: Option<u64>,
                         pub reg: u8, pub sign_extend: bool, pub sixty_four: bool }
 pub enum ExitAction { Resume { advance_pc: bool }, Stop(StopReason) }
+// ExitEnv (frozen ch08): tests and contracts build it through the constructor, so later fields (M18 `rom`,
+// M21 `watch`) start as None and frozen contracts use `ExitEnv { .., ..ExitEnv::new(..) }`.
+impl<'a> ExitEnv<'a> {
+    pub fn new(mem: &'a dyn GuestMemory, serial: &'a Sink, ctl: &'a VmControl, bus: &'a Bus) -> Self;
+}
 ```
 
 ### 6.5 vCPU: `vcpu/`
@@ -633,6 +648,7 @@ pub trait VirtioDevice: Send {
     fn queue_max_sizes(&self) -> &[u16];              // one entry per queue
     fn device_features(&self) -> u64;                 // MUST include VIRTIO_F_VERSION_1 (bit 32)
     fn ack_features(&mut self, accepted: u64);        // called once at FEATURES_OK
+    fn config_len(&self) -> u32 { 0 }                 // (M11) the per-device bound of VQ-13
     fn read_config(&self, offset: u32, data: &mut [u8]);
     fn write_config(&mut self, offset: u32, data: &[u8]);
     fn activate(&mut self, mem: Arc<dyn GuestMemoryOrdered>, queues: Vec<Queue>,
@@ -656,8 +672,17 @@ impl DescriptorChain<'_> { pub fn into_validated(self, max_total: u64) -> Result
 pub struct ValidatedChain { pub head: u16, pub readable: Vec<Descriptor>, pub writable: Vec<Descriptor>,
                             pub readable_len: u64, pub writable_len: u64 }
 pub struct VirtioInterrupt { /* Mutex<u32> status + Arc<dyn IrqLine> */ }
-impl VirtioInterrupt { pub fn signal_used(&self); pub fn signal_config(&self); pub fn ack(&self, bits: u32); pub fn status(&self) -> u32; }
+impl VirtioInterrupt { pub fn signal_used(&self); pub fn signal_config(&self); pub fn ack(&self, bits: u32); pub fn status(&self) -> u32;
+                       // (M11) DEVICE_NEEDS_RESET lives here, next to the config interrupt it raises,
+                       // so a worker can set it without a handle on the transport (lock order §14.2):
+                       pub fn set_needs_reset(&self); pub fn needs_reset(&self) -> bool; pub fn reset(&self); }
+impl ValidatedChain { pub fn write_writable(&self, mem: &dyn GuestMemoryOrdered, data: &[u8]) -> Result<u32, QueueError>; } // (M11) returns bytes written: VQ-9's `len`
+pub trait QueueNotifier: Send + Sync { fn notify(&self, queue: usize); }   // (M11) the doorbell seam; M12's worker implements it
 ```
+
+(M11) Without a `QueueNotifier` (M11 itself, host tests) the transport processes a notified
+queue inline on the vCPU thread, at most `INLINE_BATCHES` (4) batches of `N` chains, and any
+error becomes NEEDS_RESET (`virtio::mmio::report_error`, shared with the M12 worker).
 
 `virtio::mmio::VirtioMmio` implements `MmioDevice` and owns:
 
@@ -665,6 +690,14 @@ impl VirtioInterrupt { pub fn signal_used(&self); pub fn signal_config(&self); p
 - `Arc<Mutex<dyn VirtioDevice>>`;
 - `Arc<VirtioInterrupt>`;
 - a `WorkerHandle`.
+
+(M12, as built) The "`WorkerHandle`" is `virtio::worker::Worker`, held by the transport as its
+`Arc<dyn QueueNotifier>` and by the `Machine`, which stops and joins every worker after the
+vCPUs and before RAM is freed (MEM-9). `VmControl` is therefore created in `Machine::build`
+(not `run`): a worker panic must be able to stop the VM from the moment the worker exists
+(RUST-7). The worker passes each queue's *maximum* size as the budget; the device clamps it to
+the size the driver chose. A doorbell that races a Status = 0 reset reaches a device that is no
+longer activated (`VirtioError::NotActivated`) and is ignored, never turned into NEEDS_RESET.
 
 ### 6.7 Loaders, DTB, config, machine, control
 
@@ -983,7 +1016,8 @@ ADR-0004 records the decision to use HVF's in-kernel GICv3.
   - the PL031 time base: `wall = SystemTime at boot + elapsed`, adjusted by guest `LR` writes.
 - **WFI and WFE** stay in the kernel `[V]`, so an idle guest costs about 0% host CPU. The wake-up
   latency is 2–4 ms late `[V]`. This is risk R2, re-measured in M10.
-- **IPIs** (SGIs) are expected to be in the kernel `[U]`, verified in M16.
+- **IPIs** (SGIs) are handled in the kernel `[V]` (M16: Linux on 4 and 64 vCPUs counts IPIs on
+  every CPU, and no `ICC_SGI1R_EL1` access ever exits to the VMM; `docs/research/hvf-api.md`).
 - **Reset of GIC state** happens by rebuilding the VM (§14.5). `hv_gic_reset` is reserved for a
   future "warm reset" optimization.
 - **Counter offset, derived (rev 1.1, first-principles R3).** A guest expects a counter that starts
@@ -1037,7 +1071,7 @@ behaviour notes for Linux come from `guest-boot.md` §1.4.
 |---|---|---|
 | `Pl011` | DR 0x000, RSR 0x004, FR 0x018, IBRD/FBRD 0x024/0x028, LCR_H 0x02c, CR 0x030, IFLS 0x034, IMSC 0x038, RIS 0x03c, MIS 0x040, ICR 0x044, DMACR 0x048. PeriphID 0xFE0–0xFEC = `11 10 14 00`, PCellID 0xFF0–0xFFC = `0d f0 05 b1`. | **TX (rev 1.2, SINK-1, F20):** a DR write passes the byte through `AnsiFilter` and pushes it onto the sink's bounded queue; a writer thread does the `write(2)`, never the vCPU. FR keeps TXFE = 1, and RIS.TX is set on every write (as QEMU does). **RX:** a 32-entry FIFO fed from `SerialInput`; RIS.RX and RIS.RT are set while it is non-empty. **IRQ:** `set_level((RIS & IMSC) != 0)` after every register access and every input push. Reset FR = `0x90`. 8-, 16- and 32-bit accesses are allowed, because earlycon uses 8-bit accesses `[U]`. |
 | `Pl031` | DR 0x000, MR 0x004, LR 0x008, CR 0x00c, IMSC 0x010, RIS 0x014, MIS 0x018, ICR 0x01c. PeriphID `31 10 14 00`, same PCellID. | DR = host wall seconds + offset. A guest LR write changes the offset. The match interrupt drives a level line. |
-| `FlashDevice` | the bank 0 region (writes only, since reads are mapped) | v1: write-ignored with `guest_warn!`. Later: a CFI-01 state machine with romd (ADR-0007). |
+| `FlashDevice` | each flash bank (writes only, since reads are mapped) | v1 (M18): write-ignored with `guest_warn!`. Not needed for U-Boot (`docs/compat/uboot.md`). Later: a CFI-01 state machine with romd (ADR-0007). |
 | `RazWi` | any range | reads 0, writes ignored. Logged at debug level. Covers the unused GICR window. |
 | `TestDev` | 512 × u64 scratch registers (`--testdev` only) | A read returns the last value written at that offset, truncated to the access size. This lets `mmio-probe` and `isv0-probe` verify sizes, sign extension and XZR. |
 
@@ -1084,6 +1118,9 @@ Register map:
 | 0x080 / 0x084 | QueueDesc Low / High | |
 | 0x090 / 0x094 | QueueDriver Low / High | |
 | 0x0a0 / 0x0a4 | QueueDevice Low / High | |
+| 0x0ac | SHMSel | WI: no v1 device has a shared-memory region (§2.10) |
+| 0x0b0 / 0x0b4 | SHMLen Low / High | `0xffff_ffff` each: length −1, "no such region" (Linux `vm_get_shm_region` tests `len == ~0ULL`) |
+| 0x0b8 / 0x0bc | SHMBase Low / High | `0xffff_ffff` each: base `0xffff_ffff_ffff_ffff` for a missing region |
 | 0x0c0 | QueueReset | RAZ: `VIRTIO_F_RING_RESET` is not offered |
 | 0x0fc | ConfigGeneration | |
 | 0x100+ | device config | |
@@ -1168,7 +1205,7 @@ flag would break the chain.
 7. **Ordering:** all device-readable descriptors come before all device-writable ones (§2.7.4.2).
    A violation is an error.
 8. **Totals:** `readable_len` and `writable_len` are accumulated with `checked_add` and capped by
-   the device's `max_total`: blk `seg_max × size_max = 126 × 64 KiB`; rng 64 KiB (writable
+   the device's `max_total`: blk `seg_max × 64 KiB = 126 × 64 KiB` (`size_max` is not offered since M19); rng 64 KiB (writable
    only); console 64 KiB per chain; net `12 + 1514` TX (VQ-8).
 9. **Used element:** `add_used` writes `{id, len}` with `len =` the bytes actually written into
    writable buffers (never the requested length), then does a `write_u16_release(used.idx)`. A
@@ -1202,7 +1239,7 @@ flag would break the chain.
 | `null` | 0 | 0 | — | empty slot |
 | `rng` (§5.4) | 4 | 1 (64) | VERSION_1 | Fills writable buffers from `HostIo.entropy` (`getentropy(2)` in 256-byte calls, no path opened after setup), at most 64 KiB per request. Readable descriptors are never written. |
 | `console` (§5.3) | 3 | 2: rx0, tx0 (64) | VERSION_1 | No MULTIPORT, no F_SIZE. TX → `AnsiFilter` → sink (TTY-1), at most 64 KiB per chain. RX ← `SerialInput` when bound to stdio, bounded while the guest posts no buffers. |
-| `blk` (§5.2) | 2 | 1 (256) | VERSION_1, SIZE_MAX (64 KiB), SEG_MAX (126), BLK_SIZE (512), FLUSH, RO (if `,ro`), INDIRECT_DESC | Requests: IN(0), OUT(1), FLUSH(4), GET_ID(8, serial `macvmm-disk<N>`), anything else → UNSUPP. `sector·512` via `checked_mul`, and `+len ≤ capacity`. Data lengths must be multiples of 512. The status descriptor must be the last one, writable and ≥ 1 byte. OUT on a read-only disk → IOERR. Config `capacity` = file size / 512 (rounded down, with a warning). |
+| `blk` (§5.2) | 2 | 1 (256) | VERSION_1, SEG_MAX (126), BLK_SIZE (512), FLUSH, RO (if `,ro`), INDIRECT_DESC. Not SIZE_MAX: FreeBSD's `vtblk` refuses a `size_max` below its 1 MiB `maxphys`, and data is bounced in 64 KiB chunks anyway (M19; requests are capped at 126 × 64 KiB of data) | Requests: IN(0), OUT(1), FLUSH(4), GET_ID(8, serial `macvmm-disk<N>`), anything else → UNSUPP. `sector·512` via `checked_mul`, and `+len ≤ capacity`. Data lengths must be multiples of 512. The status descriptor must be the last one, writable and ≥ 1 byte. OUT on a read-only disk → IOERR. Config `capacity` = file size / 512 (rounded down, with a warning). |
 | `net` (§5.1, M24) | 1 | 2: rx0, tx0 (256) | VERSION_1, MAC | `virtio_net_hdr_v1` is 12 bytes. RX writes a zeroed header (`num_buffers = 1`) plus the frame. TX: readable descriptors only, total ≤ 12 + 1514, `gso_type` must be 0 and `flags` 0 (nothing else is offered). Violations are dropped and counted, and the chain is returned with `len = 0`; no NEEDS_RESET for frame-level errors. An RX frame with no posted buffer is dropped and counted; the backend thread never blocks on the guest. |
 
 **Backends:**
@@ -1224,7 +1261,11 @@ flag would break the chain.
 - Raw images only, with no format probing, ever. A future image format must never follow a
   backing-file path read from the image (BLK-10, CVE-2008-2004 class).
 - `net/unixgram.rs` (M24) wraps std's `UnixDatagram`: one Ethernet frame per datagram, no extra
-  header, `bind(LOCAL)` and `connect(peer)`. macOS defaults are too small for a NIC: verified on
+  header, `bind(LOCAL)` and `send_to(peer)` for every frame. (M24 implementation note: not
+  `connect(peer)`, because the peer may not exist yet when we start, and a connected socket stays
+  attached to a restarted peer's old socket; `connect` is no receive filter on macOS anyway, see
+  NET-1.) A full peer makes `sendto` fail with `ENOBUFS` at once rather than block `[V]`, so the
+  backend retries for at most 10 ms and then drops. macOS defaults are too small for a NIC: verified on
   the dev machine, `net.local.dgram.maxdgram = 2048` (a 1514-byte frame fits) and
   `net.local.dgram.recvspace = 4096` (only about two frames queue before drops), with
   `kern.ipc.maxsockbuf = 8 MiB`. The backend therefore sets `SO_SNDBUF`/`SO_RCVBUF` to 1 MiB
@@ -1515,7 +1556,10 @@ flowchart LR
 - (rev 1.2, SINK-1, F20) No vCPU or worker thread calls `write(2)` on a sink. Guest output is
   pushed onto the sink's bounded queue. When the queue is full the producer waits at most
   `SINK_FULL_WAIT` (10 ms) on the queue's condvar, waking early on the stop flag, then drops the
-  byte and counts it. That wait is the **only** bounded wait permitted under a device mutex.
+  byte and counts it. That wait is the **only** bounded wait permitted under a device mutex,
+  and the 10 ms bounds one **hold** of the mutex, not one write: a producer that writes several
+  buffers under one hold (the virtio-console's TX batch of up to 64 chains, M13) shares one
+  `FullWait` budget across them (`Sink::write_guest_within`).
   Without it, a stalled stdout pipe (`| less`, a stuck CI collector) would block a vCPU outside
   `hv_vcpu_run`, where `hv_vcpus_exit` cannot reach it, and stop would hang.
 
@@ -1662,7 +1706,8 @@ the worker before each request (§18).
     timebase), `vcpu`, `reason` (`exception|canceled|vtimer|unknown`), `ec` (hex string), `pc`,
     `ipa`, `wnr`, `size`, `reg`, `value`, `imm`, `sysreg` (name), `sysreg_enc` (`hv_sys_reg_t`
     encoding, hex string, on every EC 0x18 record), `fn` (SMCCC name), `action`
-    (`mmio|psci|smccc|sysreg|inject_undef|inject_abort|stop`), `isv` (data aborts, M17) and
+    (`mmio|psci|smccc|sysreg|inject_undef|inject_abort|skip|stop`; `skip` is an ISV = 0 `PRFM` or
+    cache maintenance stepped over with no bus access, M17), `isv` (data aborts, M17) and
     `boot` (generation).
   - Encoding rules: 64-bit quantities (`pc`, `ipa`, `value`, `ec`) are lowercase hex **strings**
     with a `0x` prefix and no leading zeros, because JSON numbers lose precision above 2^53;
@@ -1829,16 +1874,16 @@ There is no regex dependency. The process exit code is asserted separately.
 | R3 | `ID_AA64PFR0_EL1.GIC` read as 0 in the vCPU-config feature register `[V]`; Linux may log missing sysreg CPU-interface support | Check on a live vCPU after `hv_gic_create` (M8). Linux's GICv3 driver relies on `ICC_SRE_EL1` sticking. Handle it if Linux complains (M10). |
 | R4 | Unknown sysreg traps from Linux, U-Boot or FreeBSD | Policy table plus the M10/M18/M19 trap logs |
 | R5 | ISV=0 accesses from firmware | M17 before M18 |
-| R6 | U-Boot without `flash@0` and with ignored writes `[U]` | M18 checks it first; CFI-01 is the fallback |
+| R6 | U-Boot without `flash@0` and with ignored writes `[verified-on-machine]` (M18) | Works with both banks mapped RX and the ISV = 0 ROM fetch; CFI-01 not needed (`docs/compat/uboot.md`) |
 | R7 | Alpine apk churn breaks fetch pins | Mirror URLs in the manifest; the lead decides where mirrors live |
 | R8 | ext4 rootfs needs `brew install e2fsprogs` (dev tool, unpinned, not installed on the dev machine today) | `setup.sh` checks and explains. Only M15 needs it. `unsquashfs` is not needed (§19 item 11). |
 | R9 | `sandbox_init` compatibility with HVF `[U]`; the SBPL string mode is undocumented in the 27.2 SDK `[H]` | M22 self-test covering `--cpus 4`, an in-process reboot and a blk read + FLUSH (SBX-3); `sandbox-exec` fallback; fail closed; drop the layer if incompatible, and record the evidence in the threat model |
-| R10 | AVPBooter tracing vs SLA §2N (macos-guest.md R5) | **M21 is blocked on the lead's written decision** |
+| R10 | AVPBooter tracing vs SLA §2N (macos-guest.md R5) | Decided by the lead (DECISIONS D4, recorded as ADR-0009): device-access trace only; M21 done |
 | R11 | ~~`F_FULLFSYNC` durability of `sync_all`~~ **Resolved (rev 1.1)**: std 1.99.0 calls `fcntl(F_FULLFSYNC)` on Apple `[V-src]` (BLK-9) | Re-check only if the toolchain changes |
 | R12 | Unix datagram defaults drop frames under load (`recvspace = 4096` `[V]`) | M24 sets 1 MiB socket buffers and measures drops with `--stats`; TCP retransmits hide residual loss |
 | R13 | Ad-hoc signing with `com.apple.security.virtualization` may not suffice for VZ `[U]` | M20 verifies it first and records the result in `docs/macos/status.md` |
 | R14 | Two architect runs produced these docs concurrently; numbering is reconciled (M0–M27), but any later full rewrite of one file can reintroduce drift | The lead reviews `architecture.md` §13/§17 against `PLAN.md` §0.3 once before M0 starts |
-| R15 | (rev 1.1) Volatile element copies (MEM-5) cost throughput on the blk path `[U]` | M14 benchmarks a 64 KiB copy loop and records it; a `u64` volatile loop should be memory-bandwidth bound. Never fall back to `copy_nonoverlapping`. |
+| R15 | ~~(rev 1.1) Volatile element copies (MEM-5) cost throughput on the blk path~~ **Resolved `[V]` (M14)**: 64 KiB volatile copies run at ~33 GB/s each way on the M5 Pro (plain memcpy ~69 GB/s; `vmm/tests/volatile_copy_bench.rs`, threat model §13) | Never fall back to `copy_nonoverlapping`. |
 | R16 | ~~(rev 1.1) HVF under the hardened runtime with ad-hoc signing `[U]`~~ **Resolved (rev 1.2):** works `[V]` (threat model §13). Remaining `[U]`: whether lldb attaches to a `-o runtime` build without `get-task-allow` | M0 checks lldb; `sign.sh --debug` omits the flag if it does not |
 | R17 | (rev 1.1) `hv_vm_allocate` zero-fill `[U]` (MEM-10) | M2 HVF test reads 64 MiB of fresh RAM; if not zeroed, `GuestRam::new` zeroes it with volatile writes |
 | R18 | (rev 1.1) `AnsiFilter` `safe` drops terminal **queries** (DSR `CSI 6 n`, `CSI 18 t`, DA). U-Boot's EFI console-size probe and similar code wait for a reply that never comes, then time out and default to 80×25 | M18/M19 record the observed delay in `docs/compat/`. If a timeout stalls a test, that test uses `--serial stdio,raw` with a comment; the default never changes. |

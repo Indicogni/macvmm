@@ -1,0 +1,17 @@
+# scripts/capture.sh 08: run "sysreg-probe" of course/checkpoints/08, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 08; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --mem 64M --raw {guests}/sysreg-probe.bin@0x40080000 --trace exits:{out}/s.jsonl:sysreg --timeout 10
+exit: 0
+--- stdout ---
+sysreg-probe: undef count=1 ec=0x0
+sysreg-probe: elr ok (the mrs at 0x400811ec; Rt untouched)
+sysreg-probe: lo=1 lorid=0x0 undef count=0
+sysreg-probe: lorid ok
+sysreg-probe: mdccsr undef count=1 ec=0x0
+sysreg-probe: mdccsr elr ok (the mrs at 0x40081048; Rt untouched)
+sysreg-probe: oslsr after lock=0xa after unlock=0x8
+sysreg-probe: oslsr ok
+
+--- stderr ---
+macvmm: warn: [vcpu0] guest: vcpu0: MRS MDCCSR_EL0 at pc 0x40081048: injecting UNDEF
+

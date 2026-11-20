@@ -1694,7 +1694,10 @@ where it runs) before any guest code appears, and every later code block is capt
 - **Prereqs.** 07.
 - **Build.** `arch/sysreg.rs` (encoding, names, policy), `arch/inject.rs`, `smccc.rs`, `psci.rs`,
   `control.rs` (the stop reasons and their exit codes; the cross-thread stop flag is added in
-  ch09). From here on every test guest ends with `SYSTEM_OFF`, and the VMM's exit code is 0.
+  ch09), and `vcpu::exit::ExitEnv::new(mem, serial, ctl, bus)` (anchor `exit_env_new`), the way
+  tests and contracts build the exit environment, so fields later chapters add (ch21 `rom`,
+  ch24 `watch`) never break a frozen contract. From here on every test guest ends with
+  `SYSTEM_OFF`, and the VMM's exit code is 0.
 - **Modules.** `crates/vmm/src/arch/{sysreg.rs, inject.rs}`, `crates/vmm/src/{smccc.rs, psci.rs,
   control.rs}`.
 - **PLAN.** M5 (`sysreg_policy`, `inject`, `smccc_dispatch`, `psci_state`, `control::tests::exit_codes`;
@@ -2533,7 +2536,7 @@ and the `timer-timeline` lab, with no learner L2 run (risk K13).
   TTBR1, invalid descriptor, table outside RAM, T0SZ out of range, MMU off is identity, bounded by
   the level count); firmware loader (size 0, over 64 MiB); flash writes ignored at every width.
   L2: (a) `run --testdev --kernel <isv0-probe> --trace exits:{out}/i.jsonl:mmio` matches
-  `isv0-probe: mmu on` · `isv0-probe: 14/14 ok` · `isv0-probe: simd store -> sync external abort
+  `isv0-probe: mmu on` · `isv0-probe: 16/16 ok` · `isv0-probe: simd store -> sync external abort
   ok`, trace contains `"isv":false`; (b) `--bios .cache/macvmm/u-boot.bin --mem 512M --disk
   {out}/disk.img --on-reset exit`: interrupt autoboot, at `=> ` send `version` and expect
   `U-Boot 2026.04`, send `virtio scan; virtio info` and expect `Device 0`, then `poweroff`; no

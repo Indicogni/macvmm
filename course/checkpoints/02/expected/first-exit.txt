@@ -1,0 +1,3 @@
+first-exit: mapped 16 KiB at IPA 0x40000000
+first-exit: exit reason=EXCEPTION syndrome=0x5a000000 ec=0x16 (HVC64) imm=0x0
+first-exit: pc=0x40000008 x0=0x2a

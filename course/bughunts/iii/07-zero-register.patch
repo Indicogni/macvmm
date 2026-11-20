@@ -1,0 +1,13 @@
+diff --git a/crates/vmm/src/vcpu/mmio.rs b/crates/vmm/src/vcpu/mmio.rs
+index 21ce05e..d8c2e9d 100644
+--- a/crates/vmm/src/vcpu/mmio.rs
++++ b/crates/vmm/src/vcpu/mmio.rs
+@@ -106,7 +106,7 @@ impl MmioAccess {
+         let size = AccessSize::from_sas(da.sas);
+         let reg = da.srt & 31;
+         let write = if da.wnr {
+-            let x = if reg == 31 { 0 } else { regs.x(reg)? };
++            let x = regs.x(reg.min(30))?;
+             Some(x & size.mask())
+         } else {
+             None

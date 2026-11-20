@@ -7,13 +7,27 @@
 //! - `derive [--] <kind> <input> <output> [arg]`: build a derived artifact for
 //!   `scripts/fetch.sh`. A kind that is planned but not implemented yet exits [`EX_PENDING`]
 //!   (64) and prints `pending M<n>` so `fetch.sh` reports `PENDING` instead of failing. Its
-//!   arguments are never parsed as flags (they come from the fetch manifest).
+//!   arguments are never parsed as flags (they come from the fetch manifest). M18 implements
+//!   `extract-apk <apk> <out> <member>` ([`xtask::apk`]).
+//!   M19 implements `write-sparse <in.xz> <out>` ([`xtask::sparse`]): `xz -dc` into a sparse file.
+//! - `write-sparse OUT` (M19): standard input to a sparse file, capped ([`xtask::sparse`]).
 //! - `unzboot IN OUT` (M9): unwrap an EFI zboot kernel into a raw arm64 Image ([`xtask::zboot`]).
 //!   Also the `unzboot` derive kind.
 //! - `mkinitramfs --base F --init F [--add SRC:DST]... --out F` (M9, [`xtask::cpio`]).
 //! - `mkdisk --size S --seed N --out F` (M9, [`xtask::disk`]).
-//! - `export-vectors [--check]`: copy the ESR test vectors (M4) and the FDT vectors (M7) to
-//!   the course labs ([`xtask::vectors`]); `--check` only verifies the copies are current.
+//! - `mkrootfs --out F --size S [--minirootfs F] [--init F] [--manifest F]` (M15,
+//!   [`xtask::rootfs`]): the ext4 root image; exits 69 (`EX_UNAVAILABLE`) when `mkfs.ext4` is
+//!   missing.
+//! - `checkpoint <NN|all> [--ref | --impl DIR] [--keep] [--capture]` (M27): the course's
+//!   checkpoint harness ([`xtask::checkpoint`]); `scripts/checkpoint.sh` and
+//!   `scripts/capture.sh` wrap it.
+//! - `learner <init|start|hint|lifeline|status|gen-scaffold> …` (M27, [`xtask::learner`]);
+//!   `scripts/learner` wraps it.
+//! - `bughunt <part> [--patch NAME] [--keep]` (M27, [`xtask::checkpoint::bughunt`]);
+//!   `scripts/bughunt.sh` wraps it.
+//! - `export-vectors [--check]`: copy the ESR test vectors (M4), the FDT vectors (M7) and the
+//!   virtqueue vectors (M11) to the course labs ([`xtask::vectors`]); `--check` only verifies
+//!   the copies are current.
 #![forbid(unsafe_code)]
 
 use std::io::Write;
@@ -33,7 +47,7 @@ const DERIVE_KINDS: [(&str, &str); 3] = [
 ];
 // ANCHOR_END: xtask_derive_kinds
 
-const USAGE: &str = "usage: cargo xtask check-anchors [--root DIR] | audit [--root DIR] [--deps] | derive [--] <kind> <input> <output> [arg] | export-vectors [--root DIR] [--check] | unzboot IN OUT | mkinitramfs --base F --init F [--add SRC:DST]... --out F | mkdisk --size S --seed N --out F";
+const USAGE: &str = "usage: cargo xtask checkpoint <NN|all> [--ref | --impl DIR] [--keep] [--capture] | learner <init|start|hint|lifeline|status|gen-scaffold> ... | bughunt <part> | check-anchors [--root DIR] | audit [--root DIR] [--deps] | derive [--] <kind> <input> <output> [arg] | export-vectors [--root DIR] [--check] | unzboot IN OUT | mkinitramfs --base F --init F [--add SRC:DST]... --out F | mkdisk --size S --seed N --out F | mkrootfs --out F --size S [--minirootfs F] [--init F] [--manifest F] | write-sparse OUT";
 
 fn say(line: &str) {
     let _ = writeln!(std::io::stdout().lock(), "{line}");
@@ -56,10 +70,20 @@ fn main() -> ExitCode {
         let rest = rest.strip_prefix(&["--".to_owned()]).unwrap_or(rest);
         return derive(rest);
     }
+    // M27: the course harness parses its own arguments.
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    match cmd.as_str() {
+        "checkpoint" => return ExitCode::from(xtask::checkpoint::main(&repo_root, rest)),
+        "learner" => return ExitCode::from(xtask::learner::main(&repo_root, rest)),
+        "bughunt" => return ExitCode::from(xtask::checkpoint::bughunt::main(&repo_root, rest)),
+        _ => {}
+    }
     match cmd.as_str() {
         "unzboot" => return unzboot(rest),
         "mkinitramfs" => return mkinitramfs(rest),
         "mkdisk" => return mkdisk(rest),
+        "mkrootfs" => return mkrootfs(rest),         // M15
+        "write-sparse" => return write_sparse(rest), // M19
         _ => {}
     }
     let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -89,10 +113,15 @@ fn main() -> ExitCode {
         "check-anchors" => check_anchors(&root),
         "audit" => run_audit(&root, deps),
         "export-vectors" => {
-            // M4's ESR corpus, then M7's FDT corpus; the first failure wins.
+            // M4's ESR corpus, M7's FDT corpus, then M11's virtqueue corpus; the first
+            // failure wins.
             let esr = export_vectors(&root, check);
             let fdt = export_fdt_vectors(&root, check);
-            if esr == ExitCode::SUCCESS { fdt } else { esr }
+            let vq = export_virtqueue_vectors(&root, check);
+            [esr, fdt, vq]
+                .into_iter()
+                .find(|c| *c != ExitCode::SUCCESS)
+                .unwrap_or(ExitCode::SUCCESS)
         }
         other => {
             warn(&format!("xtask: unknown command {other:?}\n{USAGE}"));
@@ -239,6 +268,34 @@ fn export_fdt_vectors(root: &std::path::Path, check: bool) -> ExitCode {
     }
 }
 
+/// `export-vectors` for the virtqueue corpus (M11, [`vectors::run_virtqueue`]).
+fn export_virtqueue_vectors(root: &std::path::Path, check: bool) -> ExitCode {
+    match vectors::run_virtqueue(root, check) {
+        Ok(Ok(vectors::Outcome::Written { vectors, path })) => {
+            say(&format!(
+                "VECTORS: wrote {vectors} virtqueue vectors to {}",
+                path.display()
+            ));
+            ExitCode::SUCCESS
+        }
+        Ok(Ok(vectors::Outcome::UpToDate { vectors })) => {
+            say(&format!(
+                "VECTORS OK: {vectors} virtqueue vectors, {} is current",
+                vectors::VQ_TARGET
+            ));
+            ExitCode::SUCCESS
+        }
+        Ok(Err(msg)) => {
+            warn(&format!("export-vectors: {msg}"));
+            ExitCode::from(1)
+        }
+        Err(e) => {
+            warn(&format!("export-vectors: {e}"));
+            ExitCode::from(1)
+        }
+    }
+}
+
 /// `unzboot IN OUT`.
 fn unzboot(args: &[String]) -> ExitCode {
     let [input, output] = args else {
@@ -351,13 +408,134 @@ fn mkdisk(args: &[String]) -> ExitCode {
     }
 }
 
-/// `derive <kind> <input> <output> [args]`. M9 implements `unzboot`; the others report
-/// pending with their milestone.
+/// `mkrootfs --out F --size S [--minirootfs F] [--init F] [--manifest F]` (M15).
+fn mkrootfs(args: &[String]) -> ExitCode {
+    use xtask::rootfs;
+    let parsed = || -> Result<rootfs::Args, String> {
+        let f = flags(
+            args,
+            &["--out", "--size", "--minirootfs", "--init", "--manifest"],
+        )?;
+        let opt = |key: &str| -> Result<Option<String>, String> {
+            match one(&f, key) {
+                Ok(v) => Ok(Some(v)),
+                Err(_) if f.iter().all(|(k, _)| k != key) => Ok(None),
+                Err(e) => Err(e),
+            }
+        };
+        let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        // `${MACVMM_CACHE:-<repo>/.cache/macvmm}`, relative to the repo root (SC-3, S14).
+        let cache = match std::env::var_os("MACVMM_CACHE") {
+            Some(c) if std::path::Path::new(&c).is_absolute() => PathBuf::from(c),
+            Some(c) => repo.join(c),
+            None => repo.join(".cache/macvmm"),
+        };
+        Ok(rootfs::Args {
+            out: PathBuf::from(one(&f, "--out")?),
+            size: parse_size(&one(&f, "--size")?)?,
+            minirootfs: opt("--minirootfs")?
+                .map_or_else(|| cache.join(rootfs::MINIROOTFS), PathBuf::from),
+            init: opt("--init")?
+                .map_or_else(|| repo.join("scripts/rootfs/macvmm-init"), PathBuf::from),
+            manifest: opt("--manifest")?
+                .map_or_else(|| repo.join("scripts/fetch-manifest.txt"), PathBuf::from),
+        })
+    };
+    let a = match parsed() {
+        Ok(a) => a,
+        Err(e) => {
+            warn(&format!("mkrootfs: {e}\n{USAGE}"));
+            return ExitCode::from(2);
+        }
+    };
+    match rootfs::run(&a) {
+        Ok(m) => {
+            say(&m);
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            warn(&format!("mkrootfs: {e}"));
+            ExitCode::from(if e.tool_missing {
+                rootfs::EX_UNAVAILABLE
+            } else {
+                1
+            })
+        }
+    }
+}
+
+/// `cargo xtask write-sparse OUT` (M19): standard input to a sparse `OUT`, capped (SC-6).
+fn write_sparse(args: &[String]) -> ExitCode {
+    let [output] = args else {
+        warn("usage: cargo xtask write-sparse OUT   (reads standard input)");
+        return ExitCode::from(2);
+    };
+    match xtask::sparse::run_stdin(output.as_ref()) {
+        Ok(s) => {
+            say(&format!(
+                "write-sparse: wrote {output} ({} bytes, {} of them data)",
+                s.len, s.written
+            ));
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            warn(&format!("write-sparse: {e}"));
+            ExitCode::from(1)
+        }
+    }
+}
+
+/// `derive <kind> <input> <output> [args]`: the build steps `scripts/fetch.sh` runs on a
+/// verified download. Implemented: `unzboot` (M9), `extract-apk` (M18) and `write-sparse`
+/// (M19); any other kind in `DERIVE_KINDS` reports pending with its milestone.
 fn derive(args: &[String]) -> ExitCode {
     let Some(kind) = args.first() else {
         warn("usage: cargo xtask derive <kind> <input> <output> [args...]");
         return ExitCode::from(2);
     };
+    // M18: `extract-apk <apk> <out> <member>` (the member path comes from the manifest).
+    if kind == "extract-apk" {
+        return match args.get(1..) {
+            Some([input, output, member]) => {
+                match xtask::apk::run(input.as_ref(), output.as_ref(), member) {
+                    Ok(p) => {
+                        say(&format!("extract-apk: wrote {}", p.display()));
+                        ExitCode::SUCCESS
+                    }
+                    Err(e) => {
+                        warn(&format!("extract-apk: {e}"));
+                        ExitCode::from(1)
+                    }
+                }
+            }
+            _ => {
+                warn("usage: cargo xtask derive extract-apk <apk> <output> <member>");
+                ExitCode::from(2)
+            }
+        };
+    }
+    // M19: `write-sparse <in.xz> <out>`: `xz -dc` into a sparse file, capped (SC-6).
+    if kind == "write-sparse" {
+        return match args.get(1..) {
+            Some([input, output]) => match xtask::sparse::run_xz(input.as_ref(), output.as_ref()) {
+                Ok(s) => {
+                    say(&format!(
+                        "write-sparse: wrote {output} ({} bytes, {} of them data)",
+                        s.len, s.written
+                    ));
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    warn(&format!("write-sparse: {e}"));
+                    ExitCode::from(1)
+                }
+            },
+            _ => {
+                warn("usage: cargo xtask derive write-sparse <input.xz> <output>");
+                ExitCode::from(2)
+            }
+        };
+    }
     if kind == "unzboot" {
         return match args.get(1..) {
             Some([input, output]) => unzboot(&[input.clone(), output.clone()]),

@@ -47,6 +47,12 @@ impl XorShift {
     }
 }
 
+/// Print a test note to stderr (no `print!` in crates/vmm, RUST-5).
+pub fn say(line: &str) {
+    use std::io::Write as _;
+    let _ = writeln!(std::io::stderr(), "{line}");
+}
+
 /// `MACVMM_SEED` or a default.
 pub fn seed(default: u64) -> u64 {
     std::env::var("MACVMM_SEED")
@@ -103,7 +109,10 @@ impl Ring {
     }
     pub fn set_desc(&self, i: u16, desc: Descriptor) {
         self.mem
-            .write(GuestAddress(self.desc + 16 * u64::from(i)), &desc.to_le_bytes())
+            .write(
+                GuestAddress(self.desc + 16 * u64::from(i)),
+                &desc.to_le_bytes(),
+            )
             .unwrap();
     }
     /// Write a descriptor into an arbitrary table (indirect tables).
@@ -125,7 +134,9 @@ impl Ring {
     }
     pub fn set_avail_idx(&mut self, idx: u16) {
         self.avail_idx = idx;
-        self.mem.write_u16(GuestAddress(self.avail + 2), idx).unwrap();
+        self.mem
+            .write_u16(GuestAddress(self.avail + 2), idx)
+            .unwrap();
     }
     pub fn set_avail_flags(&self, flags: u16) {
         self.mem.write_u16(GuestAddress(self.avail), flags).unwrap();
@@ -273,10 +284,11 @@ impl VirtioDevice for MockDevice {
             self.log.lock().unwrap().chains.push(v);
             used = true;
         }
-        if used && q.should_interrupt(&*mem)? {
-            if let Some(irq) = &self.irq {
-                irq.signal_used();
-            }
+        if used
+            && q.should_interrupt(&*mem)?
+            && let Some(irq) = &self.irq
+        {
+            irq.signal_used();
         }
         Ok(progress)
     }

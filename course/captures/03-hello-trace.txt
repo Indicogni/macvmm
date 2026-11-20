@@ -1,0 +1,10 @@
+# scripts/capture.sh 03: run "hello-trace" of course/checkpoints/03, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 03; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --mem 64M --raw {guests}/hello.bin@0x40080000 --trace exits:{out}/h.jsonl:hvc --timeout 10
+exit: 0
+--- stdout ---
+hello from guest, x0=0x40000000
+guest done
+
+--- stderr ---
+

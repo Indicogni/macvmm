@@ -1,0 +1,13 @@
+--- a/crates/vmm/src/virtio/queue.rs
++++ b/crates/vmm/src/virtio/queue.rs
+@@ -289,7 +289,9 @@
+                 size: self.size,
+             });
+         }
+-        let slot = self.next_used.0 & self.size.wrapping_sub(1);
++        // PLANTED BUG 3 (scripts/bughunt-selftest.sh): off by one in the ring index, `% (N + 1)`
++        // instead of `% N`: every N + 1-th element lands one slot past the end of the ring.
++        let slot = self.next_used.0 % self.size.wrapping_add(1);
+         let mut elem = [0u8; 8];
+         let (id, len) = elem.split_at_mut(4);
+         id.copy_from_slice(&u32::from(head).to_le_bytes());

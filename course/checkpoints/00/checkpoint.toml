@@ -1,0 +1,32 @@
+# Checkpoint 00 `orientation` (CURRICULUM §5 ch00; format: course/checkpoints/README.md).
+# It needs nothing the learner has built (PLAN M23 runs it from a fresh clone): only the
+# repository's own setup and doctor scripts.
+id = "00"
+slug = "orientation"
+
+[[run]]
+name = "setup"
+command = ["scripts/setup.sh"]
+cwd = "repo"
+timeout = 120
+expect_exit_code = 0
+serial = "expected/setup.txt"
+
+[[run]]
+name = "doctor"
+command = ["scripts/doctor.sh"]
+cwd = "repo"
+timeout = 300
+expect_exit_code = 0
+serial = "expected/doctor.txt"
+
+[journal]
+file = "journal/00.md"
+questions = 5
+predict = true
+
+[hints]
+conceptual = "setup.sh only checks and reports; doctor.sh builds the reference macvmm, signs it and asks the kernel to create a VM."
+spec = "PLAN M0 (scripts/setup.sh, scripts/doctor.sh); the codesign primer (course/primers/codesign-entitlements.md)."
+pseudocode = "If doctor fails at hv_vm_create, read the hint line it prints: HV_DENIED means the signature, HV_NO_DEVICE the machine."
+anchor = "Read scripts/doctor.sh top to bottom; every line it prints is checked by expected/doctor.txt."

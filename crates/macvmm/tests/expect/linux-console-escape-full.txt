@@ -1,0 +1,5 @@
+macvmm-initramfs: ready *
+macvmm-idle: sleeping
+[stderr] macvmm: user quit
+[stderr] console_input_dropped=*
+![stderr] panicked

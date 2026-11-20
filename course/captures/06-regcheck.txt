@@ -1,0 +1,14 @@
+# scripts/capture.sh 06: run "regcheck" of course/checkpoints/06, captured from the reference
+# on real hardware. Regenerate with scripts/capture.sh 06; never edit by hand (CURRICULUM §3.6).
+$ macvmm run --mem 64M --raw {guests}/regcheck.bin@0x40080000 --timeout 10
+exit: 0
+--- stdout ---
+regcheck: CurrentEL=0x4
+regcheck: MPIDR_EL1=0x80000000
+regcheck: SCTLR_EL1.M=0
+regcheck: DAIF=0x3c0
+regcheck: x0=0x40000000
+regcheck: vectors ok (svc caught at EL1, esr=0x5600004d)
+
+--- stderr ---
+

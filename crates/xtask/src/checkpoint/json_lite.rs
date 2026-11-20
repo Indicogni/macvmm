@@ -286,7 +286,11 @@ impl Parser<'_> {
                         _ => 4,
                     };
                     let end = self.i.saturating_add(len);
-                    match self.s.get(self.i..end).and_then(|c| std::str::from_utf8(c).ok()) {
+                    match self
+                        .s
+                        .get(self.i..end)
+                        .and_then(|c| std::str::from_utf8(c).ok())
+                    {
                         Some(c) => out.push_str(c),
                         None => return self.fail("invalid UTF-8"),
                     }
@@ -341,6 +345,7 @@ impl Parser<'_> {
 }
 
 #[cfg(test)]
+#[allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
 mod tests {
     use super::*;
 

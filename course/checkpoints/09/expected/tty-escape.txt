@@ -1,0 +1,4 @@
+uart-echo: ready
+macvmm: user quit
+rc=130
+!guest fatal

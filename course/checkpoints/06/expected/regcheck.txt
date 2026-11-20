@@ -1,0 +1,9 @@
+regcheck: CurrentEL=0x4
+regcheck: MPIDR_EL1=0x80000000
+regcheck: SCTLR_EL1.M=0
+regcheck: DAIF=0x3c0
+regcheck: x0=0x*
+regcheck: vectors ok (svc caught at EL1, esr=0x5600004d)
+!FAILED
+!guest exception
+!guest fatal

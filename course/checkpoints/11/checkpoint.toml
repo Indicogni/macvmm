@@ -1,0 +1,34 @@
+# Checkpoint 11 `timer-irq` (CURRICULUM §5 ch11): the `--irqchip none` teaching mode.
+id = "11"
+slug = "timer-irq"
+requires = ["10"]
+
+[contract]
+crates = ["vmm", "hvf"]
+tests = ["contract/timer_rules.rs"]
+
+[[run]]
+name = "timer-nogic"
+guest = "timer-nogic"
+args = ["run", "--irqchip", "none", "--mem", "64M", "--raw", "{guest_raw}", "--stats", "--trace", "exits:{out}/t.jsonl:all", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/timer-nogic.txt"
+trace = "expected/timer-nogic.trace.txt"
+max_host_cpu_percent = 10
+
+# No-GIC mode is single-vCPU test guests only (CURRICULUM ch11 L2 (b)). That rule is checked in
+# L1 (`nogic_mode_is_single_vcpu_test_guests_only`), not by a run: at chapter 11 the CLI has no
+# `--cpus` (chapter 20) and no `--kernel` (chapter 13), so a black-box run can only provoke a
+# usage error, which exits 2 whether or not the restriction exists. Chapter 20's checkpoint
+# owns the CLI-level `--irqchip none --cpus 2` refusal.
+
+[journal]
+file = "journal/11.md"
+questions = 5
+predict = true
+
+[hints]
+conceptual = "Without an interrupt controller the VMM must notice the timer itself: HVF masks the vtimer and exits, and you decide when the guest sees the interrupt."
+spec = "ARM ARM D12 (the Generic Timer), D19.11.15 (CNTV_CTL_EL0: ENABLE, IMASK, ISTATUS); HV_EXIT_REASON_VTIMER_ACTIVATED in hv_vcpu.h."
+pseudocode = "CNTVCT = mach - offset; host deadline = CVAL + offset; asserted = ENABLE && !IMASK && ISTATUS; before entry: if masked && !asserted { unmask, drop line }."
+anchor = "crates/vmm/src/timer.rs, anchors vtimer_offset_boot and nogic_wfi_deadline."

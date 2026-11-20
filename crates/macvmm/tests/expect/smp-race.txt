@@ -1,0 +1,14 @@
+smp-race: cpu 0 mpidr=0x80000000
+smp-race: cpu_on(1) first=0 second=-*
+smp-race: cpu 1 up mpidr=0x80000001
+smp-race: cpu 2 up mpidr=0x80000002
+smp-race: cpu_on(3) race: * successes=1 refused=2
+smp-race: cpu 3 up mpidr=0x80000003
+smp-race: cpu_off(3) affinity=1
+smp-race: cpu 3 back on ctx=0x33 affinity=0
+smp-race: cpu_on(4)=-2 bad_entry=-9 affinity_level1=-2
+smp-race: done
+[stderr] macvmm: stats: vcpu1 exits:
+[stderr] macvmm: stats: vcpu3 exits:
+!FAILED
+!guest panic

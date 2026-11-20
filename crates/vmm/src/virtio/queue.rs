@@ -213,7 +213,10 @@ impl Queue {
         mem: &'m dyn GuestMemoryOrdered,
     ) -> Result<Option<DescriptorChain<'m>>, QueueError> {
         let r = self.pop_inner(mem);
-        if r.is_err() {
+        // A ring the guest broke latches; asking an unready queue is not the ring's fault.
+        if let Err(e) = &r
+            && !matches!(e, QueueError::NotReady | QueueError::Broken)
+        {
             self.broken = true;
         }
         r
@@ -327,7 +330,14 @@ mod tests {
     fn size_rules() {
         let q = Queue::new(256);
         assert_eq!(q.size(), 256);
-        for (s, ok) in [(0, false), (1, true), (3, false), (128, true), (256, true), (512, false)] {
+        for (s, ok) in [
+            (0, false),
+            (1, true),
+            (3, false),
+            (128, true),
+            (256, true),
+            (512, false),
+        ] {
             assert_eq!(q.size_ok(s), ok, "{s}");
         }
         assert_eq!(Queue::new(u16::MAX).max_size(), QUEUE_SIZE_MAX);

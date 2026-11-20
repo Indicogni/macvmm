@@ -46,7 +46,7 @@ table below. A field is omitted when it does not apply.
 | `sysreg` | string | The name of the trapped system register (from M5), when macvmm knows it. |
 | `sysreg_enc` | hex string | The trapped system register's `hv_sys_reg_t` encoding, `op0<<14 \| op1<<11 \| CRn<<7 \| CRm<<3 \| op2` (from M5). Always present on an EC 0x18 record, so a register without a name (for example `S3_0_C15_C0_0` = `0xc780`) is still identified. |
 | `fn` | string | The SMCCC function name, for example `DEBUG_PUTC` or `PSCI_SYSTEM_OFF`. |
-| `action` | string | One of `mmio`, `psci`, `smccc`, `sysreg`, `inject_undef`, `inject_abort` or `stop`. `stop` marks a fatal exit. |
+| `action` | string | One of `mmio`, `psci`, `smccc`, `sysreg`, `inject_undef`, `inject_abort`, `skip` or `stop`. `stop` marks a fatal exit. `skip` (from M17) marks an ISV = 0 prefetch or cache-maintenance instruction that macvmm stepped over without touching any device. |
 | `isv` | bool | Present (as `false`) only on a data abort with ISV = 0. M17 widens this. |
 | `boot` | integer | The reboot generation. Present only when it is greater than 0. |
 
@@ -72,11 +72,25 @@ These are taken from the golden test and from real runs on the dev machine.
 
 ## Matching a trace in a checkpoint
 
-Trace marker files (`<test>.trace.txt`) follow the same rules as serial marker files:
+Trace marker files (`<test>.trace.txt`) follow the same rules as serial marker files
+(PLAN §0.3; the matcher is `crates/xtask/src/checkpoint/markers.rs`, anchor `marker_match`, and
+the e2e harness implements the same rules, both tested against
+`crates/xtask/tests/data/markers_fixtures.txt`):
 
-- Markers must appear in order, as substrings.
-- `*` matches any run of characters except a newline.
-- A line starting with `!` must appear nowhere in the trace.
+- Each non-empty line is one marker; trailing spaces are ignored.
+- Markers must appear in order, as substrings. Matching resumes just after the previous
+  marker's match, so the same marker twice needs two records.
+- `*` matches any run of characters except a newline, so a marker never spans two records.
+  The first literal piece is tried at each occurrence in turn; after it, each later piece takes
+  its earliest occurrence on the same line.
+- A line starting with `!` must appear nowhere in the trace (checked over the whole file, not
+  only after the last match).
+- `[stderr] ` lines are meaningless here (the trace is one stream) and never match.
+
+Before any marker is checked, the harness reads the trace (at most 32 MiB, never through a
+symlink) and parses **every** line as one JSON value with `json_lite` (64 KiB per line, nesting
+at most 4); a line that is not JSON fails the run with its line number, so a marker cannot
+match half of a corrupted record.
 
 Because a field is omitted when it does not apply, a marker should name the adjacent fields it
 needs in order, for example `"ipa":"0xb000000","wnr":true,"size":1`.

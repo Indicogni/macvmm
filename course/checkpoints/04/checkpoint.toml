@@ -1,0 +1,32 @@
+# Checkpoint 04 `guest-memory` (CURRICULUM §5 ch04).
+id = "04"
+slug = "guest-memory"
+requires = ["03"]
+
+[contract]
+tests = ["contract/memory_hostile.rs"]
+
+[[run]]
+name = "memtest"
+guest = "memtest"
+args = ["run", "--mem", "64M", "--raw", "{guest_raw}", "--timeout", "10"]
+expect_exit_code = 0
+serial = "expected/memtest.txt"
+
+# The same rules on real hv_vm_allocate memory (memory/host.rs): no VM, just allocations.
+[[run]]
+name = "guest-ram"
+contract_hvf = "contract/guest_ram_hostile.rs"
+timeout = 300
+expect_exit_code = 0
+
+[journal]
+file = "journal/04.md"
+questions = 5
+predict = true
+
+[hints]
+conceptual = "Guest RAM is shared with an adversary: every guest-supplied address and length is checked before any byte is copied, and the only access is a copy."
+spec = "Threat model MEM-2, MEM-3, MEM-6; the `addr = u64::MAX - 3, len = 8` case is the one a wrapping add gets wrong."
+pseudocode = "end = addr.checked_add(len)?; find the one region with base <= addr && end <= base + size; zero length is never valid."
+anchor = "crates/vmm/src/memory/region.rs, anchor guest_ram_bounds_check (RegionTable::locate)."

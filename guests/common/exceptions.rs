@@ -122,10 +122,22 @@ guest_vector_common:
 
 /// The names of the 16 vector entries, by index.
 const KINDS: [&str; 16] = [
-    "sync, EL1t", "irq, EL1t", "fiq, EL1t", "serror, EL1t",
-    "sync, EL1h", "irq, EL1h", "fiq, EL1h", "serror, EL1h",
-    "sync, lower EL A64", "irq, lower EL A64", "fiq, lower EL A64", "serror, lower EL A64",
-    "sync, lower EL A32", "irq, lower EL A32", "fiq, lower EL A32", "serror, lower EL A32",
+    "sync, EL1t",
+    "irq, EL1t",
+    "fiq, EL1t",
+    "serror, EL1t",
+    "sync, EL1h",
+    "irq, EL1h",
+    "fiq, EL1h",
+    "serror, EL1h",
+    "sync, lower EL A64",
+    "irq, lower EL A64",
+    "fiq, lower EL A64",
+    "serror, lower EL A64",
+    "sync, lower EL A32",
+    "irq, lower EL A32",
+    "fiq, lower EL A32",
+    "serror, lower EL A32",
 ];
 
 /// A synchronous-exception hook: return `true` to resume at `frame.elr`.
@@ -173,10 +185,15 @@ fn irq_hook() -> Option<IrqHook> {
 #[unsafe(no_mangle)]
 pub extern "C" fn guest_exception(kind: u64, frame: &mut ExceptionFrame) {
     let synchronous = kind % 4 == 0;
-    if synchronous && let Some(hook) = sync_hook() && hook(frame) {
+    if synchronous
+        && let Some(hook) = sync_hook()
+        && hook(frame)
+    {
         return;
     }
-    if kind % 4 == 1 && let Some(hook) = irq_hook() {
+    if kind % 4 == 1
+        && let Some(hook) = irq_hook()
+    {
         hook(frame);
         return;
     }

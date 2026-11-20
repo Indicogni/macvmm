@@ -325,14 +325,12 @@ fn random_calls_never_panic_and_leave_x4_up_alone() {
     let bus = Bus::new();
     for i in 0..10_000u32 {
         let ctl = VmControl::new();
+        // `ExitEnv::new` sets every field later chapters add (ch21's flash ROM, ch24's exit
+        // watcher) to `None`, so this compiles against a tree at ch08 and at every chapter after.
         let env = ExitEnv {
-            mem: &mem,
-            serial: &sink,
-            ctl: &ctl,
-            bus: &bus,
-            generation: 0,
             debug_calls: i % 2 == 0,
             unhandled_mmio: MmioPolicy::Fatal,
+            ..ExitEnv::new(&mem, &sink, &ctl, &bus)
         };
         let mut r = Regs {
             x: [0; 31],
