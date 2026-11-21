@@ -538,9 +538,51 @@ pub fn notation_problems(line: &str) -> Vec<String> {
     out
 }
 
-/// Style warnings for one line (code spans removed).
+/// `s` with every `http://` / `https://` URL blanked (up to whitespace, `)` or `>`), so
+/// prose rules do not fire inside a link target: the Rust book's `ch20-01-unsafe-rust.html` is
+/// not `ch20` shorthand.
+pub fn strip_urls(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    loop {
+        let at = [rest.find("https://"), rest.find("http://")]
+            .into_iter()
+            .flatten()
+            .min();
+        let Some(at) = at else {
+            out.push_str(rest);
+            return out;
+        };
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        // The URL ends at whitespace, `>`, or a `)` that closes no `(` inside the URL, so a
+        // Markdown link target like `.../Mutex_(computing))` is blanked whole.
+        let mut depth = 0usize;
+        let mut end = tail.len();
+        for (i, c) in tail.char_indices() {
+            match c {
+                '(' => depth = depth.saturating_add(1),
+                ')' if depth > 0 => depth -= 1,
+                ')' | '>' => {
+                    end = i;
+                    break;
+                }
+                c if c.is_whitespace() => {
+                    end = i;
+                    break;
+                }
+                _ => {}
+            }
+        }
+        // One space per character, so columns after the URL still line up.
+        out.extend(std::iter::repeat_n(' ', tail[..end].chars().count()));
+        rest = &tail[end..];
+    }
+}
+
+/// Style warnings for one line (code spans and URLs removed).
 pub fn style_problems(line: &str) -> Vec<String> {
-    let plain = strip_code_spans(line);
+    let plain = strip_urls(&strip_code_spans(line));
     let mut out = Vec::new();
     for (_, t) in tokens(&plain) {
         let l = t.to_ascii_lowercase();

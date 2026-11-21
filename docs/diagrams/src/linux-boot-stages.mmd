@@ -1,0 +1,8 @@
+flowchart TD
+    S1["1. head.S: MMU on, jump to C"] --> S2["2. start_kernel: banner, first DT read, command line"]
+    S2 -->|init_IRQ| S3["3. interrupt controller (GIC)"]
+    S3 -->|time_init| S4["4. timer, clocksource, delay loop"]
+    S4 -->|creates PID 1| S5["5. kernel_init: other CPUs, initcalls"]
+    S5 --> S6["6. drivers bind to DT nodes"]
+    S6 --> S7["7. initramfs unpacked"]
+    S7 -->|exec| S8["8. /init in user space"]

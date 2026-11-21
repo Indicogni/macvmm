@@ -1,5 +1,5 @@
 # scripts/capture.sh 01: run "doctor-denied" of course/checkpoints/01, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 01; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 01; never edit by hand (course/STYLE.md appendix A).
 $ macvmm doctor
 exit: 1
 --- stdout ---

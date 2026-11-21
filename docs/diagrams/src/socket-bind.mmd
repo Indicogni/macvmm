@@ -1,0 +1,10 @@
+flowchart TD
+  A["1. lstat the path<br/>(do not follow symlinks)"] -->|"nothing there"| N["bind"]
+  A -->|"something there"| B["2. is it a socket file?"]
+  B -->|"no: symlink, regular file, other"| X["refuse, exit 2"]
+  B -->|yes| C["3. owned by our uid?"]
+  C -->|no| X
+  C -->|yes| D["4. test connect"]
+  D -->|"ECONNREFUSED: stale"| U["unlink, then bind"]
+  D -->|"accepted: live"| X
+  D -->|"any other error"| X

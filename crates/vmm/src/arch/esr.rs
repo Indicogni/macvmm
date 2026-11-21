@@ -5,11 +5,14 @@
 //! the guest's syndrome as it was written to `ESR_EL2` (ARM ARM DDI 0487, D17.2.40 `ESR_EL2`):
 //!
 //! ```text
-//!  63      37 36  32 31    26 25 24                                   0
-//! +----------+------+--------+--+--------------------------------------+
-//! |   RES0   | ISS2 |   EC   |IL|                 ISS                  |
-//! +----------+------+--------+--+--------------------------------------+
+//!  63      56 55          32 31    26 25 24                              0
+//! +----------+--------------+--------+--+---------------------------------+
+//! |   RES0   |     ISS2     |   EC   |IL|               ISS               |
+//! +----------+--------------+--------+--+---------------------------------+
 //! ```
+//!
+//! (Armv8.7 introduced ISS2 as bits 36:32; later issues of DDI 0487 widened it to 55:32. We
+//! ignore it either way.)
 //!
 //! `EC` (exception class) says *what* trapped, `IL` whether the trapped instruction was 32 bits
 //! (always 1 for A64), and `ISS` (instruction-specific syndrome) carries the details, with a

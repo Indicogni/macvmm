@@ -905,7 +905,7 @@
     {
       "slug": "codesign-entitlements",
       "title": "Code signing and entitlements",
-      "covers": "**Need to know** (10 minutes): \"macOS will not let an unsigned program use the virtualization hardware; we sign ours ad hoc with one permission, `com.apple.security.hypervisor`, and the kernel checks it when we call\", plus how to read `codesign -d --entitlements -`. **Going deeper** (optional until ch19 and ch25): ad-hoc signing, entitlements, why `com.apple.security.hypervisor` is checked at run time (AMFI and the kernel, each claim `[V]` or cited), the hardened runtime and why `DYLD_*` injection matters, restricted entitlements and provisioning profiles (`com.apple.vm.networking`), and a plain statement that macvmm needs no SIP change and no sudo, with the reason",
+      "covers": "**Need to know** (10 minutes): \"macOS will not let an unsigned program use the virtualization hardware; we sign ours ad hoc with one permission, `com.apple.security.hypervisor`, and the kernel checks it when we call\", plus how to read `codesign -d --entitlements -`. **Going deeper** (optional until chapter 19 and chapter 25): ad-hoc signing, entitlements, why `com.apple.security.hypervisor` is checked at run time, the hardened runtime and why `DYLD_*` injection matters, restricted entitlements and provisioning profiles (`com.apple.vm.networking`), and a plain statement that macvmm needs no SIP change and no sudo, with the reason",
       "first_required_by": "01",
       "also_used_by": [
         "00",
@@ -930,7 +930,7 @@
     {
       "slug": "aarch64-reading",
       "title": "Reading AArch64: registers, instructions, byte order",
-      "covers": "(v2's Appendix B, now required) general registers, `xN`/`wN`, register 31 as `xzr` or `sp`, `pc`, `lr`; the AAPCS64 argument and result registers (`x0` to `x7`, `x0`); system-register naming (`MRS`/`MSR`, `_ELn`); fixed 32-bit instruction words and their fields; the dozen instructions in our traces; reading a disassembly; byte order",
+      "covers": "general registers, `xN`/`wN`, register 31 as `xzr` or `sp`, `pc`, `lr`; the AAPCS64 argument and result registers (`x0` to `x7`, `x0`); system-register naming (`MRS`/`MSR`, `_ELn`); fixed 32-bit instruction words and their fields; the dozen instructions in our traces; reading a disassembly; byte order",
       "first_required_by": "02",
       "also_used_by": [
         "03",
@@ -974,7 +974,7 @@
     {
       "slug": "bare-metal-rust",
       "title": "Bare-metal Rust: no_std, linker scripts, flat binaries",
-      "covers": "(new) what `no_std` and `no_main` remove; target triples and `rustup target add`; the sections a linker produces (`.text`, `.rodata`, `.data`, `.bss`); a linker script that puts `_start` at `0x4008_0000`; load versus run address; BSS and stack; ELF to flat binary with `objcopy`",
+      "covers": "what `no_std` and `no_main` remove; target triples and `rustup target add`; the sections a linker produces (`.text`, `.rodata`, `.data`, `.bss`); a linker script that puts `_start` at `0x4008_0000`; load versus run address; BSS and stack; ELF to flat binary with `objcopy`",
       "first_required_by": "03",
       "also_used_by": [
         "13"
@@ -1039,7 +1039,7 @@
     {
       "slug": "caches",
       "title": "Caches and coherency",
-      "covers": "(new) cache lines, data versus instruction caches, Point of Coherency and Point of Unification, clean and invalidate, `CTR_EL0.DIC/IDC`, cacheable versus Device memory, what `booting.rst` means by \"cleaned to PoC\"; ends with the two evidence experiments (MMU-off `memtest`, the `BRK` I-cache test) and says which result was observed",
+      "covers": "cache lines, data versus instruction caches, Point of Coherency and Point of Unification, clean and invalidate, `CTR_EL0.DIC/IDC`, cacheable versus Device memory, what `booting.rst` means by \"cleaned to PoC\"; ends with the two evidence experiments (MMU-off `memtest`, the `BRK` I-cache test) and says which result was observed",
       "first_required_by": "13",
       "also_used_by": [
         "04",
@@ -1062,7 +1062,7 @@
     {
       "slug": "arm64-boot-protocol",
       "title": "The arm64 boot protocol",
-      "covers": "`Documentation/arch/arm64/booting.rst`: registers, MMU and cache state, placement; marks which part ch06 (MMU and caches), ch10 (`x0`) and ch13 (everything) need",
+      "covers": "`Documentation/arch/arm64/booting.rst`: registers, MMU and cache state, placement; marks which part chapter 06 (MMU and caches), chapter 10 (`x0`) and chapter 13 (everything) need",
       "first_required_by": "06",
       "also_used_by": [
         "10",
@@ -1082,7 +1082,7 @@
     {
       "slug": "reading-arm-specs",
       "title": "Reading the ARM ARM and other primary specs",
-      "covers": "(new) how the ARM ARM (DDI 0487) is organised, a register page and its field tables, the ESR ISS tables, pseudocode conventions, and the vocabulary RAZ/WI, RES0/RES1, UNDEFINED, UNKNOWN, IMPLEMENTATION DEFINED; a short section on virtio's MUST/SHOULD and the DT spec's chapter 5",
+      "covers": "how the ARM ARM (DDI 0487) is organised, a register page and its field tables, the ESR ISS tables, pseudocode conventions, and the vocabulary RAZ/WI, RES0/RES1, UNDEFINED, UNKNOWN, IMPLEMENTATION DEFINED; a short section on virtio's MUST/SHOULD and the DT spec's chapter 5",
       "first_required_by": "07",
       "also_used_by": [
         "08",
@@ -1108,7 +1108,7 @@
     {
       "slug": "host-concurrency",
       "title": "Host concurrency: threads, locks, atomics",
-      "covers": "(new) threads and per-thread state, timer-driven preemption and file descriptors; threads in Rust, `Arc`, `Mutex`, `Condvar` (spurious wake-ups and the predicate loop), `thread::scope`, channels, atomics as flags with `SeqCst`, deadlock and a fixed lock order; what the borrow checker proves about data races and what it leaves to you",
+      "covers": "threads and per-thread state, timer-driven preemption and file descriptors; threads in Rust, `Arc`, `Mutex`, `Condvar` (spurious wake-ups and the predicate loop), `thread::scope`, channels, atomics as flags with `SeqCst`, deadlock and a fixed lock order; what the borrow checker proves about data races and what it leaves to you",
       "first_required_by": "09",
       "also_used_by": [
         "02",
@@ -1137,7 +1137,7 @@
     {
       "slug": "unix-signals",
       "title": "Unix signals: who decides how a program ends",
-      "covers": "(new) what a signal is, default actions, exit status `128 + n`, async-signal safety, the self-pipe trick; SIGINT, SIGTERM and SIGUSR1 as macvmm uses them",
+      "covers": "what a signal is, default actions, exit status `128 + n`, async-signal safety, the self-pipe trick; SIGINT, SIGTERM and SIGUSR1 as macvmm uses them",
       "first_required_by": "09",
       "also_used_by": [
         "14",
@@ -1157,7 +1157,7 @@
     {
       "slug": "tty-termios",
       "title": "TTYs, termios and escape sequences: who owns your keystrokes",
-      "covers": "(new) TTY, pty and `script`; canonical versus raw mode, echo, how the line discipline turns Ctrl-C into SIGINT, `stty -g`; escape sequences (CSI, OSC, DCS) and why bytes from a guest can change, query or spoof the host terminal",
+      "covers": "TTY, pty and `script`; canonical versus raw mode, echo, how the line discipline turns Ctrl-C into SIGINT, `stty -g`; escape sequences (CSI, OSC, DCS) and why bytes from a guest can change, query or spoof the host terminal",
       "first_required_by": "09",
       "also_used_by": [
         "14",
@@ -1260,7 +1260,7 @@
     {
       "slug": "linux-boot-sequence",
       "title": "The Linux boot sequence",
-      "covers": "(new) from the first instruction at the Image entry to `/init`: early console, MMU on, DT unflattening, driver binding by `compatible`, clocksource and delay calibration, initcalls, initramfs unpacking, `/init` and BusyBox, `dmesg`; kernel modules and Alpine's `modloop`; each stage mapped to the boot-log lines learners will see",
+      "covers": "from the first instruction at the Image entry to `/init`: early console, MMU on, DT unflattening, driver binding by `compatible`, clocksource and delay calibration, initcalls, initramfs unpacking, `/init` and BusyBox, `dmesg`; kernel modules and Alpine's `modloop`; each stage mapped to the boot-log lines learners will see",
       "first_required_by": "14",
       "also_used_by": [
         "10",
@@ -1308,7 +1308,7 @@
     {
       "slug": "block-storage",
       "title": "Block storage: disk images, ext4, durability",
-      "covers": "(new) sectors and raw images (versus qcow2), a filesystem on a whole disk, ext4 in one picture (superblock, journal), `mkfs` and `e2fsck`, mounting and `root=`, the page cache, `fsync` versus `F_FULLFSYNC` on macOS, `pread`/`pwrite`, advisory file locks (`flock`, `fcntl`), APFS clones (`cp -c`)",
+      "covers": "sectors and raw images (versus qcow2), a filesystem on a whole disk, ext4 in one picture (superblock, journal), `mkfs` and `e2fsck`, mounting and `root=`, the page cache, `fsync` versus `F_FULLFSYNC` on macOS, `pread`/`pwrite`, advisory file locks (`flock`, `fcntl`), APFS clones (`cp -c`)",
       "first_required_by": "18",
       "also_used_by": [
         "22"
@@ -1328,7 +1328,7 @@
     {
       "slug": "unix-sockets",
       "title": "Unix domain sockets: a wire between two programs, named by a file",
-      "covers": "(new) Unix domain sockets, stream versus datagram (message boundaries), the filesystem path and its permissions (0600, a 0700 directory), stale socket files and why macvmm replaces only a socket it owns, why no entitlement is needed",
+      "covers": "Unix domain sockets, stream versus datagram (message boundaries), the filesystem path and its permissions (0600, a 0700 directory), stale socket files and why macvmm replaces only a socket it owns, why no entitlement is needed",
       "first_required_by": "19",
       "also_used_by": [
         "27"
@@ -1346,7 +1346,7 @@
     {
       "slug": "uefi",
       "title": "UEFI: the interface between firmware and an OS loader",
-      "covers": "(new) UEFI as an interface, not a program: boot services versus runtime services, EFI applications as PE/COFF images, the EFI system partition, configuration tables (how a DTB or ACPI reaches the OS), where U-Boot's `bootefi` and EDK2 fit",
+      "covers": "UEFI as an interface, not a program: boot services versus runtime services, EFI applications as PE/COFF images, the EFI system partition, configuration tables (how a DTB or ACPI reaches the OS), where U-Boot's `bootefi` and EDK2 fit",
       "first_required_by": "21",
       "also_used_by": [
         "13",
@@ -1387,7 +1387,7 @@
     {
       "slug": "macos-sandbox",
       "title": "The macOS sandbox, rlimits and other one-way doors",
-      "covers": "(new) Seatbelt and SBPL in brief, `sandbox-exec` versus `sandbox_init`, `(deny default)` and the operation classes macvmm denies (file, network, `process-exec`, `mach-lookup`, `iokit-open`); resource limits (`RLIMIT_CORE`, `RLIMIT_NOFILE`) and core dumps; `umask`, `O_CLOEXEC`, and why the run path never uses `fork`/`exec`; which parts are undocumented (`[H]`) and what was observed",
+      "covers": "Seatbelt and SBPL in brief, `sandbox-exec` versus `sandbox_init`, `(deny default)` and the operation classes macvmm denies (file, network, `process-exec`, `mach-lookup`, `iokit-open`); resource limits (`RLIMIT_CORE`, `RLIMIT_NOFILE`) and core dumps; `umask`, `O_CLOEXEC`, and why the run path never uses `fork`/`exec`; which parts are undocumented and what was observed",
       "first_required_by": "25",
       "also_used_by": [
         "26"

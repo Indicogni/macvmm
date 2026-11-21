@@ -4,17 +4,10 @@ slug: efi-zboot
 kind: primer
 minutes: 20
 required_by: [13]
-also_used_by: [21]
 labs: [image-inspector]
 runs: mac+browser
 command: xxd -l 8 .cache/macvmm/vmlinuz-virt
 expect: 00000000: 4d5a 0000 7a69 6d67                      MZ..zimg
-objectives:
-- Explain in two sentences why Alpine ships its arm64 kernel as an EFI zboot wrapper instead of a raw Image, and why macvmm refuses to boot it directly.
-- Decode the zboot header (magic, payload offset, payload size, compression name, PE header offset) from a 64-byte hex dump.
-- Name the three PE/COFF fields that make a file a UEFI application for arm64 (signature, machine, subsystem) and find them with `xxd` and `llvm-objdump`.
-- Describe what a UEFI application receives at entry (image handle, system table) and how a DTB reaches the OS through a configuration table.
-- Read a gzip member's header and trailer (RFC 1952), carve the payload out of `vmlinuz-virt` by hand, and check the result against the pinned sha256.
 ---
 
 # Why does `file` call our Linux kernel a Windows program?
@@ -290,9 +283,9 @@ otherwise. So `67 7a 69 70` at offset `0x18` shows up on the right as `gzip`.
 To turn bytes into a little-endian number, reverse them: the bytes `78 ca 00 00` become `00 00 ca
 78`, which is `0xca78`.
 
-> **Predict.** Before running the next command, which bytes would you look for to tell a zboot
-> file from a plain PE program, and where would you expect the compressed data's position to be
-> written?
+:::predict Before running the next command, which bytes would you look for to tell a zboot file from a plain PE program, and where would you expect the compressed data's position to be written?
+Look for `zimg` at offset 4, right after `MZ`: a plain PE program has no such tag there. The compressed data's offset and size are the two little-endian numbers right after it, at offsets 8 and 12. The dump below confirms both.
+:::
 
 ```sh
 xxd -l 64 .cache/macvmm/vmlinuz-virt
@@ -336,11 +329,14 @@ checks for `ARM\x64` will never mistake one for the other. Both keep the PE offs
 because both must also be valid PE files for firmware.
 
 Here is the file laid out end to end. The payload begins at `0xca78` and ends at
-`0xca78 + 0x9dfb4b = 0x9ec5c3`, inside `.text`, which occupies file bytes `0x1000` to `0x9ee000`:
+`0xca78 + 0x9dfb4b = 0x9ec5c3`, inside `.text`, which occupies file bytes `0x1000` to `0x9ee000`.
+zboot's linker script (`drivers/firmware/efi/libstub/zboot.lds`) puts all the code first, the
+decompressor and the whole EFI stub, and then read-only data, which starts with the payload and
+goes on with the stub's strings and tables:
 
 ```
  0x0       0x40      0x1000                 0xca78                  0x9ec5c3         0x9ee000  0x9ee200
- | DOS+zboot| PE hdrs |  zboot code (.text)   |  gzip payload (Image)  | stub code+strings | .data |
+ | DOS+zboot| PE hdrs | decompressor+stub code|  gzip payload (Image)  | rodata (strings)  | .data |
  '----------'---------'-----------------------'------------------------'-------------------'-------'
 ```
 
@@ -400,9 +396,9 @@ agrees with ISIZE. `41 52 4d 64` is `ARM\x64` (`xxd` prints the byte `0x64` as `
 Image. And the hash equals the one `scripts/fetch-manifest.txt` pins for `Image-virt`.
 
 You have reproduced, by hand, what the course's `cargo xtask unzboot` tool does. That tool is built
-with the chapter 13 loader (project milestone M9), and once it exists `fetch.sh linux` runs it and
+with the chapter 13 loader, and `fetch.sh linux` runs it and
 writes `.cache/macvmm/Image-virt` for you. If your `fetch.sh` instead prints
-`PENDING Image-virt (needs cargo xtask unzboot, M9)`, your hand-carved file is the same bytes (the
+`PENDING Image-virt (needs cargo xtask unzboot, ...)`, your hand-carved file is the same bytes (the
 hash proves it): `cp "$W/Image" .cache/macvmm/Image-virt`. Then remove the scratch copy with
 `rm -r "$W"`.
 
@@ -524,7 +520,7 @@ cap, carry `ARM\x64` at `0x38`, and match the pinned `Image-virt` hash.
 
 - [Chapter 13, `loaders`](../../linux/loaders/): the loader's format detection recognises `MZ`
   plus `zimg` and refuses with `EFI zboot image`, a configuration error with exit status 2
-  (`crates/vmm/src/loader/`); the `cargo xtask unzboot` tool (milestone M9) does what you did by
+  (`crates/vmm/src/loader/`); the `cargo xtask unzboot` tool does what you did by
   hand, with checked offsets and an output cap (`crates/xtask/`); `scripts/fetch-manifest.txt`
   pins both `vmlinuz-virt` and the derived `Image-virt`.
 - [Chapter 14, `linux-boot`](../../linux/linux-boot/): boots `Image-virt`, the file you
@@ -552,6 +548,8 @@ cap, carry `ARM\x64` at `0x38`, and match the pinned `Image-virt` hash.
 
 ## Checkpoint
 
+:::checkpoint
+
 **Checkpoint.** You can now look at a kernel file and say what it is. Run
 `xxd -l 8 .cache/macvmm/vmlinuz-virt` and see the line that ends in `MZ..zimg` (bytes
 `4d5a 0000 7a69 6d67`). You can decode the zboot header, find the PE signature, machine and
@@ -559,7 +557,7 @@ subsystem, carve the gzip payload out by offset and size, inflate it, and confir
 carries `ARM\x64` at `0x38` and the sha256 pinned for `Image-virt` (`a2cecb9b…8f17` is the same
 `a2cecb9b6fdb…` value printed above, shortened to its first and last characters). There is no code
 state to carry forward; chapter 13 assumes `.cache/macvmm/Image-virt` exists, either from
-`scripts/fetch.sh linux` (once M9 has landed) or from your hand carve.
+`scripts/fetch.sh linux` or from your hand carve.
 
 **What's next.** Chapter 13 writes the loader that takes `Image-virt` from here: it parses the
 64-byte Image header as hostile input, plans where the kernel, DTB and initramfs go, and refuses

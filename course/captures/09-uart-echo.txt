@@ -1,5 +1,5 @@
 # scripts/capture.sh 09: run "uart-echo" of course/checkpoints/09, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 09; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 09; never edit by hand (course/STYLE.md appendix A).
 $ macvmm run --mem 64M --raw {guests}/uart-echo.bin@0x40080000 --timeout 10
 exit: 0
 --- stdout ---

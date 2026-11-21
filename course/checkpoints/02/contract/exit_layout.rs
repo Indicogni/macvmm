@@ -1,7 +1,7 @@
-// Checkpoint 02 contract (PLAN M27 L1). It names only items the chapter 02 lesson teaches: your
+// Checkpoint 02 contract. It names only items the chapter 02 lesson teaches: your
 // declarations of `hv_vcpu_exit_t`, `hv_vcpu_exit_exception_t` and the exit-reason constants in
 // `hvf::ffi`. The harness runs it against your `crates/hvf`.
-//! The `hv_vcpu_exit_t` layout (PLAN M1; CURRICULUM ch02 checkpoint, moved from 01 in v3.1).
+//! The `hv_vcpu_exit_t` layout.
 //!
 //! The framework writes this struct on every `hv_vcpu_run`; if the Rust declaration disagrees
 //! with `hv_vcpu_types.h` by one field, every exit is misread. The expected numbers are what

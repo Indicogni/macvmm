@@ -1,0 +1,5 @@
+graph LR
+  P["process<br/>open /etc/hosts"] -- "system call" --> K["XNU: path lookup"]
+  K -- "MAC hook asks" --> S["Sandbox.kext<br/>evaluates profile"]
+  S -- "allow" --> R["fd returned"]
+  S -- "deny" --> E["EPERM + log line<br/>(kernel, Sandbox)"]

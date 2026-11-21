@@ -236,9 +236,7 @@ We still write the DTB; the firmware decides what the operating system receives.
 | U-Boot `booti`: Linux | U-Boot | RAM | the one at the address `booti` is given |
 | U-Boot `bootefi`: `loader.efi`, then a kernel | U-Boot, then `loader.efi` | RAM | the one U-Boot puts in the UEFI configuration table |
 
-The lab steps through the same chains:
-
-:::lab boot-chain
+The `boot-chain` lab at the end of the next three sections steps through these chains.
 
 ## Flash is not RAM
 
@@ -318,6 +316,10 @@ We put the DTB at `0x4000_0000`. Ask U-Boot (no disk this time): type `bdinfo` (
 :::term source=captures/21-uboot-dtb.txt
 
 U-Boot works from `0x5e6596e0`, near the top of RAM: it copied itself and the DTB there, out of the way of what it loads next. The copy's `totalsize`, 1687 bytes, matches our dry run. Our original is still at `0x40000000`: `md.l` prints `edfe0dd0`, the magic `d00dfeed` with its bytes reversed, because the DTB is big-endian (chapter 10) and `md.l` prints little-endian words; `97060000` is `totalsize`, `0x697`, the same way. Two copies now exist. Which one will an operating system receive, and who may change it on the way?
+
+The lab steps through each chain of the table above and asks, at every step, who owns the DTB:
+
+:::lab boot-chain
 
 ## Your turn
 

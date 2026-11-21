@@ -1,0 +1,13 @@
+flowchart TD
+  A["DT node lists 'arm,primecell'"] -->|creates| B["an AMBA device, not a platform device"]
+  B -->|checks| C{"'arm,primecell-periphid'<br/>property in the node?"}
+  C -->|yes: use it as the ID| M
+  C -->|no| D{"enable apb_pclk"}
+  D -->|no such clock| G["defer: try again later, forever"]
+  D -->|ok| R["read last 0x20 bytes of the window"]
+  R --> E{"cell ID is 0xB105F00D?"}
+  E -->|no| G
+  E -->|yes: store peripheral ID| M{"(ID & mask) == id<br/>for a driver's table entry?"}
+  M -->|yes| P{"probe: enable apb_pclk again"}
+  P -->|no such clock| X["probe fails, not bound"]
+  P -->|ok| H["the driver binds"]

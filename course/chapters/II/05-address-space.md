@@ -139,11 +139,11 @@ Now stage 2, with its own 16 KiB pages: is the page holding `0x0b00_0000` mapped
 
 Now walk VA `0x0b10_1000` on paper. Which level-3 index, and at which address is its descriptor read? The descriptor there is `0x0060_0000_0900_0403`. Decode it: which IPA, which memory type, and does stage 2 map that IPA? (Check your walk: index `0x101`, read at `0x4008_6808`.)
 
-The `two-stage-walker` lab is meant to walk a VA through both stages, each with its own granule. It is still being built:
+The `two-stage-walker` lab walks a VA through both stages, each with its own granule. It opens on the store above:
 
 :::lab two-stage-walker
 
-Until it loads, redo the table on paper for `0x4000_1234` (level 1 index 1 holds a 1 GiB block covering all of RAM, so the walk stops there and the IPA equals the VA). Then stage 2: which 16 KiB page holds `0x0900_0000`, and which holds `0x4000_1234`? Is either mapped?
+Step through it and compare each read with the table and the capture. Then, with Predict on, walk `0x0b10_1000`, then `0x4000_1234` (a 1 GiB block, so the IPA equals the VA). Set the stage-2 granule to 4 KiB: stage 2 needs one more level. Last, map RAM at `0x0900_0000` and walk `0x0b10_1000` again: no exit.
 
 :::stopping-point Good place to stop. Sitting B needs your Mac, your learner workspace and about 2 hours.
 

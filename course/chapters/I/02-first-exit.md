@@ -44,7 +44,7 @@ This chapter opens row 1 of chapter 00's problem ledger, the CPU: by its end, gu
 
 Open the stepper below, choose **source EL0, cause `svc`**, and step once. The app is running at EL0, Arm's name for the least privileged level, where ordinary programs live (chapter 01's stack). It executes [`svc`](/build-your-own/vmm/glossary/#svc) `#0`, the instruction an app uses to ask its kernel for a service (the `os-basics` primer).
 
-Watch the PC jump somewhere new, the mode change, and three boxes, still unnamed, fill with values. Then press [**ERET**](/build-your-own/vmm/glossary/#eret) (exception return): everything snaps back, with the PC one instruction further on.
+Watch the PC jump somewhere new, the mode change, and three boxes, still unnamed, fill with values. Then press [**ERET**](/build-your-own/vmm/glossary/#eret) (exception return): the PC and mode snap back, the PC one instruction on; the boxes keep their values.
 
 :::lab exception-stepper
 

@@ -1,11 +1,11 @@
-# scripts/capture-cmd 00: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# scripts/capture-cmd 00: real output, Apple M5 Pro, macOS 27.2.1, commit dbbe149, 2026-11-20.
 # Run in a fresh clone of the course repository, before any learner/ workspace exists.
 # Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
 $ scripts/learner init && scripts/learner start 00
 exit: 0
 --- stdout ---
 learner: ready
-learner: 1 files copied, 0 already present
+learner: 1 file copied, 0 already present
 learner: chapter 00 at level worked
 
 --- stderr ---

@@ -28,3 +28,11 @@ reasonable defaults the repository owner may override.
 |---|---|
 | D19 | M2 accepted by the lead. Its own gates and on-machine tests pass; `check.sh` failed only on `backend/ansi.rs`, a leftover of an aborted M3 run that M3 now owns and must fix. |
 | D20 | MEM-9: `vm.rs` teardown uses `Arc::try_unwrap` and *leaks* still-shared guest RAM (returning `Err(Internal)`) instead of a `debug_assert!` on `strong_count`. Accepted as stricter (works in release, never frees memory a thread may use). PLAN M2 text is superseded by this. |
+
+## Owner decisions (2026-11-20)
+| # | Decision |
+|---|---|
+| D21 | Resolves D15: `--sandbox` becomes the **default**, with `--no-sandbox` to opt out (for debugging). Before committing the switch, every e2e suite must pass with it on. Chapter 25 is updated to teach the default and the opt-out. |
+| D22 | Confirms D1: code is MIT OR Apache-2.0; course text is CC BY 4.0. No longer provisional. |
+| D23 | Confirms D7: the supported floor is macOS 15+ on Apple Silicon M1 or later. The landing page and README say only macOS 27.2 on an M5 Pro was tested, and older versions are expected to work. |
+| D24 | Publishing: the site is built and checked locally. The Worker is deployed, and the card added to indicogni-site, only after the owner approves a local preview. |

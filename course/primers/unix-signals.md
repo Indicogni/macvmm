@@ -4,17 +4,10 @@ slug: unix-signals
 kind: primer
 minutes: 15
 required_by: [09]
-also_used_by: [14, 26]
 labs: []
 runs: mac
 command: zsh -c 'sleep 30 & kill -TERM $!; wait $!; echo $?'
 expect: 143
-objectives:
-- Say what a signal is, name the default action of SIGINT, SIGTERM, SIGHUP, SIGUSR1, SIGKILL, SIGSEGV and SIGCHLD, and say which two signals no program can catch or ignore.
-- Predict the exit status a shell reports for a process killed by signal n (128 + n), and explain why a program that catches SIGTERM and calls exit(130) looks the same in `$?` but not to `waitpid`.
-- Predict which thread runs a handler for a signal sent to the process, for a fault, and for a thread whose mask blocks the signal, and check the prediction with a short C program.
-- Explain why a handler may only call async-signal-safe functions, name three that are and three that are not, and say why a handler saves and restores `errno`.
-- Build the self-pipe trick in C, and trace how macvmm uses it to turn SIGINT, SIGTERM, SIGHUP and SIGUSR1 into ordinary events on its signal thread.
 ---
 
 # Why does macvmm say 130 when you sent it 15?
@@ -164,10 +157,10 @@ already read as "the user interrupted this", and macvmm uses it for every user q
 came from Ctrl-C, SIGTERM, SIGHUP or the Ctrl-A x key. Its own error codes stay below 128 so
 they can never be mistaken for a signal.
 
-> **Predict.** A shell runs a program that dies of SIGHUP. What is `$?`?
-
+:::predict A shell runs a program that dies of SIGHUP. What is `$?`?
 129: 128 + 1. On a terminal that closes, every program still attached to it typically sees that
 number, which is why it is worth recognising.
+:::
 
 ## Choosing a disposition
 
@@ -309,7 +302,9 @@ int main(int argc, char **argv) {
 }
 ```
 
-> **Predict.** Which name does `./who` print? And `./who block`?
+:::predict Which name does `./who` print? And `./who block`?
+Without blocking, either thread may get the signal; on this macOS version the kernel chose `main` every time. With `block`, `main` has SIGUSR1 blocked, so the worker is the only candidate and gets every one.
+:::
 
 ```sh
 clang -Wall -o who who.c
@@ -408,18 +403,7 @@ This is the **self-pipe trick**, named and popularised by D. J. Bernstein.
 
 The diagram shows the hand-off. Notice that the only work inside the handler is a single `write`.
 
-```mermaid
-sequenceDiagram
-    participant K as Kernel
-    participant H as Handler (any thread)
-    participant P as Pipe
-    participant S as Signal thread
-    K->>H: interrupts a thread, runs handler
-    H->>P: write(1 byte = signal number)
-    H-->>K: returns; interrupted code resumes
-    P->>S: read() returns the byte
-    S->>S: does the real work (locks, I/O, exit)
-```
+:::diagram src=docs/diagrams/self-pipe.svg alt="The self-pipe pattern: the handler only writes a byte"
 
 *The handler only writes; everything that could deadlock happens on the signal thread.*
 
@@ -544,7 +528,7 @@ terminal that has gone away. So if a **second** quit signal arrives first, the s
 
 So you are never left with a raw terminal and a VM that only SIGKILL can stop.
 
-> **Recovering a terminal.** SIGKILL is the one case no program can clean up after. If a
+> **Aside: recovering a terminal.** SIGKILL is the one case no program can clean up after. If a
 > program dies that way while the terminal is in raw mode, typing may show nothing and Enter may
 > do nothing. Type `stty sane` blind and press **Ctrl-J**. `stty sane` resets the terminal
 > settings to sensible defaults. Ctrl-J sends the newline character directly, whereas Enter
@@ -622,6 +606,8 @@ rarely, typically under load, which is exactly when someone presses Ctrl-C.
   and `errno` in depth (Linux-specific parts are clearly marked).
 
 ## Checkpoint
+
+:::checkpoint
 
 - **What you can do now.** Run
   `zsh -c 'sleep 30 & kill -TERM $!; wait $!; echo $?'` and see `143`, and say why it is 143.

@@ -1,9 +1,9 @@
-// Checkpoint 11 contract (PLAN M27 L1). It names only items the chapter 11 lesson teaches:
+// Checkpoint 11 contract. It names only items the chapter 11 lesson teaches:
 // `vmm::timer::{guest_counter, restore_offset, timer_asserted, nogic_wfi_wait, WfiWait,
 // NoGicTimer, NOGIC_WFI_SLICE, cntv_ctl}`, `hvf::host::Timebase`, and the mode's restriction in
 // `vmm::config::{VmConfig, IrqChip, RawSpec, IRQCHIP_NONE_RESTRICTION}` (`validate`,
 // `validate_irqchip`).
-//! The generic-timer rules of the `--irqchip none` mode (PLAN M8 Part A; CURRICULUM ch11).
+//! The generic-timer rules of the `--irqchip none` mode (part A).
 //!
 //! - **Offset rule** (ARM ARM D12.1 "The Generic Timer", `CNTVCT = CNTPCT - CNTVOFF`): the
 //!   guest's counter is the host's minus an offset, so a paused guest resumes where it stopped.
@@ -12,7 +12,7 @@
 //!   125/3`).
 //! - **Unmask rule**: the timer asserts iff `ENABLE && !IMASK && ISTATUS` (ARM ARM D19.11.15,
 //!   `CNTV_CTL_EL0`), a pure function of the register.
-//! - **Restriction** (threat model §10.2 M8): `--irqchip none` is for test guests on one vCPU.
+//! - **Restriction** (see docs/security/threat-model.md): `--irqchip none` is for test guests on one vCPU.
 //!   It is checked here, on the configuration, because at chapter 11 the CLI has neither
 //!   `--cpus` (chapter 20) nor `--kernel` (chapter 13): a black-box run could only ever see a
 //!   usage error, whatever the VMM does (review finding on the old `nogic-smp-refused` run).

@@ -1,10 +1,10 @@
-// Checkpoint 18 contract (L1), frozen from the reference test crates/vmm/tests/blk_budget.rs.
+// Checkpoint 18 contract, frozen from the reference test crates/vmm/tests/blk_budget.rs.
 // It names only items chapters 04 and 15 to 18 teach; the harness runs it against your crates.
-//! PLAN M14 security test (threat model VQ-12, flaw F8; virtio-blk's cost budget, `blk.rs`
+//! Security test (see docs/security/threat-model.md; virtio-blk's cost budget, `blk.rs`
 //! module docs "Batches"): a blk ring kept full of expensive requests must not keep the worker
 //! inside one long batch.
 //!
-//! `worker_budget.rs` (M12) proves the chain-count budget with rng, where every chain is
+//! `worker_budget.rs` (chapter 17) proves the chain-count budget with rng, where every chain is
 //! cheap. For blk one chain can move 8 MiB or run an `F_FULLFSYNC`, so a full ring of 64 such
 //! chains would hold the device mutex for seconds on slow media. Here a hostile "driver"
 //! thread keeps 64 requests posted, alternating a 1 MiB OUT and a FLUSH, over a backend that
@@ -18,7 +18,7 @@
 //! printed but **not asserted**: `std::sync::Mutex` is not fair, and the worker re-locks the
 //! device for its next batch nanoseconds after unlocking it, before a parked waiter has woken.
 //! Under a flood that never lets the worker go idle the waiter can lose many hand-offs in a
-//! row. That is a property of the worker loop (M12, `worker.rs`), not of blk's batch bound.
+//! row. That is a property of the worker loop (chapter 17, `worker.rs`), not of blk's batch bound.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 mod virtio_support;

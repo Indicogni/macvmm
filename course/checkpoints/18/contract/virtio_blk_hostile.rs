@@ -1,13 +1,13 @@
-// Checkpoint 18 contract (L1), frozen from the reference test crates/vmm/tests/virtio_blk_hostile.rs.
+// Checkpoint 18 contract, frozen from the reference test crates/vmm/tests/virtio_blk_hostile.rs.
 // It names only items chapters 04 and 15 to 18 teach; the harness runs it against your crates.
-//! PLAN M14 acceptance (host): the virtio-blk device model against hostile requests (virtio 1.2
-//! §5.2; architecture §11.3; threat model BLK-1..BLK-7, BLK-9, VQ-8, VQ-9, VQ-11, MEM-7).
+//! Host acceptance: the virtio-blk device model against hostile requests (virtio 1.2
+//! §5.2; threat model: docs/security/threat-model.md).
 //!
 //! The device is driven exactly as the worker drives it (`activate` + `process_queue`), with
 //! `VecMemory` as guest RAM and [`MockDisk`] as the backend. The mock records every call, so
 //! the tests can assert not only the status byte and the used `len` but also that a refused
 //! request never reached the disk, that FLUSH synced exactly once, and that every bounce buffer
-//! handed to the backend was freshly zeroed (VQ-11).
+//! handed to the backend was freshly zeroed.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 mod virtio_support;

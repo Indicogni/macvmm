@@ -4,17 +4,10 @@ slug: bare-metal-rust
 kind: primer
 minutes: 25
 required_by: [03]
-also_used_by: [13]
 labs: [linker-map]
 runs: mac+browser
 command: wc -c < bare.bin
 expect: 68
-objectives:
-- Explain what `#![no_std]` and `#![no_main]` remove from a Rust program, and what is left (`core`, a panic handler you write, an entry symbol you name).
-- Read a target triple, tell `aarch64-apple-darwin` from `aarch64-unknown-none`, and install a target with `rustup target add`.
-- Sort a program's statics into `.text`, `.rodata`, `.data` and `.bss`, and confirm the placement with `llvm-nm` and `llvm-size`.
-- Write a linker script that puts `_start` at `0x4008_0000`, and explain load address versus run address.
-- Turn an ELF into a flat binary with `llvm-objcopy`, account for every byte in it, and say why the BSS and the stack are not there.
 ---
 
 # A program with nothing underneath
@@ -593,11 +586,9 @@ order, starting at the first loadable address, and nothing else. `llvm-objcopy` 
 wc -c < bare.bin
 ```
 
-> **Predict.** The ELF is about 67 KB on our machine (it pads each region to a 64 KiB file offset
-> and carries a symbol table). The program's memory image runs from `0x4008_0000` to
-> `__stack_top`, more than 16 KiB. How many bytes will `bare.bin` hold? Hint: use the `llvm-nm`
-> addresses above, ask which sections need bytes in a file, and remember `.data` starts at
-> `0x40080040`, not straight after `.rodata`.
+:::predict The ELF is about 67 KB on our machine (it pads each region to a 64 KiB file offset and carries a symbol table). The program's memory image runs from `0x4008_0000` to `__stack_top`, more than 16 KiB. How many bytes will `bare.bin` hold? Hint: use the `llvm-nm` addresses above, ask which sections need bytes in a file, and remember `.data` starts at `0x40080040`, not straight after `.rodata`.
+68 bytes. Only `.text`, `.rodata` and `.data` need bytes in the file, and `.data` ends at `0x40080044`; `.bss` and the stack are zeros the loader makes, so they take no file space.
+:::
 
 ```text
       68
@@ -620,9 +611,10 @@ xxd bare.bin
 `xxd` prints the file's bytes in order, grouped in pairs; it does not reorder anything. Every byte
 is accounted for. `0x00` to `0x37` is `.text`: fourteen instructions, each a 4-byte word stored
 little-endian. The first word's bytes are `ff 43 00 d1`; read backwards that is `0xd10043ff`, the
-encoding of `sub sp, sp, #0x10` (the `a64-encoder` lab from `aarch64-reading` decodes it). `0x38`
-is `hello\n`, then two bytes of padding (`0x3e`, `0x3f`) because `.data` is placed at the next
-16-byte boundary, then `07 00 00 00` at `0x40`, `BOOTS`. That is `0x38 + 6 + 2 + 4 = 68`. The file
+encoding of `sub sp, sp, #0x10` (`objdump -d` decodes it; the `a64-encoder` lab from
+`aarch64-reading` covers only `movz`, `hvc` and `b`, and says this word is none of them). `0x38`
+is `hello\n`, then two bytes of padding (`0x3e`, `0x3f`) because `BOOTS`, an `AtomicU32`, needs
+4-byte alignment, so `.data` starts at the next multiple of 4, then `07 00 00 00` at `0x40`, `BOOTS`. That is `0x38 + 6 + 2 + 4 = 68`. The file
 ends there. `.bss`, `COUNTER` and the stack occupy memory from `0x4008_0050` up, but because they
 are `NOLOAD` and come last, they contribute nothing.
 
@@ -794,6 +786,8 @@ instructions of assembly must set `sp` and zero BSS before any Rust runs.
   may rely on at entry (and the absence of a stack among them).
 
 ## Checkpoint
+
+:::checkpoint
 
 - **What you can do now.** Build a `no_std`, `no_main` program for `aarch64-unknown-none`, place
   `_start` at `0x4008_0000` with a linker script, and explain every byte of its flat binary. Verify

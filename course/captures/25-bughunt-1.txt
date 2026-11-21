@@ -1,5 +1,5 @@
 # scripts/capture.sh 25: run "bughunt-1" of course/checkpoints/25, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (course/STYLE.md appendix A).
 $ course/checkpoints/25/bughunt.sh <repo> <repo> {out} 1 540
 exit: 0
 --- stdout ---

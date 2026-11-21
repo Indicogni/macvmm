@@ -4,13 +4,6 @@ slug: arm64-boot-protocol
 kind: primer
 minutes: 25
 required_by: [06]
-also_used_by: [10, 13]
-objectives:
-- State the four entry conditions a primary CPU must meet (x0 to x3, DAIF masked, EL1 or EL2, MMU off) and give the CPSR value that encodes EL1h with DAIF masked
-- Explain in two sentences why Linux wants the MMU off and the kernel image cleaned to the Point of Coherency at entry, using the stale-byte example
-- Decode the 64-byte arm64 Image header from a hex dump, including the flags field
-- Compute where the kernel, DTB and initramfs go in RAM and name the booting.rst rule behind each address
-- Say which part of this primer chapters 06, 10 and 13 each rely on
 labs: [image-inspector]
 ---
 
@@ -94,17 +87,7 @@ rest. Come back before chapter 13.
 The whole hand-off fits in one picture. Notice that every arrow comes from the boot loader; the
 kernel does nothing until the very last step.
 
-```mermaid
-sequenceDiagram
-    participant V as VMM (boot loader, host)
-    participant M as Guest RAM
-    participant C as vCPU 0
-    V->>M: writes DTB, Image, initramfs
-    V->>C: sets x0..x3, CPSR, PC
-    Note over C: MMU off, DAIF masked
-    V->>C: runs
-    C->>M: kernel fetches its first instruction
-```
+:::diagram src=docs/diagrams/boot-handoff.svg alt="The boot hand-off: the VMM fills guest RAM, sets vCPU 0 registers, then runs it"
 
 *The boot loader prepares memory and registers, then lets go. The trust boundary is the last
 arrow: from there on, guest code runs.*
@@ -335,12 +318,11 @@ xxd -l 64 .cache/macvmm/Image-virt
 00000030: 0000 0000 0000 0000 4152 4d64 4000 0000  ........ARMd@...
 ```
 
-> **Predict.** The magic is supposed to be `ARM\x64`, yet the text column says `ARMd`. Is this
-> kernel broken?
-
+:::predict The magic is supposed to be `ARM\x64`, yet the text column says `ARMd`. Is this kernel broken?
 It is not. `\x64` is the byte `0x64`, and `0x64` is the ASCII code for `d`. The magic is a pun:
 "ARM64" spelled with three letters and one byte. Read as a little-endian 32-bit number, the bytes
 `41 52 4d 64` are `0x644d5241`, exactly what the spec says.
+:::
 
 The first two bytes are a second surprise: `MZ` is the signature of a Windows executable (the
 PE/COFF format, which UEFI firmware also uses for its programs). The kernel is built to be *two
@@ -533,13 +515,16 @@ about state the plan never mentioned at all. That is what a written protocol is 
 :::lab image-inspector
 
 The `image-inspector` lab lets you drop an Image file onto the page and see its header decoded:
-each field with its offset, the flags split into endianness, page size and placement, and a list
-of the validity checks chapter 13's parser applies (magic, little-endian, supported page size,
-non-zero `image_size`, aligned `text_offset`). Choose a RAM size and it draws the placement map
-above for that kernel, flagging any overlap. The file is parsed locally in your browser and never
-uploaded. Try it with a deliberately broken copy (patch `image_size` to all `ff`) and watch which
-check fires first. The `efi-zboot` primer adds a mode to the same lab that recognises a
-compressed wrapper and refuses it.
+each field with its offset, the flags split into endianness, page size and placement, and the
+validity checks chapter 13's parser applies, in its order (the file holds the whole header,
+magic, little-endian, supported page size, non-zero `image_size`, aligned `text_offset`, and the
+file no longer than `image_size`). Choose a RAM size and it draws the placement map above for
+that kernel. For a kernel with BSS (try the scenario with this page's numbers: `image_size`
+`0x1800000`, file `0x1400000`), it also draws the tempting wrong plan, the initramfs right after
+the file's last byte, and marks the part the BSS would wipe. The file is parsed locally in your
+browser and never uploaded. Try it with a deliberately broken copy (patch `image_size` to all
+`ff`): every header check passes, so see where placement stops, and why. The `efi-zboot` primer
+adds a mode to the same lab that recognises a compressed wrapper and refuses it.
 
 ## Self-check
 

@@ -1,0 +1,4 @@
+{
+  "title": "Exception stepper",
+  "goal": "Pick where the code runs and what happens, take the exception, watch what the CPU saves, then return with ERET."
+}

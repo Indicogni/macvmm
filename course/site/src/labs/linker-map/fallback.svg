@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 300" role="img" aria-labelledby="linker-map-fb-title linker-map-fb-desc" font-family="system-ui, sans-serif" font-size="13" fill="currentColor">
+<title id="linker-map-fb-title">Linker map: the primer's program, from ELF to flat binary to guest memory</title>
+<desc id="linker-map-fb-desc">The default layout. The linker places .text (56 bytes, _start first) at 0x4008_0000, .rodata (GREETING, 6 bytes) at 0x4008_0038, .data (BOOTS, 4 bytes) at 0x4008_0040, and .bss (COUNTER plus a 16 KiB stack, 16,400 bytes, NOLOAD) at 0x4008_0050 up to __stack_top at 0x4008_4060. Three PT_LOAD headers: read-execute 56 bytes, read-only 6 bytes, and read-write with FileSize 4 and MemSize 16,416. objcopy -O binary writes 68 bytes: the code, the text hello and a newline, two bytes of padding, and the value 7. The BSS is not in the file; after --raw bare.bin@0x40080000, everything above byte 68 holds whatever RAM held before, so _start must zero it.</desc>
+<text x="16" y="26" font-size="15" font-weight="700">bare: where the linker puts every byte (default layout)</text>
+<g font-family="ui-monospace, monospace" font-size="12">
+<text x="16" y="56" font-weight="700">ELF program headers</text>
+<text x="16" y="76">PT_LOAD R X  0x4008_0000  filesz 56  memsz 56</text>
+<text x="16" y="94">PT_LOAD R    0x4008_0038  filesz 6   memsz 6</text>
+<text x="16" y="112">PT_LOAD R W  0x4008_0040  filesz 4   memsz 16,416</text>
+<text x="360" y="56" font-weight="700">bare.bin: 68 bytes</text>
+<text x="360" y="76">0x00  .text   _start, 14 instructions</text>
+<text x="360" y="94">0x38  .rodata "hello\n"</text>
+<text x="360" y="112">0x3e  padding (2 bytes)</text>
+<text x="360" y="130">0x40  .data   07 00 00 00 (BOOTS)</text>
+</g>
+<text x="16" y="164" font-weight="700">Guest memory after --raw bare.bin@0x40080000</text>
+<rect x="16" y="176" width="200" height="40" fill="none" stroke="currentColor"/>
+<text x="24" y="200">copied from the file (68 B)</text>
+<rect x="216" y="176" width="40" height="40" fill="none" stroke="currentColor" stroke-dasharray="2 3"/>
+<text x="220" y="200" font-size="11">gap</text>
+<rect x="256" y="176" width="408" height="40" fill="none" stroke="currentColor" stroke-dasharray="6 4"/>
+<text x="264" y="200">.bss + stack (16,400 B): old contents of RAM. Zero it yourself!</text>
+<g font-family="ui-monospace, monospace" font-size="11">
+<text x="16" y="234">0x4008_0000</text>
+<text x="196" y="250">0x4008_0044</text>
+<text x="256" y="234">0x4008_0050</text>
+<text x="590" y="234">0x4008_4060</text>
+</g>
+<text x="16" y="282" font-size="12">With JavaScript, the lab lets you move sections, add .far, store a pointer and change the load address.</text>
+</svg>

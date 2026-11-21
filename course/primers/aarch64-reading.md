@@ -5,14 +5,7 @@ kind: primer
 runs: mac+browser
 minutes: 30
 required_by: [02]
-also_used_by: [03, 07, 08, 21]
 labs: [a64-encoder]
-objectives:
-- Name the AArch64 general-purpose registers, say what x0 versus w0 holds, and decide whether register number 31 means xzr or sp in a given instruction field
-- State the AAPCS64 roles of x0 to x7, x0 as the result, x29, x30 and x18 on Apple platforms
-- Read a system-register name (NAME_ELn) and an mrs or msr instruction, and predict whether an app may run it
-- Split a 32-bit A64 instruction word into its fields for movz, hvc and b, and read the dozen instructions in our traces
-- Read a line of objdump or otool output, and read the same four bytes as a little-endian and a big-endian number
 ---
 
 # What do these three numbers mean?
@@ -35,9 +28,9 @@ By the end of this primer you can answer both questions by reading, not by trust
 - Xcode or the Command Line Tools (`clang`, `objdump`, `otool`, `xxd`, `od`). Check with `clang --version`.
 :::
 
-> **Refresher: hex and bit numbers.** One hex digit is exactly four bits: `0x2a` is `0010 1010`. Bits are numbered from the right, starting at 0, so in a 32-bit word bit 0 is the lowest and bit 31 the highest. "Bits 9 to 5" means the five bits with those numbers, read as one small binary number.
+> **Aside: hex and bit numbers, a refresher.** One hex digit is exactly four bits: `0x2a` is `0010 1010`. Bits are numbered from the right, starting at 0, so in a 32-bit word bit 0 is the lowest and bit 31 the highest. "Bits 9 to 5" means the five bits with those numbers, read as one small binary number.
 
-> **Words you will meet.** A **guest** is the program or operating system running inside our virtual machine. A **trap** is the hardware stopping the guest because it did something the hypervisor asked to be told about. Each trap hands control to our VMM as a **VM exit**, together with an **exit report** (a few registers saying what the guest tried to do). Chapter 02 shows all three for real; here they only explain why some instructions matter more to us than others.
+> **Aside: words you will meet.** A **guest** is the program or operating system running inside our virtual machine. A **trap** is the hardware stopping the guest because it did something the hypervisor asked to be told about. Each trap hands control to our VMM as a **VM exit**, together with an **exit report** (a few registers saying what the guest tried to do). Chapter 02 shows all three for real; here they only explain why some instructions matter more to us than others.
 
 ## Reproduce the puzzle first
 
@@ -248,9 +241,9 @@ The third word, `0x14000000`, is **B**, an unconditional branch:
 
 The target is *this instruction's own address* plus `imm26 × 4` (signed). The offset counts instructions, not bytes: every instruction is 4 bytes, so a byte offset would always end in two zero bits, and storing it divided by 4 buys two more bits of reach (±128 MiB). An offset of 0 means "branch to myself": the assembler spelling `b .` (dot is "here") is an infinite loop, our guest's way of parking. Setting bit 31 gives **BL**, branch with link, which also writes `pc + 4` into `x30`. `ret` is a branch to the address in `x30`.
 
-> **Predict.** In the disassembly the branch prints as `b 0x8`, but the word says the offset is 0. Where did 8 come from?
-
+:::predict In the disassembly the branch prints as `b 0x8`, but the word says the offset is 0. Where did 8 come from?
 The disassembler did the addition for you: offset 0 from the branch's own address, 8, is address 8. Disassemblers print *targets*, not raw offsets; when you decode by hand, remember to add the instruction's address.
+:::
 
 ## The dozen instructions in our traces
 
@@ -340,7 +333,9 @@ int main(void) {
 }
 ```
 
-> **Predict.** Will the third `printf` run?
+:::predict Will the third `printf` run?
+No. The two `_EL0` reads work, but `MPIDR_EL1` is an EL1 register: reading it from your program raises an exception, and macOS kills the process with SIGILL (exit status 132). The run below shows it.
+:::
 
 ```sh
 clang -O2 sysreg.c -o sysreg

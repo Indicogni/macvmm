@@ -1,0 +1,14 @@
+{
+  "title": "Boot-log annotator",
+  "goal": "Paste a Linux boot log and see each line's stage, what it means, and the device-tree node and chapter behind it; a cut-off log tells you which stage never finished.",
+  "reference": "no-timer.s.61",
+  "captures": [
+    "captures/14-boot-log.txt",
+    "captures/14-no-timer.txt",
+    "captures/14-wrong-gicr.txt",
+    "captures/14-no-pl011-id.txt",
+    "captures/14-no-pl011-id-silent.txt",
+    "captures/14-panic-reset.txt",
+    "captures/14-dts.txt"
+  ]
+}

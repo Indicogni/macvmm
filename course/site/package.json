@@ -1,0 +1,13 @@
+{
+  "name": "indicogni-vmm-course",
+  "private": true,
+  "type": "module",
+  "description": "Course site for Build a VMM. Zero dependencies: Node built-ins only.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check",
+    "test": "node --test .",
+    "serve": "node build.mjs && node serve.mjs"
+  }
+}

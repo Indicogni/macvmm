@@ -1,0 +1,140 @@
+/* boot-log-annotator: every rule scoped under the lab's shell (course/site/LABS.md section 5).
+   Site tokens only, so dark mode follows the page. A line's stage is also printed as text (S1..S8)
+   and its type as a word, so color is never the only signal. */
+
+.lab[data-lab="boot-log-annotator"] .bla-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; min-width: 0; font-family: var(--sans); color: var(--ink); }
+.lab[data-lab="boot-log-annotator"] .bla-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: .6rem; min-width: 0; padding: .75rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); }
+.lab[data-lab="boot-log-annotator"] .bla-row { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: center; }
+.lab[data-lab="boot-log-annotator"] .bla-field { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+.lab[data-lab="boot-log-annotator"] .bla-field label,
+.lab[data-lab="boot-log-annotator"] .bla-paste > label { font-size: .9rem; color: var(--muted); }
+.lab[data-lab="boot-log-annotator"] select { min-height: 44px; max-width: 100%; font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--control); border-radius: 6px; padding: 0 .5rem; }
+.lab[data-lab="boot-log-annotator"] textarea { width: 100%; box-sizing: border-box; min-height: 8rem; font-family: var(--mono); font-size: .85rem; color: var(--ink); background: var(--paper); border: 1px solid var(--control); border-radius: 6px; padding: .5rem; resize: vertical; }
+.lab[data-lab="boot-log-annotator"] .bla-paste { display: grid; gap: .4rem; }
+.lab[data-lab="boot-log-annotator"] .bla-paste[hidden] { display: none; }
+.lab[data-lab="boot-log-annotator"] .bla-file { display: inline-flex; flex-wrap: wrap; gap: .4rem; align-items: center; min-height: 44px; max-width: 100%; }
+.lab[data-lab="boot-log-annotator"] .bla-file input { max-width: 100%; font: inherit; }
+.lab[data-lab="boot-log-annotator"] .bla-radios { display: flex; flex-wrap: wrap; gap: .25rem 1rem; align-items: center; margin: 0; padding: 0 .5rem .25rem; border: 1px solid var(--rule); border-radius: 6px; }
+.lab[data-lab="boot-log-annotator"] .bla-radios legend { font-size: .85rem; color: var(--muted); padding: 0 .25rem; }
+.lab[data-lab="boot-log-annotator"] .bla-radios span,
+.lab[data-lab="boot-log-annotator"] .bla-check { display: inline-flex; align-items: center; gap: .35rem; min-height: 44px; }
+.lab[data-lab="boot-log-annotator"] input[type="radio"],
+.lab[data-lab="boot-log-annotator"] input[type="checkbox"] { width: 1.15rem; height: 1.15rem; accent-color: var(--accent); }
+.lab[data-lab="boot-log-annotator"] .bla-btn { min-height: 44px; min-width: 44px; padding: 0 1rem; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 6px; cursor: pointer; transition: border-color 150ms; }
+.lab[data-lab="boot-log-annotator"] .bla-btn:hover:not(:disabled) { border-color: var(--ink); }
+.lab[data-lab="boot-log-annotator"] .bla-btn--primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+.lab[data-lab="boot-log-annotator"] button:focus-visible,
+.lab[data-lab="boot-log-annotator"] select:focus-visible,
+.lab[data-lab="boot-log-annotator"] input:focus-visible,
+.lab[data-lab="boot-log-annotator"] textarea:focus-visible,
+.lab[data-lab="boot-log-annotator"] pre:focus-visible,
+.lab[data-lab="boot-log-annotator"] a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.lab[data-lab="boot-log-annotator"] .bla-note { margin: 0; font-size: .88rem; color: var(--muted); }
+.lab[data-lab="boot-log-annotator"] .bla-note:empty,
+.lab[data-lab="boot-log-annotator"] .bla-prov:empty { display: none; }
+.lab[data-lab="boot-log-annotator"] .bla-prov { margin: 0; font-size: .8rem; color: var(--muted); overflow-wrap: anywhere; }
+.lab[data-lab="boot-log-annotator"] .bla-prov__src { font-family: var(--mono); }
+.lab[data-lab="boot-log-annotator"] .bla-msg { margin: 0; padding: .5rem .75rem; border: 2px dashed var(--warn); border-radius: 6px; }
+.lab[data-lab="boot-log-annotator"] .bla-msg[hidden] { display: none; }
+
+/* Verdict */
+.lab[data-lab="boot-log-annotator"] .bla-verdict { padding: .6rem .9rem; border-left: 4px solid var(--accent); background: var(--card); border-radius: 0 6px 6px 0; }
+.lab[data-lab="boot-log-annotator"] .bla-verdict p { margin: .35rem 0; }
+.lab[data-lab="boot-log-annotator"] h3 { font-family: var(--serif); font-size: 1.05rem; margin: 0 0 .3rem; }
+.lab[data-lab="boot-log-annotator"] h4 { font-size: .85rem; letter-spacing: .03em; margin: .8rem 0 .25rem; color: var(--muted); }
+.lab[data-lab="boot-log-annotator"] code { font-family: var(--mono); font-size: .9em; overflow-wrap: anywhere; }
+
+/* The hidden verdict of a broken run (native details: works without script, by keyboard too). */
+.lab[data-lab="boot-log-annotator"] .bla-reveal { margin-top: .35rem; }
+.lab[data-lab="boot-log-annotator"] .bla-reveal summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; color: var(--accent); }
+.lab[data-lab="boot-log-annotator"] .bla-reveal summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Intro and legend */
+.lab[data-lab="boot-log-annotator"] .bla-intro { margin: 0; font-size: .92rem; }
+.lab[data-lab="boot-log-annotator"] .bla-intro a { color: var(--accent); }
+.lab[data-lab="boot-log-annotator"] .bla-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .1rem 1rem; font-size: .8rem; color: var(--muted); }
+.lab[data-lab="boot-log-annotator"] .bla-legend__w { font-family: var(--mono); font-weight: 700; color: var(--ink); }
+
+/* Stage strip */
+.lab[data-lab="boot-log-annotator"] .bla-stages { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); }
+.lab[data-lab="boot-log-annotator"] .bla-stage { width: 100%; min-height: 44px; display: grid; grid-template-columns: auto 1fr; gap: 0 .5rem; align-items: center; text-align: left; padding: .35rem .55rem; font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-left-width: 6px; border-radius: 6px; cursor: pointer; }
+.lab[data-lab="boot-log-annotator"] .bla-stage:disabled { cursor: default; }
+.lab[data-lab="boot-log-annotator"] .bla-stage__n { grid-row: span 2; font-family: var(--mono); font-weight: 700; font-size: 1.1rem; }
+.lab[data-lab="boot-log-annotator"] .bla-stage__name { font-size: .85rem; font-weight: 600; }
+.lab[data-lab="boot-log-annotator"] .bla-stage__status { font-size: .78rem; color: var(--muted); }
+/* Status is in the text; the border style repeats it: solid done, dashed partial or started, dotted missing. */
+.lab[data-lab="boot-log-annotator"] .bla-stage--done { background: var(--card); }
+.lab[data-lab="boot-log-annotator"] .bla-stage--partial,
+.lab[data-lab="boot-log-annotator"] .bla-stage--started { border-style: dashed; border-left-style: solid; }
+.lab[data-lab="boot-log-annotator"] .bla-stage--missing { border-style: dotted; border-left-style: dotted; color: var(--muted); }
+.lab[data-lab="boot-log-annotator"] .bla-stage--absent { border-style: dotted; color: var(--muted); }
+.lab[data-lab="boot-log-annotator"] .bla-stage--next { box-shadow: 0 0 0 2px var(--danger); }
+.lab[data-lab="boot-log-annotator"] .bla-stage--next .bla-stage__status { color: var(--ink); font-weight: 600; }
+
+/* Stage colors (left borders only; S1..S8 is always printed beside them). */
+.lab[data-lab="boot-log-annotator"] .bla-s1 { --bla-c: var(--tok-kw); }
+.lab[data-lab="boot-log-annotator"] .bla-s2 { --bla-c: var(--tok-str); }
+.lab[data-lab="boot-log-annotator"] .bla-s3 { --bla-c: var(--tok-num); }
+.lab[data-lab="boot-log-annotator"] .bla-s4 { --bla-c: var(--tok-fn); }
+.lab[data-lab="boot-log-annotator"] .bla-s5 { --bla-c: var(--tok-ty); }
+.lab[data-lab="boot-log-annotator"] .bla-s6 { --bla-c: var(--accent); }
+.lab[data-lab="boot-log-annotator"] .bla-s7 { --bla-c: var(--ok); }
+.lab[data-lab="boot-log-annotator"] .bla-s8 { --bla-c: var(--warn); }
+.lab[data-lab="boot-log-annotator"] .bla-s0 { --bla-c: var(--rule); }
+.lab[data-lab="boot-log-annotator"] .bla-stage { border-left-color: var(--bla-c); }
+
+/* Log and detail */
+.lab[data-lab="boot-log-annotator"] .bla-main { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+
+@media (min-width: 720px) {
+  .lab[data-lab="boot-log-annotator"] .bla-main { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+  .lab[data-lab="boot-log-annotator"] .bla-detail { position: sticky; top: 1rem; max-height: 42rem; overflow-y: auto; }
+}
+.lab[data-lab="boot-log-annotator"] .bla-col { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: .4rem; }
+.lab[data-lab="boot-log-annotator"] .bla-logbox { position: relative; max-height: 34rem; overflow: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--code-bg); }
+.lab[data-lab="boot-log-annotator"] .bla-log { list-style: none; margin: 0; padding: .25rem 0; min-width: max-content; }
+.lab[data-lab="boot-log-annotator"] .bla-log--only .bla-li--quiet { display: none; }
+.lab[data-lab="boot-log-annotator"] .bla-empty { padding: .75rem; color: var(--code-muted); font-style: italic; }
+.lab[data-lab="boot-log-annotator"] .bla-line { display: grid; grid-template-columns: 3.2rem 2.2rem 6.5rem auto; align-items: baseline; gap: 0 .4rem; width: 100%; min-height: 28px; padding: .1rem .5rem .1rem .3rem; text-align: left; font-family: var(--mono); font-size: .8rem; line-height: 1.45; color: var(--code-ink); background: transparent; border: 0; border-left: 5px solid transparent; cursor: pointer; white-space: pre; }
+.lab[data-lab="boot-log-annotator"] .bla-line:hover { background: var(--accent-tint); }
+.lab[data-lab="boot-log-annotator"] .bla-line__n { color: var(--code-muted); text-align: right; }
+.lab[data-lab="boot-log-annotator"] .bla-line__tag { font-weight: 700; }
+.lab[data-lab="boot-log-annotator"] .bla-line__kind { color: var(--code-muted); font-size: .72rem; }
+.lab[data-lab="boot-log-annotator"] .bla-log--stage .bla-line { border-left-color: var(--bla-c); }
+.lab[data-lab="boot-log-annotator"] .bla-log--stage .bla-line.bla-k-plain .bla-line__text,
+.lab[data-lab="boot-log-annotator"] .bla-log--stage .bla-line.bla-k-info .bla-line__text { color: var(--code-muted); }
+.lab[data-lab="boot-log-annotator"] .bla-log--kind .bla-k-milestone { border-left-color: var(--ok); font-weight: 700; }
+.lab[data-lab="boot-log-annotator"] .bla-log--kind .bla-k-failure { border-left-color: var(--danger); font-weight: 700; }
+.lab[data-lab="boot-log-annotator"] .bla-log--kind .bla-k-machine { border-left-color: var(--accent); }
+.lab[data-lab="boot-log-annotator"] .bla-log--kind .bla-k-context { border-left-color: var(--warn); }
+.lab[data-lab="boot-log-annotator"] .bla-log--kind .bla-k-plain .bla-line__text,
+.lab[data-lab="boot-log-annotator"] .bla-log--kind .bla-k-info .bla-line__text { color: var(--code-muted); }
+/* Milestones and trouble stand out by weight and an underline too, in both modes. */
+.lab[data-lab="boot-log-annotator"] .bla-k-milestone .bla-line__text { font-weight: 700; }
+.lab[data-lab="boot-log-annotator"] .bla-k-failure .bla-line__text { font-weight: 700; text-decoration: underline wavy var(--danger); text-underline-offset: 3px; }
+/* Selection: a tint and an inner bar. Focus: an inset accent outline, so the scroll box never
+   clips it and the two never look alike. */
+.lab[data-lab="boot-log-annotator"] .bla-line--sel { background: var(--accent-tint); box-shadow: inset 4px 0 0 var(--ink); }
+.lab[data-lab="boot-log-annotator"] .bla-line:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+
+.lab[data-lab="boot-log-annotator"] .bla-detail { min-width: 0; padding: .75rem .9rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); }
+.lab[data-lab="boot-log-annotator"] .bla-detail p { margin: .4rem 0; }
+.lab[data-lab="boot-log-annotator"] .bla-detail__where { font-size: .82rem; color: var(--muted); }
+.lab[data-lab="boot-log-annotator"] .bla-detail__line,
+.lab[data-lab="boot-log-annotator"] .bla-dts { margin: .4rem 0; padding: .5rem .6rem; overflow-x: auto; font-size: .8rem; color: var(--code-ink); background: var(--code-bg); border-radius: 6px; }
+.lab[data-lab="boot-log-annotator"] .bla-detail__line code { white-space: pre-wrap; }
+.lab[data-lab="boot-log-annotator"] .bla-notes,
+.lab[data-lab="boot-log-annotator"] .bla-links { margin: .2rem 0; padding-left: 1.2rem; }
+.lab[data-lab="boot-log-annotator"] .bla-links li { margin: .2rem 0; }
+.lab[data-lab="boot-log-annotator"] .bla-links a { color: var(--accent); line-height: 1.8; }
+
+/* Narrow screens: a shorter log box so the panel below it starts on screen, and no type-word
+   column (the type stays in each line's accessible name and in the panel), so more text shows. */
+@media (max-width: 719.98px) {
+  .lab[data-lab="boot-log-annotator"] .bla-logbox { max-height: min(50vh, 18rem); }
+  .lab[data-lab="boot-log-annotator"] .bla-line { grid-template-columns: 2.4rem 1.8rem auto; padding-left: .15rem; }
+  .lab[data-lab="boot-log-annotator"] .bla-line__kind { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="boot-log-annotator"] .bla-btn { transition: none; }
+}

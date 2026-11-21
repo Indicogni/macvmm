@@ -1,0 +1,514 @@
+/* a64-encoder lab. Every rule is scoped under .lab[data-lab="a64-encoder"]; site tokens only. */
+
+.lab[data-lab="a64-encoder"] .a64 {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+  font-family: var(--sans);
+  color: var(--ink);
+}
+
+.lab[data-lab="a64-encoder"] .a64__h {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  margin: 0 0 0.4rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__hint,
+.lab[data-lab="a64-encoder"] .a64__help,
+.lab[data-lab="a64-encoder"] .a64__family {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0.2rem 0 0.5rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.lab[data-lab="a64-encoder"] .a64__scroll:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* ---- overview */
+.lab[data-lab="a64-encoder"] .a64__program {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__prow {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--card);
+  padding: 0.6rem 0.75rem;
+  min-width: 0;
+}
+
+.lab[data-lab="a64-encoder"] .a64__phead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__phead code {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.lab[data-lab="a64-encoder"] .a64__pword,
+.lab[data-lab="a64-encoder"] .a64__pasm {
+  font-weight: 600;
+}
+
+.lab[data-lab="a64-encoder"] .a64__pwhy {
+  color: var(--muted);
+  font-size: 0.875rem;
+  flex: 1 1 12rem;
+}
+
+/* No min-width: every layout has at most five fields, so the strip fits a 360px phone without
+   a sideways scroller (field widths stay proportional to bit counts down to each box's
+   min-width). */
+.lab[data-lab="a64-encoder"] .a64__strip {
+  display: flex;
+  min-width: 0;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.lab[data-lab="a64-encoder"] .a64__sfield {
+  flex-basis: 0;
+  min-width: 2.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.25rem 0.2rem;
+  border-left: 1px solid var(--rule);
+  background: var(--code-bg);
+  color: var(--code-ink);
+}
+
+.lab[data-lab="a64-encoder"] .a64__sfield:first-child {
+  border-left: 0;
+}
+
+.lab[data-lab="a64-encoder"] .a64__sname {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.lab[data-lab="a64-encoder"] .a64__sbits {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.lab[data-lab="a64-encoder"] .a64__srange {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--code-muted);
+}
+
+/* Fixed fields: a hatch pattern plus the word "fixed", never color alone. */
+.lab[data-lab="a64-encoder"] .is-fixed {
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--rule) 6px 8px);
+}
+
+/* ---- work area: controls, bits, readout (stacked below 720px) */
+.lab[data-lab="a64-encoder"] .a64__work {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 720px) {
+  .lab[data-lab="a64-encoder"] .a64__work {
+    grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+    grid-template-areas: "controls viz" "controls readout";
+    align-items: start;
+  }
+  .lab[data-lab="a64-encoder"] .a64__controls { grid-area: controls; }
+  .lab[data-lab="a64-encoder"] .a64__viz { grid-area: viz; min-width: 0; }
+  .lab[data-lab="a64-encoder"] .a64__readout { grid-area: readout; min-width: 0; }
+}
+
+.lab[data-lab="a64-encoder"] .a64__controls {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.lab[data-lab="a64-encoder"] .a64__modes {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem 0.6rem;
+  margin: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__modes legend {
+  font-weight: 600;
+  padding: 0 0.25rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__modes label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.lab[data-lab="a64-encoder"] .a64__modes input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+}
+
+.lab[data-lab="a64-encoder"] .a64__field {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.lab[data-lab="a64-encoder"] .a64__field[hidden],
+.lab[data-lab="a64-encoder"] .a64__revealrow[hidden] {
+  display: none;
+}
+
+.lab[data-lab="a64-encoder"] .a64__field label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__field .a64__help {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.lab[data-lab="a64-encoder"] input[type="text"],
+.lab[data-lab="a64-encoder"] select {
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  min-height: 44px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+}
+
+.lab[data-lab="a64-encoder"] select {
+  font-family: var(--sans);
+}
+
+.lab[data-lab="a64-encoder"] [aria-invalid="true"] {
+  border: 2px solid var(--danger);
+}
+
+.lab[data-lab="a64-encoder"] .a64__error {
+  color: var(--danger);
+  font-weight: 600;
+  margin: 0;
+  min-height: 0;
+}
+
+.lab[data-lab="a64-encoder"] .a64__note {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__error:empty,
+.lab[data-lab="a64-encoder"] .a64__note:empty,
+.lab[data-lab="a64-encoder"] .a64__changed:empty {
+  display: none;
+}
+
+.lab[data-lab="a64-encoder"] .a64__btn {
+  font: inherit;
+  font-weight: 600;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.lab[data-lab="a64-encoder"] .a64__btn:hover {
+  background: var(--accent-tint);
+}
+
+.lab[data-lab="a64-encoder"] .a64__btn--small {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.7rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__revealrow .a64__btn {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.lab[data-lab="a64-encoder"] .a64__revealrow .a64__btn:focus-visible {
+  outline: 2px solid var(--paper);
+  box-shadow: 0 0 0 4px var(--ink);
+}
+
+/* ---- bit grid: 32 columns, 28px minimum per cell, scrolls inside its own box */
+.lab[data-lab="a64-encoder"] .a64__grid {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 2px 0;
+  min-width: calc(32 * 28px);
+}
+
+.lab[data-lab="a64-encoder"] .a64__fields,
+.lab[data-lab="a64-encoder"] .a64__bits,
+.lab[data-lab="a64-encoder"] .a64__nums {
+  display: grid;
+  grid-template-columns: repeat(32, minmax(28px, 1fr));
+}
+
+.lab[data-lab="a64-encoder"] .a64__fh {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rule);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  margin: 0 1px;
+  padding: 0.15rem 0;
+  background-color: var(--accent-tint);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.lab[data-lab="a64-encoder"] .a64__fh.is-fixed {
+  background-color: var(--code-bg);
+}
+
+.lab[data-lab="a64-encoder"] .a64__fh--blank {
+  background: transparent;
+  border-style: dashed;
+  align-items: flex-start;
+  padding-left: 0.5rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__fname {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.lab[data-lab="a64-encoder"] .a64__frange {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.lab[data-lab="a64-encoder"] .a64__bit {
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  min-height: 40px;
+  min-width: 28px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--rule);
+  border-left-width: 0;
+  background: var(--card);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.lab[data-lab="a64-encoder"] .a64__bit:first-child {
+  border-left-width: 1px;
+}
+
+.lab[data-lab="a64-encoder"] .a64__bit.is-one {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.lab[data-lab="a64-encoder"] .a64__bit.is-fixed {
+  cursor: help;
+}
+
+/* A field boundary: a heavier rule on the left of the next field. */
+.lab[data-lab="a64-encoder"] .a64__bit.is-edge + .a64__bit {
+  border-left: 2px solid var(--ink);
+}
+
+/* Changed bits: dashed outline and underline, plus the readout lists them in text. */
+.lab[data-lab="a64-encoder"] .a64__bit.is-changed {
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+.lab[data-lab="a64-encoder"] .a64__bit:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+  position: relative;
+  z-index: 1;
+}
+
+.lab[data-lab="a64-encoder"] .a64__num {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---- readout */
+.lab[data-lab="a64-encoder"] .a64__dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.3rem 1rem;
+  margin: 0 0 0.6rem;
+}
+
+@media (max-width: 480px) {
+  .lab[data-lab="a64-encoder"] .a64__dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.lab[data-lab="a64-encoder"] .a64__dl dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__dl dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.lab[data-lab="a64-encoder"] .a64__dl code,
+.lab[data-lab="a64-encoder"] .a64__table code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  color: var(--code-ink);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+.lab[data-lab="a64-encoder"] .a64__big {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.lab[data-lab="a64-encoder"] .a64__meaning {
+  margin: 0 0 0.5rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__changed {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  width: 100%;
+  min-width: 26rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__table caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 0.3rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__table th,
+.lab[data-lab="a64-encoder"] .a64__table td {
+  border-top: 1px solid var(--rule);
+  padding: 0.3rem 0.5rem 0.3rem 0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.lab[data-lab="a64-encoder"] .a64__flabel {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.lab[data-lab="a64-encoder"] .a64__table th[scope="row"] {
+  font-family: var(--mono);
+}
+
+.lab[data-lab="a64-encoder"] .a64__summary {
+  font-size: 0.875rem;
+  color: var(--muted);
+  border-top: 1px solid var(--rule);
+  padding-top: 0.5rem;
+  margin: 0.6rem 0 0;
+}
+
+.lab[data-lab="a64-encoder"] .a64__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+/* ---- motion */
+.lab[data-lab="a64-encoder"] .a64.is-reduced * {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="a64-encoder"] .a64 * {
+    transition: none;
+  }
+}
+
+/* Phone width: the strip wraps field by field instead of splitting a field's bits across lines
+   (a split "1001 / 01" would misread as two values). Widths stop being proportional here; the
+   bit grid below keeps the exact layout. */
+@media (max-width: 480px) {
+  .lab[data-lab="a64-encoder"] .a64__strip {
+    flex-wrap: wrap;
+  }
+  .lab[data-lab="a64-encoder"] .a64__sfield {
+    flex: 1 1 auto;
+    min-width: 2.2rem;
+    padding: 0.25rem 0.3rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .lab[data-lab="a64-encoder"] .a64__sbits {
+    font-size: 0.75rem;
+    letter-spacing: 0;
+    overflow-wrap: normal;
+    white-space: nowrap;
+  }
+  .lab[data-lab="a64-encoder"] .a64__srange {
+    white-space: nowrap;
+  }
+}

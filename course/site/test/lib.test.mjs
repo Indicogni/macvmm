@@ -71,7 +71,8 @@ test("esc escapes the five HTML metacharacters and tolerates null", () => {
 
 test("slugify makes stable fragment ids", () => {
   assert.equal(slugify("Two stages, one map"), "two-stages-one-map");
-  assert.equal(slugify("The `ESR_EL2` *syndrome*"), "the-esrel2-syndrome");
+  assert.equal(slugify("The `ESR_EL2` *syndrome*"), "the-esr-el2-syndrome");
+  assert.equal(slugify("`hv_vcpu_run` is a system call"), "hv-vcpu-run-is-a-system-call");
   assert.equal(slugify("<b>A &amp; B</b>"), "a-b");
   assert.equal(slugify("!!!"), "section");
 });

@@ -1,6 +1,6 @@
-// Checkpoint 21 contract (L1), frozen from the reference test crates/vmm/tests/rom_dma.rs.
+// Checkpoint 21 contract, frozen from the reference test crates/vmm/tests/rom_dma.rs.
 // It names only items the chapter 21 lesson teaches; the harness runs it against your crates.
-//! PLAN M18 security test `rom_unreachable_by_dma` (threat model MEM-3; QEMU CVE-2021-3929
+//! Security test `rom_unreachable_by_dma` (see docs/security/threat-model.md; QEMU CVE-2021-3929
 //! is the class: device DMA aimed at memory the device must not reach).
 //!
 //! A virtio-rng driver posts one *writable* descriptor whose address is `0x0000_0000`, the
@@ -9,7 +9,7 @@
 //! to DEVICE_NEEDS_RESET (virtio 1.2 §2.1.2) and nothing is written anywhere (the `VecMemory`
 //! access log).
 //!
-//! **What actually keeps the ROM safe, and what this test checks.** MEM-3 rests on two facts:
+//! **What actually keeps the ROM safe, and what this test checks.** "ROM is unreachable" rests on two facts:
 //!
 //! 1. *The type split.* `RomRegion` is not a `GuestMemory`, so it can never be handed to a
 //!    virtio device: the ROM's bytes are unreachable by construction. That is why the

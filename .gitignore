@@ -4,3 +4,5 @@
 *.part
 .DS_Store
 /guests/target
+/course/site/dist
+/course/site/dist.partial

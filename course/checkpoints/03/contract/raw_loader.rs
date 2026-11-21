@@ -1,6 +1,6 @@
-// Checkpoint 03 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/raw_loader.rs.
+// Checkpoint 03 contract, frozen from the reference test crates/vmm/tests/raw_loader.rs.
 // It names only items the chapter 03 lesson teaches; the harness runs it against your crates.
-//! `--raw F@ADDR` parsing and placement (PLAN M3 host acceptance; threat model PATH-8).
+//! `--raw F@ADDR` parsing and placement (host acceptance; threat model: docs/security/threat-model.md).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::sync::Arc;

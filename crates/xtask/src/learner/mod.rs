@@ -89,9 +89,8 @@ impl Progress {
     /// Serialize (stable order, so an unchanged progress file is byte-identical).
     pub fn render(&self) -> String {
         let q = toml_lite::quote_array;
-        let mut s = String::from(
-            "# macvmm learner progress. Local only: never uploaded, no telemetry (PLAN M27).\n",
-        );
+        let mut s =
+            String::from("# macvmm learner progress. Local only: never uploaded, no telemetry.\n");
         s.push_str(&format!("started = {}\n", q(&self.started)));
         s.push_str(&format!("passed = {}\n", q(&self.passed)));
         s.push_str(&format!("borrowed = {}\n", q(&self.borrowed)));

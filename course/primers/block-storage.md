@@ -5,17 +5,9 @@ kind: primer
 minutes: 30
 runs: mac+browser
 required_by: [18]
-also_used_by: [22]
 labs: [durability-ladder]
 command: xxd -s 1080 -l 2 -p disk.img
 expect: 53ef
-objectives:
-- Convert between a filesystem block number, a 512-byte sector number and a byte offset in a raw disk image, and find a file's bytes in the image with `debugfs` and `xxd`.
-- Explain why macvmm uses raw images rather than qcow2, and what a sparse file and an APFS clone (`cp -c`) add.
-- Sketch ext4 on a whole disk (superblock at byte 1024, block groups, inodes, journal), create one with `mkfs.ext4` and check it with `e2fsck -fn`.
-- Explain how `root=/dev/vda` turns a virtio disk into the guest's root filesystem.
-- Trace a write through the guest page cache, the VMM, the host page cache and the drive's cache, say what survives a process kill and a power loss, and state what `fsync` and `F_FULLFSYNC` each guarantee on macOS.
-- Choose `pread`/`pwrite` over `lseek` plus `read`/`write` for a multi-threaded device, and use an advisory lock (`flock`) to stop two VMMs opening one image.
 ---
 
 # Where does "write succeeded" actually go?
@@ -593,6 +585,8 @@ and which call moves data past it.
   worker threads that make `pread`/`pwrite` necessary).
 
 ## Checkpoint
+
+:::checkpoint
 
 **What you can do now.** Make a raw image, put ext4 on it, find a file's sectors, check the
 filesystem, clone the image for free and lock it against a second user, and say what `fsync` and

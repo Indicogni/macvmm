@@ -4,13 +4,7 @@ slug: primecell-ids
 kind: primer
 minutes: 15
 required_by: [09]
-also_used_by: [14, 22]
 labs: []
-objectives:
-- Decode the eight identification bytes at offsets 0xFE0 to 0xFFC of a PrimeCell into part number, designer, revision, configuration and component ID, by hand or with shell arithmetic.
-- Trace, in order, how Linux turns a Device Tree node marked "arm,primecell" into a bound driver, naming the moment the IDs are read and what the driver's mask does.
-- Predict whether a given ID value matches a given driver table entry, and explain why the mask ignores some bits.
-- List the three things a VMM must get right for Linux to bind an emulated PrimeCell (the ID bytes, the size of the register window, the `apb_pclk` clock).
 ---
 
 # How does a device say what it is?
@@ -30,9 +24,9 @@ So who reads them? The **guest**, the operating system running inside our virtua
 And why does the Linux kernel, which has already been told "there is a PL011 at `0x0900_0000`",
 read them before it touches a single UART register?
 
-> **Predict.** Suppose our VMM answers zero for all eight. The UART registers themselves are
-> perfect. Does Linux still use the UART? Write down a guess. This primer gives you enough to
-> reason it out, and Chapter 14 shows the answer on a real boot log.
+:::predict Suppose our VMM answers zero for all eight. The UART registers themselves are perfect. Does Linux still use the UART? Write down a guess. This primer gives you enough to reason it out, and Chapter 14 shows the answer on a real boot log.
+No. The ID bytes must spell the cell ID `0xB105F00D`; with zeros, Linux never binds the PL011 driver and the device waits, deferred, forever. "How Linux matches on them" shows where, and Chapter 14 shows it on a real boot log.
+:::
 
 :::objectives
 - Decode the eight identification bytes at offsets `0xFE0` to `0xFFC` of a PrimeCell into part number, designer, revision, configuration and component ID, by hand or with shell arithmetic.
@@ -230,21 +224,7 @@ PrimeCells, it does something stricter: the node becomes an **AMBA device**, whi
 ID bytes. The steps are short enough to follow in full (Linux 6.18, `drivers/of/platform.c` and
 `drivers/amba/bus.c`). The numbered list after the diagram says the same thing in words.
 
-```mermaid
-flowchart TD
-  A["DT node lists 'arm,primecell'"] -->|creates| B["an AMBA device, not a platform device"]
-  B -->|checks| C{"'arm,primecell-periphid'<br/>property in the node?"}
-  C -->|yes: use it as the ID| M
-  C -->|no| D{"enable apb_pclk"}
-  D -->|no such clock| G["defer: try again later, forever"]
-  D -->|ok| R["read last 0x20 bytes of the window"]
-  R --> E{"cell ID is 0xB105F00D?"}
-  E -->|no| G
-  E -->|yes: store peripheral ID| M{"(ID & mask) == id<br/>for a driver's table entry?"}
-  M -->|yes| P{"probe: enable apb_pclk again"}
-  P -->|no such clock| X["probe fails, not bound"]
-  P -->|ok| H["the driver binds"]
-```
+:::diagram src=docs/diagrams/primecell-binding.svg alt="How Linux binds a PrimeCell device, and where it gives up"
 
 *Notice that `compatible` only gets the node onto the AMBA bus; the bytes the device reports
 decide which driver binds.*

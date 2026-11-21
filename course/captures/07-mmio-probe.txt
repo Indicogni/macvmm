@@ -1,5 +1,5 @@
 # scripts/capture.sh 07: run "mmio-probe" of course/checkpoints/07, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 07; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 07; never edit by hand (course/STYLE.md appendix A).
 $ macvmm run --mem 64M --testdev --raw {guests}/mmio-probe.bin@0x40080000 --trace exits:{out}/t.jsonl:mmio --timeout 10
 exit: 0
 --- stdout ---

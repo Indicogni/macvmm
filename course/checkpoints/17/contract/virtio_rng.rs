@@ -1,7 +1,6 @@
-// Checkpoint 17 contract (L1), frozen from the reference test crates/vmm/tests/virtio_rng.rs.
+// Checkpoint 17 contract, frozen from the reference test crates/vmm/tests/virtio_rng.rs.
 // It names only items chapters 15 to 17 teach; the harness runs it against your crates.
-//! PLAN M12 acceptance (host): the virtio-rng device model (virtio 1.2 §5.4; architecture
-//! §11.3; threat model VQ-8, VQ-9, VQ-10, VQ-11, FDT-3).
+//! Host acceptance: the virtio-rng device model (virtio 1.2 §5.4; threat model: docs/security/threat-model.md).
 //!
 //! Two levels: the device driven directly (`activate` + `process_queue`, as the worker calls
 //! it), and the whole path a guest uses (the virtio-mmio transport, a QueueNotify, the worker

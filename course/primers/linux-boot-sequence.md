@@ -4,13 +4,6 @@ slug: linux-boot-sequence
 kind: primer
 minutes: 30
 required_by: [14]
-also_used_by: [10, 18, 22]
-objectives:
-- Name, in order, the eight stages Linux passes through from the Image entry point to /init, and give one boot-log line that proves each stage finished
-- Explain why a kernel that dies before its console driver registers prints nothing at all without earlycon, and what earlycon changes
-- Trace how a Device Tree node with a compatible string becomes a bound driver, and name the two ways the binding can still fail
-- Read the time stamps in a boot log and say why they are all 0.000000 until the timer is set up
-- Say what /init is, why its exit panics the kernel, and why Alpine keeps most drivers in modules and its modloop
 labs: [boot-log-annotator]
 ---
 
@@ -45,7 +38,7 @@ boot log as a list of stages rather than a wall of text.
 - Say what `/init` is, why its exit panics the kernel, and why Alpine keeps most drivers in modules and its `modloop`.
 :::
 
-> **Vocabulary you need.** The prerequisites teach these properly; here is one line each so you
+> **Aside: vocabulary you need.** The prerequisites teach these properly; here is one line each so you
 > can keep reading.
 >
 > - **Image**: the kernel's executable file, which our VMM copies into guest RAM.
@@ -92,16 +85,7 @@ The kernel's boot path has three phases: a little assembly that makes C possible
 long C function, `start_kernel()`, that runs on the boot CPU alone (stages 2 to 4), and a first
 process that finishes the job and hands over to user space (stages 5 to 8).
 
-```mermaid
-flowchart TD
-    S1["1. head.S: MMU on, jump to C"] --> S2["2. start_kernel: banner, first DT read, command line"]
-    S2 -->|init_IRQ| S3["3. interrupt controller (GIC)"]
-    S3 -->|time_init| S4["4. timer, clocksource, delay loop"]
-    S4 -->|creates PID 1| S5["5. kernel_init: other CPUs, initcalls"]
-    S5 --> S6["6. drivers bind to DT nodes"]
-    S6 --> S7["7. initramfs unpacked"]
-    S7 -->|exec| S8["8. /init in user space"]
-```
+:::diagram src=docs/diagrams/linux-boot-stages.svg alt="The eight stages of a Linux boot, in order"
 
 *Read it top to bottom: each stage depends on the one above, so a hang tells you which box never
 finished. (Stages 6 and 7 overlap in time, as you will see; both must finish before stage 8.)*
@@ -183,11 +167,11 @@ That resolves the first puzzle. The line stamped `0.000000` was *written* at tim
 *transmitted* at about `0.0027`, together with every other line queued behind it. The stamp records
 when `printk` was called, not when the byte left the UART.
 
-> **Predict.** The kernel panics at `0.000000`, long before the console driver registers. What
-> appears on the serial port?
+:::predict The kernel panics at `0.000000`, long before the console driver registers. What appears on the serial port?
+Nothing. The panic message goes into the log buffer, the CPU stops, and no console ever exists to replay it.
+:::
 
-Nothing. The panic message goes into the log buffer, the CPU stops, and no console ever exists to
-replay it. This is the second puzzle's silent run. The fix is a tiny, separate console that works
+That is the second puzzle's silent run. The fix is a tiny, separate console that works
 from the very first `printk`: **earlycon**. On the command line, `earlycon=pl011,0x9000000` tells
 the kernel "there is a PL011 at this physical address; to print a byte, store it to the data
 register at that address". That is plain MMIO, one store per byte. The real driver does much more:
@@ -294,8 +278,10 @@ into every core, and the kernel finds it through the `/timer` node:
 Three words need earning. A **clocksource** is the kernel's abstraction of "a counter I can read
 to know what time it is"; `arch_sys_counter` is the Generic Timer's counter, a register named
 `CNTVCT_EL0` that counts up 24 million times a second. `(virt)` means the kernel uses the
-*virtual* timer, the one Hypervisor.framework tells our VMM about with the exit reason
-`HV_EXIT_REASON_VTIMER_ACTIVATED`. **sched_clock** is the fast clock that `printk` stamps messages
+*virtual* timer, the one Hypervisor.framework gives each vCPU. With the in-kernel interrupt
+controller that chapter 14 uses, Hypervisor.framework delivers its interrupt by itself; only with
+`--irqchip none` does it tell our VMM, with the exit reason `HV_EXIT_REASON_VTIMER_ACTIVATED`
+(chapter 11). **sched_clock** is the fast clock that `printk` stamps messages
 with. Look at the stamps: every line up to and including the `sched_clock` line reads `0.000000`,
 and the very next line reads `0.000111`. **Time stamps stay at zero until `sched_clock` is
 registered (the third line above)**, because before that there is no clock to read them from.
@@ -445,8 +431,8 @@ the background while other initcalls continue. You can see the overlap:
 "Freeing initrd memory" (initrd is the older name for the same idea) means the archive was unpacked
 and its RAM returned; it is stage 7's milestone. If our VMM had placed the initramfs on top of the
 kernel's BSS (the memory the kernel zeroes at start for its uninitialised variables; the bug in the
-`arm64-boot-protocol` primer), this is where you would see it: an error about a bad archive, far
-from its cause.
+`arm64-boot-protocol` primer), this is where you would see it, far from its cause: an error about a bad
+archive, or a silent stall before `Unpacking initramfs...` (chapter 13's capture shows the stall).
 
 Then the kernel frees the code it needed only for boot and executes `/init` from the new
 filesystem, as PID 1, in **user space**: an ordinary program running at EL0. `Run /init as init
@@ -530,7 +516,7 @@ same order. The last column is where in macvmm the evidence lives if the stage n
 | 1 | head.S, MMU on | `Booting Linux on physical CPU 0x...` | entry state, placement (ch06, ch13) |
 | 2 | First DT read | `Machine model: ...` (with earlycon, then `earlycon: pl11 at MMIO ...`) | `x0`, the DTB header (ch10, ch13); for earlycon, the command line and PL011 8-bit stores (ch09) |
 | 3 | Interrupt controller | `GICv3: CPU0: found redistributor 0 ...` | `/intc` node, GIC bases (ch12) |
-| 4 | Timer and delay loop | `arch_timer: cp15 timer running at 24.00MHz (virt).` | `/timer` node, vtimer exits (ch11) |
+| 4 | Timer and delay loop | `arch_timer: cp15 timer running at 24.00MHz (virt).` | `/timer` node (compatible, PPIs), `CNTFRQ_EL0` (ch11); vtimer exits only with `--irqchip none` |
 | 5 | First process, other CPUs | `smp: Brought up ...` | PSCI `CPU_ON` (ch08, ch20) |
 | 6 | Driver binding | `ttyAMA0 at MMIO 0x9000000`, `rtc-pl031 ... registered as rtc0` | `compatible`, `reg`, ID registers (ch09, ch10) |
 | 7 | initramfs | `Freeing initrd memory: ...` | `/chosen` initrd addresses, BSS overlap (ch13) |

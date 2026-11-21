@@ -1,5 +1,5 @@
 # scripts/capture.sh 25: run "phase-toctou" of course/checkpoints/25, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (course/STYLE.md appendix A).
 $ course/checkpoints/25/hostile.sh toctou {macvmm} {guests}/hostile-smp {out}
 exit: 0
 --- stdout ---

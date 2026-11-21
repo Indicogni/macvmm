@@ -1,0 +1,6 @@
+{
+  "title": "Frame dissector",
+  "goal": "Split one virtio-net buffer into its 12-byte header, Ethernet, ARP or IPv4 and ICMP fields, then see what macvmm's device and the receiving guest do with it.",
+  "reference": "p=arp;h=10",
+  "captures": ["captures/19-legacy-hdr-a.txt", "captures/19-legacy-hdr-b.txt"]
+}

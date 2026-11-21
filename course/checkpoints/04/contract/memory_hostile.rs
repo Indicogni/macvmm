@@ -1,6 +1,6 @@
-// Checkpoint 04 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/memory_hostile.rs.
+// Checkpoint 04 contract, frozen from the reference test crates/vmm/tests/memory_hostile.rs.
 // It names only items the chapter 04 lesson teaches; the harness runs it against your crates.
-//! Hostile-input tests for guest memory (PLAN M2, threat model MEM-2, MEM-3, MEM-6, MEM-8).
+//! Hostile-input tests for guest memory (see docs/security/threat-model.md).
 //!
 //! Every value here is one a guest (through a descriptor, a register or a DMA address) or a
 //! broken loader could hand the VMM. Each access must come back `Err` with nothing copied,

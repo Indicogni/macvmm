@@ -1,0 +1,4 @@
+{
+  "title": "PSTATE builder",
+  "goal": "Build the boot value 0x3c5 from its fields, find the one bit that makes the EL1t mistake 0x3c4, and see why HVF refuses EL2 (0x3c9)."
+}

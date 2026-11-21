@@ -1,0 +1,4 @@
+{
+  "title": "SMP boot timeline",
+  "goal": "Step through how a secondary CPU starts: the boot CPU calls CPU_ON, the VMM fills a mailbox, the parked thread wakes and enters the guest with the context in x0; then break the MPIDR and watch the three lookups disagree."
+}

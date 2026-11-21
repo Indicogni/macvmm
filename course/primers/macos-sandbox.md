@@ -4,18 +4,10 @@ slug: macos-sandbox
 kind: primer
 minutes: 25
 required_by: [25]
-also_used_by: [09, 18, 19, 26]
 labs: []
 runs: mac
 command: sandbox-exec -p '(version 1)(allow default)(deny file-read* (subpath "/private/etc"))' /bin/cat /etc/hosts 2>&1
 expect: cat: /etc/hosts: Operation not permitted
-objectives:
-- Write a three-line SBPL profile, run a command under it with `sandbox-exec`, and find the kernel's denial message with `log show`
-- Predict, for a `(deny default)` profile applied with `sandbox_init`, which of `open`, `socket`, `connect`, `read` on an already-open fd, and `posix_spawn` succeed, and explain the rule ("checked when a resource is acquired") that decides it
-- Name the operation classes macvmm's lockdown denies (file, network, `process-exec`, `process-fork`, `mach-lookup`, `iokit-open`) and say in one sentence what a Mach service and an IOKit user client are
-- Say which parts of the macOS sandbox are documented, which are only in a header (`[H]`), and which were observed on this machine (`[V]`)
-- Use `setrlimit` to make "no core dumps" irreversible, compute a file's mode from `umask`, and show with a child process what `O_CLOEXEC` changes
-- Explain why macvmm's `run` path never calls `fork` or `exec`
 ---
 
 # One call, and the file is gone
@@ -32,7 +24,7 @@ why macvmm makes exactly this kind of call before it runs a single guest instruc
 - Write a three-line SBPL profile, run a command under it with `sandbox-exec`, and find the kernel's denial message with `log show`.
 - Predict, for a `(deny default)` profile applied with `sandbox_init`, which of `open`, `socket`, `connect`, `read` on an already-open fd, and `posix_spawn` succeed, and explain the rule ("checked when a resource is acquired") that decides it.
 - Name the operation classes macvmm's lockdown denies (file, network, `process-exec`, `process-fork`, `mach-lookup`, `iokit-open`) and say in one sentence what a Mach service and an IOKit user client are.
-- Say which parts of the macOS sandbox are documented, which are only in a header (`[H]`), and which were observed on this machine (`[V]`).
+- Say which parts of the macOS sandbox are documented, which are only written in a header, and which we checked on a real Mac.
 - Use `setrlimit` to make "no core dumps" irreversible, compute a file's mode from `umask`, and show with a child process what `O_CLOEXEC` changes.
 - Explain why macvmm's `run` path never calls `fork` or `exec`.
 :::
@@ -166,13 +158,7 @@ process's profile, the rule list it was given, and either lets the call continue
 with `EPERM` and writes a report to the system log. Apple's internal name for this subsystem is
 **Seatbelt**.
 
-```mermaid
-graph LR
-  P["process<br/>open /etc/hosts"] -- "system call" --> K["XNU: path lookup"]
-  K -- "MAC hook asks" --> S["Sandbox.kext<br/>evaluates profile"]
-  S -- "allow" --> R["fd returned"]
-  S -- "deny" --> E["EPERM + log line<br/>(kernel, Sandbox)"]
-```
+:::diagram src=docs/diagrams/sandbox-check.svg alt="How a sandbox check happens on a file open"
 
 *Caption: the check sits inside the kernel, on the call that acquires the resource; the process
 cannot skip it.*
@@ -230,11 +216,11 @@ It is a symbolic link to `/private/etc`. Now try a `literal` rule on the path as
 sandbox-exec -p '(version 1)(allow default)(deny file-read* (literal "/etc/hosts"))' /bin/cat /etc/hosts
 ```
 
-> **Predict.** Does the sandbox match the string you typed, `/etc/hosts`, or the path the kernel
-> ends up at? So: does `cat` print the file, or `Operation not permitted`?
+:::predict Does the sandbox match the string you typed, `/etc/hosts`, or the path the kernel ends up at? So: does `cat` print the file, or `Operation not permitted`?
+It prints the file. The sandbox matches the path the kernel actually resolves, `/private/etc/hosts`, not the string you typed.
+:::
 
-It prints the file. The sandbox matches the path the kernel actually resolves,
-`/private/etc/hosts`, not the string you typed. Rules on `/etc/...`,
+So rules on `/etc/...`,
 `/tmp/...` and `/var/...` must name the `/private/...` path. With `subpath "/private/etc"` the
 denial lands:
 
@@ -316,13 +302,11 @@ still matches.
 
 Why should a VMM care about these two? Because they are doors to code outside our process. Every
 daemon or driver we can reach is more attack surface for someone who has taken over macvmm. The
-good news, measured for this project: VM creation, vCPU runs and VM destruction under
-`sandbox-exec` with `(deny default)` needed **no** `mach-lookup` and **no** `iokit-open`. We
-mark claims like this one `[V]`, "observed on this machine". Later you will also see `[H]`, "read
-in a header or man page", and `[U]`, "not yet verified". The measurement is recorded in
-macvmm's `docs/security/threat-model.md` §13, which is optional reading now and the subject of
-Chapter 25. How Hypervisor.framework reaches the kernel is not documented; we only know what it
-did not need.
+good news, which we checked on a real Mac (macOS 27.2.1): VM creation, vCPU runs and VM
+destruction under `sandbox-exec` with `(deny default)` needed **no** `mach-lookup` and **no**
+`iokit-open`. Chapter 25 repeats that measurement with the reference VMM's own sandbox tests and
+shows the captured runs. How Hypervisor.framework reaches the kernel is not documented; we only
+know what it did not need.
 
 ## Watching the sandbox say no
 
@@ -428,21 +412,21 @@ the dynamic loader reading libraries, the program reading its own arguments' fil
 is denied. `sandbox_init` is called by the program itself, after it has done its set-up, so the
 profile can be far stricter. That is the pattern macvmm wants.
 
-Now the warning from the start. Here is what is and is not promised, using the tags from
-earlier: `[H]` read in a header or man page, `[V]` observed on this machine, `[U]` not yet
-verified. The "threat model" and "PLAN" references point into macvmm's `docs/`; they are optional
-reading until Chapter 25.
+Now the warning from the start. Here is what is and is not promised. The right-hand column says
+where each claim comes from: a header or man page Apple ships, or a check we ran on a real Mac.
+Where a row says "macvmm's tests", the check comes from the reference VMM's own sandbox test
+suite, which Chapter 25 walks through.
 
 | Claim | Status |
 |---|---|
-| `sandbox_init` and `sandbox-exec` are deprecated; Apple points to App Sandbox | `[H]` `sandbox.h`, `man sandbox-exec` |
-| `sandbox_init`'s `flags` "Must be `SANDBOX_NAMED`. All other values are reserved." | `[H]` macOS 27.2 SDK `sandbox.h` |
-| The named profiles (`kSBXProfileNoNetwork` …) must not be used with SDK 27.0 or later | `[H]` SDK `sandbox_init(3)` |
-| Passing SBPL text with `flags = 0` works | `[V]` macOS 27.2.1; undocumented, may break in any release |
-| Held fds keep working; checks happen at acquisition | documented in `sandbox(7)`; `[V]` for the cases above |
+| `sandbox_init` and `sandbox-exec` are deprecated; Apple points to App Sandbox | Read in the `sandbox.h` header and `man sandbox-exec` |
+| `sandbox_init`'s `flags` "Must be `SANDBOX_NAMED`. All other values are reserved." | Read in the macOS 27.2 SDK's `sandbox.h` header |
+| The named profiles (`kSBXProfileNoNetwork` …) must not be used with SDK 27.0 or later | Read in the SDK's `sandbox_init(3)` man page |
+| Passing SBPL text with `flags = 0` works | Checked on a real Mac, macOS 27.2.1; undocumented, so it may break in any release |
+| Held fds keep working; checks happen at acquisition | Documented in `sandbox(7)`, and checked on a real Mac for the cases above |
 | There is no public SBPL reference | true; Apple's own profiles in `/System/Library/Sandbox/Profiles` (553 files here) are the best reading |
-| HVF works under an exec-time `(deny default)` profile with no `mach-lookup` or `iokit-open` | `[V]` threat model §13 |
-| HVF keeps working after a *mid-process* `sandbox_init`, including GIC, SMP and reboot | `[U]` until PLAN M22's self-test runs |
+| HVF works under an exec-time `(deny default)` profile with no `mach-lookup` or `iokit-open` | Checked on a real Mac by macvmm's tests, macOS 27.2.1 |
+| HVF keeps working after a *mid-process* `sandbox_init`, including the in-kernel GIC, 4 vCPUs created after it, a full reboot and disk I/O | Checked on a real Mac by macvmm's tests, macOS 27.2.1 (`macvmm run --sandbox`) |
 
 This is why macvmm's sandbox is opt-in (`--sandbox`), fails closed (it exits if `sandbox_init`
 returns an error, unless you ask for `--sandbox=best-effort`), and has a `sandbox-exec` wrapper as
@@ -453,12 +437,12 @@ its fallback.
 > a per-app container directory at launch. It fits a GUI app with a bundle; it fits a CLI badly,
 > because the CLI cannot open the paths you pass it without extra entitlements. Firecracker and
 > crosvm go further than either and split device emulation into separate, more tightly confined
-> processes, which is macvmm's post-v1 direction.
+> processes, which is where macvmm would go next.
 
 ## The profile macvmm applies, in words
 
 Chapter 25 builds `crates/macvmm/src/sandbox.rs`, which holds the profile as one string. Its
-rules (recorded as SBX-2 in `docs/security/threat-model.md`, optional reading) are:
+rules are:
 
 - `(deny default)`, so anything not listed is refused;
 - no path-based `file-read*` or `file-write*`, and no `file-write-create`, so held fds work and
@@ -664,6 +648,8 @@ everything start-up needs; `sandbox_init` after set-up can deny all of it.
   async-signal-safe functions before `exec`.
 
 ## Checkpoint
+
+:::checkpoint
 
 **What you can now do.** Run a command under a profile and find the denial:
 

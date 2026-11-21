@@ -1,0 +1,315 @@
+/* trap-or-not lab. Every rule is scoped to this lab and uses site tokens only (LABS.md section 5).
+   Status is never color alone: each feedback card carries a text label, a mark (= / ≠ / ?) and a
+   border style (solid for same, dashed for different, dotted for unsorted). "Different" uses the
+   attention tone (--warn), not --danger: the lab is unscored, and a different guess is not an
+   error. */
+
+.lab[data-lab="trap-or-not"] .ton__help,
+.lab[data-lab="trap-or-not"] .ton__sortfirst,
+.lab[data-lab="trap-or-not"] .ton__hint,
+.lab[data-lab="trap-or-not"] .ton__after {
+  color: var(--muted);
+  margin: 0 0 0.75rem;
+}
+
+.lab[data-lab="trap-or-not"] .ton__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+
+.lab[data-lab="trap-or-not"] .ton__btn {
+  min-height: 44px;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.lab[data-lab="trap-or-not"] .ton__btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.lab[data-lab="trap-or-not"] .ton__btn:focus-visible,
+.lab[data-lab="trap-or-not"] .ton__select:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.lab[data-lab="trap-or-not"] .ton__btn--primary:focus-visible {
+  outline-color: var(--paper);
+  box-shadow: 0 0 0 5px var(--ink);
+}
+
+.lab[data-lab="trap-or-not"] .ton__progress {
+  margin: 0 0 0 auto;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.lab[data-lab="trap-or-not"] .ton__board {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.lab[data-lab="trap-or-not"] .ton__buckets {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+  min-width: 0;
+}
+
+@media (min-width: 720px) {
+  .lab[data-lab="trap-or-not"] .ton__buckets {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .lab[data-lab="trap-or-not"] .ton__zone--pool .ton__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.5rem;
+  }
+}
+
+.lab[data-lab="trap-or-not"] .ton__zone {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+}
+
+.lab[data-lab="trap-or-not"] .ton__zone--pool {
+  background: var(--card);
+}
+
+.lab[data-lab="trap-or-not"] .ton__zone--over {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+  background: var(--accent-tint);
+}
+
+.lab[data-lab="trap-or-not"] .ton__zonehead {
+  margin: 0 0 0.25rem;
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.lab[data-lab="trap-or-not"] .ton__count {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.lab[data-lab="trap-or-not"] .ton__hint {
+  font-size: 0.875rem;
+}
+
+.lab[data-lab="trap-or-not"] .ton__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lab[data-lab="trap-or-not"] .ton__empty {
+  padding: 0.75rem;
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.lab[data-lab="trap-or-not"] .ton__card {
+  min-width: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--card);
+  transition: opacity 150ms ease;
+}
+
+.lab[data-lab="trap-or-not"] .ton__card--dragging {
+  opacity: 0.5;
+}
+
+.lab[data-lab="trap-or-not"] .ton__card--same {
+  border-color: var(--ok);
+  border-style: solid;
+}
+
+.lab[data-lab="trap-or-not"] .ton__card--different {
+  border-color: var(--warn);
+  border-style: dashed;
+}
+
+.lab[data-lab="trap-or-not"] .ton__card--unsorted {
+  border-style: dotted;
+}
+
+/* Only the title is draggable (the select must never sit inside a draggable element). */
+.lab[data-lab="trap-or-not"] .ton__plain {
+  margin: 0 0 0.4rem;
+  overflow-wrap: anywhere;
+  cursor: grab;
+}
+
+.lab[data-lab="trap-or-not"] .ton__grip {
+  color: var(--muted);
+  user-select: none;
+}
+
+.lab[data-lab="trap-or-not"] .ton__insn {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  white-space: nowrap;
+}
+
+.lab[data-lab="trap-or-not"] .ton__sellabel {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lab[data-lab="trap-or-not"] .ton__select {
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.lab[data-lab="trap-or-not"] .ton__vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lab[data-lab="trap-or-not"] .ton__fb {
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.9rem;
+}
+
+.lab[data-lab="trap-or-not"] .ton__status {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+}
+
+.lab[data-lab="trap-or-not"] .ton__status--same { color: var(--ok); }
+.lab[data-lab="trap-or-not"] .ton__status--different { color: var(--warn); }
+.lab[data-lab="trap-or-not"] .ton__status--unsorted { color: var(--muted); }
+
+.lab[data-lab="trap-or-not"] .ton__mark {
+  display: inline-block;
+  min-width: 1.4em;
+  text-align: center;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-family: var(--mono);
+}
+
+.lab[data-lab="trap-or-not"] .ton__ref {
+  margin: 0 0 0.35rem;
+}
+
+.lab[data-lab="trap-or-not"] .ton__dl {
+  margin: 0;
+}
+
+.lab[data-lab="trap-or-not"] .ton__dl dt {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 0.35rem;
+}
+
+.lab[data-lab="trap-or-not"] .ton__dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.lab[data-lab="trap-or-not"] .ton__more {
+  margin-top: 0.5rem;
+}
+
+.lab[data-lab="trap-or-not"] .ton__more summary {
+  cursor: pointer;
+  padding: 0.6rem 0; /* a 44px target; display stays list-item so the disclosure marker shows */
+}
+
+.lab[data-lab="trap-or-not"] .ton__readoutbox {
+  margin-top: 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+}
+
+.lab[data-lab="trap-or-not"] .ton__label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--code-muted);
+}
+
+.lab[data-lab="trap-or-not"] .ton__readout {
+  margin: 0.2rem 0 0;
+  min-height: 1.5em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="trap-or-not"] .ton__card {
+    transition: none;
+  }
+}
+
+/* Hidden by the view (empty-bucket notes, the after-text, Undo reset); a display rule above
+   must never override the attribute. */
+.lab[data-lab="trap-or-not"] [hidden] {
+  display: none !important;
+}
+
+.lab[data-lab="trap-or-not"] p.ton__empty {
+  margin: 0;
+}
+

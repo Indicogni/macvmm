@@ -4,17 +4,10 @@ slug: smccc
 kind: primer
 minutes: 20
 required_by: [03]
-also_used_by: [08, 10, 20, 25]
 labs: [sysreg-smccc]
 runs: mac+browser
 command: printf '0x%08X\n' $(( (1<<31) | (1<<30) | (6<<24) | 0x4D01 ))
 expect: 0xC6004D01
-objectives:
-- Decode any 32-bit SMCCC function ID into its four fields (fast or yielding, 32- or 64-bit convention, owning entity, function number) and encode one from its fields, by hand or in the shell.
-- Name which registers carry the function ID, the arguments and the results of an SMCCC call, and contrast them with the AAPCS64 rules from `aarch64-reading`.
-- Explain why calls to a higher exception level pass everything in registers and nothing in memory.
-- Distinguish the two conduits (HVC to EL2, SMC to EL3), say how a guest learns which one to use, and state where the PC points after each exit under HVF.
-- Predict what a well-behaved callee returns for a function ID it does not implement, and explain how a caller discovers what is implemented before using it.
 ---
 
 # Who decided that 0x8400_0008 means "power off"?
@@ -44,7 +37,7 @@ it cold?
   recapped in the box below.
 :::
 
-> **Words you will meet.**
+> **Aside: words you will meet.**
 > - **Exception levels.** An AArch64 CPU always runs at one of four privilege levels, and a higher
 >   number means more privilege: **EL0** for user programs, **EL1** for an operating-system
 >   kernel, **EL2** for a hypervisor, **EL3** for the most trusted firmware. Code moves *up* a level
@@ -75,7 +68,9 @@ int main(void) {
 }
 ```
 
-> **Predict.** Does the second line ever print?
+:::predict Does the second line ever print?
+No. `hvc` is undefined at EL0, the level your program runs at: the CPU refuses it, and the kernel kills the program with SIGILL (exit status 132). The run below shows it.
+:::
 
 ```sh
 clang -o hvc hvc.c
@@ -118,7 +113,7 @@ A call to a higher level breaks two assumptions behind those rules. First, there
 address to branch to; the caller can only raise an exception, and the higher level decides what
 runs. Second, the two sides do not share a view of memory.
 
-> **Sidebar: two kinds of address.** Inside the guest, a program's pointers are *guest virtual*
+> **Aside: two kinds of address.** Inside the guest, a program's pointers are *guest virtual*
 > addresses. The guest kernel's **page tables**, data structures in guest RAM, map each of them
 > to a *guest-physical* address, a place in the RAM we gave the VM. The **MMU** (memory
 > management unit) is the part of the CPU that does this translation on every access, using the
@@ -292,24 +287,13 @@ SMCCC call, and macvmm answers it with "not supported".
 Here is the whole round trip for a fast call over HVC. The guest is untrusted: everything it hands
 us must be checked before we act on it.
 
-```mermaid
-sequenceDiagram
-    participant G as Guest kernel (EL1, untrusted)
-    participant H as HVF (EL2)
-    participant V as macvmm (host process)
-    G->>G: put function ID in w0, arguments in x1..
-    G->>H: executes hvc #0 (exception to EL2)
-    H->>V: hv_vcpu_run returns, ESR_EL2 class 0x16 (HVC)
-    V->>V: reads x0..x3, decodes the ID, acts
-    V->>H: writes the result into x0, calls hv_vcpu_run
-    H->>G: guest resumes after the hvc, reads x0
-```
+:::diagram src=docs/diagrams/smccc-call.svg alt="One SMCCC call through HVF, from the guest to macvmm and back"
 
 *Everything passed between guest and VMM is a register value; the guest never learns it was
 paused.*
 
-Both conduits work under HVF, but they land differently, and spike results #5 and #6 in
-`spikes/hvf-hello/RESULTS.md` record what this machine does. After an HVC exit the PC already
+Both conduits work under HVF, but they land differently; we checked both on this machine with a
+two-instruction test guest. After an HVC exit the PC already
 points past the `hvc`, so we resume without touching it. After an SMC exit (exception class
 `0x17`) the PC still points *at* the `smc`, and the VMM must add 4 or the guest will execute the
 same call forever.
@@ -354,7 +338,7 @@ macvmm's own test guests skip discovery, because they are built for macvmm and n
 
 The collision is real, not theoretical, and we measured it on this machine. Hypervisor.framework
 itself answers function IDs `0xC600_0000` to `0xC600_001F` inside the macOS kernel: the guest gets
-`0xFFFF_FFFF` back in `x0` and our VMM never sees an exit (`docs/research/hvf-api.md` §15). macvmm's
+`0xFFFF_FFFF` back in `x0` and our VMM never sees an exit (a probe guest that called each ID in turn showed it). macvmm's
 debug calls were first planned as `0xC600_0001` to `0xC600_0004`; a guest calling the planned
 `DEBUG_PUTC` printed nothing, and its `DEBUG_EXIT` was silently swallowed. So they moved to
 `0xC600_4D01` to `0xC600_4D04`, well clear of that block. KVM shows the same thing from another
@@ -447,6 +431,8 @@ half of the lab decodes `mrs`/`msr` instruction words, which chapter 08 needs.
 
 ## Checkpoint
 
+:::checkpoint
+
 - **What you can do now.** Encode the debug hypercall from its fields and check the result:
   `printf '0x%08X\n' $(( (1<<31) | (1<<30) | (6<<24) | 0x4D01 ))` prints `0xC6004D01`. Decode any
   ID into its four fields, say which registers carry the ID, arguments and results, and say what an
@@ -478,5 +464,3 @@ half of the lab decodes `mrs`/`msr` instruction words, which chapter 08 needs.
 - Linux, `include/linux/arm-smccc.h` (the same bit fields as C macros, owner constants and the
   vendor-hypervisor Call UID included) and `Documentation/virt/kvm/arm/hypercalls.rst` (a real
   hypervisor's vendor-specific calls).
-- macvmm, `docs/research/hvf-api.md` §15: the probe that found HVF's private `0xC600_0000` to
-  `0xC600_001F` block.

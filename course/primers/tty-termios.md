@@ -4,18 +4,10 @@ slug: tty-termios
 kind: primer
 minutes: 20
 required_by: [09]
-also_used_by: [14, 25]
 labs: [ansi-filter]
 runs: mac+browser
 command: printf 'x\033[31my\n' | xxd -p
 expect: 781b5b33316d790a
-objectives:
-- Say what a TTY and a pseudo-terminal (pty) are, name the two ends of a pty and which program holds each, and use `tty` and `script` to find out whether a program's input is a terminal.
-- Predict what a program reads in canonical mode and in raw mode for the same keystrokes (including Delete, Return and Ctrl-C), and check the prediction with `od -c`.
-- Explain, step by step, how the byte 0x03 becomes SIGINT for the foreground job, which termios flag controls it, and why the shell then reports exit status 130.
-- Save a terminal's settings with `stty -g`, change them, and restore them exactly; list the exit paths on which a program that sets raw mode must restore it.
-- Take apart a CSI escape sequence (ESC, `[`, parameter bytes, intermediate bytes, final byte) and an OSC string, and say what `CSI 31 m`, `CSI 6 n` and `OSC 0 ; text BEL` ask a terminal to do.
-- Give one example each of guest output that changes, queries and spoofs the host terminal, and say why macvmm filters guest output with an allow-list, whether or not stdout is a terminal.
 ---
 
 # Where does Ctrl-C go?
@@ -82,16 +74,7 @@ it runs hold the replica end, the device `/dev/ttys001`; that replica is the TTY
 ends sits the kernel's terminal driver, and the most interesting part of it, the **line
 discipline**.
 
-```mermaid
-flowchart LR
-  K[Your keyboard] -->|keystrokes| T[Terminal.app]
-  T -->|writes bytes| M[pty primary end<br/>held by Terminal.app]
-  M -->|passes through| LD[line discipline<br/>in the macOS kernel]
-  LD -->|delivers| S["pty replica end, /dev/ttys001<br/>held by the shell"]
-  S -->|read by| P[shell, sleep, macvmm]
-  P -->|output bytes| LD
-  LD -->|draws on screen| T
-```
+:::diagram src=docs/diagrams/tty-path.svg alt="The path of a keystroke through a terminal and back"
 
 *Notice that every byte you type, and every byte a program prints, passes through the line
 discipline in the kernel. Neither the app nor the program talks to the other directly.*
@@ -201,10 +184,9 @@ moment you press it, it does its own echo, and it wants Ctrl-C as a byte it can 
 that, a program turns most of the line discipline off. The usual name for "almost everything
 off" is **raw mode**.
 
-> **Predict.** Below, we save the settings, switch to raw mode with echo off, and read six bytes.
-> You will type `a`, `b`, `c`, Delete, `d`, Return. What does `od -c` print, and where on the
-> screen does its second line start? Expect nothing to appear while you type: the command has not
-> hung, and it returns by itself after the sixth key.
+:::predict Below, we save the settings, switch to raw mode with echo off, and read six bytes. You will type `a`, `b`, `c`, Delete, `d`, Return. What does `od -c` print, and where on the screen does its second line start? Expect nothing to appear while you type: the command has not hung, and it returns by itself after the sixth key.
+`a b c 177 d \r`: every key arrives as sent, Delete as the byte 0177 and Return as `\r`. The second line starts where the first ended, not at the left margin, because raw mode also stops `\n` being expanded to `\r\n`.
+:::
 
 ```sh
 saved=$(stty -g); stty raw -echo; head -c 6 | od -c; stty "$saved"
@@ -486,8 +468,9 @@ see three views side by side. The first shows the bytes split into tokens (text,
 CSI with its parameter, intermediate and final bytes, OSC or DCS up to its terminator) and what a
 terminal would do with each: change a mode, move the cursor, answer a query, set the title. The
 second and third show exactly what macvmm's `safe` and `strict` policies output for the same
-input, with every dropped sequence highlighted and the rule that dropped it. The test vectors are
-exported from macvmm's own filter (`backend/ansi.rs`), so the lab and the VMM cannot disagree.
+input, with every dropped sequence highlighted and the rule that dropped it. The lab's filter is a
+port of macvmm's own (`backend/ansi.rs`), and its tests check it against outputs recorded from
+that Rust code, so the lab shows only what the VMM really does.
 Start with these two, predicting the `safe` output before you press Run, then try the attack
 strings the lab suggests (a title query, a 10 MB OSC string, a lone `0x9B`).
 
@@ -534,6 +517,8 @@ whole: no title change, and nothing of the command text survives.
   how much an OSC can do.
 
 ## Checkpoint
+
+:::checkpoint
 
 - **What you can do now.** Run `printf 'x\033[31my\n' | xxd -p` and see `781b5b33316d790a`:
   `x`, then ESC `[` `3` `1` `m`, then `y` and a newline. You can name every byte of that

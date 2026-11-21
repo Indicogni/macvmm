@@ -1,0 +1,119 @@
+/* dtb-explorer: scoped styles. Site tokens only, so dark mode follows the page. */
+.lab[data-lab="dtb-explorer"] .dtx { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); font-family: var(--sans); color: var(--ink); }
+.lab[data-lab="dtb-explorer"] .dtx__controls { display: grid; gap: 0.75rem; grid-template-columns: minmax(0, 1fr); }
+.lab[data-lab="dtb-explorer"] .dtx__set { border: 1px solid var(--rule); border-radius: 6px; padding: 0.5rem 0.75rem 0.75rem; margin: 0; background: var(--card); min-width: 0; }
+.lab[data-lab="dtb-explorer"] .dtx__set legend, .lab[data-lab="dtb-explorer"] .dtx__legend { font-weight: 600; padding: 0 0.25rem; margin: 0 0 0.25rem; }
+.lab[data-lab="dtb-explorer"] .dtx__row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.4rem 0; }
+.lab[data-lab="dtb-explorer"] .dtx__label { display: block; font-size: 0.875rem; margin: 0.4rem 0 0.2rem; }
+.lab[data-lab="dtb-explorer"] .dtx__row .dtx__label { display: inline; margin: 0; }
+.lab[data-lab="dtb-explorer"] select, .lab[data-lab="dtb-explorer"] input[type="text"], .lab[data-lab="dtb-explorer"] textarea { font: inherit; min-height: 44px; padding: 0 0.5rem; border: 1px solid var(--control); border-radius: 4px; background: var(--paper); color: var(--ink); max-width: 100%; box-sizing: border-box; }
+.lab[data-lab="dtb-explorer"] .dtx__select { width: 100%; }
+.lab[data-lab="dtb-explorer"] .dtx__file { font: inherit; min-height: 44px; max-width: 100%; }
+.lab[data-lab="dtb-explorer"] textarea.dtx__paste { width: 100%; font-family: var(--mono); padding: 0.4rem 0.5rem; }
+.lab[data-lab="dtb-explorer"] .dtx__num { font-family: var(--mono); width: 8rem; }
+.lab[data-lab="dtb-explorer"] .dtx__num--short { width: 4.5rem; }
+.lab[data-lab="dtb-explorer"] [aria-invalid="true"] { border: 2px dashed var(--danger); }
+.lab[data-lab="dtb-explorer"] input:focus-visible, .lab[data-lab="dtb-explorer"] select:focus-visible, .lab[data-lab="dtb-explorer"] textarea:focus-visible, .lab[data-lab="dtb-explorer"] button:focus-visible, .lab[data-lab="dtb-explorer"] summary:focus-visible, .lab[data-lab="dtb-explorer"] .dtx__hex:focus-visible, .lab[data-lab="dtb-explorer"] .dtx__scroll:focus-visible, .lab[data-lab="dtb-explorer"] .dtx__item:focus-visible > .dtx__iname { outline: 3px solid var(--accent); outline-offset: 2px; }
+/* The focus ring sits on the focused row, not on the li that also wraps the whole subtree. */
+.lab[data-lab="dtb-explorer"] .dtx__item:focus-visible { outline: none; }
+.lab[data-lab="dtb-explorer"] .dtx__btn { font: inherit; min-height: 44px; min-width: 44px; padding: 0 0.9rem; border: 1px solid var(--accent); border-radius: 4px; background: var(--accent); color: var(--on-accent); cursor: pointer; }
+.lab[data-lab="dtb-explorer"] .dtx__btn--quiet, .lab[data-lab="dtb-explorer"] .dtx__btn--small { background: var(--paper); color: var(--ink); border-color: var(--rule); }
+.lab[data-lab="dtb-explorer"] .dtx__btn--small { min-height: 36px; padding: 0 0.6rem; font-size: 0.875rem; }
+.lab[data-lab="dtb-explorer"] .dtx__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.lab[data-lab="dtb-explorer"] .dtx__link { font: inherit; font-family: var(--mono); background: none; border: 0; padding: 0.3rem 0; min-height: 28px; color: var(--accent); text-decoration: underline; cursor: pointer; text-align: left; word-break: break-all; }
+.lab[data-lab="dtb-explorer"] .dtx__err { color: var(--danger); font-size: 0.875rem; margin: 0.3rem 0 0; }
+.lab[data-lab="dtb-explorer"] .dtx__err:empty, .lab[data-lab="dtb-explorer"] .dtx__hint:empty { display: none; }
+.lab[data-lab="dtb-explorer"] .dtx__hint { color: var(--muted); font-size: 0.875rem; margin: 0.2rem 0; }
+.lab[data-lab="dtb-explorer"] .dtx__source { font-size: 0.875rem; margin: 0.6rem 0 0; }
+.lab[data-lab="dtb-explorer"] .dtx__meta { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); word-break: break-all; }
+.lab[data-lab="dtb-explorer"] .dtx__dtc { margin: 0.3rem 0 0; padding-left: 1.2rem; }
+/* display: list-item keeps the native disclosure triangle (flex would remove it). */
+.lab[data-lab="dtb-explorer"] .dtx__more summary { cursor: pointer; min-height: 44px; display: list-item; padding: 0.6rem 0; box-sizing: border-box; font-weight: 600; }
+.lab[data-lab="dtb-explorer"] .dtx__try { margin: 0.2rem 0 0.4rem; padding-left: 1.4rem; font-size: 0.9rem; }
+.lab[data-lab="dtb-explorer"] .dtx__try li { margin: 0.35rem 0; }
+.lab[data-lab="dtb-explorer"] .dtx__radio { display: inline-flex; align-items: center; min-height: 44px; margin-right: 1rem; gap: 0.3rem; }
+.lab[data-lab="dtb-explorer"] .dtx__radio input { width: 20px; height: 20px; accent-color: var(--accent); }
+.lab[data-lab="dtb-explorer"] .dtx__patches { margin: 0.3rem 0 0; padding-left: 1.2rem; font-size: 0.875rem; }
+.lab[data-lab="dtb-explorer"] .dtx__patches li { margin: 0.2rem 0; }
+.lab[data-lab="dtb-explorer"] code, .lab[data-lab="dtb-explorer"] .dtx__mono { font-family: var(--mono); }
+.lab[data-lab="dtb-explorer"] code { background: var(--code-bg); color: var(--code-ink); padding: 0 0.2em; border-radius: 3px; word-break: break-all; }
+
+.lab[data-lab="dtb-explorer"] .dtx__verdict { padding: 0.5rem 0.75rem; border-left: 4px solid var(--rule); background: var(--card); border-radius: 0 4px 4px 0; }
+.lab[data-lab="dtb-explorer"] .dtx__verdict--ok { border-left-color: var(--ok); }
+.lab[data-lab="dtb-explorer"] .dtx__verdict--warn { border-left: 4px double var(--warn); }
+.lab[data-lab="dtb-explorer"] .dtx__verdict--bad { border-left: 4px dashed var(--danger); }
+.lab[data-lab="dtb-explorer"] .dtx__vline { margin: 0.2rem 0; }
+.lab[data-lab="dtb-explorer"] .dtx__warns { margin: 0.4rem 0 0; padding-left: 1.2rem; font-size: 0.875rem; }
+
+.lab[data-lab="dtb-explorer"] .dtx__panes { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+.lab[data-lab="dtb-explorer"] .dtx__pane { min-width: 0; }
+.lab[data-lab="dtb-explorer"] .dtx__pane[hidden] { display: none; }
+.lab[data-lab="dtb-explorer"] .dtx__h { font-size: 1rem; margin: 0 0 0.3rem; }
+.lab[data-lab="dtb-explorer"] .dtx__scroll { overflow-x: auto; max-width: 100%; }
+.lab[data-lab="dtb-explorer"] .dtx__scroll--tree, .lab[data-lab="dtb-explorer"] .dtx__scroll--hex { max-height: 32rem; overflow: auto; position: relative; border: 1px solid var(--rule); border-radius: 4px; background: var(--paper); }
+
+.lab[data-lab="dtb-explorer"] .dtx__tree, .lab[data-lab="dtb-explorer"] .dtx__group { list-style: none; margin: 0; padding: 0; }
+.lab[data-lab="dtb-explorer"] .dtx__tree { padding: 0.3rem; font-family: var(--mono); font-size: 0.8rem; }
+.lab[data-lab="dtb-explorer"] .dtx__group { padding-left: 1.1rem; border-left: 1px dotted var(--rule); margin-left: 0.4rem; }
+.lab[data-lab="dtb-explorer"] .dtx__group[hidden] { display: none; }
+.lab[data-lab="dtb-explorer"] .dtx__item { cursor: pointer; }
+.lab[data-lab="dtb-explorer"] .dtx__iname { display: flex; align-items: center; min-height: 28px; padding: 0 0.3rem; border-radius: 3px; white-space: nowrap; }
+.lab[data-lab="dtb-explorer"] .dtx__item--node > .dtx__iname { font-weight: 700; color: var(--tok-fn); }
+.lab[data-lab="dtb-explorer"] .dtx__item--prop > .dtx__iname { color: var(--ink); }
+.lab[data-lab="dtb-explorer"] .dtx__twisty { display: inline-block; width: 1.2rem; text-align: center; }
+.lab[data-lab="dtb-explorer"] .dtx__item--node[aria-expanded="true"] > .dtx__iname .dtx__twisty::before { content: "\25BE"; }
+.lab[data-lab="dtb-explorer"] .dtx__item--node[aria-expanded="false"] > .dtx__iname .dtx__twisty::before { content: "\25B8"; }
+.lab[data-lab="dtb-explorer"] .dtx__item[aria-selected="true"] > .dtx__iname { background: var(--accent-tint); outline: 2px solid var(--accent); }
+.lab[data-lab="dtb-explorer"] .dtx__tag { margin-left: 0.4rem; font-size: 0.7rem; font-weight: 700; padding: 0 0.3rem; border: 2px dashed var(--danger); color: var(--danger); border-radius: 3px; }
+
+.lab[data-lab="dtb-explorer"] .dtx__hex { font-family: var(--mono); font-size: 0.8rem; line-height: 1.6; padding: 0.3rem 0.4rem; min-width: max-content; }
+.lab[data-lab="dtb-explorer"] .dtx__line { display: flex; align-items: center; white-space: pre; }
+.lab[data-lab="dtb-explorer"] .dtx__off { color: var(--muted); margin-right: 0.6rem; }
+/* 28px tall cells: the dense-grid minimum touch target. */
+.lab[data-lab="dtb-explorer"] .dtx__b { display: inline-block; min-width: 1.6em; min-height: 28px; line-height: 28px; text-align: center; cursor: pointer; border-radius: 2px; transition: background-color 120ms ease-out; }
+.lab[data-lab="dtb-explorer"] .dtx__b--w { margin-right: 0.45em; }
+.lab[data-lab="dtb-explorer"] .dtx__ascii { margin-left: 0.6rem; color: var(--muted); }
+.lab[data-lab="dtb-explorer"] .dtx__b--hdr { background: var(--accent-tint); color: var(--ink); }
+.lab[data-lab="dtb-explorer"] .dtx__b--rsv { color: var(--tok-ty); }
+.lab[data-lab="dtb-explorer"] .dtx__b--tok { color: var(--tok-kw); font-weight: 700; }
+.lab[data-lab="dtb-explorer"] .dtx__b--field { color: var(--tok-ty); }
+.lab[data-lab="dtb-explorer"] .dtx__b--name { color: var(--tok-fn); }
+.lab[data-lab="dtb-explorer"] .dtx__b--val { color: var(--tok-num); }
+.lab[data-lab="dtb-explorer"] .dtx__b--pad { color: var(--tok-com); }
+.lab[data-lab="dtb-explorer"] .dtx__b--str { color: var(--tok-str); font-style: italic; }
+.lab[data-lab="dtb-explorer"] .dtx__b--gap { color: var(--muted); text-decoration: line-through; }
+.lab[data-lab="dtb-explorer"] .dtx__b--chg { text-decoration: underline wavy var(--danger); text-underline-offset: 3px; }
+.lab[data-lab="dtb-explorer"] .dtx__b.is-rel { box-shadow: inset 0 -2px 0 var(--accent); }
+.lab[data-lab="dtb-explorer"] .dtx__b.is-sel { background: var(--accent); color: var(--on-accent); outline: 1px solid var(--ink); }
+.lab[data-lab="dtb-explorer"] .dtx__legend-list { list-style: none; padding: 0; margin: 0.3rem 0 0; display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; font-size: 0.8rem; }
+.lab[data-lab="dtb-explorer"] .dtx__chip { font-family: var(--mono); padding: 0 0.2rem; border: 1px solid var(--rule); border-radius: 2px; }
+
+.lab[data-lab="dtb-explorer"] .dtx__card { border: 1px solid var(--rule); border-radius: 6px; padding: 0.5rem 0.75rem; background: var(--card); min-width: 0; }
+.lab[data-lab="dtb-explorer"] .dtx__dtitle { margin: 0 0 0.3rem; }
+.lab[data-lab="dtb-explorer"] .dtx__dlines { margin: 0; padding-left: 1.2rem; font-size: 0.9rem; }
+.lab[data-lab="dtb-explorer"] .dtx__dlines li { margin: 0.2rem 0; overflow-wrap: anywhere; }
+.lab[data-lab="dtb-explorer"] .dtx__table { border-collapse: collapse; font-size: 0.85rem; min-width: 34rem; width: 100%; }
+.lab[data-lab="dtb-explorer"] .dtx__table caption { text-align: left; color: var(--muted); padding-bottom: 0.3rem; }
+.lab[data-lab="dtb-explorer"] .dtx__table th, .lab[data-lab="dtb-explorer"] .dtx__table td { border-bottom: 1px solid var(--rule); padding: 0.25rem 0.45rem; text-align: left; vertical-align: top; }
+.lab[data-lab="dtb-explorer"] .dtx__badge { display: inline-block; min-width: 2.6rem; text-align: center; font-size: 0.75rem; font-weight: 700; border-radius: 3px; padding: 0 0.3rem; border: 1px solid var(--ok); color: var(--ok); }
+.lab[data-lab="dtb-explorer"] .dtx__fail .dtx__badge { border: 2px dashed var(--danger); color: var(--danger); }
+.lab[data-lab="dtb-explorer"] .dtx__fail { background: var(--paper); }
+.lab[data-lab="dtb-explorer"] .dtx__dts { font-family: var(--mono); font-size: 0.8rem; background: var(--code-bg); color: var(--code-ink); padding: 0.6rem; overflow-x: auto; max-height: 28rem; tab-size: 4; margin: 0.3rem 0 0; }
+.lab[data-lab="dtb-explorer"] .dtx__readout { margin: 0; padding: 0.6rem 0.75rem; background: var(--card); border: 1px solid var(--rule); border-radius: 4px; }
+
+/* Phone widths: the view draws 8 bytes a row; drop the ASCII column so a row fits without sideways scroll. */
+@media (max-width: 30rem) {
+  .lab[data-lab="dtb-explorer"] .dtx__ascii { display: none; }
+  .lab[data-lab="dtb-explorer"] .dtx__off { margin-right: 0.3rem; }
+}
+@media (min-width: 45rem) {
+  .lab[data-lab="dtb-explorer"] .dtx__controls { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .lab[data-lab="dtb-explorer"] .dtx__controls > .dtx__row { grid-column: 1 / -1; }
+}
+@media (min-width: 64rem) {
+  .lab[data-lab="dtb-explorer"] .dtx__panes { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .lab[data-lab="dtb-explorer"] .dtx__panes--one { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="dtb-explorer"] .dtx__b { transition: none; }
+}

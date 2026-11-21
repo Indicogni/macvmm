@@ -1,7 +1,6 @@
-// Checkpoint 21 contract (L1), frozen from the reference test crates/vmm/tests/insn_decode.rs.
+// Checkpoint 21 contract, frozen from the reference test crates/vmm/tests/insn_decode.rs.
 // It names only items the chapter 21 lesson teaches; the harness runs it against your crates.
-//! Host test: the ISV=0 load/store decoder (`arch/insn.rs`, PLAN M17 acceptance; threat model
-//! MMIO-4, MMIO-6; course ch07 extension, ch21).
+//! Host test: the ISV=0 load/store decoder (`arch/insn.rs`, acceptance; threat model: docs/security/threat-model.md).
 //!
 //! - `corpus_decodes_as_expected`: `tests/data/insn_corpus.txt` holds ≥ 60 supported vectors
 //!   (every class × writeback mode × size) and an undecodable list. Its words are proved to be
@@ -9,8 +8,8 @@
 //!   hand from ARM ARM C6.2. This test checks the decoder against them.
 //! - `random_words_decode_totally`: 200,000 xorshift64* words (half forced into the load/store
 //!   group) decode without panicking, and every accepted decode satisfies the invariants the
-//!   emulator relies on (PLAN §0.3 property test; `MACVMM_SEED` replays a run).
-//! - The `plan_*` tests and `isv0_ipa_mismatch_aborts` cover the exit-IPA authority (MMIO-4).
+//! emulator relies on (a seeded property test; `MACVMM_SEED` replays a run).
+//! - The `plan_*` tests and `isv0_ipa_mismatch_aborts` cover the exit-IPA authority.
 //!   `isv0_pair_across_devices_aborts` covers the same-device rule for LDP/STP, and the
 //!   `execute_*` tests cover "writeback only after both accesses succeed". Each runs against a
 //!   `MockBus` whose access log must stay empty whenever the emulation is refused.

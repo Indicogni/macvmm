@@ -4,17 +4,10 @@ slug: unix-sockets
 kind: primer
 minutes: 15
 required_by: [19]
-also_used_by: [27]
 labs: []
 runs: mac
 command: sysctl -n net.local.dgram.maxdgram
 expect: 2048
-objectives:
-- Predict what a reader receives from a stream socket and from a datagram socket after two separate sends, and say which kind can carry Ethernet frames without extra framing.
-- Read a socket file's mode in `ls -l`, compute the mode a `bind` creates under a given `umask`, and say which permission a peer needs to send to it.
-- Tell a live socket file from a stale one using the error `connect` returns, and state the four checks macvmm makes before it replaces a socket file.
-- Show that a connected datagram socket on macOS still accepts datagrams from other senders, and explain why macvmm checks the source of every datagram.
-- Explain why two macvmm VMs can exchange frames with no entitlement and no root, and why that is not the same as being contained.
 ---
 
 # Why does "Address already in use" appear when nothing is running?
@@ -164,8 +157,9 @@ fn main() -> std::io::Result<()> {
 }
 ```
 
-> **Predict.** Two writes of five bytes each, then one read with room for 64. What is the stream
-> read *allowed* to return? And what must the two datagram receives return?
+:::predict Two writes of five bytes each, then one read with room for 64. What is the stream read *allowed* to return? And what must the two datagram receives return?
+The stream read may return anything from 1 to 10 bytes (typically all ten, `helloworld`). The datagram receives must return `hello` and then `world`, one message each.
+:::
 
 ```sh
 rustc -O boundaries.rs
@@ -435,18 +429,7 @@ macvmm replaces the file at its socket path only when all four checks pass, in t
 Only then does it `unlink` the old file and `bind`. The type and owner checks come before the
 `connect`, so `ECONNREFUSED` is consulted only for a socket file we own.
 
-```mermaid
-flowchart TD
-  A["1. lstat the path<br/>(do not follow symlinks)"] -->|"nothing there"| N["bind"]
-  A -->|"something there"| B["2. is it a socket file?"]
-  B -->|"no: symlink, regular file, other"| X["refuse, exit 2"]
-  B -->|yes| C["3. owned by our uid?"]
-  C -->|no| X
-  C -->|yes| D["4. test connect"]
-  D -->|"ECONNREFUSED: stale"| U["unlink, then bind"]
-  D -->|"accepted: live"| X
-  D -->|"any other error"| X
-```
+:::diagram src=docs/diagrams/socket-bind.svg alt="Binding a Unix socket path safely"
 
 *Only a socket file that is ours and dead gets replaced; everything else is someone's data.*
 
@@ -635,6 +618,8 @@ command lines that chapter's checkpoint runs.
   connect to a TCP port.
 
 ## Checkpoint
+
+:::checkpoint
 
 - **What you can do now.** Confirm the datagram size limit that chapter 19 designs around:
   `sysctl -n net.local.dgram.maxdgram` prints `2048`. Predict stream and datagram reads, compute a

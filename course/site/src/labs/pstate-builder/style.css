@@ -1,0 +1,373 @@
+/* pstate-builder lab. Every rule is scoped to this lab and uses site tokens only (LABS.md section 5).
+   Never color alone: a set bit shows "1" in bold on a filled cell; a bit set outside the modelled
+   fields also gets a dashed outline and its accessible name says "set but should be 0"; errors carry
+   a "!" mark and text. */
+
+.lab[data-lab="pstate-builder"] .psb__help,
+.lab[data-lab="pstate-builder"] .psb__hint,
+.lab[data-lab="pstate-builder"] .psb__muted {
+  color: var(--muted);
+}
+
+.lab[data-lab="pstate-builder"] .psb__help {
+  margin: 0 0 0.75rem;
+}
+
+.lab[data-lab="pstate-builder"] .psb__hint {
+  display: block;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.lab[data-lab="pstate-builder"] .psb__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.lab[data-lab="pstate-builder"] .psb__form {
+  min-width: 0;
+  margin: 0;
+}
+
+.lab[data-lab="pstate-builder"] .psb__row,
+.lab[data-lab="pstate-builder"] .psb__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.lab[data-lab="pstate-builder"] .psb__label,
+.lab[data-lab="pstate-builder"] .psb__rlabel {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.lab[data-lab="pstate-builder"] .psb__input,
+.lab[data-lab="pstate-builder"] .psb__select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.lab[data-lab="pstate-builder"] .psb__input {
+  width: 9rem;
+  font-family: var(--mono);
+}
+
+.lab[data-lab="pstate-builder"] .psb__input[aria-invalid="true"] {
+  border-color: var(--danger);
+  border-style: dashed;
+  border-width: 2px;
+}
+
+.lab[data-lab="pstate-builder"] .psb__err {
+  margin: 0.25rem 0 0;
+  min-height: 1.2em;
+  font-size: 0.875rem;
+  color: var(--danger);
+}
+
+.lab[data-lab="pstate-builder"] .psb__btn {
+  min-height: 44px;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.lab[data-lab="pstate-builder"] .psb__btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.lab[data-lab="pstate-builder"] .psb__btn:focus-visible,
+.lab[data-lab="pstate-builder"] .psb__input:focus-visible,
+.lab[data-lab="pstate-builder"] .psb__select:focus-visible,
+.lab[data-lab="pstate-builder"] .psb__bit:focus-visible,
+.lab[data-lab="pstate-builder"] .psb__check:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.lab[data-lab="pstate-builder"] .psb__btn--primary:focus-visible {
+  outline-color: var(--paper);
+  box-shadow: 0 0 0 4px var(--ink);
+}
+
+/* ---- the bit bar ---- */
+
+.lab[data-lab="pstate-builder"] .psb__trytitle {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.lab[data-lab="pstate-builder"] .psb__try {
+  margin: 0 0 1rem;
+  padding-left: 1.5rem;
+}
+
+.lab[data-lab="pstate-builder"] .psb__try li {
+  margin: 0 0 0.25rem;
+}
+
+.lab[data-lab="pstate-builder"] .psb__barbox {
+  margin: 0 0 1rem;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+/* The bar is wider than a lesson column, so it scrolls; say so where the scrollbar alone might
+   not be noticed. It starts scrolled to the right end (view.mjs), where D A I F and M[4:0] sit. */
+.lab[data-lab="pstate-builder"] .psb__scrollcue {
+  margin: 0 0 0.35rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+@container (min-width: 975px) {
+  .lab[data-lab="pstate-builder"] .psb__scrollcue {
+    display: none;
+  }
+}
+
+.lab[data-lab="pstate-builder"] .psb__scroll {
+  overflow-x: auto;
+  padding: 0.25rem 0.25rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--card);
+}
+
+.lab[data-lab="pstate-builder"] .psb__bar {
+  display: grid;
+  grid-template-columns: repeat(32, minmax(28px, 1fr));
+  gap: 2px;
+  min-width: calc(32 * 30px);
+}
+
+.lab[data-lab="pstate-builder"] .psb__group {
+  grid-row: 1;
+  padding: 0.15rem 0.25rem;
+  border-bottom: 2px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.lab[data-lab="pstate-builder"] .psb__g--1-5 { grid-column: 1 / 5; }
+.lab[data-lab="pstate-builder"] .psb__g--5-23 { grid-column: 5 / 23; }
+.lab[data-lab="pstate-builder"] .psb__g--23-27 { grid-column: 23 / 27; }
+.lab[data-lab="pstate-builder"] .psb__g--27-28 { grid-column: 27 / 28; border-bottom-color: transparent; }
+.lab[data-lab="pstate-builder"] .psb__g--28-33 { grid-column: 28 / 33; }
+.lab[data-lab="pstate-builder"] .psb__g--29-31 { grid-column: 29 / 31; }
+
+/* Under M3 and M2: the level read as one 2-bit number, e.g. "01 = EL1". */
+.lab[data-lab="pstate-builder"] .psb__elcap {
+  grid-row: 3;
+  padding-top: 0.1rem;
+  border-top: 2px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.lab[data-lab="pstate-builder"] .psb__bit {
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  min-width: 28px;
+  padding: 0.2rem 0;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.lab[data-lab="pstate-builder"] .psb__bit--unused {
+  color: var(--muted);
+}
+
+.lab[data-lab="pstate-builder"] .psb__bit--on {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.lab[data-lab="pstate-builder"] .psb__bit--bad {
+  outline: 2px dashed var(--danger);
+  outline-offset: -3px;
+}
+
+.lab[data-lab="pstate-builder"] .psb__bitname {
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+.lab[data-lab="pstate-builder"] .psb__bitval {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.lab[data-lab="pstate-builder"] .psb__bit--on .psb__bitval {
+  font-weight: 700;
+}
+
+.lab[data-lab="pstate-builder"] .psb__bitnum {
+  font-size: 0.62rem;
+  line-height: 1;
+  color: var(--muted);
+}
+
+/* ---- fields and readout: stacked below 720px, side by side above ---- */
+
+.lab[data-lab="pstate-builder"] .psb__body {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 720px) {
+  .lab[data-lab="pstate-builder"] .psb__body {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+}
+
+.lab[data-lab="pstate-builder"] .psb__fields {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.lab[data-lab="pstate-builder"] .psb__fs {
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.lab[data-lab="pstate-builder"] .psb__fs legend {
+  padding: 0 0.25rem;
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.lab[data-lab="pstate-builder"] .psb__opt {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-right: 0.9rem;
+  cursor: pointer;
+}
+
+.lab[data-lab="pstate-builder"] .psb__check {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0 0.35rem 0 0;
+  accent-color: var(--accent);
+}
+
+.lab[data-lab="pstate-builder"] .psb__readoutbox {
+  min-width: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+}
+
+.lab[data-lab="pstate-builder"] .psb__readoutbox .psb__rlabel,
+.lab[data-lab="pstate-builder"] .psb__readoutbox .psb__muted {
+  color: var(--code-muted);
+}
+
+.lab[data-lab="pstate-builder"] .psb__big {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 1.35rem;
+  overflow-wrap: anywhere;
+}
+
+.lab[data-lab="pstate-builder"] .psb__summary {
+  margin: 0 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.lab[data-lab="pstate-builder"] .psb__code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.lab[data-lab="pstate-builder"] .psb__bad {
+  color: var(--danger);
+}
+
+.lab[data-lab="pstate-builder"] .psb__mark {
+  display: inline-block;
+  min-width: 1.4em;
+  text-align: center;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-family: var(--mono);
+}
+
+.lab[data-lab="pstate-builder"] .psb__dl {
+  margin: 0;
+}
+
+.lab[data-lab="pstate-builder"] .psb__dl dt {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--code-muted);
+  margin-top: 0.5rem;
+}
+
+.lab[data-lab="pstate-builder"] .psb__dl dd {
+  margin: 0.1rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.lab[data-lab="pstate-builder"] .psb__steps,
+.lab[data-lab="pstate-builder"] .psb__reads {
+  margin: 0.1rem 0 0.25rem;
+  padding-left: 1.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="pstate-builder"] .psb__bit {
+    transition: none;
+  }
+}

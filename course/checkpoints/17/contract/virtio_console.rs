@@ -1,7 +1,6 @@
-// Checkpoint 17 contract (L1), frozen from the reference test crates/vmm/tests/virtio_console.rs.
+// Checkpoint 17 contract, frozen from the reference test crates/vmm/tests/virtio_console.rs.
 // It names only items chapters 15 to 17 teach; the harness runs it against your crates.
-//! PLAN M13 acceptance (host): the virtio-console device model (virtio 1.2 §5.3; architecture
-//! §11.3, §14.4; threat model TTY-1, TTY-10, VQ-8, VQ-9, VQ-10, VQ-11, SINK-1, LOG-4).
+//! Host acceptance: the virtio-console device model (virtio 1.2 §5.3; threat model: docs/security/threat-model.md).
 //!
 //! Two levels, as for virtio-rng: the device driven directly (`activate` + `process_queue`,
 //! as the worker calls it), and the whole guest-visible path (the virtio-mmio transport, a
@@ -10,10 +9,10 @@
 //! - **TX** (transmitq, queue 1): the exact bytes reach the sink, through the sink's own
 //!   `AnsiFilter` (`console_tx_filtered`: OSC 52 and DSR never reach it); the chain comes back
 //!   with `len = 0` and its writable descriptors are never written (access log); > 64 KiB is
-//!   NEEDS_RESET (VQ-8).
-//! - **RX** (receiveq, queue 0): with no buffers posted the input is held, bounded at 4 KiB
-//!   (TTY-10), and no chain is popped while there is nothing to deliver; with buffers, the used
-//!   `len` is exactly the bytes delivered (VQ-9), and readable descriptors are never touched.
+//!   NEEDS_RESET.
+//! - **RX** (receiveq, queue 0): with no buffers posted the input is held, bounded at 4 KiB,
+//!   and no chain is popped while there is nothing to deliver; with buffers, the used
+//!   `len` is exactly the bytes delivered, and readable descriptors are never touched.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 mod virtio_support;

@@ -383,6 +383,24 @@ fn notation_rules() {
     assert_eq!(n("Write an ADR first."), 0);
     let s = lessons::style_problems("This is just simply ch05.");
     assert_eq!(s.len(), 3, "{s:?}");
+    // `chNN` inside a URL is part of the link target, not shorthand; outside it still counts.
+    let url = "the [Rust book](https://doc.rust-lang.org/book/ch20-01-unsafe-rust.html) and ch05";
+    let s = lessons::style_problems(url);
+    assert_eq!(s.len(), 1, "{s:?}");
+    assert!(s[0].contains("ch05"), "{s:?}");
+    assert!(lessons::style_problems("<http://example.com/ch20/>").is_empty());
+    assert_eq!(
+        lessons::strip_urls("a https://x/ch20 b"),
+        "a                b"
+    );
+    // Parentheses inside a link target (Wikipedia style) stay part of the URL; the `)` that
+    // closes the Markdown link ends it.
+    assert_eq!(
+        lessons::strip_urls("[m](https://w/Mutex_(ch20)) ch05"),
+        "[m](                      ) ch05"
+    );
+    // One blank per character, not per byte.
+    assert_eq!(lessons::strip_urls("https://x/é b"), "            b");
 }
 
 #[test]

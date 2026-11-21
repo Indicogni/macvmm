@@ -1,6 +1,6 @@
-// Checkpoint 06 contract (PLAN M27 L1). It names only items the chapter 06 lesson teaches:
+// Checkpoint 06 contract. It names only items the chapter 06 lesson teaches:
 // `vmm::vcpu::regs::RegDump`, `vmm::vcpu::dump::format_regs` and `vmm::arch::regs::Pstate`.
-//! The register dump's golden format and the PSTATE helpers (PLAN M4; CURRICULUM ch06).
+//! The register dump's golden format and the PSTATE helpers.
 //!
 //! The dump is a contract, not decoration: checkpoint markers (`[stderr] pc=0x200`,
 //! `[stderr] ELR_EL1=0x4008*`) and the bug-hunt symptoms match it, and ch06 teaches reading it.

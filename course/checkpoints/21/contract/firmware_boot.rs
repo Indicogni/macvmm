@@ -1,7 +1,7 @@
-// Checkpoint 21 contract (L1), frozen from the reference test crates/vmm/tests/firmware_boot.rs.
+// Checkpoint 21 contract, frozen from the reference test crates/vmm/tests/firmware_boot.rs.
 // It names only items the chapter 21 lesson teaches; the harness runs it against your crates.
-//! PLAN M18 host acceptance for the firmware boot (`--bios` on the `virt` machine): the plan,
-//! the configuration rules, the debug-hypercall default (threat model HC-2) and the
+//! Host acceptance for the firmware boot (`--bios` on the `virt` machine): the plan,
+//! the configuration rules, the debug-hypercall default (see docs/security/threat-model.md) and the
 //! `--dry-run` description. No HVF: everything here is decided before a VM exists.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 

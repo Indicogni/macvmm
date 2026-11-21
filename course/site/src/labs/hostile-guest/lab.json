@@ -1,0 +1,12 @@
+{
+  "title": "Hostile-ring fuzzer",
+  "goal": "Patch one of chapter 25's planted bugs into chapter 16's queue code, let a seeded fuzzer invent hostile descriptor rings, and see which invariant catches the first failing input.",
+  "reference": "p2:1:7",
+  "found": {
+    "p1": 250,
+    "p2": 7,
+    "p3": 22,
+    "p4": 4,
+    "p5": 23338941
+  }
+}

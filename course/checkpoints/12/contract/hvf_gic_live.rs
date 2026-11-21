@@ -1,7 +1,6 @@
-// Checkpoint 12 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/hvf_gic_live.rs.
+// Checkpoint 12 contract, frozen from the reference test crates/vmm/tests/hvf_gic_live.rs.
 // It names only items the chapter 12 lesson teaches; the harness runs it against your crates.
-//! On-machine GIC test `hvf_gic_live` (PLAN M8 "Acceptance: on machine"; architecture §9;
-//! risk R3).
+//! On-machine GIC test `hvf_gic_live` (on-machine acceptance).
 //!
 //! ```text
 //! cargo test -p vmm --features hvf-tests --test hvf_gic_live -- --test-threads=1 --nocapture
@@ -14,7 +13,7 @@
 //! 3. the `ID_AA64PFR0_EL1` of a live vCPU after `hv_gic_create`, **as the VMM reads it**
 //!    through `hv_vcpu_get_sys_reg`, is printed and its GIC field (bits 27:24, ARM ARM
 //!    D19.2.64) checked: 1 = "GICv3/v4 system registers implemented". This is the API's view,
-//!    not the guest's: no guest instruction runs here. Risk R3 is about what the guest's own
+//!    not the guest's: no guest instruction runs here. The open question is what the guest's own
 //!    `MRS` returns (Linux reads this field before touching `ICC_*`); that half is checked by
 //!    the `irq` guest, which prints `irq: pfr0.gic=N` from an `MRS` and whose marker file
 //!    requires `irq: pfr0.gic=1` (`crates/macvmm/tests/e2e_irq.rs`).

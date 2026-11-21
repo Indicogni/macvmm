@@ -4,18 +4,10 @@ slug: os-basics
 kind: primer
 minutes: 30
 required_by: [00]
-also_used_by: [01, 02, 05, 08, 09, 11]
 labs: [syscall-stepper]
 runs: mac+browser
 command: sh -c 'exit 5'; echo $?
 expect: 5
-objectives:
-- Explain what a process is, run a program and read its exit status with `echo $?`, and say why `exit 300` shows up as 44.
-- Name the two privilege modes (user mode and kernel mode), give two things only kernel mode may do, and give their Arm names (EL0 and EL1).
-- Describe a system call at the hardware level in four steps (mode switch, jump through the exception vector table, return address saved in a register, return) and point at the `svc` in a real macOS disassembly (run with `lldb` on a Mac, or read from the captured output).
-- Translate a virtual address by hand through a two-level page table, and say when the walk ends in a page fault.
-- Tell a page fault the kernel repairs from one that kills the process, and measure repaired faults with `/usr/bin/time -l`.
-- Say how an interrupt differs from a system call, and what firmware and a kernel each do between power-on and the first app.
 ---
 
 # Who stopped my program?
@@ -385,10 +377,9 @@ int main(int argc, char **argv) {
 }
 ```
 
-> **Predict.** `/usr/bin/time -l` reports how many page faults the kernel repaired without
-> touching the disk, in a line called "page reclaims". Running `./touch 0` gives a baseline of a
-> few hundred, the faults of the program starting up: its code, its stack and its libraries
-> arrive the same lazy way. How many more will `./touch 1000` show?
+:::predict `/usr/bin/time -l` reports how many page faults the kernel repaired without touching the disk, in a line called "page reclaims". Running `./touch 0` gives a baseline of a few hundred, the faults of the program starting up: its code, its stack and its libraries arrive the same lazy way. How many more will `./touch 1000` show?
+About 1,000 more: one fault per page, on its first touch. The run below shows exactly 1,000.
+:::
 
 ```sh
 clang -O1 -Wall -o touch touch.c
@@ -560,12 +551,12 @@ but on many Arm systems it stays resident to answer a few requests from the kern
 In the `syscall-stepper` lab you single-step a tiny app in user mode (EL0) up to its `svc`, then
 take the exception. A state panel shows four labels: **mode**, **PC**, **saved return address**
 and **reason**. Before each step, predict which of them will change; then step and check. You
-follow the PC into the vector table's slot, through a short kernel handler that reads the request
-from a register and writes the result back, and through the return to the instruction after the
-`svc`. A second mode replaces the `svc` with a store to an unmapped page, so you can watch the
-saved return address point *at* the faulting instruction instead. The lab runs on the same engine
-as chapter 02's `exception-stepper` and uses the same labels as chapter 00's `toy-vmm`, so the
-three screens can be read side by side.
+follow the PC into the vector table's slot, through a short kernel handler that reads the reason,
+then reads the request from `x16` and writes the result back in `x0`, and through the return to
+the instruction after the `svc`. A second mode replaces the `svc` with a store to an unmapped page,
+so you can watch the saved return address point *at* the faulting instruction instead. The lab
+uses the same four labels (mode, PC, saved return address, reason) as chapter 02's
+`exception-stepper`, so the two screens can be read side by side.
 
 ## Where this shows up in macvmm
 
@@ -607,6 +598,8 @@ three screens can be read side by side.
   for the firmware stages before macOS.
 
 ## Checkpoint
+
+:::checkpoint
 
 - **What you can do now.** Run `sh -c 'exit 5'` followed by `echo $?` and see `5`. Explain who
   stopped `null.c` and where the 139 came from, translate an address through a two-level table by

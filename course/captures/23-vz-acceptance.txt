@@ -1,5 +1,5 @@
 # scripts/capture.sh 23: run "vz-acceptance" of course/checkpoints/23, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 23; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 23; never edit by hand (course/STYLE.md appendix A).
 $ tools/vz-mac/test.sh
 exit: 0
 --- stdout ---

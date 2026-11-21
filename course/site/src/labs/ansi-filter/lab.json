@@ -1,0 +1,4 @@
+{
+  "title": "ANSI filter",
+  "goal": "A guest can print bytes that make your terminal change its title, write your clipboard or type for you, so macvmm filters them. Type the bytes a guest prints and see three views side by side: what a terminal would do with them, what macvmm's safe policy lets through (and the rule behind every removal), and what strict writes to a log."
+}

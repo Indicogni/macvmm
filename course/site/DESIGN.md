@@ -105,6 +105,19 @@ sidebar show check marks and "Continue: 2.3" from this. Copy states plainly "Sto
 `(o)` = progress dot: empty = not started, filled accent = complete. Chapter rows are single `<a>` targets,
 min height 44px.
 
+As built (2026-11-20): the header nav has Course, Primers, Labs, Glossary and Reference; below
+30rem only Course, Labs and Reference stay in the header, on one row with the brand, which
+shortens to "indicogni / VMM" there (about 56px tall at 360px and 320px); the footer carries every
+section link, as does the lesson drawer. The header link to the page being shown has
+`aria-current="page"`; the link to the section it belongs to (Course on a lesson, Labs on a lab)
+has `aria-current="true"`, styled the same. Parts are `<details>`: the HTML opens the first two
+(the no-JS fallback), and course.js, once on load, opens every part from 64rem up and closes them
+below; after that the reader's own toggles are left alone. Every `<summary>` laid out as a flex
+row (sidebar and drawer Parts, the Contents toggle, landing Parts, "Show answer") draws its own
+disclosure triangle, because a flex summary loses the native one.
+Chapters are numbered by their two-digit id everywhere (`02`, "Chapter 02"), the same as the
+prose; the `I.1`-style numbers in chapters.json are not shown.
+
 ### 2.2 Lesson page anatomy (desktop >= 64rem)
 
 ```
@@ -162,12 +175,21 @@ Required blocks per lesson, in this order (the builder lints presence; missing =
 6. **Recap** (3 bullets) and **Further reading** (spec section citations, e.g. "ARM ARM D17.2.37 ESR_EL2").
 7. **Prev/next** nav and "Mark complete" button.
 
+As built (2026-11-20), the spec follows STYLE.md appendix A rather than the wireframe above:
+the header label reads "Chapter 02 · Part I" (no "Part X of N" chip), and the progress bar sits
+in the lesson header, named by the "Course progress: chapter NN is K of the M chapters written so far (numbering starts at 00)"
+label beside it. The Prerequisites box is the "Concepts you'll need" box; it names the reference
+tag (`start_tag`) only when that git tag exists. Items 6 are STYLE's "What now works" list (the
+recap, inside the Checkpoint section) and `## Spec hunt` (the further reading); scripts/check-lessons
+lints them, so the builder does not lint them twice. "Mark complete" is a toggle button with the
+fixed label "Chapter complete" and `aria-pressed`.
+
 ### 2.3 Badges (never color alone)
 
 | Badge            | Meaning                                              | Style                                                         |
 |------------------|------------------------------------------------------|---------------------------------------------------------------|
 | `Needs a Mac`    | Native step on Apple Silicon with Hypervisor.framework | Filled accent chip, text `#FFF` on `--accent`; leading apple-less glyph: a small inline-SVG chip icon |
-| `Runs in browser`| Lab/reading works in any browser, no install         | Outlined chip, ink text on card, 1.5px `--rule` border, leading inline-SVG "window" icon |
+| `Runs in browser`| Lab/reading works in any browser, no install         | Outlined chip, ink text on card, 1.5px `--muted` border (non-text contrast >= 3:1), leading inline-SVG "window" icon |
 | `Mac + browser`  | Both (most lessons)                                  | Two chips side by side                                        |
 
 Chips are `<span class="badge badge--mac">` with visible text and an `<svg aria-hidden="true">` icon, so they
@@ -217,16 +239,19 @@ Visually distinct from code: it is something you *see*, not something you *type*
 `<figure class="term"><figcaption>Terminal</figcaption><pre tabindex="0"><code>`; `$` lines get `.cmd`
 (full ink, copyable via a Copy button that copies only `.cmd` lines); output lines `.out` (muted ink). Always
 labelled "Real output from an M5 Pro, macOS 27.2" **only when captured from a real run** (CLAUDE.md: report
-real outputs). Builder supports `:::term source=captures/ch3-4.txt` so output is a checked-in capture; a
-`captured: <date> <commit>` footer line is rendered in small muted mono.
+real outputs). Builder supports `:::term source=captures/NN-name.txt` so output is a checked-in capture; every leading
+`#` line of the capture is provenance (section 9), rendered as a `captured: ...` footer in small muted mono.
 
 ### 3.3 Callouts
-`<aside class="callout callout--{note|warn|security|mac|why}">` with a visible mono-caps label and an
+`<div class="callout callout--{note|warn|security|mac|why}" role="note">` (not `<aside>`: inside `<main>`
+with no `<article>` an aside is a complementary landmark, and a lesson would list five) with a visible mono-caps label and an
 inline-SVG icon, left 4px bar. Variants:
 - `note` (ink bar), `why` ("Why it works this way", accent bar), `warn` (amber-red, for footguns),
 - `security` ("Hostile input": this guest-controlled value must be validated, ties to CLAUDE.md rules),
 - `mac` (Mac-specific quirks, e.g. HVF entitlement, W^X, 16KB host pages).
-Label text carries meaning; icon is `aria-hidden`. Role is none (not a live region).
+Label text carries meaning; icon is `aria-hidden`. Role is `note` (not a landmark, not a live region).
+The stopping point is a plain `<div class="stop">`, and the sidebar is a `<div>` around the
+"Course contents" `<nav>`, so no navigation landmark is nested in a complementary one.
 
 ### 3.4 Socratic "Predict" block with reveal
 Native `<details>` so it works without JS and is keyboard accessible by default.
@@ -254,6 +279,10 @@ No scoring, no storage of answers.
 | Not matching? -> "If it fails" (anchor to troubleshooting list)       |
 +-----------------------------------------------------------------------+
 ```
+As built (2026-11-20): the box says "Run this from the repository root:" above the command. It has
+no "Not matching?" link: chapters have no per-chapter troubleshooting heading to point at, and
+STYLE's "Stuck?" paragraph next to the checkpoint (`scripts/learner hint NN`) does that job in the
+prose.
 Command from `command:` front-matter field, expected output from `expect:` (both mandatory; builder refuses
 a lesson without them). Thicker 2px accent border, accent-tinted background. The checkbox state feeds
 progress ("Mark complete" is enabled/emphasized after it) but never gates reading.
@@ -265,9 +294,17 @@ Hand-authored or generated SVG inlined into the HTML by the builder (from `docs/
   the four levels and the bits consumed at each).
 - Colors only via CSS custom properties (`fill: var(--ink)`, `var(--accent)`, `var(--rule)`) so dark mode and
   themes work with zero extra assets. No text baked into raster images. Minimum text 12px at 360px viewport:
-  SVGs use `viewBox` + `width:100%; height:auto`; wide diagrams (> 600 units) get a stacked mobile variant
-  (`<picture>`-less: two inline SVGs, toggled by a CSS media query, only one exposed to AT via `display:none`).
-- Mermaid sources stay in `docs/diagrams/` and are pre-rendered offline; the site never loads Mermaid.
+  SVGs use `viewBox` + `width:100%; height:auto`. As built (2026-11-20): the builder reads the
+  smallest `font-size` in the SVG and its `viewBox` width, and when the text would render below 12px
+  in a 290px column (the narrowest lab or prose column at a 360px viewport) it gives the SVG a
+  `min-width` class (`.minw-N`, generated into course.css in 40px steps) inside a horizontally
+  scrollable `.svg-scroll` wrapper, so text never shrinks below 12px; the wrapper becomes a
+  keyboard-focusable named region only when it actually overflows. A stacked variant toggled by a
+  media query is still welcome for a diagram that is read often on phones.
+- Mermaid sources stay in `docs/diagrams/src/*.mmd` and are pre-rendered offline to sanitized SVG by
+  `node course/site/tools/diagrams.mjs` (Node built-ins only; the layout of each diagram is written
+  out in that file). The site never loads Mermaid, and a ` ```mermaid ` fence in course Markdown
+  is a build error: use `:::diagram src=docs/diagrams/NAME.svg alt="..."`.
 
 ### 3.7 Misc
 Tables (`.table-wrap{overflow-x:auto}`), bit-field diagrams (HTML table generated from a tiny
@@ -406,19 +443,33 @@ Transitions <= 150ms, all disabled under `prefers-reduced-motion: reduce`.
 
 ## 7. CSP constraints and what they imply
 
-Effective policy (the course Worker ships its own `_headers`; start from the landing's and add only what labs need):
+Effective policy (the course Worker ships its own `_headers`, generated by `build.mjs` from its
+`CSP` constant; it is stricter than the landing's because the course needs no inline styles):
 
 ```
 /*
   Strict-Transport-Security: max-age=31536000
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), browsing-topics=()
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Cross-Origin-Opener-Policy: same-origin
 /build-your-own/vmm/assets/*
   Cache-Control: public, max-age=31536000, immutable
 ```
+(2026-11-20, as built: `style-src 'self'` without `'unsafe-inline'`, because nothing on the site needs
+an inline style: line numbers come from `data-n` attributes, the progress bar is a `<progress>`
+element. `img-src` has no `data:`: nothing on the site or in a lab uses a data: URL; add it back,
+with a note here, only if a lab needs `canvas.toDataURL()` output in an `<img>`. `browsing-topics` was dropped from Permissions-Policy because current Chrome logs it as an
+unrecognized feature on every page. Everything under `assets/` is content-hashed, labs included
+(`assets/labs.<hash>/<name>/`), so the immutable rule is safe.)
+(`require-trusted-types-for 'script'; trusted-types 'none'` (added 2026-11-20): Trusted Types with no
+policy, so the browser refuses every HTML-string and script-URL sink (`innerHTML`, `outerHTML`,
+`insertAdjacentHTML`, `script.src`, `new Worker(url)`), even with a literal string. No page and no lab
+uses one; the builder's lab lint rejects them first with a clearer message. Browsers without
+Trusted Types ignore the two directives. A lab that truly needs a Worker asks the lead: the fix is
+a named policy (`trusted-types lab-worker`) that allows only same-origin `assets/labs.*` URLs.)
 (`script-src 'self'`, `connect-src 'self'`, `worker-src 'self'` just state what `default-src` already implies; keeping
 them explicit documents intent and lets us tighten independently. We do NOT add `'unsafe-inline'` to scripts,
 `'unsafe-eval'`, or `wasm-unsafe-eval` unless a lab actually ships WebAssembly; then add only `'wasm-unsafe-eval'`.)
@@ -429,9 +480,10 @@ Consequences (hard rules for every author/agent):
    `/build-your-own/vmm/assets/*.js` loaded as `<script type="module" src=... defer>`. Initial data for a
    lab is a `<script type="application/json" id="...">` block (data blocks are not executed, so allowed) or a
    fetched `/assets/labs/*.json`.
-3. Inline `style=""` and inline SVG `<style>` are allowed (`style-src 'unsafe-inline'`), but prefer classes;
-   the per-page accent override uses CSS vars, as landing cards do.
-4. Images: `img-src 'self' data:`, so inline SVG (preferred) or self-hosted files only.
+3. No inline styles either: no `style=""` attribute, no `<style>` element (inline SVG included), no
+   `setAttribute("style", ...)`. Use classes and the tokens. Setting a property through the CSSOM
+   (`el.style.width = ...`) is not blocked by CSP and is fine in labs.
+4. Images: `img-src 'self'`, so inline SVG (preferred) or self-hosted files only.
 5. Web Workers OK from same origin files only (`worker-src 'self'`); no blob: workers (not allowed).
 6. Clipboard API needs a user gesture and a secure context: fine on https; document fallback for local preview.
 7. No `eval`/`new Function` in labs (the DTB/instruction "interpreters" are written as real parsers).
@@ -503,7 +555,7 @@ fixtures extracted from the real Rust code's unit tests (shared JSON vectors in 
  [guest]            [exit]                          [VMM]            [virtual UART]
  > str w1,[x0]  ->  DABT  IPA 0x0900_0000  WnR=1 -> dispatch PL011 -> "H"
    ldr w2,[x0,#0x18]  ...                          read FR = 0x90
- [ Step ] [ Run ] [ Reset ]    Unmapped store to 0x0b00_0000 -> exit: "unhandled MMIO" (log, no crash)
+ [ Step ] [ Run ] [ Reset ]    Unmapped store to 0x0c00_0000 -> exit: "unhandled MMIO" (log, no crash)
 ```
 
 ### 8.4 virtqueue ring visualizer
@@ -626,13 +678,34 @@ inert text.
   repeat visits). `:::stopping-point <label>` renders the "good place to stop" marker between two
   sittings.
 - *Arguments.* `:::code` needs both `anchor=` and `file=` (repo-relative). `:::term source=` is
-  relative to `course/` and names `captures/NN-name.txt`; its first line (`# …` provenance) feeds
-  the `captured:` footer of section 3.2, and the rest is the transcript (`$ command`, `exit:`,
-  `--- stdout ---`, `--- stderr ---`).
+  relative to `course/` and names `captures/NN-name.txt` (or a trace, `captures/NN-name.trace.jsonl`,
+  rendered as a "Trace file" block whose provenance is the run's `.txt` capture). **All leading
+  `#` lines of a capture are provenance, never transcript:** the first (minus its
+  `scripts/capture-cmd NN:` prefix) becomes the `captured:` footer of section 3.2, and the author
+  instruction "Regenerate with ..." is dropped. Only the first line may wrap: while it has not
+  ended in sentence punctuation (`.` `:` `;` `!` `?`), a following `#` line that starts in lower
+  case continues it (the older `scripts/capture.sh` header wraps that way). Every later `#` line is
+  its own note, listed under the footer and never joined to another, even when it starts in lower
+  case ("v.dtb is the file ...", "count=1: ..."). Lines indented after the `#` (`#   set -e`) are
+  a verbatim script or listing: consecutive ones render as one `<pre>` block, kept exactly. The rest is the
+  transcript (`$ command`, `exit:`, `--- stdout ---`, `--- stderr ---`; an empty section is not
+  shown, nor is the blank separator line the capture tool writes before a section marker or a
+  `$ ` line). Line ends: `\r\n` and a trailing literal `\x0d` (how the capture tool records a
+  guest's carriage return) both end a line; other `\xNN` escapes stay visible, styled as escapes.
+  Long lines wrap inside the terminal block. Every character is HTML-escaped: captures hold guest
+  output, which is hostile input.
+- *Primer front matter.* `title`, `slug`, `kind: primer`, `minutes`, `required_by: [NN]` (must equal
+  chapters.json `first_required_by`), `labs` (must match the `:::lab` directives), `runs`, and
+  `command`/`expect` when the primer has a `:::checkpoint`. Which chapters use a primer comes only
+  from chapters.json (CURRICULUM section 2.1): the header shows "First needed in chapter NN; also
+  used in ..." (written chapters only). Objectives live only in the `:::objectives` box. The
+  builder rejects `also_used_by:` and `objectives:` in primer front matter so the two cannot drift.
 - *Callouts.* Authors write STYLE section 7 blockquotes; the builder maps the label to a variant:
   `> **Security.**` to `security`, `> **Under the hood.**` to `why`, and `> **Try it.**`,
   `> **Aside.**`, `> **Production note.**` to `note`, keeping the label text. `:::callout` stays
-  available for the `mac` and `warn` variants. Predict is always `:::predict`.
+  available for the `mac` and `warn` variants. Predict is always `:::predict`: a `> **Predict.**`
+  blockquote is a build error, and any other label (not starting with one of the five) is a build
+  warning; a one-off label is written `> **Aside: <label>.**`.
 - *Required blocks* for a chapter, in order: `:::retrieval` (from chapter 01), `:::concepts`, the
   opening puzzle (prose), `:::objectives`, body sections (at least one `:::predict` from Part I
   on), `## Checkpoint` (holding `:::checkpoint`, at least one `:::term`, then `### What's next`
@@ -650,7 +723,40 @@ inert text.
 
 **Zero-dependency Node build script**, same philosophy as `indicogni-site/build.mjs` (node:fs only, no npm
 install, no bundler). Location: `course/site/build.mjs`, run as `node course/site/build.mjs`; output to
-`course/site/dist/` (gitignored) laid out as the final URL tree.
+`course/site/dist/` (gitignored) laid out as the final URL tree: `dist/_headers` at the asset root and
+every page under `dist/build-your-own/vmm/`.
+
+As built (2026-11-20):
+
+- `node course/site/build.mjs` builds and runs the CSP and contrast checks (errors); broken links are
+  reported as warnings. `--check` makes links, `#fragments`, missing assets and page size errors too
+  (`scripts/check.sh` runs it). `--strict` also fails on warnings, such as a lab that is not built yet.
+  `--out DIR` writes elsewhere (the tests build into a temp dir). The build writes into
+  `<out>.partial` and renames it over `<out>` only when there are no errors, so a failed build never
+  leaves a complete-looking `dist/` behind; the failed tree stays in `dist.partial/` with a
+  `BUILD-FAILED.txt` listing the errors.
+- Every page's rendered text outside `<pre>`, `<code>` and inline SVG is linted for author notation
+  (`PLAN`, `CURRICULUM`, milestone IDs such as M12, risk IDs, `architecture §`/`threat model §`
+  references, `[U]`/`[V]`/`[H]` tags, spike references): the same vocabulary scripts/check-lessons
+  rejects in chapters, applied to primers, the glossary and the generated pages too. External specs
+  cited by section ("UEFI 2.10 §7") are fine.
+- `chapters.json` url, slug and file values are validated before they become output paths, and
+  `:::code file=` / `:::diagram src=` must stay inside the repository.
+- `node course/site/serve.mjs` serves `dist/` on 127.0.0.1:8787 with the `_headers` applied (CSP
+  included, caching replaced by `no-store`), `index.html` resolution, trailing-slash redirects and the
+  nearest `404.html`, as the Worker does.
+- Pages: landing, one page per part, every chapter (a chapter in `chapters.json` with no file yet
+  gets a short "planned" page with `noindex`, so links to it resolve), the primers index and every
+  primer, the labs index and `/labs/<name>/` for every lab in `chapters.json` plus any lab directory
+  present (a lab not built whose chapters are all still planned, a post-v1 lab, gets a short
+  "planned" page and its own index section, with no warning), `/glossary/` from `course/GLOSSARY.md`, `/reference/` and `/about/` from
+  `src/pages/*.md` (rendered with the same Markdown, so the reference card's memory map and exit
+  statuses come from code anchors), `404.html` and `sitemap.xml`.
+- Curriculum titles keep their status words in `chapters.json` (`(SHOULD)`, `STRETCH`, `(post-v1)`);
+  the site strips them and shows a status badge instead. Primer "covers" text loses author notation
+  in `gen-chapters.mjs` (`cleanCovers`).
+- Page size limit: 400 KB of HTML per page (the boot-log chapter is about 360 KB uncompressed,
+  most of it captured output; on the wire it is a fraction of that).
 
 Recommendation on Markdown: **write our own tiny subset renderer (~300-400 lines) in
 `course/site/lib/md.mjs`; do not vendor marked/markdown-it.** Reasons: (1) we need custom directives
@@ -673,12 +779,14 @@ Pipeline:
 5. Render pages from `src/templates/*.html` with simple `{{slot}}` replacement (same approach as landing's
    `{{cards}}`); generate sidebar, prev/next, on-this-page TOC, landing curriculum list, sitemap.xml, robots hints,
    `404.html`, per-page `<title>`, canonical URL, OG tags, theme-color metas (copied from landing), `lang`.
-6. Emit assets: `assets/course.css` (single file, hand-written, < 25 KB), `assets/course.js`, `assets/labs/*.js`,
+6. Emit assets: `assets/course.css` (single file, hand-written; < 25 KB as shipped, after the
+   builder strips comments and collapses whitespace and adds the generated `.minw-N` classes;
+   `checkSize` fails the build over budget), `assets/course.js`, `assets/labs/*.js`,
    labs data. Content-hash filenames (`course.3f9a1c.css`) for immutable caching.
 7. Post-build checks (hard failures): `check-contrast` (parse the tokens in section 4.2, assert ratios),
    `check-links` (all internal hrefs resolve to an emitted file/id), `check-csp` (grep emitted HTML for
    `<script>` without `src`, `on\w+=`, `http://`, and any `https://` resource that isn't a plain outbound `<a>`),
-   `check-size` (every page < 200 KB).
+   `check-size` (every page < 400 KB, see the as-built notes above).
 8. `node --test course/site/` runs the renderer, tokenizer, lab-model and vector tests.
 
 Directory sketch:
@@ -691,14 +799,14 @@ course/
     src/templates/{layout,lesson,index,lab,reference}.html
     src/assets/{course.css,course.js}
     src/labs/<name>/{model.mjs,view.mjs,style.css}   labs/vectors/*.json
-    public/               <- generated, gitignored: the asset root deployed by wrangler
+    dist/                 <- generated, gitignored: the asset root deployed by wrangler
 ```
 `package.json`: `"type":"module"`, scripts `build`, `test`, `dev` (build then `npx wrangler dev`), `deploy`.
 No dependencies; `wrangler` is invoked via `npx` only.
 
 ### 10.1 Deploy: own Cloudflare Worker, route `indicogni.com/build-your-own/vmm*`
 Asset directory layout mirrors the URL path, because static assets are served by request path:
-`public/build-your-own/vmm/index.html`, `.../assets/...`, `.../<part>/<ch>/index.html`, etc.
+`dist/build-your-own/vmm/index.html`, `.../assets/...`, `.../<part>/<ch>/index.html`, etc.
 
 ```jsonc
 // course/site/wrangler.jsonc
@@ -708,7 +816,7 @@ Asset directory layout mirrors the URL path, because static assets are served by
   "name": "indicogni-vmm",
   "compatibility_date": "2026-10-01",
   "assets": {
-    "directory": "./public",
+    "directory": "./dist",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   },
@@ -723,8 +831,8 @@ Notes and caveats for the lead:
   named `vmm-*`), and it matches what the root README prescribes (`indicogni.com/build-your-own/<slug>*`). If a
   stricter match is wanted, use two routes: `.../vmm` and `.../vmm/*`.
 - `404-page` with a nested asset tree serves the nearest `404.html` walking up the path, so ship
-  `public/build-your-own/vmm/404.html` (with the course header) and the root site keeps its own.
-- `public/_headers` lives at the asset root (`public/_headers`) with paths written as in section 7.
+  `dist/build-your-own/vmm/404.html` (with the course header) and the root site keeps its own.
+- `_headers` lives at the asset root (`dist/_headers`) with paths written as in section 7.
 - `html_handling: auto-trailing-slash` makes `/vmm` redirect to `/vmm/` and lets `index.html` files resolve.
   Verify with `wrangler dev` that `/build-your-own/vmm/` (trailing slash) and `/build-your-own/vmm/labs/esr/` resolve.
 - Deploy: `cd course/site && node build.mjs && npx wrangler deploy`. Independent of the root site; the root
@@ -733,7 +841,7 @@ Notes and caveats for the lead:
 - The route must be added only after the first successful deploy is previewed (`wrangler dev`) so the live
   path never shows a half-built course. Cloudflare dashboard settings for this route/zone: disable Rocket
   Loader and auto-minify (CSP, section 7 point 8).
-- `course/site/public/` and `dist/` are build output; commit only sources.
+- `course/site/dist/` is build output; commit only sources.
 
 ---------------------------------------------------------------------------------------------------
 

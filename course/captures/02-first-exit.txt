@@ -1,5 +1,5 @@
 # scripts/capture.sh 02: run "first-exit" of course/checkpoints/02, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 02; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 02; never edit by hand (course/STYLE.md appendix A).
 $ macvmm first-exit
 exit: 0
 --- stdout ---

@@ -4,13 +4,6 @@ slug: page-tables
 kind: primer
 minutes: 30
 required_by: [05]
-objectives:
-- Split a 64-bit virtual address into its level indices and page offset for a 4 KiB or 16 KiB granule, by hand or with shell arithmetic.
-- Walk a virtual address through a three- or four-level table by hand, naming every descriptor read and the physical address it produces.
-- Decode a stage-1 descriptor: valid, table versus block versus page, output address, AttrIndx, AP, SH, AF, PXN and UXN.
-- Say which of TTBR0_EL1 and TTBR1_EL1 translates a given address, and compute the virtual address size from TCR_EL1.T0SZ.
-- Explain what changes when SCTLR_EL1.M turns the MMU on, and why the code that does it must be identity-mapped.
-- Explain why a device register must be Device memory and not Normal memory, and decode a MAIR_EL1 byte.
 labs: [two-stage-walker]
 ---
 
@@ -41,7 +34,9 @@ int main(void) {
 }
 ```
 
-> **Predict.** Will the two lines print the same address? If they do, how can they print different values?
+:::predict Will the two lines print the same address? If they do, how can they print different values?
+Yes, the same address, with different values: each process translates that address through its own tables, so one number names different memory in each. The run below shows it.
+:::
 
 ```sh
 cc -O0 -o same same.c
@@ -493,10 +488,11 @@ touched without ever reading the guest's tables.
 
 :::lab two-stage-walker
 
-In the [`two-stage-walker`](/build-your-own/vmm/labs/two-stage-walker/) lab (stage-1 mode) you
-start from the worked example above, already filled in, then a three-level toy table (4 KiB
-granule, 39-bit addresses). For each level you predict the index and the descriptor address
-before the lab reveals them, then follow the arrow to the next table. You flip a descriptor's
+In the [`two-stage-walker`](/build-your-own/vmm/labs/two-stage-walker/) lab (it opens in
+bare-metal mode, stage 1 only) you start from the worked example above, already filled in, then
+a three-level toy table (4 KiB granule, 39-bit addresses). For each level you predict the index
+and the descriptor address before the lab reveals them, then follow the Next line to the next
+table. You flip a descriptor's
 valid bit, its access flag and its `AP` bits and watch the walk fail at a named level with the
 fault the hardware would report. A granule toggle switches stage 1 between 4 KiB and 16 KiB so
 you can see the index widths change. Chapter 05 then turns on stage 2 in the same lab, with its

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" role="img" aria-labelledby="il-fb-title il-fb-desc">
+  <title id="il-fb-title">The life of one interrupt</title>
+  <desc id="il-fb-desc">Top: with IRQs masked, a level line stays pending until the CPU unmasks, an edge with no latch is lost, and a latched edge waits in its latch. Bottom: the four GIC states of INTID 33. Raising the line makes it pending; reading the IAR makes it active, or active and pending while a level line is still high; lowering the line removes the pending half; writing the EOI makes it inactive, or pending again if a level line is still high, which is an interrupt storm.</desc>
+  <g font-family="ui-monospace, Menlo, monospace" font-size="13" fill="currentColor">
+    <text x="20" y="26" font-weight="700">CPU masked, then unmasks</text>
+    <text x="20" y="52">level line:      pending ... still pending ... handler runs</text>
+    <text x="20" y="74">edge, no latch:  pulse, gone ... nothing pending ... nothing happens</text>
+    <text x="20" y="96">edge, latched:   latch set ... still pending ... handler runs</text>
+    <text x="20" y="140" font-weight="700">GIC state of INTID 33</text>
+    <text x="34" y="190">inactive</text>
+    <text x="200" y="190">pending</text>
+    <text x="352" y="190">active and pending</text>
+    <text x="352" y="270">active</text>
+    <text x="110" y="176" font-size="11">raise</text>
+    <text x="272" y="176" font-size="11">IAR</text>
+    <text x="490" y="232" font-size="11">lower line</text>
+    <text x="150" y="262" font-size="11">EOI</text>
+    <text x="210" y="222" font-size="11">EOI, line still high: storm</text>
+    <text x="20" y="306" font-size="11">An edge: the IAR clears pending even with the line high, so the EOI ends it.</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1.5" fill="none">
+    <rect x="24" y="172" width="80" height="26" rx="4"/>
+    <rect x="190" y="172" width="72" height="26" rx="4"/>
+    <rect x="342" y="172" width="158" height="26" rx="4"/>
+    <rect x="342" y="252" width="64" height="26" rx="4"/>
+    <path d="M104 185 L188 185"/><path d="M181 180 L188 185 L181 190"/>
+    <path d="M262 185 L340 185"/><path d="M333 180 L340 185 L333 190"/>
+    <path d="M480 198 L400 250"/><path d="M402 242 L400 250 L408 247"/>
+    <path d="M342 265 L64 265 L64 200"/><path d="M59 207 L64 200 L69 207"/>
+    <path d="M360 198 L240 214 L226 200"/><path d="M226 208 L226 200 L233 203"/>
+  </g>
+</svg>

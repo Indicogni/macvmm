@@ -4,18 +4,10 @@ slug: host-concurrency
 kind: primer
 minutes: 30
 required_by: [09]
-also_used_by: [02, 11, 17, 20, 26]
 labs: [lock-order]
 runs: mac+browser
 command: sh -c 'umask 077 && cd "$(mktemp -d)" && touch f && ls -l f | cut -c1-10'
 expect: -rw-------
-objectives:
-- Say what a thread owns by itself (registers, stack) and what it shares with the other threads of its process (memory, file descriptors), and explain why Hypervisor.framework ties each vCPU to the thread that created it.
-- Explain how a thread that never calls the kernel still loses the CPU (timer-driven preemption), and measure it with the involuntary context switch count of `/usr/bin/time -l`.
-- Trace a lost update in an unsynchronised counter as an interleaving of load, add and store, and name the Rust compile errors (E0499, E0277) that stop the same program in safe Rust.
-- Write correct Rust using `Mutex`, `Arc`, `std::thread::scope`, `Condvar` with a predicate loop, an `mpsc` channel and an `AtomicBool` flag, and choose between them for a given job.
-- Produce a deadlock with two locks, recognise it in a `sample` report, and remove it with a fixed lock order.
-- Explain what a file descriptor is, why `pread` suits threads better than `read` plus `lseek`, and what `O_CLOEXEC`, `umask` and the modes 0600 and 0700 do.
 ---
 
 # Why did two million come out under one million?
@@ -189,8 +181,9 @@ fn main() {
 }
 ```
 
-> **Predict.** Run it with 60 spinning threads on a 15-core machine. Does the main thread still
-> print its three ticks on time, or do the spinners starve it?
+:::predict Run it with 60 spinning threads on a 15-core machine. Does the main thread still print its three ticks on time, or do the spinners starve it?
+The ticks arrive on time. The kernel preempts the spinners, so the sleeping main thread still gets a core whenever it wakes. The capture below shows it.
+:::
 
 ```sh
 rustc --edition 2024 -O spin.rs
@@ -864,22 +857,24 @@ shows how a wait without a predicate loop sleeps forever after a notify that cam
   created on, and must be run from, the thread that created it.
 - [Chapter 09, mmio-pl011](/build-your-own/vmm/devices/mmio-pl011/) (requires this primer): the
   stdin reader thread, the devices behind `Arc<Mutex<dyn MmioDevice>>` on the bus
-  (`crates/vmm/src/bus.rs`), the lock order of architecture §14.2, the stdin thread that drops
-  input rather than wait for the guest (§14.4), the control thread's event channel (§14.1), and
+  (`crates/vmm/src/bus.rs`), the fixed order in which those locks are taken, the stdin thread that
+  drops input rather than wait for the guest, the control thread's event channel, and
   the `AtomicBool` stop flag in `crates/vmm/src/control.rs`, set from the signal path and read by
   the vCPU loop.
 - [Chapter 11, timer-irq](/build-your-own/vmm/interrupts/timer-irq/): preemption from the inside,
   and a vCPU that sleeps on a condvar when the guest executes `WFI`.
 - [Chapter 17, virtio-rng-console](/build-your-own/vmm/virtio/virtio-rng-console/): device
   worker threads woken by a condvar, and joined at stop; the disk worker that does its I/O under
-  the device lock, and why that wait is bounded (§14.2).
+  the device lock, and why that wait is bounded.
 - [Chapter 20, smp](/build-your-own/vmm/smp/smp/): one host thread per vCPU, secondary vCPUs
-  parked on a condvar until the guest's `CPU_ON` call, `hv_vcpus_exit` kicks at stop (§14.5), and
+  parked on a condvar until the guest's `CPU_ON` call, `hv_vcpus_exit` kicks at stop, and
   the lock order applied across bus, device and vCPU state.
 - [Chapter 26, snapshots](/build-your-own/vmm/production/snapshots/): pausing every thread at a
   safe point before saving state.
 
 ## Checkpoint
+
+:::checkpoint
 
 - **What you can do now.** Explain the lost update in `race.c` and why `race.rs` does not
   compile; get `2000000` from `locked.rs` every time; produce and diagnose the deadlock with

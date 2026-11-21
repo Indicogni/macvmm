@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Record a checkpoint's real output from the reference on this Mac (PLAN M27; CURRICULUM §3.6).
+# Record a checkpoint's real output from the reference on this Mac (course/STYLE.md appendix A).
 #
 #   scripts/capture.sh NN|all
 #

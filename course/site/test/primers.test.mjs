@@ -33,9 +33,10 @@ for (const { meta, data, body, bodyLine } of primers) {
     assert.ok(!("lab" in data), "use `labs: [...]`, not `lab:`");
     assert.ok(Array.isArray(data.labs), "`labs` is a list (`labs: []` when there is none)");
     for (const l of data.labs) assert.ok(LABS.has(l), `unknown lab ${l}`);
-    assert.ok(Array.isArray(data.required_by), "`required_by` is a list");
-    assert.ok(data.required_by.includes(meta.first_required_by), `required_by must include ${meta.first_required_by}`);
-    assert.ok(Array.isArray(data.objectives) && data.objectives.length >= 3, "objectives");
+    // chapters.json (CURRICULUM section 2.1) is the one source for which chapters use a primer,
+    // and the :::objectives box is the one list of objectives: the front matter repeats neither.
+    assert.deepEqual(data.required_by, [meta.first_required_by], "`required_by` is [the first chapter that needs it], as in CURRICULUM");
+    for (const k of ["also_used_by", "objectives"]) assert.ok(!(k in data), `drop \`${k}:\` from the front matter (the page uses chapters.json and the :::objectives box)`);
     for (const l of meta.labs) assert.ok(data.labs.includes(l), `CURRICULUM puts lab ${l} in this primer`);
   });
 

@@ -1,5 +1,5 @@
 # scripts/capture.sh 08: run "psci-probe-exit" of course/checkpoints/08, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 08; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 08; never edit by hand (course/STYLE.md appendix A).
 $ macvmm run --mem 64M --raw {guests}/psci-probe.bin@0x40080000 --on-reset exit --timeout 10
 exit: 4
 --- stdout ---

@@ -1,0 +1,109 @@
+/* durability-ladder: every rule scoped under the lab's shell (course/site/LABS.md section 5).
+   Site tokens only, so dark mode follows the page. Nothing is shown by color alone: wiped rungs
+   carry a hatch, a dashed border and the word "wiped"; lost blocks are struck through and say
+   "lost"; the verdict carries a check or a cross and its words. */
+
+.lab[data-lab="durability-ladder"] .dl-wrap { display: grid; gap: 1rem; min-width: 0; font-family: var(--sans); color: var(--ink); }
+.lab[data-lab="durability-ladder"] .dl-controls { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: flex-start; }
+.lab[data-lab="durability-ladder"] .dl-field { display: flex; flex-direction: column; gap: .25rem; min-width: 0; margin: 0; }
+.lab[data-lab="durability-ladder"] fieldset.dl-field { border: 1px solid var(--rule); border-radius: 6px; padding: .25rem .75rem .5rem; }
+.lab[data-lab="durability-ladder"] legend { font-size: .9rem; color: var(--muted); padding: 0 .25rem; }
+.lab[data-lab="durability-ladder"] .dl-radios { flex-direction: row; flex-wrap: wrap; gap: 0 1rem; }
+.lab[data-lab="durability-ladder"] .dl-radios--col { flex-direction: column; }
+.lab[data-lab="durability-ladder"] .dl-radio { display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; }
+.lab[data-lab="durability-ladder"] .dl-radio input { width: 1.25rem; height: 1.25rem; margin: 0; flex: none; }
+.lab[data-lab="durability-ladder"] select { min-height: 44px; max-width: 100%; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--control); border-radius: 6px; padding: 0 .5rem; }
+.lab[data-lab="durability-ladder"] .dl-measured { margin: 0; font-size: .9rem; color: var(--muted); }
+.lab[data-lab="durability-ladder"] .dl-hint { margin: .25rem 0 0; font-size: .85rem; color: var(--muted); max-width: 40rem; }
+.lab[data-lab="durability-ladder"] .dl-intro { display: grid; gap: .25rem; }
+.lab[data-lab="durability-ladder"] .dl-howto { margin: 0; padding-left: 1.4rem; display: grid; gap: .15rem; }
+.lab[data-lab="durability-ladder"] .dl-outcome__head { margin: 0; font-family: var(--serif); font-size: 1rem; }
+
+.lab[data-lab="durability-ladder"] .dl-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lab[data-lab="durability-ladder"] .dl-btn { min-height: 44px; min-width: 44px; padding: 0 1rem; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 6px; cursor: pointer; transition: border-color 150ms; text-align: left; }
+.lab[data-lab="durability-ladder"] .dl-btn:hover:not(:disabled) { border-color: var(--ink); }
+.lab[data-lab="durability-ladder"] .dl-btn--primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+.lab[data-lab="durability-ladder"] .dl-btn--fail { border-color: var(--danger); }
+.lab[data-lab="durability-ladder"] .dl-btn--small { min-height: 44px; padding: 0 .6rem; font-size: .85rem; }
+.lab[data-lab="durability-ladder"] .dl-btn:disabled { opacity: .55; cursor: not-allowed; }
+.lab[data-lab="durability-ladder"] .dl-btn:focus-visible,
+.lab[data-lab="durability-ladder"] select:focus-visible,
+.lab[data-lab="durability-ladder"] input:focus-visible,
+.lab[data-lab="durability-ladder"] summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+.lab[data-lab="durability-ladder"] .dl-btn--primary:focus-visible { outline-color: var(--paper); box-shadow: 0 0 0 5px var(--ink); }
+.lab[data-lab="durability-ladder"] .dl-script { margin: 0; padding: .5rem .75rem; border: 1px dashed var(--rule); border-radius: 6px; }
+.lab[data-lab="durability-ladder"] .dl-script[hidden] { display: none; }
+.lab[data-lab="durability-ladder"] .dl-step { margin: 0; padding: .5rem .75rem; background: var(--card); border-left: 3px solid var(--rule); }
+
+.lab[data-lab="durability-ladder"] .dl-main { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) {
+  .lab[data-lab="durability-ladder"] .dl-main { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+.lab[data-lab="durability-ladder"] .dl-col { display: grid; gap: .6rem; align-content: start; min-width: 0; }
+.lab[data-lab="durability-ladder"] .dl-h { margin: 0; font-family: var(--serif); font-size: 1.05rem; }
+
+.lab[data-lab="durability-ladder"] .dl-rungs { list-style: none; margin: 0; padding: 0; display: grid; gap: .25rem; }
+.lab[data-lab="durability-ladder"] .dl-rung { padding: .5rem .75rem; background: var(--card); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; }
+.lab[data-lab="durability-ladder"] .dl-rung--flash { border-width: 2px; }
+.lab[data-lab="durability-ladder"] .dl-rung--lost { border: 2px dashed var(--danger); background-image: repeating-linear-gradient(135deg, transparent 0 8px, var(--accent-tint) 8px 10px); }
+.lab[data-lab="durability-ladder"] .dl-rung__head { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+.lab[data-lab="durability-ladder"] .dl-rung__n { font-family: var(--mono); font-weight: 700; color: var(--accent); }
+.lab[data-lab="durability-ladder"] .dl-rung__name { font-weight: 600; }
+.lab[data-lab="durability-ladder"] .dl-rung__wiped { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; color: var(--danger); }
+.lab[data-lab="durability-ladder"] .dl-rung__where { margin: .1rem 0 .4rem; font-size: .85rem; color: var(--muted); }
+.lab[data-lab="durability-ladder"] .dl-arrow { padding-left: 1.25rem; font-size: .8rem; color: var(--muted); font-family: var(--mono); overflow-wrap: anywhere; }
+.lab[data-lab="durability-ladder"] .dl-boundary { margin: .2rem 0; padding: .2rem .5rem; border-top: 2px dashed var(--ink); font-size: .8rem; font-weight: 600; }
+
+.lab[data-lab="durability-ladder"] .dl-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
+.lab[data-lab="durability-ladder"] .dl-chip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding: .2rem .5rem; border: 1px solid var(--ink); border-radius: 6px; background: var(--paper); font-family: var(--mono); font-size: .85rem; min-height: 28px; }
+.lab[data-lab="durability-ladder"] .dl-chip--c { border-width: 2px; }
+.lab[data-lab="durability-ladder"] .dl-chip--m { border-style: dotted; }
+.lab[data-lab="durability-ladder"] .dl-chip--lost .dl-chip__name { text-decoration: line-through; color: var(--muted); }
+.lab[data-lab="durability-ladder"] .dl-chip__tag { font-family: var(--sans); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; color: var(--danger); }
+.lab[data-lab="durability-ladder"] .dl-empty { font-size: .85rem; color: var(--muted); font-style: italic; }
+
+.lab[data-lab="durability-ladder"] .dl-readout { margin: 0; padding: .6rem .75rem; border-left: 3px solid var(--accent); background: var(--card); }
+.lab[data-lab="durability-ladder"] .dl-outcome { display: grid; gap: .4rem; padding: .6rem .75rem; border-radius: 6px; }
+.lab[data-lab="durability-ladder"] .dl-outcome:empty { display: none; }
+.lab[data-lab="durability-ladder"] .dl-outcome p { margin: 0; }
+.lab[data-lab="durability-ladder"] .dl-outcome--ok { border: 2px solid var(--ok); }
+.lab[data-lab="durability-ladder"] .dl-outcome--bad { border: 2px dashed var(--danger); }
+.lab[data-lab="durability-ladder"] .dl-outcome__verdict { font-weight: 700; }
+.lab[data-lab="durability-ladder"] .dl-outcome--ok .dl-mark { color: var(--ok); }
+.lab[data-lab="durability-ladder"] .dl-outcome--bad .dl-mark { color: var(--danger); }
+.lab[data-lab="durability-ladder"] .dl-surv { margin: 0; padding-left: 1.2rem; font-size: .9rem; }
+.lab[data-lab="durability-ladder"] .dl-predicted { font-style: italic; }
+.lab[data-lab="durability-ladder"] .dl-real { display: grid; gap: .3rem; }
+.lab[data-lab="durability-ladder"] .dl-real:empty { display: none; }
+.lab[data-lab="durability-ladder"] .dl-real p { margin: 0; }
+.lab[data-lab="durability-ladder"] .dl-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.lab[data-lab="durability-ladder"] .dl-quote code { font-family: var(--mono); background: var(--code-bg); color: var(--code-ink); padding: .1rem .3rem; border-radius: 4px; overflow-wrap: anywhere; }
+.lab[data-lab="durability-ladder"] .dl-src { font-size: .85rem; color: var(--muted); }
+
+.lab[data-lab="durability-ladder"] .dl-scroll { overflow-x: auto; max-width: 100%; }
+.lab[data-lab="durability-ladder"] .dl-scroll:focus-visible,
+.lab[data-lab="durability-ladder"] .dl-outcome:focus-visible,
+.lab[data-lab="durability-ladder"] .dl-h:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+.lab[data-lab="durability-ladder"] .dl-table--wide { min-width: 36rem; }
+.lab[data-lab="durability-ladder"] .dl-table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+.lab[data-lab="durability-ladder"] .dl-table caption { text-align: left; color: var(--muted); padding-bottom: .4rem; }
+.lab[data-lab="durability-ladder"] .dl-table th,
+.lab[data-lab="durability-ladder"] .dl-table td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.lab[data-lab="durability-ladder"] .dl-table thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.lab[data-lab="durability-ladder"] .dl-table tbody th { font-weight: 600; }
+.lab[data-lab="durability-ladder"] .dl-cell--lost { font-weight: 700; color: var(--danger); }
+.lab[data-lab="durability-ladder"] .dl-cell--ok { color: var(--muted); }
+.lab[data-lab="durability-ladder"] .dl-row--moved td { font-size: .8rem; color: var(--muted); }
+.lab[data-lab="durability-ladder"] .dl-row--last th,
+.lab[data-lab="durability-ladder"] .dl-row--last td { background: var(--accent-tint); }
+.lab[data-lab="durability-ladder"] .dl-row--last td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.lab[data-lab="durability-ladder"] .dl-row--failure th { color: var(--danger); }
+
+.lab[data-lab="durability-ladder"] .dl-more summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="durability-ladder"] * { transition: none !important; }
+}
+.lab[data-lab="durability-ladder"] .dl-legend { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .2rem .75rem; margin: 0; font-size: .85rem; }
+.lab[data-lab="durability-ladder"] .dl-legend dt { font-family: var(--mono); }
+.lab[data-lab="durability-ladder"] .dl-legend dd { margin: 0; color: var(--muted); }

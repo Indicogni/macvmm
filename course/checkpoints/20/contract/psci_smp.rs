@@ -1,14 +1,14 @@
 // Checkpoint 20 contract tests, frozen from the reference test crates/vmm/tests/psci_smp.rs.
 // It names items chapters 08, 10 and 20 teach; the harness runs it against your crates.
-//! Host test: PSCI under SMP races, and the SMP machine description (PLAN M16 "Acceptance:
-//! host" and "Security tests"; architecture §8.1, §8.6, §12.2; Arm DEN 0022 §5.1.3–5.1.5;
-//! threat model HC-3, HC-4).
+//! Host test: PSCI under SMP races, and the SMP machine description (host
+//! acceptance and "Security tests"; Arm DEN 0022 §5.1.3–5.1.5;
+//! threat model: docs/security/threat-model.md).
 //!
 //! With `--cpus N` every vCPU has its own host thread, so PSCI calls arrive concurrently. The
 //! state machine (`Off → OnPending → On → Off`) must stay exact under that:
 //!
 //! - **One winner.** Eight threads racing CPU_ON at one target: exactly one SUCCESS; every
-//!   other call is ALREADY_ON (-4) or ON_PENDING (-5), never a second start (HC-3). The target
+//!   other call is ALREADY_ON (-4) or ON_PENDING (-5), never a second start. The target
 //!   is a real parked "vCPU" thread that takes its mailbox partway through the race, staged so
 //!   that every round asserts at least two of each refusal (the test's own docs say how).
 //! - **CPU_OFF then CPU_ON** restarts the CPU, many times over, with the mailbox's entry and
@@ -19,7 +19,7 @@
 //!   (`tests/golden/virt-4cpu-1g.dts`, what `macvmm run --cpus 4 --mem 1G --kernel <test guest>
 //!   --dtb-out F` writes; compared when `dtc` is installed, `MACVMM_BLESS_GOLDEN=1` rewrites).
 //!
-//! The PLAN's security test runs this file 100 times under `--release`:
+//! The security gate runs this file 100 times under `--release`:
 //! `scripts/test-psci-smp-loop.sh` (stops at the first failing run).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 

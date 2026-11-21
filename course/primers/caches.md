@@ -5,14 +5,7 @@ kind: primer
 minutes: 20
 runs: mac+browser
 required_by: [13]
-also_used_by: [04, 27]
 labs: [cache-views]
-objectives:
-- Explain what a cache line is and why a core keeps separate instruction and data caches
-- Define Point of Unification and Point of Coherency, and say which observers meet at each
-- Choose between clean, invalidate, and clean-and-invalidate for a given stale-data problem
-- Decode CTR_EL0.IDC and CTR_EL0.DIC and state what code-patching steps they make necessary
-- Explain what booting.rst means by "cleaned to PoC" and what macvmm observed on Apple Silicon
 command: ./stale maintain
 expect: 0 of 1000 calls ran the old instruction
 ---
@@ -373,7 +366,7 @@ infer it leaves `UCT` clear, and the effect is what we measured. That is why
 does not have to.
 
 A guest kernel at EL1 *can* read `CTR_EL0`, and Hypervisor.framework reports the value it will
-see through `hv_vcpu_config_get_feature_reg`. The project's spike printed, on this machine:
+see through `hv_vcpu_config_get_feature_reg`. An early experiment on this Mac printed:
 
 ```text
     feature CTR_EL0            = 0x000000099444c004 [HV_SUCCESS]
@@ -526,7 +519,7 @@ memtest: memhash rejects overflow ok
 its cache, matched what the uncached guest wrote. (The last line is a security check on the
 hypercall, not part of this experiment.)
 
-> **Result of experiment 1.** **Observed** (exit status 0), on this machine, recorded in
+> **Aside: result of experiment 1.** **Observed** (exit status 0), on this machine, recorded in
 > `docs/research/guest-boot.md`: MMU-off guest writes are visible to the VMM without cache
 > maintenance, and host writes are visible to the MMU-off guest. So in chapter 13, macvmm copies
 > the Image and does no explicit clean, and says why in a comment that cites this evidence.
@@ -555,7 +548,7 @@ and `stale.c` showed this machine really serves stale instructions. So the plan 
 and `IC IVAU` acts on every core in the Inner Shareable domain, invalidating by the *host* virtual
 address should reach the line the guest's vCPU cached.
 
-> **Status of experiment 2.** **Not yet observed.** The plan is to call `sys_icache_invalidate`
+> **Aside: status of experiment 2.** **Not yet observed.** The plan is to call `sys_icache_invalidate`
 > after writing the breakpoint; the test will decide, and its result goes in
 > `docs/research/hvf-api.md`. Until then, treat this as a reasoned prediction.
 
@@ -673,13 +666,7 @@ You can now explain the puzzle: the store reached the data side, `CTR_EL0.DIC = 
 line on the instruction side, and `IC IVAU` plus barriers, through `sys_icache_invalidate`, removed
 it. Verify it with the program from the start of this primer:
 
-```sh
-./stale maintain
-```
-
-```text
-0 of 1000 calls ran the old instruction
-```
+:::checkpoint
 
 **What's next.** Chapter 13 copies a real Linux kernel into guest RAM and starts it with the MMU
 off. You know why `booting.rst` asks for a clean to PoC, and why macvmm, on measured evidence,

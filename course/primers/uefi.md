@@ -4,17 +4,10 @@ slug: uefi
 kind: primer
 minutes: 25
 required_by: [21]
-also_used_by: [13, 22]
 labs: [boot-chain]
 runs: mac+browser
 command: objdump -p .cache/macvmm/vmlinuz-virt | grep -o '(EFI application)'
 expect: (EFI application)
-objectives:
-- Read the first bytes of an EFI application (the `MZ` stub, the PE offset at `0x3c`, the `PE\0\0` signature, machine `0xAA64`, subsystem 10) and say what each tells a UEFI firmware.
-- Explain how an EFI application with an empty import table reaches the firmware's functions, starting from the two arguments in `x0` and `x1`.
-- Sort a list of UEFI services into boot services and runtime services, and say what `ExitBootServices` ends, what survives it, and why the call can fail.
-- Describe how a DTB or ACPI tables reach an OS through the configuration table, and name who owns the DTB at each step of the U-Boot to Linux and U-Boot to FreeBSD chains.
-- Locate the program a UEFI firmware boots by default from a disk (GPT, the EFI system partition, `\EFI\BOOT\BOOTAA64.EFI`), and place U-Boot's `bootefi` and EDK2 in that picture.
 ---
 
 # Why does a Linux kernel look like a Windows program?
@@ -123,8 +116,9 @@ from 0), the **import directory**. A Windows program lists there every named fun
 from the system (`CreateFileW` from the Windows library `kernel32.dll`, and so on). This one has
 an import directory of address zero and size zero. It imports nothing.
 
-> **Predict.** A program that names no outside functions still prints text, allocates memory and
-> reads files once it runs. Where could it get those abilities from, if not from imports?
+:::predict A program that names no outside functions still prints text, allocates memory and reads files once it runs. Where could it get those abilities from, if not from imports?
+From an argument: the firmware calls the program's entry point with a pointer to a table of the firmware's own functions. The next section shows how.
+:::
 
 ## A program that imports nothing
 
@@ -194,17 +188,7 @@ everything. After it returns, every boot service is gone, the firmware's drivers
 memory they used is the OS's to reuse. Only runtime services remain, which is how an OS later
 reads the clock, stores a boot setting, or asks the platform to reboot.
 
-```mermaid
-sequenceDiagram
-    participant FW as UEFI firmware
-    participant L as EFI application (Linux stub, loader.efi)
-    participant OS as OS kernel
-    FW->>L: StartImage: x0 = image handle, x1 = System Table
-    L->>FW: boot services: allocate, read files, print, GetMemoryMap
-    L->>FW: ExitBootServices(handle, MapKey)
-    L->>OS: jump to kernel entry
-    OS->>FW: runtime services only: GetTime, SetVariable, ResetSystem
-```
+:::diagram src=docs/diagrams/uefi-handoff.svg alt="UEFI firmware, an EFI application and the OS kernel"
 
 *Caption: notice that the arrows after `ExitBootServices` only go from the OS to the firmware,
 and only to runtime services.*
@@ -231,9 +215,11 @@ picture of memory.
 > can change the map between `GetMemoryMap` and `ExitBootServices`. Timer events run on their own,
 > so no amount of care by the loader guarantees success. Loaders therefore size the buffer with
 > some slack, then loop: get the map, call `ExitBootServices`, and on `EFI_INVALID_PARAMETER`
-> call only `GetMemoryMap` again and retry. "Only" is a rule of the specification: after a failed
-> `ExitBootServices` the firmware may already have shut part of itself down, so `GetMemoryMap` is
-> the one boot service still allowed. See `ExitBootServices` in §7.4.
+> call `GetMemoryMap` again and retry. The specification is strict here: after a failed
+> `ExitBootServices` the firmware may already have shut part of itself down, so only the memory
+> allocation services (`GetMemoryMap`, `AllocatePages`, `FreePages`, `AllocatePool`, `FreePool`)
+> may still be called, and in practice the next call is `GetMemoryMap`. See `ExitBootServices`
+> in §7.4.
 
 ## The configuration table: how a DTB reaches the OS
 
@@ -313,8 +299,10 @@ U-Boot is a bootloader with its own prompt and commands, which the [`u-boot`](/b
 also carries an implementation of the UEFI interface, large enough to run EFI applications, which
 Arm's **EBBR** (Embedded Base Boot Requirements) describes as the subset a small board must offer.
 Its `bootefi` command starts that implementation: `bootefi <image address> [<fdt address>]`
-builds a System Table, installs the given DTB in the configuration table (or, without one, the
-DTB U-Boot itself is running with), and calls the image's PE entry point. U-Boot's "distro boot"
+builds a System Table, installs the given DTB in the configuration table, and calls the image's
+PE entry point. Without a DTB argument it copies the one at `$fdt_addr` (on `qemu_arm64`, ours at
+`0x4000_0000`; only if that variable is unset does it use the copy U-Boot itself runs with),
+edits the copy (`/chosen`, the memory node, memory reservations) and installs that. U-Boot's "distro boot"
 scripts, which search attached disks for something bootable, can also find `\EFI\BOOT\BOOTAA64.EFI` on a disk and do the same without you typing anything.
 
 EDK2 (TianoCore) is the reference implementation of the full specification, written by Intel and
@@ -349,11 +337,13 @@ to Linux chain, with the owner of the DTB at each step:
 ```text
  VMM (host)          builds DTB, puts it at 0x4000_0000, x0 = DTB, PC = 0x0
    |
- U-Boot (guest)      reads it at RAM base, may fix it up, keeps its own copy
+ U-Boot (guest)      reads it at RAM base, keeps its own copy to run on
    |  bootefi
- UEFI interface      installs U-Boot's DTB in the configuration table
+ UEFI interface      copies ours (from $fdt_addr), edits it, installs the copy
+                     in the configuration table
    |  StartImage: x0 = handle, x1 = System Table
  Linux EFI stub      copies the DTB, adds /chosen (bootargs, uefi-system-table, mmap, kaslr-seed)
+                     and deletes /memory (the kernel uses the UEFI memory map)
    |  ExitBootServices, then x0 = DTB
  Linux kernel        reads the stub's DTB; uses runtime services afterwards
 ```
@@ -367,8 +357,9 @@ at `0x4000_0000`. So the VMM starts the CPU at `0x0`, inside the firmware, and l
 the base of RAM where that firmware expects to find it.
 
 For FreeBSD, swap the stub for `loader.efi`: it fetches the DTB from the configuration table,
-loads the kernel, and passes the DTB along in FreeBSD's own metadata (a list of tagged records
-the loader leaves in memory for the kernel), not in `x0`.
+loads the kernel, copies the DTB once more (marking `/chosen` with `fixup-applied`), and passes
+that copy's address in FreeBSD's own metadata (a list of tagged records the loader leaves in
+memory for the kernel), not in `x0`.
 
 ## The puzzle, solved
 
@@ -453,6 +444,8 @@ firmware, U-Boot's included, will find it there with no configuration.
   journal question 3 asks what UEFI gives an OS that a DTB alone does not.
 
 ## Checkpoint
+
+:::checkpoint
 
 - **What you can do now.** Confirm that Alpine's kernel is an EFI application:
   `objdump -p .cache/macvmm/vmlinuz-virt | grep -o '(EFI application)'` prints

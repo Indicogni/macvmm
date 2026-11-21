@@ -1,0 +1,7 @@
+flowchart TD
+    A[next byte in the buffer] -->|"the character 0, at a multiple of 4: a raw newc member"| B[parse newc entries]
+    A -->|a zero byte| C[skip it]
+    A -->|anything else| D[pick a decompressor by magic, e.g. 1f 8b = gzip]
+    B -->|TRAILER!!! seen| A
+    C --> A
+    D -->|decompressed stream is parsed as newc| A

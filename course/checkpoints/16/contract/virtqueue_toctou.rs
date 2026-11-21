@@ -1,7 +1,6 @@
-// Checkpoint 16 contract (L1), frozen from the reference test crates/vmm/tests/virtqueue_toctou.rs.
+// Checkpoint 16 contract, frozen from the reference test crates/vmm/tests/virtqueue_toctou.rs.
 // It names only items chapters 04, 15 and 16 teach; the harness runs it against your crates.
-//! PLAN M11 security test (threat model VQ-4, MEM-7; architecture §11.2 item 13;
-//! first-principles R9): the guest rewrites ring memory *while* the device walks it.
+//! Security test (see docs/security/threat-model.md): the guest rewrites ring memory *while* the device walks it.
 //!
 //! A double fetch is the classic virtqueue bug: the device validates `desc.len`, then reads
 //! `desc.len` again to use it, and a second guest vCPU changed it in between (the shape of

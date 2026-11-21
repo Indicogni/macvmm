@@ -1,11 +1,11 @@
-// Checkpoint 19 contract (L1), frozen from the reference test crates/vmm/tests/unixgram.rs.
+// Checkpoint 19 contract, frozen from the reference test crates/vmm/tests/unixgram.rs.
 // It names only items chapters 15 to 19 teach; the harness runs it against your crates.
-//! PLAN M24 acceptance (host): the `--net unixgram` backend over real Unix datagram sockets in a
-//! private temp directory (architecture §11.3; threat model §7.14 NET-1..4, §9.2). Needs no HVF.
+//! Host acceptance: the `--net unixgram` backend over real Unix datagram sockets in a
+//! private temp directory (see docs/security/threat-model.md). Needs no HVF.
 //!
 //! The socket setup goes through `hostio::open_unixgram`, exactly as `HostIo::open` does it, so
-//! the NET-3 directory check and the NET-4 replacement rules are the ones under test. The
-//! NET-2 "no `peer=` without `,learn`" rule is a parse error in the CLI (`macvmm` unit test
+//! the directory check and the socket-replacement rules are the ones under test. The
+//! "no `peer=` without `,learn`" rule is a parse error in the CLI (`macvmm` unit test
 //! `cli::tests::net_flags`, e2e `net_requires_peer`): `NetPeer` has no "unset" variant, so the
 //! library cannot even express it.
 #![allow(clippy::unwrap_used, clippy::expect_used)]

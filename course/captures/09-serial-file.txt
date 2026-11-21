@@ -1,5 +1,5 @@
 # scripts/capture.sh 09: run "serial-file" of course/checkpoints/09, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 09; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 09; never edit by hand (course/STYLE.md appendix A).
 $ /bin/sh -c "$0" run --mem 64M --raw "$1" --serial "file:$2/s.txt" --timeout 10 >"$2/stdout.txt"; echo "rc=$?"; sed 's/^/file: /' "$2/s.txt"; echo "stdout lines with hello: $(grep -c 'hello from guest' "$2/stdout.txt")" {macvmm} {guests}/hello.bin@0x40080000 {out}
 exit: 0
 --- stdout ---

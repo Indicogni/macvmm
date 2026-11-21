@@ -1,7 +1,7 @@
 // Checkpoint 16 contract helpers, frozen from crates/vmm/tests/virtio_support/mod.rs.
-//! Shared helpers for the M11 virtio host tests (`virtio_mmio_state.rs`, `virtqueue_hostile.rs`,
+//! Shared helpers for the virtio host tests (`virtio_mmio_state.rs`, `virtqueue_hostile.rs`,
 //! `virtqueue_toctou.rs`): a guest RAM (`VecMemory`), a split-ring builder that plays the
-//! driver, a `MockDevice` that plays a device model, and the xorshift PRNG (PLAN §0.3).
+//! driver, a `MockDevice` that plays a device model, and the xorshift PRNG (seeded, so a failure replays).
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used)]
 
 use std::sync::{Arc, Mutex};

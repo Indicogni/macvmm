@@ -1,0 +1,161 @@
+/* vmapple-map. Every rule is scoped to this lab; site tokens only (LABS.md section 5).
+   A column is never color alone: each badge carries its word, a mark (filled, half, empty
+   circle) and a border style (solid observed, dashed inferred, dotted unknown). */
+.lab[data-lab="vmapple-map"] .vm {
+  container-type: inline-size;
+  font-family: var(--sans);
+  color: var(--ink);
+}
+/* Narrow first: everything stacks. The container queries at the end widen it. */
+.lab[data-lab="vmapple-map"] .vm__grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "controls" "viz" "readout";
+}
+.lab[data-lab="vmapple-map"] [hidden] { display: none !important; }
+.lab[data-lab="vmapple-map"] .vm__controls { grid-area: controls; display: flex; flex-direction: column; gap: 1rem; }
+.lab[data-lab="vmapple-map"] .vm__viz { grid-area: viz; min-width: 0; display: flex; flex-direction: column; gap: 0.9rem; container-type: inline-size; }
+.lab[data-lab="vmapple-map"] .vm__readout { grid-area: readout; position: relative; }
+
+.lab[data-lab="vmapple-map"] .vm__group { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.lab[data-lab="vmapple-map"] .vm__group > label,
+.lab[data-lab="vmapple-map"] .vm__evidence legend { font-weight: 600; }
+.lab[data-lab="vmapple-map"] .vm__evidence { border: 1px solid var(--rule); border-radius: 6px; margin: 0; padding: 0.5rem 0.75rem 0.75rem; }
+.lab[data-lab="vmapple-map"] .vm__choice { display: flex; align-items: flex-start; gap: 0.5rem; min-height: 44px; padding-top: 0.6rem; cursor: pointer; }
+.lab[data-lab="vmapple-map"] input[type="checkbox"] { width: 1.1rem; height: 1.1rem; flex: none; margin-top: 0.15rem; accent-color: var(--accent); }
+.lab[data-lab="vmapple-map"] .vm__input {
+  min-height: 44px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--mono);
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0 0.6rem;
+}
+.lab[data-lab="vmapple-map"] .vm__buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.lab[data-lab="vmapple-map"] .vm__btn {
+  min-height: 44px;
+  padding: 0 0.9rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.lab[data-lab="vmapple-map"] :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.lab[data-lab="vmapple-map"] .vm__h { font-size: 1rem; margin: 0 0 0.35rem; }
+.lab[data-lab="vmapple-map"] .vm__h4 { font-size: 0.95rem; margin: 0 0 0.35rem; }
+.lab[data-lab="vmapple-map"] .vm__hint,
+.lab[data-lab="vmapple-map"] .vm__means,
+.lab[data-lab="vmapple-map"] .vm__cap,
+.lab[data-lab="vmapple-map"] .vm__muted { color: var(--muted); font-size: 0.9em; margin: 0; }
+.lab[data-lab="vmapple-map"] .vm__error { color: var(--danger); margin: 0; font-weight: 600; }
+.lab[data-lab="vmapple-map"] .vm__mono,
+.lab[data-lab="vmapple-map"] .vm__addrout dd { font-family: var(--mono); }
+
+/* the three columns */
+.lab[data-lab="vmapple-map"] .vm__columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+.lab[data-lab="vmapple-map"] .vm__col { border: 2px solid var(--rule); border-radius: 8px; padding: 0.6rem; background: var(--card); min-width: 0; }
+.lab[data-lab="vmapple-map"] .vm__col--observed { border-style: solid; border-color: var(--ok); }
+.lab[data-lab="vmapple-map"] .vm__col--inferred { border-style: dashed; border-color: var(--warn); }
+.lab[data-lab="vmapple-map"] .vm__col--unknown { border-style: dotted; border-color: var(--muted); }
+.lab[data-lab="vmapple-map"] .vm__collist { list-style: none; margin: 0.5rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.lab[data-lab="vmapple-map"] .vm__none { color: var(--muted); font-style: italic; }
+
+.lab[data-lab="vmapple-map"] .vm__chip {
+  min-height: 44px;
+  padding: 0.2rem 0.6rem;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.lab[data-lab="vmapple-map"] .vm__chip--sel { border: 2px solid var(--accent); background: var(--accent-tint); font-weight: 600; }
+
+/* try this */
+.lab[data-lab="vmapple-map"] .vm__try { margin: 0; padding-left: 1.4rem; }
+.lab[data-lab="vmapple-map"] .vm__try li { margin-bottom: 0.2rem; }
+
+/* badges */
+.lab[data-lab="vmapple-map"] .vm__badge { display: inline-block; white-space: nowrap; padding: 0.05rem 0.45rem; border-radius: 999px; border: 2px solid var(--rule); font-size: 0.9em; }
+.lab[data-lab="vmapple-map"] .vm__badge--observed { border-style: solid; border-color: var(--ok); }
+.lab[data-lab="vmapple-map"] .vm__badge--inferred { border-style: dashed; border-color: var(--warn); }
+.lab[data-lab="vmapple-map"] .vm__badge--unknown { border-style: dotted; border-color: var(--muted); }
+
+/* the table */
+.lab[data-lab="vmapple-map"] .vm__scroll { overflow-x: auto; max-width: 100%; }
+.lab[data-lab="vmapple-map"] .vm__table { border-collapse: collapse; font-size: 0.9rem; min-width: 52rem; }
+.lab[data-lab="vmapple-map"] .vm__table caption { text-align: left; font-weight: 600; padding-bottom: 0.4rem; }
+.lab[data-lab="vmapple-map"] .vm__table th,
+.lab[data-lab="vmapple-map"] .vm__table td { border-bottom: 1px solid var(--rule); padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
+.lab[data-lab="vmapple-map"] .vm__tr--sel { background: var(--accent-tint); }
+.lab[data-lab="vmapple-map"] .vm__tr--sel th { box-shadow: inset 4px 0 0 var(--accent); }
+
+/* the selected row */
+.lab[data-lab="vmapple-map"] .vm__detail { border: 1px solid var(--rule); border-radius: 8px; padding: 0.75rem; background: var(--card); }
+.lab[data-lab="vmapple-map"] .vm__detail p { margin: 0 0 0.5rem; }
+.lab[data-lab="vmapple-map"] .vm__dl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.3rem 0.75rem; margin: 0; }
+.lab[data-lab="vmapple-map"] .vm__dl dt { font-weight: 600; }
+.lab[data-lab="vmapple-map"] .vm__dl dd { margin: 0; overflow-wrap: anywhere; }
+.lab[data-lab="vmapple-map"] .vm__addrout .vm__dl { grid-template-columns: minmax(0, 1fr); }
+
+/* the runs */
+.lab[data-lab="vmapple-map"] .vm__runs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+.lab[data-lab="vmapple-map"] .vm__run { border: 1px solid var(--rule); border-radius: 8px; padding: 0.6rem 0.75rem; background: var(--card); }
+/* Off or hidden: the dashed border and the "(hidden)" / "(switched off)" heading say so; no
+   fading, so the muted caption keeps its contrast. */
+.lab[data-lab="vmapple-map"] .vm__run--off { border-style: dashed; background: var(--paper); }
+.lab[data-lab="vmapple-map"] .vm__runlist { margin: 0 0 0.4rem; padding-left: 1.1rem; }
+.lab[data-lab="vmapple-map"] .vm__runlist li { margin-bottom: 0.2rem; overflow-wrap: anywhere; }
+
+.lab[data-lab="vmapple-map"] .vm__pre { overflow-x: auto; font-family: var(--mono); font-size: 0.8rem; background: var(--code-bg); color: var(--code-ink); padding: 0.6rem; border-radius: 6px; }
+.lab[data-lab="vmapple-map"] .vm__plain summary { cursor: pointer; display: list-item; padding: 0.7rem 0; }
+.lab[data-lab="vmapple-map"] .vm__summary { margin: 0; }
+/* the live region: spoken, not shown (the full summary above is the visible readout) */
+.lab[data-lab="vmapple-map"] .vm__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.lab[data-lab="vmapple-map"] .vm__chip,
+.lab[data-lab="vmapple-map"] .vm__btn { transition: background-color 120ms ease; }
+.lab[data-lab="vmapple-map"] .vm--still .vm__chip,
+.lab[data-lab="vmapple-map"] .vm--still .vm__btn { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="vmapple-map"] .vm__chip,
+  .lab[data-lab="vmapple-map"] .vm__btn { transition: none; }
+}
+
+/* Layout by the lab's own width (container queries), not the viewport: embedded in a lesson
+   the lab is about 41rem wide even on a large screen. Two columns (controls beside the rest) only
+   from 60rem; inside the viz, three evidence columns side by side from 40rem, and the two run
+   cards and the detail list two-up from 36rem. */
+@container (min-width: 60rem) {
+  .lab[data-lab="vmapple-map"] .vm__grid {
+    grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+    grid-template-areas: "controls viz" "readout readout";
+  }
+}
+@container (min-width: 36rem) {
+  .lab[data-lab="vmapple-map"] .vm__runs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lab[data-lab="vmapple-map"] .vm__detail .vm__dl { grid-template-columns: minmax(0, 12rem) minmax(0, 1fr); }
+}
+@container (min-width: 40rem) {
+  .lab[data-lab="vmapple-map"] .vm__columns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

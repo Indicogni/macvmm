@@ -1,0 +1,113 @@
+/* mmio-trap: every rule scoped under the lab's shell (course/site/LABS.md section 5).
+   Site tokens only, so dark mode follows the page. State is never shown by color alone:
+   the trapped line has a "!" marker and an outline, changed registers say "changed",
+   phases say "(now)" / "(done)", the current map row says "This access is here". */
+
+.lab[data-lab="mmio-trap"] .mt-wrap { display: grid; gap: 1rem; min-width: 0; font-family: var(--sans); color: var(--ink); }
+.lab[data-lab="mmio-trap"] .mt-controls { display: flex; flex-wrap: wrap; gap: .75rem 1rem; align-items: flex-end; }
+.lab[data-lab="mmio-trap"] .mt-field { display: flex; flex-direction: column; gap: .25rem; min-width: 0; max-width: 100%; }
+.lab[data-lab="mmio-trap"] .mt-field--grow { flex: 1 1 16rem; }
+.lab[data-lab="mmio-trap"] select,
+.lab[data-lab="mmio-trap"] .mt-input { min-height: 44px; max-width: 100%; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--control); border-radius: 6px; padding: 0 .5rem; }
+.lab[data-lab="mmio-trap"] .mt-input { font-family: var(--mono); font-size: .9rem; width: 100%; box-sizing: border-box; }
+.lab[data-lab="mmio-trap"] .mt-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lab[data-lab="mmio-trap"] .mt-btn { min-height: 44px; min-width: 44px; padding: 0 1rem; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 6px; cursor: pointer; transition: border-color 150ms; }
+.lab[data-lab="mmio-trap"] .mt-btn:hover:not([aria-disabled="true"]) { border-color: var(--ink); }
+.lab[data-lab="mmio-trap"] .mt-btn--primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+.lab[data-lab="mmio-trap"] .mt-btn[aria-pressed="true"] { border: 2px solid var(--ink); font-weight: 600; }
+/* Unavailable buttons keep focus (aria-disabled), so they are dimmed rather than disabled. */
+.lab[data-lab="mmio-trap"] .mt-btn[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.lab[data-lab="mmio-trap"] .mt-btn:focus-visible,
+.lab[data-lab="mmio-trap"] select:focus-visible,
+.lab[data-lab="mmio-trap"] input:focus-visible,
+.lab[data-lab="mmio-trap"] summary:focus-visible,
+.lab[data-lab="mmio-trap"] .mt-scroll:focus-visible,
+.lab[data-lab="mmio-trap"] .mt-out:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+.lab[data-lab="mmio-trap"] .mt-btn--primary:focus-visible { outline-color: var(--paper); box-shadow: 0 0 0 5px var(--ink); }
+
+.lab[data-lab="mmio-trap"] .mt-summary { margin: 0; }
+.lab[data-lab="mmio-trap"] .mt-source,
+.lab[data-lab="mmio-trap"] .mt-note { margin: 0; color: var(--muted); font-size: .9rem; }
+.lab[data-lab="mmio-trap"] .mt-more summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.lab[data-lab="mmio-trap"] .mt-options { display: grid; gap: .75rem; padding: .25rem 0 .5rem; }
+.lab[data-lab="mmio-trap"] .mt-checks { display: grid; gap: .25rem; }
+.lab[data-lab="mmio-trap"] .mt-check { display: flex; align-items: center; gap: .5rem; min-height: 44px; }
+.lab[data-lab="mmio-trap"] .mt-check input { width: 1.25rem; height: 1.25rem; flex: none; }
+
+/* "This step": directly under the buttons at every width, so the explanation is next to Step. */
+.lab[data-lab="mmio-trap"] .mt-step { display: grid; gap: .4rem; padding: .6rem .75rem; border-left: 3px solid var(--accent); background: var(--card); }
+
+/* Panes: stacked below 720px (controls and this step first, then the panes, then outputs). */
+.lab[data-lab="mmio-trap"] .mt-main { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) {
+  .lab[data-lab="mmio-trap"] .mt-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .lab[data-lab="mmio-trap"] .mt-main > .mt-pane:last-child { grid-column: 1 / -1; }
+}
+@media (min-width: 1200px) {
+  .lab[data-lab="mmio-trap"] .mt-main { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr) minmax(0, .9fr); }
+  .lab[data-lab="mmio-trap"] .mt-main > .mt-pane:last-child { grid-column: auto; }
+}
+.lab[data-lab="mmio-trap"] .mt-pane { min-width: 0; display: grid; gap: .6rem; align-content: start; padding: .75rem; background: var(--card); border: 1px solid var(--rule); border-radius: 6px; }
+.lab[data-lab="mmio-trap"] h3 { font-family: var(--serif); font-size: 1.05rem; margin: 0; }
+.lab[data-lab="mmio-trap"] .mt-scroll { overflow-x: auto; max-width: 100%; }
+
+/* Listing. */
+.lab[data-lab="mmio-trap"] .mt-code { list-style: none; margin: 0; padding: .4rem 0; background: var(--code-bg); color: var(--code-ink); border-radius: 6px; font-family: var(--mono); font-size: .85rem; line-height: 1.55; min-width: max-content; }
+.lab[data-lab="mmio-trap"] .mt-line { display: flex; gap: .6rem; padding: .05rem .6rem .05rem .2rem; white-space: pre; border: 2px solid transparent; }
+.lab[data-lab="mmio-trap"] .mt-line--next { border-color: var(--accent); background: var(--accent-tint); font-weight: 700; }
+.lab[data-lab="mmio-trap"] .mt-line--trap { border: 2px dashed var(--danger); background: var(--accent-tint); font-weight: 700; }
+.lab[data-lab="mmio-trap"] .mt-line--error { text-decoration: underline wavy var(--danger); }
+.lab[data-lab="mmio-trap"] .mt-marker { width: 1ch; color: var(--accent); font-weight: 700; }
+.lab[data-lab="mmio-trap"] .mt-line--trap .mt-marker { color: var(--danger); }
+.lab[data-lab="mmio-trap"] .mt-addr { color: var(--tok-num); }
+.lab[data-lab="mmio-trap"] .mt-word { color: var(--code-muted); }
+.lab[data-lab="mmio-trap"] .mt-ins { font-family: inherit; color: var(--tok-kw); background: none; padding: 0; }
+.lab[data-lab="mmio-trap"] .mt-tag { font-family: var(--sans); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; border: 1px solid currentColor; border-radius: 4px; padding: 0 .3rem; color: var(--muted); align-self: center; }
+.lab[data-lab="mmio-trap"] .mt-tag--bad { color: var(--danger); }
+
+/* Tables. */
+.lab[data-lab="mmio-trap"] table { border-collapse: collapse; width: 100%; }
+.lab[data-lab="mmio-trap"] caption { text-align: left; color: var(--muted); font-size: .9rem; padding-bottom: .3rem; }
+.lab[data-lab="mmio-trap"] th,
+.lab[data-lab="mmio-trap"] td { text-align: left; padding: .3rem .45rem; border-bottom: 1px solid var(--rule); vertical-align: top; overflow-wrap: anywhere; font-size: .9rem; }
+.lab[data-lab="mmio-trap"] thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.lab[data-lab="mmio-trap"] tbody th { font-family: var(--mono); font-weight: 600; white-space: nowrap; }
+.lab[data-lab="mmio-trap"] .mt-mono { font-family: var(--mono); font-size: .85rem; }
+.lab[data-lab="mmio-trap"] .mt-empty { color: var(--muted); font-style: italic; }
+.lab[data-lab="mmio-trap"] .mt-changed th,
+.lab[data-lab="mmio-trap"] .mt-changed td { background: var(--accent-tint); font-weight: 700; }
+.lab[data-lab="mmio-trap"] .mt-changed td:first-of-type { box-shadow: inset 3px 0 0 var(--accent); }
+.lab[data-lab="mmio-trap"] .mt-here td { background: var(--accent-tint); font-weight: 700; }
+.lab[data-lab="mmio-trap"] .mt-here td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.lab[data-lab="mmio-trap"] .mt-res0 td { color: var(--muted); text-decoration: line-through; }
+
+/* Phases. */
+.lab[data-lab="mmio-trap"] .mt-phases { margin: 0; padding-left: 1.5rem; display: grid; gap: .15rem; }
+.lab[data-lab="mmio-trap"] .mt-phase { padding: .15rem .4rem; border: 2px solid transparent; border-radius: 4px; }
+.lab[data-lab="mmio-trap"] .mt-phase--now { border-color: var(--accent); background: var(--accent-tint); font-weight: 700; }
+.lab[data-lab="mmio-trap"] .mt-phase--done { color: var(--muted); }
+.lab[data-lab="mmio-trap"] .mt-phase--stop { border: 2px dashed var(--danger); font-weight: 700; }
+.lab[data-lab="mmio-trap"] .mt-phases--idle { color: var(--muted); }
+.lab[data-lab="mmio-trap"] .mt-phase-state { font-size: .85rem; }
+.lab[data-lab="mmio-trap"] .mt-frame-title { margin: 0; font-weight: 700; }
+.lab[data-lab="mmio-trap"] .mt-frame-detail { margin: 0; }
+.lab[data-lab="mmio-trap"] .mt-halt { margin: 0; padding: .6rem .75rem; border: 2px dashed var(--ink); border-radius: 6px; font-weight: 600; }
+
+/* Outputs. */
+.lab[data-lab="mmio-trap"] .mt-outputs { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) {
+  .lab[data-lab="mmio-trap"] .mt-outputs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lab[data-lab="mmio-trap"] .mt-outbox--wide { grid-column: 1 / -1; }
+}
+.lab[data-lab="mmio-trap"] .mt-outbox { min-width: 0; display: grid; gap: .3rem; align-content: start; }
+.lab[data-lab="mmio-trap"] .mt-out { margin: 0; padding: .5rem .6rem; min-height: 3rem; max-height: 16rem; overflow: auto; background: var(--code-bg); color: var(--code-ink); border-radius: 6px; font-family: var(--mono); font-size: .8rem; line-height: 1.5; white-space: pre; }
+.lab[data-lab="mmio-trap"] .mt-out--term { font-size: 1rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.lab[data-lab="mmio-trap"] .mt-edit { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; }
+.lab[data-lab="mmio-trap"] .mt-edit-msg { margin: .4rem 0 0; font-weight: 600; }
+.lab[data-lab="mmio-trap"] .mt-edit-msg:empty { display: none; }
+.lab[data-lab="mmio-trap"] .mt-vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="mmio-trap"] * { transition: none !important; }
+}

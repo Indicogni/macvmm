@@ -1,0 +1,4 @@
+{
+  "title": "Trap or not",
+  "goal": "Sort ten guest actions by where they stop: in our VMM, in the macOS kernel, or nowhere at all."
+}

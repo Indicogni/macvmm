@@ -1,8 +1,8 @@
-// Checkpoint 13 contract (L1), frozen from the reference test crates/vmm/tests/bootplan.rs.
+// Checkpoint 13 contract, frozen from the reference test crates/vmm/tests/bootplan.rs.
 // It names only items the chapter 13 lesson teaches; the harness runs it against your crates.
-//! The Linux `BootPlan` (PLAN M9 acceptance `bootplan`, threat model LDR-5).
+//! The Linux `BootPlan` (acceptance `bootplan`, threat model: docs/security/threat-model.md).
 //!
-//! `plan()` is pure, so its whole contract can be checked here without HVF: the PLAN §1
+//! `plan()` is pure, so its whole contract can be checked here without HVF: the
 //! numbers for Alpine, the RAM and booting.rst §4 window limits, and a deterministic property
 //! test over 10,000 random size combinations (seed printed on failure; `MACVMM_SEED=<n>`
 //! replays one).

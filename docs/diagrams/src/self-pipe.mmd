@@ -1,0 +1,10 @@
+sequenceDiagram
+    participant K as Kernel
+    participant H as Handler (any thread)
+    participant P as Pipe
+    participant S as Signal thread
+    K->>H: interrupts a thread, runs handler
+    H->>P: write(1 byte = signal number)
+    H-->>K: returns; interrupted code resumes
+    P->>S: read() returns the byte
+    S->>S: does the real work (locks, I/O, exit)

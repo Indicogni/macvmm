@@ -1,11 +1,11 @@
-// Checkpoint 21 contract (L1), frozen from the reference test crates/vmm/tests/inject.rs.
+// Checkpoint 21 contract, frozen from the reference test crates/vmm/tests/inject.rs.
 // It names only items the chapter 21 lesson teaches; the harness runs it against your crates.
-//! Host test: synchronous exception injection (PLAN M5 "Acceptance: host"; architecture §8.5;
-//! threat model HC-7).
+//! Host test: synchronous exception injection (host acceptance;
+//! threat model: docs/security/threat-model.md).
 //!
 //! - the vector offset follows the mode at the fault: EL1t `+0x000`, EL1h `+0x200`, EL0
 //!   `+0x400`, and every other mode (AArch32, EL2, EL3, reserved) is a typed error, swept over
-//!   every value of `M[4:0]` and 10,000 xorshift CPSRs (HC-7: total, never a panic);
+//!   every value of `M[4:0]` and 10,000 xorshift CPSRs (total, never a panic);
 //! - `ELR_EL1` = the faulting PC, `SPSR_EL1` = the old CPSR, `ESR_EL1` = `EC<<26 | IL | ISS`,
 //!   `FAR_EL1` only for aborts;
 //! - the CPSR after injection is `0x3c5` (EL1h, DAIF) once the guest has set `SCTLR_EL1.SPAN`,

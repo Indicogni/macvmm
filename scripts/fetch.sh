@@ -105,7 +105,7 @@ while IFS= read -r raw || [[ -n "$raw" ]]; do
     # Index loop, not "${f[@]:3}": bash 3.2 joins array slices into one word when IFS lacks a space.
     for (( k = 3; k < ${#f[@]}; k++ )); do
       u="${f[$k]}"
-      [[ "$u" == https://* ]] || { reject "$lineno" "URL '$u' is not https:// (SC-2)"; ok=0; break; }
+      [[ "$u" == https://* ]] || { reject "$lineno" "URL '$u' is not https://"; ok=0; break; }
       [[ "$u" =~ ^https://[A-Za-z0-9.-]+(/[A-Za-z0-9._~%+/-]*)?$ ]] || { reject "$lineno" "URL '$u' has unexpected characters"; ok=0; break; }
       (( k > 3 )) && mirrors="$mirrors$u"$'\t'
     done
@@ -169,7 +169,7 @@ run_derive() {
   IFS=':' read -r -a d <<< "${E_SRC[$i]}" || true
   kind="${d[1]}" input="${d[2]}" arg="${d[3]:-}"
   if ! is_verified "$input"; then
-    printf 'fetch: FAILED %s (input %s was not verified in this run; fetch its set first, SC-5)\n' "${E_NAME[$i]}" "$input" >&2
+    printf 'fetch: FAILED %s (input %s was not verified in this run; fetch its set first)\n' "${E_NAME[$i]}" "$input" >&2
     return 1
   fi
   rm -f -- "$part"
@@ -217,7 +217,7 @@ fetch_entry() {
   local name="${E_NAME[$i]}" want="${E_HASH[$i]}"
   local dest="$CACHE/$name" part="$CACHE/$name.part"
   if [[ "$want" == "TOFU" ]]; then
-    printf 'fetch: REFUSED %s (TOFU hash: run scripts/fetch.sh --pin %s and paste the hash into the manifest, SC-10)\n' "$name" "$name" >&2
+    printf 'fetch: REFUSED %s (TOFU hash: run scripts/fetch.sh --pin %s and paste the hash into the manifest)\n' "$name" "$name" >&2
     return 1
   fi
   if [[ -L "$dest" ]]; then
@@ -272,7 +272,7 @@ build_initramfs() {
   local base="$CACHE/initramfs-virt" out="$CACHE/initramfs-test.img" part rc=0
   part="$out.part"
   if ! is_verified initramfs-virt; then
-    printf 'fetch: FAILED initramfs-test.img (initramfs-virt was not verified in this run, SC-5)\n' >&2
+    printf 'fetch: FAILED initramfs-test.img (initramfs-virt was not verified in this run)\n' >&2
     return 1
   fi
   rm -f -- "$part"

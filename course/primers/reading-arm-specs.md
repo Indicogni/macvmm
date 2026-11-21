@@ -4,13 +4,6 @@ slug: reading-arm-specs
 kind: primer
 minutes: 25
 required_by: [07]
-also_used_by: [01, 02, 08, 09, 10, 12, 15]
-objectives:
-- Find any AArch64 system register's page in DDI 0487 by its title, and name the five parts of that page
-- Decode an ESR_EL2 value by hand into EC, IL and the data-abort ISS fields, using the manual's tables
-- Read a short piece of Arm pseudocode (bit slices, bit strings, X[], UInt, SignExtend) and say what it does
-- Say what RES0, RES1, RAZ/WI, UNKNOWN, UNDEFINED and IMPLEMENTATION DEFINED oblige the hardware, the guest and our VMM to do
-- Tell a virtio MUST from a SHOULD, and find the DTB header layout in chapter 5 of the Devicetree Specification
 labs: [esr-decoder]
 ---
 
@@ -211,7 +204,7 @@ a load or store that failed. For EC `0x24`, you follow the link to
 | WnR | 6 | Write not Read: 1 for a store, 0 for a load |
 | DFSC | 5:0 | Data fault status code: which kind of fault. `0b000110` is a translation fault, meaning no memory is mapped at the address |
 
-Now the opening number. `0x93810046` was observed in the project's first spike, when a test
+Now the opening number. `0x93810046` was observed in an early experiment on this Mac, when a test
 guest ran `str w1, [x0]` with `x0` pointing at the UART's address, which we had deliberately left
 unmapped. Your shell can do the bit slicing. To read the field at bits [23:22], shift the
 number right by 22 so those bits land at the bottom, then AND it with `3` (binary `11`, two ones)
@@ -237,12 +230,11 @@ guest. ISV 1: the hardware described the access for us. SAS 2: a word, 4 bytes. 
 1. WnR 1: a store. That is `str w1, [...]`, recovered from a number, with no instruction decoding
 on our side. Chapter 07 turns exactly this into Rust.
 
-> **Predict.** Bit 24 is 0 for `ldp x0, x1, [x2]` (load a *pair* of registers) aimed at a device
-> address. Why can't the hardware fill in SRT for that instruction?
-
+:::predict Bit 24 is 0 for `ldp x0, x1, [x2]` (load a *pair* of registers) aimed at a device address. Why can't the hardware fill in SRT for that instruction?
 There is only one SRT field, and a pair load writes two registers. Rather than describe half the
 access, the hardware sets ISV to 0 and leaves the description out. Chapter 07 handles that case by
 stopping with a clear error. A much later chapter (21) decodes such instructions itself.
+:::
 
 ## Pseudocode: the manual's precise half
 
@@ -383,7 +375,7 @@ registers that say which ones a CPU has.
 > (Scalable Matrix Extension) adds matrix arithmetic. Run
 > `sysctl hw.optional.arm.FEAT_LSE hw.optional.arm.FEAT_SME`. On the M5 Pro this course was
 > written on, it prints `hw.optional.arm.FEAT_LSE: 1` and `hw.optional.arm.FEAT_SME: 1`. A `1`
-> means present and a `0` absent, and an M1 prints `0` for SME. Then search the ARM ARM for
+> means present and a `0` absent, and an Apple M1 prints `0` for SME. Then search the ARM ARM for
 > `FEAT_LSE` and find which instructions it adds.
 
 ## The same habits on Apple's headers

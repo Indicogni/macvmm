@@ -1,6 +1,6 @@
-// Checkpoint 17 contract (L1), frozen from the reference test crates/vmm/tests/worker_budget.rs.
+// Checkpoint 17 contract, frozen from the reference test crates/vmm/tests/worker_budget.rs.
 // It names only items chapters 15 to 17 teach; the harness runs it against your crates.
-//! PLAN M12 security test (threat model VQ-12, flaw F8; architecture §14.2, §14.3): a guest
+//! Security test (see docs/security/threat-model.md): a guest
 //! that refills its ring forever must not keep the worker inside one batch.
 //!
 //! A "driver" thread plays a hostile guest: every buffer the device returns is posted again at

@@ -1,0 +1,4 @@
+{
+  "title": "Durability ladder",
+  "goal": "Follow one guest fsync() through the guest page cache, the VMM, the host page cache, the drive's cache and flash, choose how the VMM answers FLUSH, then kill the process or cut the power and see what the guest's journal finds."
+}

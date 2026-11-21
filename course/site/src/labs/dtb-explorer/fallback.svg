@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" role="img" aria-labelledby="dtx-fb-title dtx-fb-desc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="currentColor">
+  <title id="dtx-fb-title">DTB explorer: the PL011 node in the chapter's blob</title>
+  <desc id="dtx-fb-desc">Bytes 0x310 to 0x35f of the --dtb-out file. At 0x310, 00000001 is FDT_BEGIN_NODE, followed by the name pl011@9000000, a NUL and padding. At 0x324, 00000003 is FDT_PROP with length 0x18 and name offset 0, the compatible property, whose value is arm,pl011 NUL arm,primecell NUL. At 0x348, a second FDT_PROP with length 0x10 and name offset 0x65 is reg: four cells 00000000 09000000 00000000 00001000. The root says #address-cells 2 and #size-cells 2, so reg is one range: address 0x0900_0000, size 0x1000.</desc>
+  <text x="8" y="20" font-weight="700">pl011@9000000 in the blob (from xxd -s 784 -l 80 v.dtb)</text>
+  <text x="8" y="48">0310: 00000001 706c3031 31403930 30303030</text>
+  <text x="380" y="48">FDT_BEGIN_NODE "pl011@9000000"</text>
+  <text x="8" y="70">0320: 30000000 00000003 00000018 00000000</text>
+  <text x="380" y="70">FDT_PROP len 0x18 nameoff 0</text>
+  <text x="8" y="92">0330: 61726d2c 706c3031 31006172 6d2c7072</text>
+  <text x="380" y="92">"arm,pl011\0arm,pr</text>
+  <text x="8" y="114">0340: 696d6563 656c6c00 00000003 00000010</text>
+  <text x="380" y="114">imecell\0"  FDT_PROP len 0x10</text>
+  <text x="8" y="136">0350: 00000065 00000000 09000000 00000000</text>
+  <text x="380" y="136">nameoff 0x65 = "reg", cells...</text>
+  <line x1="8" y1="152" x2="632" y2="152" stroke="currentColor" stroke-width="1"/>
+  <text x="8" y="176">reg = &lt;0x00 0x9000000 0x00 0x1000&gt;  (16 bytes)</text>
+  <text x="8" y="198">parent (root): #address-cells = 2, #size-cells = 2  so one range = 4 cells = 16 bytes</text>
+  <text x="8" y="220" font-weight="700">address 0x0900_0000, size 0x1000 (4 KiB)</text>
+  <text x="8" y="242">With #address-cells = 1, a range is 12 bytes and 16 does not divide: dtc warns.</text>
+</svg>

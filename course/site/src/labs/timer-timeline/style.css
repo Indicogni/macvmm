@@ -1,0 +1,156 @@
+/* timer-timeline. Every rule is scoped to this lab; site tokens only (LABS.md section 5). */
+.lab[data-lab="timer-timeline"] .tt {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+  grid-template-areas: "controls viz" "readout readout" "calc calc";
+  font-family: var(--sans);
+  color: var(--ink);
+}
+.lab[data-lab="timer-timeline"] [hidden] { display: none !important; }
+.lab[data-lab="timer-timeline"] .tt__controls { grid-area: controls; display: flex; flex-direction: column; gap: 0.75rem; }
+.lab[data-lab="timer-timeline"] .tt__viz { grid-area: viz; min-width: 0; }
+.lab[data-lab="timer-timeline"] .tt__readout { grid-area: readout; }
+.lab[data-lab="timer-timeline"] .tt__details { grid-area: calc; }
+
+.lab[data-lab="timer-timeline"] .tt__group {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.lab[data-lab="timer-timeline"] .tt__group legend { font-weight: 600; }
+.lab[data-lab="timer-timeline"] .tt__choice { display: flex; align-items: center; gap: 0.4rem; min-height: 44px; }
+.lab[data-lab="timer-timeline"] input[type="radio"],
+.lab[data-lab="timer-timeline"] input[type="checkbox"] { width: 1.1rem; height: 1.1rem; flex: none; accent-color: var(--accent); }
+
+.lab[data-lab="timer-timeline"] .tt__buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.lab[data-lab="timer-timeline"] .tt__btn {
+  min-height: 44px;
+  padding: 0 0.9rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.lab[data-lab="timer-timeline"] .tt__btn--primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.lab[data-lab="timer-timeline"] .tt__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.lab[data-lab="timer-timeline"] :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.lab[data-lab="timer-timeline"] .tt__line { margin: 0 0 0.5rem; }
+.lab[data-lab="timer-timeline"] .tt__tag { font-weight: 600; }
+.lab[data-lab="timer-timeline"] code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  color: var(--code-ink);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.lab[data-lab="timer-timeline"] .tt__help { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.9em; }
+
+/* scroll-padding keeps a focused or scrolled-to column clear of the sticky Signal column. */
+.lab[data-lab="timer-timeline"] .tt__scroll { overflow-x: auto; max-width: 100%; border: 1px solid var(--rule); border-radius: 6px; scroll-padding-inline-start: 11rem; /* 10rem column + its padding */ }
+.lab[data-lab="timer-timeline"] .tt__table { border-collapse: collapse; font-size: 0.85rem; min-width: 56rem; }
+.lab[data-lab="timer-timeline"] .tt__table caption { text-align: left; padding: 0.4rem 0.6rem; color: var(--muted); }
+.lab[data-lab="timer-timeline"] .tt__table th,
+.lab[data-lab="timer-timeline"] .tt__table td { border-top: 1px solid var(--rule); padding: 0.3rem 0.4rem; vertical-align: top; text-align: left; }
+.lab[data-lab="timer-timeline"] .tt__sig {
+  position: sticky;
+  left: 0;
+  background: var(--card);
+  font-weight: 600;
+  min-width: 10rem;
+  z-index: 1;
+}
+.lab[data-lab="timer-timeline"] .tt__col { padding: 0.15rem; }
+.lab[data-lab="timer-timeline"] .tt__colbtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 44px;
+  width: 100%;
+  padding: 0.2rem 0.4rem;
+  font: inherit;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.lab[data-lab="timer-timeline"] .tt__colbtn[aria-current="step"] { border: 2px solid var(--accent); background: var(--accent-tint); }
+.lab[data-lab="timer-timeline"] .tt__n { font-weight: 600; }
+.lab[data-lab="timer-timeline"] .tt__t { font-family: var(--mono); font-size: 0.8em; color: var(--muted); }
+
+.lab[data-lab="timer-timeline"] .tt__cell { min-width: 5.5rem; }
+/* A "high" signal is a thick bar on top plus its text (1, up, asserted): never color alone. */
+.lab[data-lab="timer-timeline"] .tt__cell--hi { box-shadow: inset 0 4px 0 var(--accent); font-weight: 600; }
+.lab[data-lab="timer-timeline"] .tt__cell--lo { box-shadow: inset 0 -2px 0 var(--rule); color: var(--muted); }
+.lab[data-lab="timer-timeline"] .tt__cell--now { background: var(--accent-tint); }
+.lab[data-lab="timer-timeline"] .tt__cell--future { color: var(--muted); }
+.lab[data-lab="timer-timeline"] .tt__cell--muted { color: var(--muted); font-style: italic; }
+.lab[data-lab="timer-timeline"] .tt__q { font-family: var(--mono); }
+.lab[data-lab="timer-timeline"] .tt__row--exit .tt__cell--hi { box-shadow: inset 0 4px 0 var(--warn); }
+
+.lab[data-lab="timer-timeline"] .tt__h { margin: 0 0 0.4rem; font-size: 1rem; }
+.lab[data-lab="timer-timeline"] .tt__summary { margin: 0 0 0.5rem; font-weight: 600; }
+.lab[data-lab="timer-timeline"] .tt__arith { list-style: none; margin: 0 0 0.5rem; padding: 0; display: grid; gap: 0.25rem; }
+.lab[data-lab="timer-timeline"] .tt__notes { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.25rem; }
+
+.lab[data-lab="timer-timeline"] .tt__details { border: 1px solid var(--rule); border-radius: 6px; padding: 0.5rem 0.75rem; }
+.lab[data-lab="timer-timeline"] .tt__details > summary { cursor: pointer; font-weight: 600; min-height: 44px; display: list-item; }
+.lab[data-lab="timer-timeline"] .tt__calc { display: grid; gap: 0.6rem; }
+.lab[data-lab="timer-timeline"] .tt__calc p { margin: 0; }
+.lab[data-lab="timer-timeline"] .tt__field { display: flex; flex-direction: column; gap: 0.25rem; }
+.lab[data-lab="timer-timeline"] .tt__field label { font-weight: 600; }
+.lab[data-lab="timer-timeline"] .tt__input {
+  min-height: 44px;
+  max-width: 100%;
+  font-family: var(--mono);
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0 0.5rem;
+}
+.lab[data-lab="timer-timeline"] .tt__input[aria-invalid="true"] { border: 2px dashed var(--danger); }
+.lab[data-lab="timer-timeline"] .tt__btn--small { min-height: 44px; font-size: 0.9em; }
+.lab[data-lab="timer-timeline"] .tt__err { color: var(--danger); font-weight: 600; }
+.lab[data-lab="timer-timeline"] .tt__answer strong { font-family: var(--mono); }
+.lab[data-lab="timer-timeline"] .tt__istatus { font-family: var(--mono); font-size: 0.9em; margin: 0.25rem 0; }
+.lab[data-lab="timer-timeline"] .tt__vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lab[data-lab="timer-timeline"] .tt__colbtn,
+.lab[data-lab="timer-timeline"] .tt__cell { transition: background-color 120ms ease; }
+.lab[data-lab="timer-timeline"] .tt--still .tt__colbtn,
+.lab[data-lab="timer-timeline"] .tt--still .tt__cell { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="timer-timeline"] .tt__colbtn,
+  .lab[data-lab="timer-timeline"] .tt__cell { transition: none; }
+}
+
+@media (max-width: 720px) {
+  .lab[data-lab="timer-timeline"] .tt {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "controls" "viz" "readout" "calc";
+  }
+  .lab[data-lab="timer-timeline"] .tt__sig { min-width: 7rem; }
+  .lab[data-lab="timer-timeline"] .tt__scroll { scroll-padding-inline-start: 8rem; }
+}

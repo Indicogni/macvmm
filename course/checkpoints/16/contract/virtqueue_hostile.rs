@@ -1,7 +1,7 @@
-// Checkpoint 16 contract (L1), frozen from the reference test crates/vmm/tests/virtqueue_hostile.rs.
+// Checkpoint 16 contract, frozen from the reference test crates/vmm/tests/virtqueue_hostile.rs.
 // It names only items chapters 04, 15 and 16 teach; the harness runs it against your crates.
-//! PLAN M11 acceptance (host): the split virtqueue against a hostile driver (virtio 1.2 §2.7;
-//! architecture §11.2 items 1–10; threat model VQ-1..VQ-9). Each case builds a ring in a
+//! Host acceptance: the split virtqueue against a hostile driver (virtio 1.2 §2.7;
+//! threat model: docs/security/threat-model.md). Each case builds a ring in a
 //! `VecMemory` the way a (malicious) driver would, then asserts the exact `QueueError`, or the
 //! exact accepted chain for the positive cases. Never a panic.
 //!

@@ -1,0 +1,7 @@
+{
+  "title": "Virtio status handshake",
+  "goal": "Step through a driver bringing up a virtio-mmio device (status bits, feature negotiation, queue setup, the doorbell), then play drivers that misbehave and see what the device refuses.",
+  "reference": "outside-ram",
+  "captures": ["captures/15-handshake-trace.txt", "captures/15-linux-handshake.txt"],
+  "steps": { "probe": 33, "linux": 40 }
+}

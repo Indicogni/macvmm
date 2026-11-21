@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 214" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="currentColor">
+  <title>virtio-blk request: 512 bytes at sector 64 of a 64-sector disk</title>
+  <desc>A three-descriptor chain: a readable 16-byte header (type IN, sector 64), a writable 512-byte data buffer and a writable 1-byte status. The walk and rules 1 to 5 pass. Rule 6 fires: 64 × 512 + 512 = 33280, which is more than the disk's 32768 bytes. The device writes status IOERR (1) into the status byte, used length 1, and never touches the disk file.</desc>
+  <text x="8" y="20" font-weight="700">One request, three descriptors, a 64-sector (32 KiB) disk</text>
+  <rect x="8" y="34" width="150" height="40" fill="none" stroke="currentColor" stroke-width="1"/>
+  <text x="16" y="52">0 readable, 16 B</text>
+  <text x="16" y="67">header: IN, sector 64</text>
+  <rect x="176" y="34" width="150" height="40" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="184" y="52">1 writable, 512 B</text>
+  <text x="184" y="67">data (untouched)</text>
+  <rect x="344" y="34" width="150" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="352" y="52">2 writable, 1 B</text>
+  <text x="352" y="67">status: 01 (IOERR)</text>
+  <text x="8" y="100">walk     passes   3 descriptors, readable before writable</text>
+  <text x="8" y="118">rules 1-5 pass    status byte, header, 3 &lt;= 128, IN with writable data, not OUT</text>
+  <text x="8" y="136" font-weight="700">rule 6   FIRES    64 × 512 + 512 = 33280 &gt; 32768</text>
+  <rect x="4" y="123" width="632" height="19" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="8" y="170" font-weight="700">Status IOERR (1), used length 1. The disk file is never touched.</text>
+  <text x="8" y="196">With JavaScript on, the lab lets you change every field and descriptor.</text>
+</svg>

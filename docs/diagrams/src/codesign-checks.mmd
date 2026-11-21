@@ -1,0 +1,5 @@
+graph LR
+  B["clang / cargo build"] -- "writes linker signature" --> S["codesign -s -<br/>adds entitlements"]
+  S -- "exec checks signature,<br/>restricted entitlements" --> L["launch<br/>(copy A dies here)"]
+  L -- "kernel hashes each page<br/>as it loads" --> P["page-in<br/>(tampered copy dies here)"]
+  P -- "program calls" --> H["hv_vm_create<br/>(copy B refused here)"]

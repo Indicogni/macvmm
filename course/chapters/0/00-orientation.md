@@ -35,7 +35,7 @@ This chapter answers that by building the course's [**problem ledger**](/build-y
 - Run `scripts/setup.sh` and `scripts/doctor.sh` and say what `hv_vm_create: OK` means in this chapter's terms.
 :::
 
-**Until the labs are published.** The `toy-vmm` and `syscall-stepper` labs are still being built. Until then, objective 3 changes: trace each mode on paper through the toy program listed below, and count which instructions the VMM handles. The primer's system-call diagram stands in for the stepper.
+**If a lab does not load.** The `toy-vmm` and `syscall-stepper` labs run in your browser. Without them, objective 3 still works on paper: trace each mode through the toy program listed below, and count which instructions the VMM handles. The primer's system-call diagram stands in for the stepper.
 
 ## Before you start
 
@@ -137,7 +137,7 @@ addr  instruction          mark  what it does (addresses in hex)
 07    JNZ  r2, 07                done: spin here (r2 is never 0)
 ```
 
-The kernel never runs `CLI`. On bare metal (mode A) the console prints `123`, the reference, after 27 instructions; the app then spins until the run's 1,000-instruction budget ends.
+The kernel never runs `CLI`. On bare metal (mode A) the console prints `123`, the reference, after 23 instructions; after 27 the app reaches its spin loop and stays there for the rest of the 1,000-instruction budget.
 
 :::lab toy-vmm
 
@@ -205,7 +205,7 @@ It was not free: every stop is a round trip to the VMM, and with memory still sh
 
 Devices stay the VMM's job: an [**emulated device**](/build-your-own/vmm/glossary/#emulated-device) imitates real hardware register by register, so an unmodified driver works, at a trap per access (chapter 09); a [**paravirtual device**](/build-your-own/vmm/glossary/#paravirtual-device) is designed for virtual machines and needs far fewer (chapter 15).
 
-Mode H gives the toy a third, more privileged mode. The VMM chooses what traps: the interrupt switch and the console range. Base-register writes no longer need to: the guest sets its own base natively, and the VMM's second base register, applied after it, keeps the guest inside its memory. That second register is the toy's second translation stage; try ticking base writes too, and the output is the same, with more interventions. Leave the console range unchosen and the prints never trap: the VMM, the only thing that can reach your screen, never sees them, and the console stays empty.
+Mode H gives the toy a third, more privileged mode. The VMM chooses what traps: here, only the console range. The guest sets its own base natively, and the VMM's second base register, applied after it, keeps the guest in its memory: the toy's second translation stage. Trap base writes too, and the output is the same, with more interventions. The interrupt switch needs no trap: the hardware keeps a virtual interrupt mask for the guest. Leave the console range unchosen and the VMM maps plain memory there: the prints never trap, so the VMM, the only thing that can reach your screen, never sees them, and the console stays empty.
 
 All eight modes, now that you have predicted:
 

@@ -10,13 +10,16 @@
 //! **Levels** (the fading schedule, §3.4): `worked` (00–05), `completion` (06–12), `spec`
 //! (13–20) and `open` (21–27) are the defaults. The level is recorded in `.progress.toml`; at
 //! `open` only the journal is copied (the learner writes from the design brief), at every other
-//! level the generated scaffold files are copied too.
+//! level the generated scaffold files are copied too. A chapter with no generated scaffold
+//! (`course/scaffolds/NN/files/` absent, true of most chapters) also gets only its journal,
+//! and `start` says so.
 #![deny(clippy::arithmetic_side_effects)]
 
 use super::{Workspace, list_files, safe_dest};
 use crate::checkpoint::valid_id;
 use std::fs;
-use std::path::Path;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// The levels of the fading schedule.
@@ -46,10 +49,11 @@ pub fn place(root: &Path, rel: &str, src: &Path) -> Result<Placed, String> {
     let new = fs::read(src).map_err(|e| format!("{}: {e}", src.display()))?;
     let dst = safe_dest(root, rel)?;
     match fs::symlink_metadata(&dst) {
-        Err(_) => {
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
             fs::write(&dst, &new).map_err(|e| format!("{}: {e}", dst.display()))?;
             Ok(Placed::Copied)
         }
+        Err(e) => Err(format!("{}: {e}", dst.display())),
         Ok(m) if !m.file_type().is_file() => Err(format!(
             "{rel}: exists and is not a regular file; nothing written"
         )),
@@ -79,6 +83,54 @@ pub fn place(root: &Path, rel: &str, src: &Path) -> Result<Placed, String> {
     }
 }
 
+/// The scaffold files of chapter `id`: `(learner-relative path, source)`.
+///
+/// **Why a missing scaffold is not an error:** most chapters have no generated scaffold (the
+/// learner writes their code from the lesson and the checkpoint's spec), so a missing
+/// `course/scaffolds/NN/files/` means "nothing to copy" and `start` copies only the journal.
+/// The one inconsistent state, a `manifest.toml` that lists files but no generated `files/`
+/// directory, is a course bug (`gen-scaffold` was never run) and is reported as such rather
+/// than silently handing the learner less than the lesson promises.
+pub fn scaffold_files(repo: &Path, id: &str) -> Result<Vec<(String, PathBuf)>, String> {
+    let dir = repo.join("course/scaffolds").join(id);
+    let files = dir.join("files");
+    match fs::symlink_metadata(&files) {
+        Ok(m) if m.file_type().is_dir() => {}
+        Ok(_) => {
+            return Err(format!(
+                "{} is not a directory (a course bug: please report it)",
+                files.display()
+            ));
+        }
+        Err(e) if e.kind() != io::ErrorKind::NotFound => {
+            return Err(format!("{}: {e}", files.display()));
+        }
+        Err(_) if dir.join("manifest.toml").is_file() => {
+            return Err(format!(
+                "chapter {id}'s scaffold has a manifest but no generated files \
+                 (a course bug: please report it; authors run `cargo xtask learner gen-scaffold {id}`)"
+            ));
+        }
+        Err(_) => return Ok(Vec::new()),
+    }
+    Ok(list_files(&files)?
+        .into_iter()
+        .map(|rel| {
+            let src = files.join(&rel);
+            (rel, src)
+        })
+        .collect())
+}
+
+/// `"1 file"`, `"2 files"`: the count line must agree with the count.
+pub fn plural(n: usize, noun: &str) -> String {
+    if n == 1 {
+        format!("{n} {noun}")
+    } else {
+        format!("{n} {noun}s")
+    }
+}
+
 /// The result of a `start`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct StartReport {
@@ -86,6 +138,9 @@ pub struct StartReport {
     pub present: usize,
     /// `(learner-relative path, diff)` of each conflict.
     pub conflicts: Vec<(String, String)>,
+    /// True when no scaffold files were offered (level `open`, chapter 00, or a chapter with
+    /// no generated scaffold): only the journal was considered.
+    pub journal_only: bool,
 }
 
 /// Copy chapter `id`'s scaffold (and journal template) into the workspace at `learner`.
@@ -100,18 +155,19 @@ pub fn start(repo: &Path, learner: &Path, id: &str, level: &str) -> Result<Start
         ));
     }
     let ws = Workspace::open(learner)?;
-    let mut items: Vec<(String, std::path::PathBuf)> = Vec::new();
+    let mut items: Vec<(String, PathBuf)> = Vec::new();
     if level != "open" && id != "00" {
-        let files = repo.join("course/scaffolds").join(id).join("files");
-        for rel in list_files(&files)? {
-            items.push((rel.clone(), files.join(&rel)));
-        }
+        items.extend(scaffold_files(repo, id)?);
     }
+    let journal_only = items.is_empty();
     let journal = repo.join("course/journal").join(format!("{id}.md"));
     if journal.is_file() {
         items.push((format!("journal/{id}.md"), journal));
     }
-    let mut rep = StartReport::default();
+    let mut rep = StartReport {
+        journal_only,
+        ..StartReport::default()
+    };
     for (rel, src) in &items {
         match place(&ws.root, rel, src)? {
             Placed::Copied => rep.copied = rep.copied.saturating_add(1),
@@ -154,8 +210,9 @@ pub fn main(repo: &Path, learner: &Path, args: &[String]) -> Result<Vec<String>,
         }
     }
     let mut line = format!(
-        "learner: {} files copied, {} already present",
-        rep.copied, rep.present
+        "learner: {} copied, {} already present",
+        plural(rep.copied, "file"),
+        rep.present
     );
     if !rep.conflicts.is_empty() {
         line.push_str(&format!(
@@ -164,6 +221,12 @@ pub fn main(repo: &Path, learner: &Path, args: &[String]) -> Result<Vec<String>,
         ));
     }
     out.push(line);
+    if rep.journal_only && level != "open" && id != "00" {
+        out.push(format!(
+            "learner: chapter {id} has no scaffold files (only its journal); \
+             write the code from the lesson"
+        ));
+    }
     out.push(format!("learner: chapter {id} at level {level}"));
     Ok(out)
 }

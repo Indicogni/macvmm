@@ -1,0 +1,148 @@
+{
+  "title": "Toy VMM",
+  "goal": "Run one toy guest under eight strategies, from bare metal to hardware assist, and count who executes each instruction: the CPU or the VMM.",
+  "counts": {
+    "reference": "123",
+    "budget": 1000,
+    "referenceAt": 23,
+    "spinAt": 27,
+    "modes": {
+      "A": {
+        "native": 1000,
+        "interventions": 0,
+        "traps": 0,
+        "callouts": 0,
+        "interpretations": 0,
+        "hypercalls": 0,
+        "translations": 0,
+        "output": "123",
+        "matches": true
+      },
+      "B": {
+        "native": 0,
+        "interventions": 0,
+        "traps": 0,
+        "callouts": 0,
+        "interpretations": 0,
+        "hypercalls": 0,
+        "translations": 0,
+        "output": "",
+        "matches": false,
+        "stopped": "killed"
+      },
+      "C": {
+        "native": 0,
+        "interventions": 1000,
+        "traps": 0,
+        "callouts": 0,
+        "interpretations": 1000,
+        "hypercalls": 0,
+        "translations": 0,
+        "output": "123",
+        "matches": true
+      },
+      "D": {
+        "native": 987,
+        "interventions": 13,
+        "traps": 13,
+        "callouts": 0,
+        "interpretations": 0,
+        "hypercalls": 0,
+        "translations": 0,
+        "output": "123",
+        "matches": true
+      },
+      "E": {
+        "native": 997,
+        "interventions": 3,
+        "traps": 3,
+        "callouts": 0,
+        "interpretations": 0,
+        "hypercalls": 0,
+        "translations": 0,
+        "output": "!",
+        "matches": false,
+        "panicked": true
+      },
+      "F": {
+        "native": 987,
+        "interventions": 16,
+        "traps": 12,
+        "callouts": 1,
+        "interpretations": 0,
+        "hypercalls": 0,
+        "translations": 3,
+        "output": "123",
+        "matches": true
+      },
+      "G": {
+        "native": 987,
+        "interventions": 13,
+        "traps": 12,
+        "callouts": 0,
+        "interpretations": 0,
+        "hypercalls": 1,
+        "translations": 0,
+        "output": "123",
+        "matches": true
+      },
+      "H": {
+        "native": 997,
+        "interventions": 3,
+        "traps": 3,
+        "callouts": 0,
+        "interpretations": 0,
+        "hypercalls": 0,
+        "translations": 0,
+        "output": "123",
+        "matches": true
+      }
+    },
+    "variants": {
+      "E-fixed": {
+        "native": 987,
+        "interventions": 13,
+        "traps": 13,
+        "callouts": 0,
+        "interpretations": 0,
+        "hypercalls": 0,
+        "translations": 0,
+        "output": "123",
+        "matches": true
+      },
+      "H-trap-base-too": {
+        "native": 996,
+        "interventions": 4,
+        "traps": 4,
+        "callouts": 0,
+        "interpretations": 0,
+        "hypercalls": 0,
+        "translations": 0,
+        "output": "123",
+        "matches": true
+      },
+      "H-trap-interrupt-switch-too": {
+        "native": 996,
+        "interventions": 4,
+        "traps": 4,
+        "callouts": 0,
+        "interpretations": 0,
+        "hypercalls": 0,
+        "translations": 0,
+        "output": "123",
+        "matches": true
+      },
+      "H-no-console": {
+        "native": 1000,
+        "interventions": 0,
+        "traps": 0,
+        "callouts": 0,
+        "interpretations": 0,
+        "hypercalls": 0,
+        "translations": 0,
+        "output": "",
+        "matches": false
+      }
+    }
+  }
+}

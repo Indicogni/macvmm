@@ -1,0 +1,8 @@
+flowchart LR
+  K[Your keyboard] -->|keystrokes| T[Terminal.app]
+  T -->|writes bytes| M[pty primary end<br/>held by Terminal.app]
+  M -->|passes through| LD[line discipline<br/>in the macOS kernel]
+  LD -->|delivers| S["pty replica end, /dev/ttys001<br/>held by the shell"]
+  S -->|read by| P[shell, sleep, macvmm]
+  P -->|output bytes| LD
+  LD -->|draws on screen| T

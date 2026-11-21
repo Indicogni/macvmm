@@ -1,0 +1,10 @@
+sequenceDiagram
+    participant G as Guest kernel (EL1, untrusted)
+    participant H as HVF (EL2)
+    participant V as macvmm (host process)
+    G->>G: put function ID in w0, arguments in x1..
+    G->>H: executes hvc #0 (exception to EL2)
+    H->>V: hv_vcpu_run returns, ESR_EL2 class 0x16 (HVC)
+    V->>V: reads x0..x3, decodes the ID, acts
+    V->>H: writes the result into x0, calls hv_vcpu_run
+    H->>G: guest resumes after the hvc, reads x0

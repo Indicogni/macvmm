@@ -323,7 +323,9 @@ never model prose.
 
 Names are `course/captures/NN-<words>.txt` (lowercase, digits, dashes), plus
 `NN-<words>.trace.jsonl` for trace files; NN is the chapter that first shows it. Every `.txt`
-starts with a `# ` provenance line, which both tools write:
+starts with a `# ` provenance line, which both tools write; **every** leading `#` line is header
+(provenance and notes), never transcript, and the site shows them in the capture's `captured:`
+footer:
 
 ```text
 # scripts/capture-cmd 02: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.

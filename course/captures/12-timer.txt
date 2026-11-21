@@ -1,5 +1,5 @@
 # scripts/capture.sh 12: run "timer" of course/checkpoints/12, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 12; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 12; never edit by hand (course/STYLE.md appendix A).
 $ macvmm run --mem 64M --raw {guests}/timer.bin@0x40080000 --stats --trace exits:{out}/t.jsonl:all --timeout 10
 exit: 0
 --- stdout ---

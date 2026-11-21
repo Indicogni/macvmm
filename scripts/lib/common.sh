@@ -74,20 +74,20 @@ cache_dir() {
   # script (fetch.sh, run-linux.sh, tests) resolves the same directory (threat model S14).
   [[ "$c" == /* ]] || c="$REPO_ROOT/$c"
   if [[ -L "$c" ]]; then
-    die "cache dir $c is a symlink; refusing (SC-3)"
+    die "cache dir $c is a symlink; refusing"
   fi
   if [[ ! -e "$c" ]]; then
     # Parents get 0700 from `umask 077`; the cache dir itself gets it explicitly.
     mkdir -p -- "$(dirname -- "$c")"
     mkdir -m 700 -- "$c"
   fi
-  [[ -d "$c" ]] || die "cache dir $c is not a directory (SC-3)"
+  [[ -d "$c" ]] || die "cache dir $c is not a directory"
   local owner mode
   owner="$(stat -f '%u' -- "$c")"
   mode="$(stat -f '%Lp' -- "$c")"
-  [[ "$owner" == "$(id -u)" ]] || die "cache dir $c is owned by uid $owner, not $(id -u) (SC-3)"
+  [[ "$owner" == "$(id -u)" ]] || die "cache dir $c is owned by uid $owner, not $(id -u)"
   if (( (8#$mode & 8#022) != 0 )); then
-    die "cache dir $c is group- or world-writable (mode $mode); run: chmod 700 '$c' (SC-3)"
+    die "cache dir $c is group- or world-writable (mode $mode); run: chmod 700 '$c'"
   fi
   printf '%s\n' "$c"
 }

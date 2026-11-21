@@ -119,6 +119,22 @@ function chapterStatus(title) {
 }
 
 /**
+ * Remove author notation from a primer's "covers" text before it reaches a learner (STYLE.md
+ * A.10): evidence tags `[V]`/`[H]`/`[U]` (with the parenthesis that holds them), "(new)",
+ * "(v2's Appendix B, ...)", and "chNN" shorthand.
+ */
+export function cleanCovers(text) {
+  return String(text)
+    .replace(/\s*\([^()]*`?\[[VHU]\]`?[^()]*\)/g, "")
+    .replace(/`?\[[VHU]\]`?/g, "")
+    .replace(/^\s*\((?:new|v2's [^)]*)\)\s*/i, "")
+    .replace(/\s*\((?:new|v2's [^)]*)\)/gi, "")
+    .replace(/\bch(\d\d)\b/g, "chapter $1")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/**
  * Parse CURRICULUM.md text into { parts, chapters, primers, labs }.
  * Throws with a precise message when the document does not have the expected shape.
  */
@@ -165,7 +181,7 @@ export function parseCurriculum(text) {
       primers.push({
         slug: s,
         title: PRIMER_TITLES[s] || fail(`primer ${s} has no display title; add it to PRIMER_TITLES`),
-        covers,
+        covers: cleanCovers(covers),
         first_required_by: firstId,
         also_used_by: uses.map((u) => u.id),
         required_by: [firstId, ...uses.filter((u) => !u.qualified).map((u) => u.id)],

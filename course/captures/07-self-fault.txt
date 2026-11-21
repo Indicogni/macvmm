@@ -1,5 +1,5 @@
 # scripts/capture.sh 07: run "self-fault" of course/checkpoints/07, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 07; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 07; never edit by hand (course/STYLE.md appendix A).
 $ macvmm run --mem 64M --raw {guests}/self-fault.bin@0x40080000 --timeout 10
 exit: 3
 --- stdout ---

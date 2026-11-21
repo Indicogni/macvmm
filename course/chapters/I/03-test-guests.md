@@ -91,7 +91,7 @@ guest RAM after --raw hello.bin@0x40080000
 
 *Nothing in the file says these bytes should be zero. `_start` has to make them zero.*
 
-In the `linker-map` lab, move sections and watch the flat binary change:
+In the `linker-map` lab, pick the program "Chapter 03's hello guest, with COUNTER" and check that the symbols show `__bss_start` at `0x40082e60` and the file ending at 11,866 bytes. Then move `.bss` above `.text` and watch where `_start` goes and what a raw load at `0x40080000` would now get wrong:
 
 :::lab linker-map
 

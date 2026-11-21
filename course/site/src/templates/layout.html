@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+{{canonicalLink}}<meta property="og:type" content="website">
+<meta property="og:title" content="{{ogTitle}}">
+<meta property="og:description" content="{{description}}">
+{{ogUrl}}<meta name="theme-color" content="#FBF8F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1116" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+{{robots}}<link rel="stylesheet" href="{{css}}">
+{{headExtra}}<script type="module" src="{{js}}"></script>
+{{scriptsExtra}}</head>
+<body class="{{bodyClass}}">
+<a class="skip" href="#main">{{skipLabel}}</a>
+<header class="top">
+  <div class="top__inner">
+    <p class="brand"><a href="/">indicogni</a><span class="brand__sep" aria-hidden="true">/</span><a href="{{base}}"><span class="brand__long">Build a </span>VMM</a></p>
+    <nav aria-label="Site">
+      <ul>{{topnav}}</ul>
+    </nav>
+  </div>
+</header>
+{{body}}
+<footer class="site-foot">
+  <div class="wrap">
+    <nav aria-label="Course sections"><ul><li><a href="{{base}}">Course</a></li><li><a href="{{base}}primers/">Primers</a></li><li><a href="{{base}}labs/">Labs</a></li><li><a href="{{base}}glossary/">Glossary</a></li><li><a href="{{base}}reference/">Reference</a></li><li><a href="{{base}}about/">About</a></li></ul></nav>
+    <p>&copy; {{year}} Indicogni LLC. No cookies, no analytics; progress is stored only in this browser.</p>
+    <p><a href="mailto:{{email}}">{{email}}</a></p>
+  </div>
+</footer>
+<div id="live" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

@@ -1,0 +1,4 @@
+{
+  "title": "Timer timeline",
+  "goal": "Step through one 100 ms sleep of chapter 11's test guest with no interrupt controller: the counter and its offset, the alarm, the WFI sleep, the VTIMER exit and the three masks, on one time axis."
+}

@@ -4,17 +4,10 @@ slug: page-granules
 kind: primer
 minutes: 15
 required_by: [04]
-also_used_by: [02, 05, 21, 26]
 labs: [two-stage-walker]
 runs: mac+browser
 command: pagesize
 expect: 16384
-objectives:
-- Define a translation granule as the page size a translation table uses, and list what it fixes (page offset bits, entries per table, index bits per level).
-- Given an address and a granule (4, 16 or 64 KiB), compute the page base, the page offset and the per-level table indexes by hand or in the shell.
-- Say who owns each translation stage (stage 1 the guest, stage 2 HVF) and which register selects each stage's granule.
-- Explain why a guest built for 4 KiB pages runs on HVF's 16 KiB stage 2, and give three consequences of stage 2 being the coarser one.
-- Read the TGran fields of ID_AA64MMFR0_EL1 to tell which granules a CPU supports.
 ---
 
 # Why can a 4 KiB guest live in 16 KiB pages?
@@ -283,11 +276,11 @@ You can confirm the guest side for the kernel we boot. Alpine publishes the buil
 of its `linux-virt` kernel, and ours (`config-6.18.60-0-virt`) contains `CONFIG_ARM64_4K_PAGES=y`:
 a 4 KiB stage-1 granule, chosen when the kernel was compiled.
 
-> **Predict.** The Alpine guest maps one 4 KiB page of its own at IPA `0x4000_7000`, and HVF's
-> stage 2 works in 16 KiB pages. Does the guest's 4 KiB page fit inside one stage-2 page, or does
-> it straddle two?
+:::predict The Alpine guest maps one 4 KiB page of its own at IPA `0x4000_7000`, and HVF's stage 2 works in 16 KiB pages. Does the guest's 4 KiB page fit inside one stage-2 page, or does it straddle two?
+It fits, always: a 4 KiB-aligned 4 KiB page can never cross a 16 KiB boundary, because every 16 KiB boundary is also a 4 KiB boundary.
+:::
 
-It fits, always. The guest's page covers `0x4000_7000` to `0x4000_7fff`. Clear the low 14 bits of
+The guest's page covers `0x4000_7000` to `0x4000_7fff`. Clear the low 14 bits of
 any address in that range and you get `0x4000_4000`, so all 4096 bytes lie in the one 16 KiB
 stage-2 page at `0x4000_4000`. This is general: a 4 KiB-aligned range of 4 KiB can never cross a
 16 KiB boundary, because every 16 KiB boundary is also a 4 KiB boundary. Each stage-2 page holds
@@ -424,6 +417,8 @@ real memory map.
   `hv_vm_config_set_ipa_granule`), and `man 1 pagesize` and `man 3 getpagesize`.
 
 ## Checkpoint
+
+:::checkpoint
 
 - **What you can do now.** Run `pagesize` and see `16384`. Split any address into page base,
   offset and table indexes for 4, 16 or 64 KiB, and say which stage a granule belongs to and who

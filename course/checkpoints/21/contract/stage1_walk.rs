@@ -1,7 +1,6 @@
-// Checkpoint 21 contract (L1), frozen from the reference test crates/vmm/tests/stage1_walk.rs.
+// Checkpoint 21 contract, frozen from the reference test crates/vmm/tests/stage1_walk.rs.
 // It names only items the chapter 21 lesson teaches; the harness runs it against your crates.
-//! Host test: the software stage-1 walk (`arch/stage1_walk.rs`, PLAN M17 acceptance; threat
-//! model MMIO-5; course ch21, ch27).
+//! Host test: the software stage-1 walk (`arch/stage1_walk.rs`, acceptance; threat model: docs/security/threat-model.md).
 //!
 //! The page tables are built in a `VecMemory` by a small, independent builder below (ARM ARM
 //! DDI 0487, D8.3 descriptor formats), then walked. Coverage: 4K at 3 and 4 levels, 16K at 3

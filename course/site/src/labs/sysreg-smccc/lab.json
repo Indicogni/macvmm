@@ -1,0 +1,8 @@
+{
+  "title": "System registers and SMCCC IDs",
+  "goal": "Take two 32-bit numbers apart field by field: build or decode an SMCCC function ID and see what macvmm answers, and decode an mrs or msr word (or its trap syndrome) into a register name and macvmm's policy for it.",
+  "share": {
+    "reference": "s_ad53b9c00_84000008",
+    "format": "<half>_<mode><word>_<x0>[_smc][_i<imm>][_os][_a<x1>]"
+  }
+}

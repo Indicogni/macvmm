@@ -1,0 +1,4 @@
+{
+  "title": "ELF inspector",
+  "goal": "Decode an ELF file's header and program headers byte by byte, see what a loader copies into guest RAM, and find which check catches a broken byte."
+}

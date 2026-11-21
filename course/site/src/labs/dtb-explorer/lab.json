@@ -1,0 +1,4 @@
+{
+  "title": "DTB explorer",
+  "goal": "Open a device tree blob, click a node to see its bytes, and watch #address-cells decide how every reg is read."
+}

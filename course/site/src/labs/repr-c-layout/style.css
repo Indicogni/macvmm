@@ -1,0 +1,176 @@
+/* repr-c-layout: scoped to this lab; site tokens only, so dark mode follows the site. */
+
+.lab[data-lab="repr-c-layout"] .rcl {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "controls" "out" "readout";
+  min-width: 0;
+}
+
+@media (min-width: 720px) {
+  .lab[data-lab="repr-c-layout"] .rcl {
+    grid-template-columns: minmax(16rem, 2fr) minmax(0, 3fr);
+    grid-template-areas: "controls out" "readout readout";
+  }
+}
+
+.lab[data-lab="repr-c-layout"] .rcl__controls { grid-area: controls; display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+.lab[data-lab="repr-c-layout"] .rcl__out { grid-area: out; display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.lab[data-lab="repr-c-layout"] .rcl__readout-wrap { grid-area: readout; border-top: 1px solid var(--rule); padding-top: 0.5rem; }
+
+.lab[data-lab="repr-c-layout"] .rcl__field { display: flex; flex-direction: column; gap: 0.25rem; }
+.lab[data-lab="repr-c-layout"] .rcl__field[hidden] { display: none; }
+.lab[data-lab="repr-c-layout"] label,
+.lab[data-lab="repr-c-layout"] .rcl__tag {
+  font: 600 0.72rem/1.4 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.lab[data-lab="repr-c-layout"] .rcl__help { margin: 0; font-size: 0.85rem; color: var(--muted); }
+
+.lab[data-lab="repr-c-layout"] select,
+.lab[data-lab="repr-c-layout"] .rcl__btn {
+  min-height: 44px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1.5px solid var(--control);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  max-width: 100%;
+}
+.lab[data-lab="repr-c-layout"] .rcl__source {
+  font: 0.85rem/1.45 var(--mono);
+  color: var(--code-ink);
+  background: var(--code-bg);
+  border: 1.5px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  tab-size: 4;
+  overflow: auto;
+}
+.lab[data-lab="repr-c-layout"] .rcl__source[aria-invalid="true"] { border-color: var(--danger); border-style: dashed; }
+.lab[data-lab="repr-c-layout"] select:focus-visible,
+.lab[data-lab="repr-c-layout"] .rcl__btn:focus-visible,
+.lab[data-lab="repr-c-layout"] .rcl__source:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.lab[data-lab="repr-c-layout"] .rcl__buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.lab[data-lab="repr-c-layout"] .rcl__btn { cursor: pointer; }
+.lab[data-lab="repr-c-layout"] .rcl__btn:hover { background: var(--accent-tint); }
+
+.lab[data-lab="repr-c-layout"] .rcl__error {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  border-left: 4px solid var(--danger);
+  color: var(--ink);
+  font: 0.85rem/1.4 var(--mono);
+}
+.lab[data-lab="repr-c-layout"] .rcl__error strong { color: var(--danger); }
+.lab[data-lab="repr-c-layout"] .rcl__error[hidden] { display: none; }
+
+/* Wide things scroll inside their own box; the page never scrolls sideways. */
+.lab[data-lab="repr-c-layout"] .rcl__scroll { overflow-x: auto; max-width: 100%; }
+/* Scroll boxes and code blocks take focus so a keyboard can scroll them sideways. */
+.lab[data-lab="repr-c-layout"] .rcl__scroll:focus-visible,
+.lab[data-lab="repr-c-layout"] .rcl__code pre:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Byte map: an offset column and 8 byte columns. */
+.lab[data-lab="repr-c-layout"] .rcl__map { margin: 0; }
+.lab[data-lab="repr-c-layout"] .rcl__map figcaption,
+.lab[data-lab="repr-c-layout"] .rcl__code figcaption { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.4rem; }
+.lab[data-lab="repr-c-layout"] .rcl__grid { display: flex; flex-direction: column; gap: 3px; min-width: calc(3.2rem + 8 * 28px + 8 * 3px); }
+.lab[data-lab="repr-c-layout"] .rcl__row {
+  display: grid;
+  grid-template-columns: 3.2rem repeat(8, minmax(28px, 1fr));
+  gap: 3px;
+}
+.lab[data-lab="repr-c-layout"] .rcl__off { font: 0.75rem/28px var(--mono); color: var(--muted); }
+.lab[data-lab="repr-c-layout"] .rcl__seg {
+  min-height: 28px;
+  font: 0.75rem/28px var(--mono);
+  padding: 0 0.3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  color: var(--ink);
+}
+.lab[data-lab="repr-c-layout"] .rcl__seg--a { background: var(--accent-tint); }
+.lab[data-lab="repr-c-layout"] .rcl__seg--b { background: var(--card); }
+.lab[data-lab="repr-c-layout"] .rcl__seg--cont { border-left-style: dotted; }
+.lab[data-lab="repr-c-layout"] .rcl__seg--pad {
+  color: var(--muted);
+  border: 1.5px dashed var(--muted);
+  background: repeating-linear-gradient(135deg, transparent 0 5px, var(--rule) 5px 7px);
+  text-align: center;
+}
+
+/* Tables */
+.lab[data-lab="repr-c-layout"] .rcl__table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+.lab[data-lab="repr-c-layout"] .rcl__table caption { text-align: left; caption-side: top; padding-bottom: 0.4rem; color: var(--ink); }
+.lab[data-lab="repr-c-layout"] .rcl__table th,
+.lab[data-lab="repr-c-layout"] .rcl__table td { border-bottom: 1px solid var(--rule); padding: 0.3rem 0.5rem; text-align: left; vertical-align: top; }
+.lab[data-lab="repr-c-layout"] .rcl__table thead th { font: 600 0.72rem/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.lab[data-lab="repr-c-layout"] .rcl__table code { font-family: var(--mono); white-space: nowrap; }
+.lab[data-lab="repr-c-layout"] .rcl__num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+.lab[data-lab="repr-c-layout"] .rcl__padrow { color: var(--muted); }
+.lab[data-lab="repr-c-layout"] .rcl__ok strong { color: var(--ok); }
+.lab[data-lab="repr-c-layout"] .rcl__renamed strong { color: var(--warn); }
+.lab[data-lab="repr-c-layout"] .rcl__renamed td:first-child { box-shadow: inset 4px 0 0 var(--warn); }
+.lab[data-lab="repr-c-layout"] .rcl__bad strong { color: var(--danger); }
+.lab[data-lab="repr-c-layout"] .rcl__effect { color: var(--muted); }
+.lab[data-lab="repr-c-layout"] .rcl__pad { font-size: 0.8rem; min-width: 10rem; }
+.lab[data-lab="repr-c-layout"] .rcl__bad td:first-child { box-shadow: inset 4px 0 0 var(--danger); }
+
+.lab[data-lab="repr-c-layout"] h3 { font-size: 1rem; margin: 0 0 0.4rem; }
+.lab[data-lab="repr-c-layout"] .rcl__verdict { margin: 0 0 0.5rem; padding: 0.4rem 0.6rem; border-left: 4px solid var(--rule); }
+.lab[data-lab="repr-c-layout"] .rcl__verdict--ok { border-left-color: var(--ok); }
+.lab[data-lab="repr-c-layout"] .rcl__verdict--bad { border-left-color: var(--danger); border-left-style: double; border-left-width: 6px; }
+
+.lab[data-lab="repr-c-layout"] .rcl__warn ul,
+.lab[data-lab="repr-c-layout"] .rcl__notes { margin: 0.25rem 0 0; padding-left: 1.2rem; font-size: 0.85rem; }
+.lab[data-lab="repr-c-layout"] .rcl__warn { border-left: 4px solid var(--warn); padding-left: 0.6rem; }
+
+/* Code panels */
+.lab[data-lab="repr-c-layout"] .rcl__code { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.lab[data-lab="repr-c-layout"] .rcl__code figure { margin: 0; min-width: 0; }
+.lab[data-lab="repr-c-layout"] .rcl__code pre {
+  margin: 0;
+  overflow-x: auto;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font: 0.8rem/1.45 var(--mono);
+  padding: 0.6rem;
+  border-radius: 4px;
+}
+.lab[data-lab="repr-c-layout"] .rcl__empty { margin: 0; color: var(--muted); }
+.lab[data-lab="repr-c-layout"] .rcl__readout { margin: 0.25rem 0 0; font-size: 0.95rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .lab[data-lab="repr-c-layout"] .rcl__btn,
+  .lab[data-lab="repr-c-layout"] select { transition: background-color 120ms ease; }
+}
+
+/* Static fallback picture (shown until the lab mounts, or with JavaScript off). */
+.lab[data-lab="repr-c-layout"] .lab__fallback svg { max-width: 100%; height: auto; color: var(--ink); }
+
+.lab[data-lab="repr-c-layout"] .rcl__cap { margin: 0 0 0.4rem; font-size: 0.85rem; }
+.lab[data-lab="repr-c-layout"] .rcl__table--cmp code { white-space: normal; overflow-wrap: anywhere; }
+
+/* Teaching notes: the "Try this" steps, the layout rule, the all-structs line. */
+.lab[data-lab="repr-c-layout"] .rcl__try ol { margin: 0; padding-left: 1.3rem; font-size: 0.85rem; }
+.lab[data-lab="repr-c-layout"] .rcl__try li + li { margin-top: 0.2rem; }
+.lab[data-lab="repr-c-layout"] .rcl__rules { border-left: 4px solid var(--accent); padding-left: 0.6rem; }
+.lab[data-lab="repr-c-layout"] .rcl__rules p { margin: 0; font-size: 0.9rem; }
+.lab[data-lab="repr-c-layout"] .rcl__all { margin: 0; font-size: 0.85rem; }

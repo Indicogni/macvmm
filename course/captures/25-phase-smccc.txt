@@ -1,5 +1,5 @@
 # scripts/capture.sh 25: run "phase-smccc" of course/checkpoints/25, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (course/STYLE.md appendix A).
 $ macvmm run --cpus 4 --mem 64M --stats --kernel {guests}/hostile-smp --timeout 60
 exit: 0
 --- stdout ---

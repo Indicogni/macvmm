@@ -1,0 +1,13 @@
+{
+  "title": "System call stepper",
+  "goal": "Single-step an app's svc from user mode into the kernel and back, then compare it with a page fault, predicting which of mode, PC, saved return address and reason change at each step.",
+  "steps": {
+    "svc": 13,
+    "fault": 14,
+    "null": 12
+  },
+  "esr": {
+    "svc #0x80": "0x56000080",
+    "write page fault from user mode": "0x92000047"
+  }
+}

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 410" role="img" aria-labelledby="toy-vmm-fb-title toy-vmm-fb-desc" font-family="system-ui, sans-serif" font-size="14" fill="currentColor">
+<title id="toy-vmm-fb-title">Toy VMM: the toy guest under eight strategies</title>
+<desc id="toy-vmm-fb-desc">A table of VMM interventions per 1,000 guest instructions. Mode A, bare metal: 0 interventions, console 123, same as bare metal: yes. Mode B, a process, no VMM: 0 interventions, console (empty), same as bare metal: no: killed. Mode C, interpret: 1,000 interventions, console 123, same as bare metal: yes. Mode D, trap-and-emulate: 13 interventions, console 123, same as bare metal: yes. Mode E, trap-and-emulate, real GETMODE: 3 interventions, console !, same as bare metal: no: panicked. Mode F, binary translation: 16 interventions, console 123, same as bare metal: yes. Mode G, paravirtualization: 13 interventions, console 123, same as bare metal: yes. Mode H, hardware assist: 3 interventions, console 123, same as bare metal: yes.</desc>
+<text x="16" y="28" font-size="16" font-weight="700">The toy guest under eight strategies (1,000 guest instructions each)</text>
+<text x="16" y="66" font-size="12" font-weight="700">Mode</text>
+<text x="52" y="66" font-size="12" font-weight="700">Strategy</text>
+<text x="330" y="66" font-size="12" font-weight="700">VMM interventions</text>
+<text x="450" y="66" font-size="12" font-weight="700">Console</text>
+<text x="540" y="66" font-size="12" font-weight="700">Same as A?</text>
+<line x1="16" y1="74" x2="624" y2="74" stroke="currentColor" stroke-width="1"/>
+<text x="16" y="100" font-family="ui-monospace, monospace" font-weight="700">A</text>
+<text x="52" y="100">bare metal</text>
+<text x="330" y="100">0</text>
+<text x="450" y="100" font-family="ui-monospace, monospace">123</text>
+<text x="540" y="100">yes</text>
+<line x1="16" y1="112" x2="624" y2="112" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>
+<text x="16" y="134" font-family="ui-monospace, monospace" font-weight="700">B</text>
+<text x="52" y="134">a process, no VMM</text>
+<text x="330" y="134">0</text>
+<text x="450" y="134" font-family="ui-monospace, monospace">(empty)</text>
+<text x="540" y="134">no: killed</text>
+<line x1="16" y1="146" x2="624" y2="146" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>
+<text x="16" y="168" font-family="ui-monospace, monospace" font-weight="700">C</text>
+<text x="52" y="168">interpret</text>
+<text x="330" y="168">1,000</text>
+<text x="450" y="168" font-family="ui-monospace, monospace">123</text>
+<text x="540" y="168">yes</text>
+<line x1="16" y1="180" x2="624" y2="180" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>
+<text x="16" y="202" font-family="ui-monospace, monospace" font-weight="700">D</text>
+<text x="52" y="202">trap-and-emulate</text>
+<text x="330" y="202">13</text>
+<text x="450" y="202" font-family="ui-monospace, monospace">123</text>
+<text x="540" y="202">yes</text>
+<line x1="16" y1="214" x2="624" y2="214" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>
+<text x="16" y="236" font-family="ui-monospace, monospace" font-weight="700">E</text>
+<text x="52" y="236">trap-and-emulate, real GETMODE</text>
+<text x="330" y="236">3</text>
+<text x="450" y="236" font-family="ui-monospace, monospace">!</text>
+<text x="540" y="236">no: panicked</text>
+<line x1="16" y1="248" x2="624" y2="248" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>
+<text x="16" y="270" font-family="ui-monospace, monospace" font-weight="700">F</text>
+<text x="52" y="270">binary translation</text>
+<text x="330" y="270">16</text>
+<text x="450" y="270" font-family="ui-monospace, monospace">123</text>
+<text x="540" y="270">yes</text>
+<line x1="16" y1="282" x2="624" y2="282" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>
+<text x="16" y="304" font-family="ui-monospace, monospace" font-weight="700">G</text>
+<text x="52" y="304">paravirtualization</text>
+<text x="330" y="304">13</text>
+<text x="450" y="304" font-family="ui-monospace, monospace">123</text>
+<text x="540" y="304">yes</text>
+<line x1="16" y1="316" x2="624" y2="316" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>
+<text x="16" y="338" font-family="ui-monospace, monospace" font-weight="700">H</text>
+<text x="52" y="338">hardware assist</text>
+<text x="330" y="338">3</text>
+<text x="450" y="338" font-family="ui-monospace, monospace">123</text>
+<text x="540" y="338">yes</text>
+<line x1="16" y1="350" x2="624" y2="350" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>
+<text x="16" y="370" font-size="12">Mode E with GETMODE made privileged gives the same counts as mode D.</text>
+<text x="16" y="388" font-size="12">Toy cost model: 1 ns per native instruction, 1 µs per intervention.</text>
+</svg>

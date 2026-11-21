@@ -1,0 +1,91 @@
+/* pl011-poke: every rule scoped under the lab's shell (course/site/LABS.md section 5).
+   Site tokens only, so dark mode follows the page. */
+
+.lab[data-lab="pl011-poke"] .pp-wrap { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); min-width: 0; font-family: var(--sans); color: var(--ink); }
+.lab[data-lab="pl011-poke"] .pp-controls { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) {
+  .lab[data-lab="pl011-poke"] .pp-controls { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+.lab[data-lab="pl011-poke"] .pp-form { margin: 0; min-width: 0; }
+.lab[data-lab="pl011-poke"] .pp-box { margin: 0; min-width: 0; padding: .75rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); }
+.lab[data-lab="pl011-poke"] .pp-box legend { font-weight: 600; padding: 0 .3rem; }
+.lab[data-lab="pl011-poke"] .pp-row { display: flex; flex-wrap: wrap; gap: .75rem 1rem; align-items: flex-end; }
+.lab[data-lab="pl011-poke"] .pp-field { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+.lab[data-lab="pl011-poke"] .pp-field[hidden] { display: none; }
+.lab[data-lab="pl011-poke"] .pp-field--inline { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.lab[data-lab="pl011-poke"] .pp-field label { font-size: .9rem; color: var(--muted); }
+.lab[data-lab="pl011-poke"] select,
+.lab[data-lab="pl011-poke"] input[type="text"] { min-height: 44px; max-width: 100%; font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--control); border-radius: 6px; padding: 0 .5rem; }
+.lab[data-lab="pl011-poke"] input[type="text"] { font-family: var(--mono); }
+.lab[data-lab="pl011-poke"] .pp-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lab[data-lab="pl011-poke"] .pp-btn { min-height: 44px; min-width: 44px; padding: 0 1rem; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 6px; cursor: pointer; transition: border-color 150ms; }
+.lab[data-lab="pl011-poke"] .pp-btn:hover:not(:disabled) { border-color: var(--ink); }
+.lab[data-lab="pl011-poke"] .pp-btn--primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+.lab[data-lab="pl011-poke"] .pp-btn:disabled { opacity: .55; cursor: not-allowed; }
+.lab[data-lab="pl011-poke"] .pp-btn:focus-visible,
+.lab[data-lab="pl011-poke"] select:focus-visible,
+.lab[data-lab="pl011-poke"] input:focus-visible,
+.lab[data-lab="pl011-poke"] summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+.lab[data-lab="pl011-poke"] .pp-btn--primary:focus-visible { outline-color: var(--paper); box-shadow: 0 0 0 5px var(--ink); }
+.lab[data-lab="pl011-poke"] .pp-note { margin: .5rem 0 0; font-size: .9rem; color: var(--muted); }
+.lab[data-lab="pl011-poke"] .pp-note:empty { display: none; }
+.lab[data-lab="pl011-poke"] .pp-note--lead { margin: 0 0 .75rem; color: var(--ink); }
+/* Step labels can carry 64 typed characters or long \xNN runs with no spaces: wrap anywhere. */
+.lab[data-lab="pl011-poke"] .pp-next,
+.lab[data-lab="pl011-poke"] .pp-readout,
+.lab[data-lab="pl011-poke"] .pp-msg,
+.lab[data-lab="pl011-poke"] .pp-score,
+.lab[data-lab="pl011-poke"] .pp-start,
+.lab[data-lab="pl011-poke"] .pp-line { overflow-wrap: anywhere; min-width: 0; }
+.lab[data-lab="pl011-poke"] .pp-start { margin: 0; font-weight: 600; }
+
+.lab[data-lab="pl011-poke"] .pp-walk { display: grid; gap: .5rem; }
+.lab[data-lab="pl011-poke"] .pp-next { margin: 0; font-family: var(--mono); font-size: .92rem; }
+.lab[data-lab="pl011-poke"] .pp-score { margin: 0; font-weight: 600; }
+.lab[data-lab="pl011-poke"] .pp-score:empty { display: none; }
+.lab[data-lab="pl011-poke"] .pp-msg { margin: 0; padding: .5rem .75rem; border: 2px dashed var(--warn); border-radius: 6px; }
+.lab[data-lab="pl011-poke"] .pp-msg[hidden] { display: none; }
+.lab[data-lab="pl011-poke"] .pp-readout { margin: 0; padding: .6rem .75rem; border-left: 3px solid var(--accent); background: var(--card); }
+
+.lab[data-lab="pl011-poke"] .pp-device { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) {
+  .lab[data-lab="pl011-poke"] .pp-device { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+.lab[data-lab="pl011-poke"] .pp-col { min-width: 0; display: grid; gap: .6rem; align-content: start; }
+.lab[data-lab="pl011-poke"] h3 { font-family: var(--serif); font-size: 1.02rem; margin: 0; }
+.lab[data-lab="pl011-poke"] .pp-scroll { overflow-x: auto; max-width: 100%; }
+.lab[data-lab="pl011-poke"] .pp-fifo { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .3rem; }
+.lab[data-lab="pl011-poke"] .pp-slot { min-width: 4.5rem; min-height: 28px; display: flex; align-items: center; justify-content: center; padding: .15rem .4rem; font-family: var(--mono); font-size: .85rem; color: var(--muted); border: 1px dashed var(--rule); border-radius: 4px; }
+/* A full slot differs by border style, weight and text, never color alone. */
+.lab[data-lab="pl011-poke"] .pp-slot--full { color: var(--code-ink); background: var(--code-bg); border: 2px solid var(--accent); font-weight: 600; }
+
+.lab[data-lab="pl011-poke"] table { border-collapse: collapse; width: 100%; }
+.lab[data-lab="pl011-poke"] caption { text-align: left; color: var(--muted); font-size: .9rem; padding-bottom: .3rem; }
+.lab[data-lab="pl011-poke"] th,
+.lab[data-lab="pl011-poke"] td { text-align: left; padding: .3rem .45rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.lab[data-lab="pl011-poke"] thead th { font-size: .72rem; letter-spacing: .06em; color: var(--muted); font-weight: 600; font-family: var(--mono); }
+.lab[data-lab="pl011-poke"] .pp-bits th[scope="row"] { font-family: var(--mono); font-weight: 600; }
+.lab[data-lab="pl011-poke"] .pp-bit { font-family: var(--mono); text-align: center; min-width: 28px; color: var(--muted); }
+.lab[data-lab="pl011-poke"] .pp-bit--on { color: var(--ink); font-weight: 700; background: var(--accent-tint); box-shadow: inset 0 -3px 0 var(--accent); }
+.lab[data-lab="pl011-poke"] .pp-hex { font-family: var(--mono); }
+.lab[data-lab="pl011-poke"] .pp-key { margin: 0; display: grid; gap: .15rem; font-size: .88rem; }
+.lab[data-lab="pl011-poke"] .pp-key div { display: flex; flex-wrap: wrap; gap: .4rem; }
+.lab[data-lab="pl011-poke"] .pp-key dt { font-family: var(--mono); font-weight: 700; min-width: 3.2rem; }
+.lab[data-lab="pl011-poke"] .pp-key dd { margin: 0; color: var(--muted); }
+.lab[data-lab="pl011-poke"] .pp-line { margin: 0; padding: .5rem .75rem; border: 1px solid var(--rule); border-radius: 6px; font-family: var(--mono); }
+.lab[data-lab="pl011-poke"] .pp-line--high { border: 2px solid var(--accent); font-weight: 700; background: var(--accent-tint); }
+.lab[data-lab="pl011-poke"] .pp-term { margin: 0; padding: .5rem .75rem; border-radius: 6px; font-family: var(--mono); background: var(--code-bg); color: var(--code-ink); overflow-wrap: anywhere; }
+
+.lab[data-lab="pl011-poke"] .pp-log td,
+.lab[data-lab="pl011-poke"] .pp-log th { white-space: nowrap; }
+.lab[data-lab="pl011-poke"] .pp-mono { font-family: var(--mono); font-size: .88rem; }
+.lab[data-lab="pl011-poke"] .pp-current td { background: var(--accent-tint); font-weight: 700; }
+.lab[data-lab="pl011-poke"] .pp-current td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.lab[data-lab="pl011-poke"] .pp-future td { color: var(--muted); font-style: italic; }
+.lab[data-lab="pl011-poke"] .pp-plain { margin: .5rem 0 0; padding: .6rem .75rem; overflow-x: auto; background: var(--code-bg); color: var(--code-ink); font-family: var(--mono); font-size: .82rem; border-radius: 6px; }
+.lab[data-lab="pl011-poke"] .pp-more summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.lab[data-lab="pl011-poke"] .pp-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="pl011-poke"] * { transition: none !important; }
+}

@@ -1,0 +1,4 @@
+{
+  "title": "Interrupt lifecycle",
+  "goal": "See an interrupt as state, not a call: a level line, an edge and a latched edge played against a masked CPU, and, from chapter 12, one interrupt inside the GIC, when the source stops asking early, late or never."
+}

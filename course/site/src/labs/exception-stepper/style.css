@@ -1,0 +1,138 @@
+/* exception-stepper. Every rule is scoped to this lab; site tokens only (LABS.md section 5). */
+.lab[data-lab="exception-stepper"] .es {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+  grid-template-areas: "controls viz" "readout readout";
+  font-family: var(--sans);
+  color: var(--ink);
+}
+.lab[data-lab="exception-stepper"] [hidden] { display: none !important; }
+.lab[data-lab="exception-stepper"] .es__controls { grid-area: controls; display: flex; flex-direction: column; gap: 0.75rem; }
+.lab[data-lab="exception-stepper"] .es__viz { grid-area: viz; min-width: 0; }
+.lab[data-lab="exception-stepper"] .es__readout { grid-area: readout; }
+
+.lab[data-lab="exception-stepper"] .es__group {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.lab[data-lab="exception-stepper"] .es__group legend,
+.lab[data-lab="exception-stepper"] .es__group > label { font-weight: 600; }
+.lab[data-lab="exception-stepper"] .es__choice {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+}
+.lab[data-lab="exception-stepper"] input[type="radio"],
+.lab[data-lab="exception-stepper"] input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); }
+.lab[data-lab="exception-stepper"] select {
+  min-height: 44px;
+  max-width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--control);
+  border-radius: 6px;
+  padding: 0 0.5rem;
+}
+.lab[data-lab="exception-stepper"] .es__buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.lab[data-lab="exception-stepper"] .es__btn {
+  min-height: 44px;
+  padding: 0 0.9rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.lab[data-lab="exception-stepper"] .es__btn--primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.lab[data-lab="exception-stepper"] .es__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.lab[data-lab="exception-stepper"] :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.lab[data-lab="exception-stepper"] .es__instr { margin: 0 0 0.75rem; }
+.lab[data-lab="exception-stepper"] .es__instr code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  color: var(--code-ink);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  white-space: pre-wrap;
+}
+
+.lab[data-lab="exception-stepper"] .es__ladder { list-style: none; margin: 0 0 0.75rem; padding: 0; display: grid; gap: 0.25rem; }
+.lab[data-lab="exception-stepper"] .es__level {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+  color: var(--muted);
+}
+.lab[data-lab="exception-stepper"] .es__level--here {
+  border: 2px solid var(--accent);
+  background: var(--accent-tint);
+  color: var(--ink);
+  font-weight: 600;
+}
+.lab[data-lab="exception-stepper"] .es__marker { font-family: var(--mono); font-size: 0.85em; }
+
+.lab[data-lab="exception-stepper"] .es__scroll { overflow-x: auto; }
+.lab[data-lab="exception-stepper"] .es__sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.lab[data-lab="exception-stepper"] .es__table { border-collapse: collapse; width: 100%; min-width: 26rem; }
+.lab[data-lab="exception-stepper"] .es__table caption { text-align: left; font-weight: 600; padding-bottom: 0.25rem; }
+.lab[data-lab="exception-stepper"] .es__table th,
+.lab[data-lab="exception-stepper"] .es__table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+.lab[data-lab="exception-stepper"] .es__table thead th { color: var(--muted); font-weight: 600; }
+.lab[data-lab="exception-stepper"] .es__reg { font-family: var(--mono); color: var(--tok-kw); font-weight: 400; }
+.lab[data-lab="exception-stepper"] .es__val { font-family: var(--mono); }
+.lab[data-lab="exception-stepper"] .es__cell--changed { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--accent-tint); }
+.lab[data-lab="exception-stepper"] .es__badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0 0.35rem;
+  font-size: 0.8em;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--ink);
+}
+.lab[data-lab="exception-stepper"] .es__detail { display: block; color: var(--muted); font-size: 0.9em; }
+
+.lab[data-lab="exception-stepper"] .es__h { font-size: 1rem; margin: 0 0 0.25rem; }
+.lab[data-lab="exception-stepper"] .es__summary { margin: 0 0 0.5rem; font-weight: 600; }
+.lab[data-lab="exception-stepper"] .es__notes { margin: 0; padding-left: 1.2rem; }
+.lab[data-lab="exception-stepper"] .es__notes li { margin: 0.2rem 0; }
+
+.lab[data-lab="exception-stepper"] .es__cell,
+.lab[data-lab="exception-stepper"] .es__level { transition: background-color 150ms ease-out; }
+.lab[data-lab="exception-stepper"] .es--still .es__cell,
+.lab[data-lab="exception-stepper"] .es--still .es__level { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="exception-stepper"] .es__cell,
+  .lab[data-lab="exception-stepper"] .es__level { transition: none; }
+}
+
+@media (max-width: 480px) {
+  .lab[data-lab="exception-stepper"] .es__table { min-width: 0; }
+  .lab[data-lab="exception-stepper"] .es__table th:nth-child(2),
+  .lab[data-lab="exception-stepper"] .es__table td:nth-child(2) { display: none; }
+}
+
+@media (max-width: 720px) {
+  .lab[data-lab="exception-stepper"] .es {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "controls" "viz" "readout";
+  }
+}

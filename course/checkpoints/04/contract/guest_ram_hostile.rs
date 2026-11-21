@@ -1,10 +1,9 @@
-// Checkpoint 04 HVF contract (PLAN M27 L2, `contract_hvf`). It names only items the chapter 04
+// Checkpoint 04 contract (runs on your Mac, not on the host alone). It names only items the chapter 04
 // lesson teaches: `vmm::memory::{GuestRam, RomRegion, GuestAddress, VecMemory}` and the
 // `GuestMemory` trait, all from `memory/host.rs` and its siblings.
-//! The memory/host.rs half of the hostile cases (PLAN M2; threat model MEM-2, MEM-3, MEM-6,
-//! MEM-8).
+//! The memory/host.rs half of the hostile cases (see docs/security/threat-model.md).
 //!
-//! `memory_hostile.rs` (L1) checks the rules on the host double `VecMemory`. This file checks
+//! `memory_hostile.rs` checks the rules on the host double `VecMemory`. This file checks
 //! the same rules on real `hv_vm_allocate` memory, the only code that turns a guest address
 //! into a host pointer: every refusal must be an `Err` and never a panic or a wrapped pointer.
 //! It allocates host memory with the hypervisor entitlement but creates no VM, so it is quick

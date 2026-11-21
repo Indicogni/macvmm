@@ -1,0 +1,4 @@
+{
+  "title": "Guest address translator",
+  "goal": "Build a region table, hand the VMM a guest address and a length, and see whether it forms a host pointer, refuses, or (with a wrapping addr + len) reaches memory outside guest RAM."
+}

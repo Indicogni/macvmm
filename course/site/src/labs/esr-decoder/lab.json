@@ -1,0 +1,4 @@
+{
+  "title": "ESR decoder",
+  "goal": "Split an ESR_EL2 syndrome into its fields, flip bits to see what changes, and see what macvmm would do with the exit."
+}

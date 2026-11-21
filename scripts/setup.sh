@@ -45,16 +45,16 @@ rustup target add --toolchain "$TOOLCHAIN" aarch64-unknown-none >/dev/null 2>&1 
 info "rust: $(cd -- "$REPO_ROOT" && rustc --version) with rustfmt, clippy, llvm-tools, aarch64-unknown-none"
 
 # --- optional (never installed here) ---------------------------------------------------------
-optional() { # name, milestone, why, install hint
-  printf '%s: optional: %-10s missing (needed from %s: %s); install with: %s\n' \
+optional() { # name, when it is first needed (a chapter, in learner terms), why, install hint
+  printf '%s: optional: %-10s missing (needed %s: %s); install with: %s\n' \
     "$SCRIPT_NAME" "$1" "$2" "$3" "$4"
 }
 if command -v dtc >/dev/null 2>&1; then
   info "optional: dtc        present ($(command -v dtc))"
 else
-  optional dtc M7 "golden DTS comparison" "brew install dtc"
+  optional dtc "from chapter 10" "golden DTS comparison" "brew install dtc"
 fi
-# M15: `cargo xtask mkrootfs` runs mkfs.ext4, and the rootfs_fsck_clean test runs `e2fsck -fn`
+# Chapter 18: `cargo xtask mkrootfs` runs mkfs.ext4, and the rootfs_fsck_clean test runs `e2fsck -fn`
 # on a guest-written image, i.e. a host parser on hostile input (SC-14). e2fsprogs has had
 # memory-safety CVEs (CVE-2019-5094, CVE-2022-1304, fixed in 1.46.6), so an e2fsprogs older
 # than 1.47.0 is refused. Homebrew's formula is keg-only: look in its prefix, then PATH.
@@ -73,7 +73,7 @@ if [[ -n "$e2fs" ]]; then
     die "cannot read the e2fsprogs version from $e2fs -V"
   fi
   if (( e2a < 1 || (e2a == 1 && ${e2b:-0} < 47) )); then
-    die "e2fsprogs $e2v at $e2fs is older than 1.47.0 (SC-14: e2fsck parses guest-written images); run: brew upgrade e2fsprogs"
+    die "e2fsprogs $e2v at $e2fs is older than 1.47.0 (e2fsck parses guest-written images); run: brew upgrade e2fsprogs"
   fi
   # The floor protects the parser of guest-written images, e2fsck, so the e2fsck beside this
   # mkfs.ext4 is checked too (the rootfs_fsck_clean test also checks the one it runs).
@@ -88,12 +88,12 @@ if [[ -n "$e2fs" ]]; then
       die "cannot read the e2fsprogs version from $e2fsck -V"
     fi
     if (( cka < 1 || (cka == 1 && ${ckb:-0} < 47) )); then
-      die "e2fsck $ckv at $e2fsck is older than 1.47.0 (SC-14: it parses guest-written images); run: brew upgrade e2fsprogs"
+      die "e2fsck $ckv at $e2fsck is older than 1.47.0 (it parses guest-written images); run: brew upgrade e2fsprogs"
     fi
   fi
   info "optional: e2fsprogs  present ($e2v, $e2fs)"
 else
-  optional e2fsprogs M15 "ext4 root filesystem image (cargo xtask mkrootfs)" "brew install e2fsprogs"
+  optional e2fsprogs "from chapter 18" "ext4 root filesystem image (cargo xtask mkrootfs)" "brew install e2fsprogs"
 fi
 if command -v xz >/dev/null 2>&1; then
   xzout="$(xz --version)"
@@ -109,12 +109,12 @@ if command -v xz >/dev/null 2>&1; then
   done <<< "$xzout"
   info "optional: xz         present ($xzv)"
 else
-  optional xz M19 "FreeBSD .raw.xz image" "brew install xz"
+  optional xz "from chapter 22" "FreeBSD .raw.xz image" "brew install xz"
 fi
 if command -v shellcheck >/dev/null 2>&1; then
   info "optional: shellcheck present ($(shellcheck --version | sed -n 's/^version: //p'))"
 else
-  optional shellcheck M0 "scripts/check.sh lint (mandatory in CI)" "brew install shellcheck"
+  optional shellcheck "by course authors only" "scripts/check.sh lint (mandatory in CI)" "brew install shellcheck"
 fi
 
 info "OK"

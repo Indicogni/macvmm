@@ -1,0 +1,93 @@
+/* syscall-stepper: every rule scoped under the lab's shell (course/site/LABS.md section 5).
+   Site tokens only, so dark mode follows the page. */
+
+.lab[data-lab="syscall-stepper"] .ss-wrap { display: grid; gap: 1rem; min-width: 0; font-family: var(--sans); color: var(--ink); }
+.lab[data-lab="syscall-stepper"] .ss-controls { display: flex; flex-wrap: wrap; gap: .75rem 1rem; align-items: flex-end; }
+.lab[data-lab="syscall-stepper"] .ss-field { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+.lab[data-lab="syscall-stepper"] .ss-field--check { flex-direction: row; align-items: center; min-height: 44px; }
+.lab[data-lab="syscall-stepper"] .ss-field--check input { width: 1.25rem; height: 1.25rem; }
+.lab[data-lab="syscall-stepper"] select { min-height: 44px; max-width: 100%; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--control); border-radius: 6px; padding: 0 .5rem; }
+.lab[data-lab="syscall-stepper"] .ss-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lab[data-lab="syscall-stepper"] .ss-btn { min-height: 44px; min-width: 44px; padding: 0 1rem; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 6px; cursor: pointer; transition: border-color 150ms; }
+.lab[data-lab="syscall-stepper"] .ss-btn:hover:not(:disabled) { border-color: var(--ink); }
+.lab[data-lab="syscall-stepper"] .ss-btn--primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+.lab[data-lab="syscall-stepper"] .ss-btn:disabled { opacity: .55; cursor: not-allowed; }
+.lab[data-lab="syscall-stepper"] .ss-btn:focus-visible,
+.lab[data-lab="syscall-stepper"] select:focus-visible,
+.lab[data-lab="syscall-stepper"] input:focus-visible,
+.lab[data-lab="syscall-stepper"] summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+.lab[data-lab="syscall-stepper"] .ss-btn--primary:focus-visible { outline-color: var(--paper); box-shadow: 0 0 0 5px var(--ink); }
+
+.lab[data-lab="syscall-stepper"] .ss-summary { margin: 0; color: var(--muted); }
+.lab[data-lab="syscall-stepper"] .ss-main { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) {
+  .lab[data-lab="syscall-stepper"] .ss-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+.lab[data-lab="syscall-stepper"] .ss-col { min-width: 0; display: grid; gap: .75rem; align-content: start; }
+
+.lab[data-lab="syscall-stepper"] table { border-collapse: collapse; width: 100%; }
+.lab[data-lab="syscall-stepper"] caption { text-align: left; color: var(--muted); font-size: .9rem; padding-bottom: .4rem; }
+.lab[data-lab="syscall-stepper"] th,
+.lab[data-lab="syscall-stepper"] td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--rule); vertical-align: top; overflow-wrap: break-word; }
+.lab[data-lab="syscall-stepper"] thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.lab[data-lab="syscall-stepper"] .ss-value { font-family: var(--mono); font-size: .9rem; }
+.lab[data-lab="syscall-stepper"] .ss-no-predict .ss-predict { display: none; }
+.lab[data-lab="syscall-stepper"] .ss-predict input { width: 1.5rem; height: 1.5rem; margin: .5rem; }
+.lab[data-lab="syscall-stepper"] .ss-result { font-size: .9rem; color: var(--muted); }
+/* A changed row carries an outline and the word "changed", never color alone. */
+.lab[data-lab="syscall-stepper"] .ss-changed th,
+.lab[data-lab="syscall-stepper"] .ss-changed td { background: var(--accent-tint); }
+.lab[data-lab="syscall-stepper"] .ss-changed .ss-value { font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.lab[data-lab="syscall-stepper"] .ss-arm { display: none; font-family: var(--mono); font-size: .8rem; color: var(--muted); font-weight: 400; }
+.lab[data-lab="syscall-stepper"] .ss-show-arm .ss-arm { display: inline; }
+.lab[data-lab="syscall-stepper"] .ss-score { margin: 0; font-weight: 600; }
+/* A second Step/Back pair beside the panel, shown on phones only, so predicting, stepping and
+   checking need no scrolling (the lab shell clips overflow, so a sticky bar would not stick). */
+.lab[data-lab="syscall-stepper"] .ss-near { display: none; }
+.lab[data-lab="syscall-stepper"] .ss-score:empty { display: none; }
+.lab[data-lab="syscall-stepper"] .ss-last { margin: 0; padding: .6rem .75rem; background: var(--card); border: 1px solid var(--rule); border-radius: 6px; }
+.lab[data-lab="syscall-stepper"] .ss-halt { margin: 0; padding: .6rem .75rem; border: 2px dashed var(--ink); border-radius: 6px; font-weight: 600; }
+.lab[data-lab="syscall-stepper"] .ss-readout { margin: 0; padding: .6rem .75rem; border-left: 3px solid var(--accent); background: var(--card); }
+
+.lab[data-lab="syscall-stepper"] .ss-listings { display: grid; gap: 1rem; }
+.lab[data-lab="syscall-stepper"] .ss-listing h3 { font-family: var(--serif); font-size: 1.05rem; margin: 0 0 .4rem; }
+.lab[data-lab="syscall-stepper"] .ss-note { margin: 0 0 .4rem; font-size: .9rem; color: var(--muted); }
+/* No horizontal scroll: the comment wraps onto its own line when the instruction and it do not fit. */
+.lab[data-lab="syscall-stepper"] .ss-code { list-style: none; margin: 0; padding: .4rem 0; background: var(--code-bg); color: var(--code-ink); border-radius: 6px; font-family: var(--mono); font-size: .875rem; line-height: 1.55; }
+.lab[data-lab="syscall-stepper"] .ss-line { display: flex; flex-wrap: wrap; column-gap: .6rem; padding: .1rem .6rem .1rem .2rem; border: 2px solid transparent; }
+.lab[data-lab="syscall-stepper"] .ss-addr,
+.lab[data-lab="syscall-stepper"] .ss-ins { white-space: pre; }
+.lab[data-lab="syscall-stepper"] .ss-line--current { border-color: var(--accent); background: var(--accent-tint); font-weight: 700; }
+.lab[data-lab="syscall-stepper"] .ss-marker { width: 1ch; color: var(--accent); }
+.lab[data-lab="syscall-stepper"] .ss-addr { color: var(--tok-num); }
+.lab[data-lab="syscall-stepper"] .ss-ins { font-family: inherit; color: var(--tok-kw); background: none; padding: 0; }
+.lab[data-lab="syscall-stepper"] .ss-com { color: var(--tok-com); flex: 1 1 18ch; min-width: 0; white-space: normal; }
+
+.lab[data-lab="syscall-stepper"] .ss-more summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.lab[data-lab="syscall-stepper"] .ss-regs th { font-family: var(--mono); font-weight: 400; white-space: nowrap; }
+.lab[data-lab="syscall-stepper"] .ss-regs td { font-family: var(--mono); }
+.lab[data-lab="syscall-stepper"] .ss-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Phones: comments under their instruction, panel rows stacked, the step buttons kept in reach. */
+@media (max-width: 719.98px) {
+  .lab[data-lab="syscall-stepper"] .ss-com { flex-basis: 100%; padding-left: calc(1ch + .6rem); }
+  .lab[data-lab="syscall-stepper"] .ss-panel thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .lab[data-lab="syscall-stepper"] .ss-panel,
+  .lab[data-lab="syscall-stepper"] .ss-panel tbody,
+  .lab[data-lab="syscall-stepper"] .ss-panel caption { display: block; }
+  .lab[data-lab="syscall-stepper"] .ss-panel tr { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; border-bottom: 1px solid var(--rule); }
+  .lab[data-lab="syscall-stepper"] .ss-panel th,
+  .lab[data-lab="syscall-stepper"] .ss-panel td { display: block; border-bottom: 0; }
+  .lab[data-lab="syscall-stepper"] .ss-panel tbody th,
+  .lab[data-lab="syscall-stepper"] .ss-panel .ss-value { grid-column: 1 / -1; padding-bottom: 0; }
+  .lab[data-lab="syscall-stepper"] .ss-panel .ss-predict { display: flex; align-items: center; }
+  .lab[data-lab="syscall-stepper"] .ss-no-predict .ss-panel .ss-predict { display: none; }
+  .lab[data-lab="syscall-stepper"] .ss-panel .ss-predict::before,
+  .lab[data-lab="syscall-stepper"] .ss-panel .ss-result:not(:empty)::before { content: attr(data-label) ": "; color: var(--muted); font-size: .8rem; }
+  .lab[data-lab="syscall-stepper"] .ss-no-predict .ss-panel .ss-result { grid-column: 1 / -1; }
+  .lab[data-lab="syscall-stepper"] .ss-near { display: flex; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="syscall-stepper"] * { transition: none !important; }
+}

@@ -1,0 +1,5 @@
+{
+  "title": "cpio inspector",
+  "goal": "Drop an initramfs (or pick a sample) and walk it the way Linux does: every member, every newc header field and padding byte, which later entries overwrite earlier ones, the boot-log lines that follow, and what a host cpio tool shows instead.",
+  "reference": "both@2.1"
+}

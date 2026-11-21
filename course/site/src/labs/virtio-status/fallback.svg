@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 346" role="img" aria-labelledby="vs-fb-title vs-fb-desc">
+  <title id="vs-fb-title">The virtio status handshake</title>
+  <desc id="vs-fb-desc">The driver writes Status 0 (reset), then 0x1 ACKNOWLEDGE, 0x3 adding DRIVER, accepts features (VERSION_1, bit 32), writes 0xb adding FEATURES_OK and reads it back, sets up queue 0 (size 16, three ring addresses, QueueReady 1), then writes 0xf adding DRIVER_OK. Bits only accumulate; writing 0 is the one way back. The device refuses FEATURES_OK if the driver accepted a bit it never offered or did not accept VERSION_1, ignores queue writes while a queue is ready (except a QueueReady 0 before DRIVER_OK, which unfreezes it) or once DRIVER_OK is set, and answers a ring outside RAM at DRIVER_OK with DEVICE_NEEDS_RESET (64) and a configuration interrupt.</desc>
+  <g font-family="ui-monospace, Menlo, monospace" font-size="13" fill="currentColor">
+    <text x="20" y="26" font-weight="700">The probe's handshake, as traced on a real Mac</text>
+    <text x="36" y="66">0x0</text>
+    <text x="146" y="66">0x1</text>
+    <text x="256" y="66">0x3</text>
+    <text x="400" y="66">0xb</text>
+    <text x="540" y="66">0xf</text>
+    <text x="22" y="98" font-size="11">reset</text>
+    <text x="118" y="98" font-size="11">ACKNOWLEDGE</text>
+    <text x="246" y="98" font-size="11">+DRIVER</text>
+    <text x="370" y="98" font-size="11">+FEATURES_OK</text>
+    <text x="516" y="98" font-size="11">+DRIVER_OK</text>
+    <text x="300" y="124" font-size="11">accept VERSION_1</text>
+    <text x="440" y="124" font-size="11">set up queue 0</text>
+    <text x="20" y="170" font-weight="700">The device has the last word</text>
+    <text x="20" y="196">FEATURES_OK with an unoffered bit, or without VERSION_1: not latched</text>
+    <text x="20" y="218">a skipped step or a cleared bit: ignored (bits only accumulate)</text>
+    <text x="20" y="240">queue writes while the queue is ready, or after DRIVER_OK: ignored</text>
+    <text x="36" y="256" font-size="11">(before DRIVER_OK, writing QueueReady 0 still unfreezes the queue)</text>
+    <text x="20" y="278">a ring outside RAM at DRIVER_OK: DEVICE_NEEDS_RESET (64) + config interrupt</text>
+    <text x="20" y="300">narrow or misaligned control access: read as zero, write ignored</text>
+    <text x="20" y="330" font-size="11">Writing 0 to Status resets the device: the one way back.</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1.5" fill="none">
+    <rect x="20" y="46" width="60" height="30" rx="4"/>
+    <rect x="130" y="46" width="60" height="30" rx="4"/>
+    <rect x="240" y="46" width="60" height="30" rx="4"/>
+    <rect x="384" y="46" width="60" height="30" rx="4"/>
+    <rect x="524" y="46" width="60" height="30" rx="4"/>
+    <path d="M80 61 L128 61"/><path d="M121 56 L128 61 L121 66"/>
+    <path d="M190 61 L238 61"/><path d="M231 56 L238 61 L231 66"/>
+    <path d="M300 61 L382 61"/><path d="M375 56 L382 61 L375 66"/>
+    <path d="M444 61 L522 61"/><path d="M515 56 L522 61 L515 66"/>
+  </g>
+</svg>

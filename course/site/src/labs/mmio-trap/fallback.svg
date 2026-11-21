@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 450" role="img" aria-labelledby="mt-fb-title mt-fb-desc">
+  <title id="mt-fb-title">One trapped load, step by step</title>
+  <desc id="mt-fb-desc">The guest runs ldrsh x3, [x9] at 0x40081264 with x9 = 0x0b00_0028. That address is not RAM, so the CPU exits to the VMM with ESR_EL2 0x93638006 and IPA 0x0b00_0028. The VMM decodes the syndrome: ISV 1, SAS 1 (2 bytes), SSE 1 (sign-extend), SRT 3, SF 1 (64-bit register), WnR 0 (a load). The bus finds the test device at offset 0x28, which returns 0x8001. Sign-extended to 64 bits that is 0xffff_ffff_ffff_8001, written to x3. The VMM adds 4 to the PC, 0x40081268, and resumes the guest.</desc>
+  <g font-family="ui-monospace, Menlo, monospace" font-size="15" fill="currentColor">
+    <text x="34" y="26" font-weight="700">guest</text>
+    <text x="34" y="46">0x40081264 ldrsh x3, [x9]</text>
+    <text x="34" y="66">x9 = 0x0b00_0028 (not RAM)</text>
+    <text x="34" y="108" font-weight="700">1 exit</text>
+    <text x="34" y="128">ESR_EL2 0x93638006</text>
+    <text x="34" y="148">IPA 0x0b00_0028</text>
+    <text x="34" y="190" font-weight="700">2 decode</text>
+    <text x="34" y="210">ISV=1 SAS=1 (2 bytes) SSE=1</text>
+    <text x="34" y="230">SRT=3 SF=1 WnR=0</text>
+    <text x="34" y="272" font-weight="700">3 find the device</text>
+    <text x="34" y="292">testdev, offset 0x28</text>
+    <text x="34" y="334" font-weight="700">4 do the access</text>
+    <text x="34" y="354">reads 0x8001</text>
+    <text x="34" y="374">x3 = 0xffff_ffff_ffff_8001</text>
+    <text x="34" y="416" font-weight="700">5 resume</text>
+    <text x="34" y="436">PC + 4 = 0x40081268</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1.5" fill="none">
+    <path d="M18 74 L18 92"/>
+    <path d="M13 85 L18 92 L23 85"/>
+    <path d="M18 156 L18 174"/>
+    <path d="M13 167 L18 174 L23 167"/>
+    <path d="M18 238 L18 256"/>
+    <path d="M13 249 L18 256 L23 249"/>
+    <path d="M18 300 L18 318"/>
+    <path d="M13 311 L18 318 L23 311"/>
+    <path d="M18 382 L18 400"/>
+    <path d="M13 393 L18 400 L23 393"/>
+  </g>
+</svg>

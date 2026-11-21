@@ -1,0 +1,4 @@
+{
+  "title": "A64 encoder",
+  "goal": "Build an instruction word from its labelled bit fields, or take a word apart, and watch the 32 bits and the little-endian bytes change together."
+}

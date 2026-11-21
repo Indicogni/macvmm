@@ -1,0 +1,9 @@
+sequenceDiagram
+    participant V as VMM (boot loader, host)
+    participant M as Guest RAM
+    participant C as vCPU 0
+    V->>M: writes DTB, Image, initramfs
+    V->>C: sets x0..x3, CPSR, PC
+    Note over C: MMU off, DAIF masked
+    V->>C: runs
+    C->>M: kernel fetches its first instruction

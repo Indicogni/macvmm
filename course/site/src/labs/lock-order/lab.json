@@ -1,0 +1,16 @@
+{
+  "title": "Lock order",
+  "goal": "Be the scheduler for two threads and their locks: step them into a deadlock, see the cycle, fix the order, then make a condvar lose its wake-up.",
+  "reference": {
+    "deadlock": "deadlock.00.1212",
+    "lostWakeup": "lost.00.1111122",
+    "spurious": "lost.00.22w222"
+  },
+  "states": {
+    "deadlock": 32,
+    "ordered": 28,
+    "three": 184,
+    "park": 36,
+    "lost": 46
+  }
+}

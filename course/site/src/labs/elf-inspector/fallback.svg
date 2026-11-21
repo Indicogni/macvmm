@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" role="img" aria-labelledby="eli-fb-title eli-fb-desc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="currentColor">
+  <title id="eli-fb-title">ELF inspector: the hello guest from the elf primer</title>
+  <desc id="eli-fb-desc">The 844,736-byte file holds the ELF header and four program headers in its first 0x120 bytes. Segment 0 (read, execute) copies 0x29f0 bytes from file offset 0x10000 to 0x4008_0000. Segment 1 (read) copies 0x36a bytes from 0x129f0 to 0x4008_29f0. Segment 2 (read, write) takes no bytes from the file and is 0x80020 bytes of zeros at 0x4008_2d60. The rest of the file, debug information, symbols and section headers, is not loaded. The device-tree slot fills 0x4000_0000 to 0x4008_0000. All checks pass; the guest spans 535,936 bytes of RAM, and the flat binary is 11,610 bytes.</desc>
+  <text x="8" y="20" font-weight="700">file (844,736 bytes)</text>
+  <text x="352" y="20" font-weight="700">guest RAM</text>
+  <rect x="8" y="32" width="220" height="30" fill="none" stroke="currentColor"/>
+  <text x="16" y="52">0x0  headers (not copied)</text>
+  <rect x="8" y="62" width="220" height="30" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="16" y="82">0x10000  code 0x29f0</text>
+  <rect x="8" y="92" width="220" height="30" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="16" y="112">0x129f0  rodata 0x36a</text>
+  <rect x="8" y="122" width="220" height="60" fill="none" stroke="currentColor" stroke-dasharray="2 3"/>
+  <text x="16" y="142">0x12d5a  debug info,</text>
+  <text x="16" y="158">symbols, section headers</text>
+  <text x="16" y="174">(not loaded)</text>
+  <rect x="352" y="32" width="280" height="30" fill="none" stroke="currentColor" stroke-dasharray="6 3"/>
+  <text x="360" y="52">0x4000_0000  device-tree slot</text>
+  <rect x="352" y="62" width="280" height="30" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="360" y="82">0x4008_0000  code  R X</text>
+  <rect x="352" y="92" width="280" height="30" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="360" y="112">0x4008_29f0  rodata  R</text>
+  <rect x="352" y="122" width="280" height="60" fill="none" stroke="currentColor" stroke-dasharray="1 2"/>
+  <text x="360" y="142">0x4008_2d60  BSS  RW</text>
+  <text x="360" y="158">0x80020 bytes zero-filled,</text>
+  <text x="360" y="174">none of them in the file</text>
+  <line x1="228" y1="77" x2="350" y2="77" stroke="currentColor"/>
+  <text x="262" y="72">copy</text>
+  <line x1="228" y1="107" x2="350" y2="107" stroke="currentColor"/>
+  <text x="262" y="102">copy</text>
+  <text x="262" y="156">zero</text>
+  <text x="8" y="212">All checks pass. Entry 0x4008_0000 is in segment 0 (executable).</text>
+  <text x="8" y="232">Three sizes: file 844,736 · flat binary 11,610 · guest RAM 535,936 bytes.</text>
+  <text x="8" y="252">Patch e_phnum (offset 0x38) to ff ff: "ELF has 65535 program headers (at most 64)".</text>
+</svg>

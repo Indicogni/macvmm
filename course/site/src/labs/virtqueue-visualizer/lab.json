@@ -1,0 +1,7 @@
+{
+  "title": "Virtqueue visualizer",
+  "goal": "Play the driver and the device on one split virtqueue: publish requests, ring the doorbell, walk and serve chains, reclaim them, then misbehave as the driver and watch which check refuses each hostile ring.",
+  "reference": "ring-n8-s0-c10000:hloop_n_p",
+  "toySteps": 8,
+  "toyExits": 3
+}

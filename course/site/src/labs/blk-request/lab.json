@@ -1,0 +1,5 @@
+{
+  "title": "virtio-blk request",
+  "goal": "Build a disk request descriptor by descriptor, see its header bytes, and watch which of the device's checks fires, what reaches the disk and which status byte comes back.",
+  "reference": "cap=64;ro=0;wb=1;ar=w;t=0;s=80000000000000;c=r16,w512,w1"
+}

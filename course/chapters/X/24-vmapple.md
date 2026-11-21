@@ -82,16 +82,16 @@ The rest arrives once a kernel runs: the AES engine, which the guest asks to enc
 
 :::lab vmapple-map
 
-If the lab does not load, here is what it shows: the map above with each row tagged by its column (defined in the next section) and by what backs it.
+If the lab does not load, here is what it shows when it opens: the map above with each row tagged by its column (defined in the next section) and by what backs it, from QEMU's sources and the first probe of sitting B. The lab keeps sitting B's second run hidden until you ask for it.
 
 ```text
-row                    column                    seen on this Mac              source of the row
+row                    column                    seen in the reference runs    source of the row
 avpbooter 0x100000     observed                  first exit at pc=0x103478     QEMU vmapple.c, our run
 cfg       0x400000     observed                  33 accesses, all unmodelled   QEMU vmapple.c, cfg.c, our run
 gicd/gicr 0x10000000   observed (accepted)       hv_gic_create accepts them    QEMU vmapple.c, our run
 pl011     0x20010000   inferred                  no access seen                QEMU vmapple.c
 pvpanic   0x20070000   observed                  1 access                      QEMU vmapple.c, our run
-bdif      0x30000000   observed (all-ones only)  reached only with all ones    QEMU vmapple.c, bdif.c, our runs
+bdif      0x30000000   inferred                  no access seen                QEMU vmapple.c, bdif.c
 pcie, aes, apple-gfx   unknown                   never reached                 QEMU vmapple.c
 ```
 
@@ -108,7 +108,7 @@ Here are the first claims, sorted:
 | `AVPBooter.vmapple2.bin` is 335,096 bytes | observed | `ls -l` |
 | the CPU starts at its first byte, at exception level 1 (EL1), with the memory management unit (MMU) off | inferred | QEMU's board does this; our first exit lies inside the ROM |
 | its first device access is to cfg | observed, on our board | the first probe below |
-| it reads disks through bdif | inferred | QEMU documents it; we reach bdif in one experiment |
+| it reads disks through bdif | inferred | QEMU documents it; sitting B tests whether our runs reach it |
 | later stages are iBoot-family loaders that load a kernelcache | unknown | physical Macs suggest it; nothing here shows it |
 | a modern macOS guest needs a [private CPU mode](/build-your-own/vmm/glossary/#private-cpu-mode) (a CPU setting only Apple's own helper process may switch on) | observed in part, inferred in part | refused to us: observed by sitting B's probe; needed by guests: inferred from a named QEMU patch series, sitting B |
 

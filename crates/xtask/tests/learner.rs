@@ -310,6 +310,12 @@ fn progress_file_round_trips_and_is_stable() {
             .unwrap()
             .contains("never uploaded")
     );
+    // The file lands in every learner's workspace, so it must pass the learner-text lint
+    // (no internal plan or milestone IDs).
+    for line in fs::read_to_string(&path).unwrap().lines() {
+        let probs = xtask::lessons::notation_problems(line);
+        assert!(probs.is_empty(), "{line:?}: {probs:?}");
+    }
     // A symlinked progress file is not written through.
     fs::remove_file(&path).unwrap();
     fs::write(root.join("elsewhere"), "x").unwrap();
@@ -457,5 +463,146 @@ fn levels_follow_the_fading_schedule() {
     let r = start::start(&repo, &l, "04", "open").unwrap();
     assert_eq!(r.copied, 1);
     assert!(!l.join("crates/vmm/src/memory/address.rs").exists());
+    let _ = fs::remove_dir_all(&root);
+}
+
+/// Most chapters have no generated scaffold: `start` must copy the journal alone, at every
+/// level, and say so (backlog: `start 06` used to be suspected of failing on the missing
+/// `course/scaffolds/06/files`).
+#[test]
+fn start_without_a_scaffold_copies_only_the_journal() {
+    let root = scratch("no-scaffold");
+    let repo = fake_repo(&root);
+    write(&repo.join("course/journal/06.md"), "# Journal 06\n");
+    let l = fresh_learner(&root, &repo);
+    for level in start::LEVELS {
+        let r = start::start(&repo, &l, "06", level).unwrap();
+        assert!(r.journal_only, "{level}");
+        assert!(r.conflicts.is_empty(), "{level}");
+        assert_eq!(r.copied + r.present, 1, "{level}: the journal only");
+    }
+    assert_eq!(
+        fs::read_to_string(l.join("journal/06.md")).unwrap(),
+        "# Journal 06\n"
+    );
+    let out = start::main(&repo, &l, &["06".to_owned()]).unwrap();
+    assert!(
+        out.iter().any(|s| s.contains("no scaffold files")),
+        "{out:?}"
+    );
+    let p = Progress::load(&l.join(".progress.toml")).unwrap();
+    assert!(p.started.contains(&"06".to_owned()));
+    assert!(
+        p.levels
+            .contains(&("06".to_owned(), "completion".to_owned()))
+    );
+    // A scaffold directory with neither manifest nor files (only notes) is empty too.
+    write(&repo.join("course/scaffolds/07/README"), "notes\n");
+    write(&repo.join("course/journal/07.md"), "# Journal 07\n");
+    let r = start::start(&repo, &l, "07", "completion").unwrap();
+    assert_eq!((r.copied, r.journal_only), (1, true));
+    // A chapter with neither scaffold nor journal copies nothing and still records the start.
+    let r = start::start(&repo, &l, "09", "completion").unwrap();
+    assert_eq!((r.copied, r.present, r.journal_only), (0, 0, true));
+    // A scaffold with files is not journal-only.
+    let r = start::start(&repo, &l, "04", "worked").unwrap();
+    assert!(!r.journal_only);
+    let _ = fs::remove_dir_all(&root);
+}
+
+/// A manifest without generated files is a course bug, reported, never a silent empty copy.
+#[test]
+fn start_with_a_manifest_but_no_files_is_a_course_bug() {
+    let root = scratch("manifest-no-files");
+    let repo = fake_repo(&root);
+    write(
+        &repo.join("course/scaffolds/08/manifest.toml"),
+        "chapter = \"08\"\nfiles = []\n",
+    );
+    write(&repo.join("course/journal/08.md"), "# Journal 08\n");
+    let l = fresh_learner(&root, &repo);
+    let e = start::start(&repo, &l, "08", "completion").unwrap_err();
+    assert!(e.contains("gen-scaffold 08"), "{e}");
+    assert!(!l.join("journal/08.md").exists(), "nothing copied");
+    // At `open` the scaffold is not consulted, so the journal still arrives.
+    let r = start::start(&repo, &l, "08", "open").unwrap();
+    assert_eq!(r.copied, 1);
+    // `files` as a plain file (not a directory) is refused too.
+    write(&repo.join("course/scaffolds/10/files"), "oops\n");
+    assert!(start::start(&repo, &l, "10", "completion").is_err());
+    let _ = fs::remove_dir_all(&root);
+}
+
+/// Only a *missing* scaffold means "journal only": any other error reading
+/// `course/scaffolds/NN/files` (here, a permission denied) is reported with its path.
+#[test]
+fn start_reports_an_unreadable_scaffold() {
+    use std::os::unix::fs::PermissionsExt;
+    let root = scratch("unreadable-scaffold");
+    let repo = fake_repo(&root);
+    write(&repo.join("course/journal/12.md"), "# Journal 12\n");
+    let dir = repo.join("course/scaffolds/12");
+    fs::create_dir_all(dir.join("files")).unwrap();
+    fs::set_permissions(&dir, fs::Permissions::from_mode(0o000)).unwrap();
+    let l = fresh_learner(&root, &repo);
+    let res = start::start(&repo, &l, "12", "completion");
+    fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).unwrap();
+    // Root ignores permission bits; the check is meaningful only for a normal user.
+    if !is_root() {
+        let e = res.unwrap_err();
+        assert!(e.contains("scaffolds/12/files"), "{e}");
+        assert!(!l.join("journal/12.md").exists(), "nothing copied");
+    }
+    let _ = fs::remove_dir_all(&root);
+}
+
+fn is_root() -> bool {
+    std::process::Command::new("id")
+        .arg("-u")
+        .output()
+        .is_ok_and(|o| o.stdout.starts_with(b"0\n"))
+}
+
+/// The count line agrees with the count.
+#[test]
+fn plural_agrees_with_the_count() {
+    assert_eq!(start::plural(0, "file"), "0 files");
+    assert_eq!(start::plural(1, "file"), "1 file");
+    assert_eq!(start::plural(2, "file"), "2 files");
+}
+
+/// The real course tree: `start NN` at each chapter's default level succeeds for every
+/// chapter with a journal, and copies that journal.
+#[test]
+fn real_course_starts_every_chapter() {
+    let real = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
+        .unwrap();
+    let root = scratch("real-starts");
+    let fake = fake_repo(&root);
+    let l = fresh_learner(&root, &fake);
+    let mut seen = 0;
+    for n in 0..=27u8 {
+        let id = format!("{n:02}");
+        let journal = real.join("course/journal").join(format!("{id}.md"));
+        if !journal.is_file() {
+            continue;
+        }
+        let level = start::default_level(&id);
+        let r = start::start(&real, &l, &id, level).unwrap_or_else(|e| panic!("start {id}: {e}"));
+        assert!(r.conflicts.is_empty(), "start {id}: {:?}", r.conflicts);
+        assert_eq!(
+            fs::read(l.join("journal").join(format!("{id}.md"))).unwrap(),
+            fs::read(&journal).unwrap(),
+            "journal {id}"
+        );
+        seen += 1;
+    }
+    assert!(seen >= 26, "only {seen} chapters have journals");
+    assert!(
+        l.join("crates/vmm/src/memory/address.rs").is_file(),
+        "04's scaffold"
+    );
     let _ = fs::remove_dir_all(&root);
 }

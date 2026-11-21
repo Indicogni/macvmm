@@ -1,0 +1,6 @@
+{
+  "title": "MMIO trap emulator",
+  "goal": "Step real guest loads and stores through chapter 07's path: the exit, the syndrome decode, the bus, the device, then PC + 4; then break it on purpose.",
+  "programs": ["sign", "xzr", "probe", "isv0", "hole", "straddle", "uart"],
+  "reference_share_state": "sign.0.t"
+}

@@ -5,15 +5,7 @@ kind: primer
 minutes: 30
 runs: mac+browser
 required_by: [16]
-also_used_by: [04, 17, 20]
 labs: [litmus]
-objectives:
-- Predict which outcomes of a two-thread litmus test arm64 allows, and run one on your Mac to see an "impossible" result
-- Name the four kinds of reordering and say which one x86 keeps and which ones arm64 adds
-- Explain what an acquire load and a release store promise, and why each is useless without a partner
-- Map Rust's Relaxed, Acquire, Release and SeqCst to the instructions they become on Apple Silicon
-- Explain why a store followed by a load needs a full fence or SeqCst on both accesses, and show how its absence becomes the virtqueue lost-wakeup race
-- Draw the chain of pairs that carries a guest's request from its ring to macvmm's device worker
 command: ./litmus sb fence
 expect: sb fence: 0 of 2000000 runs
 ---
@@ -199,8 +191,9 @@ then build it with optimisations on, since that is how real code runs:
 rustc -O --edition 2024 litmus.rs
 ```
 
-> **Predict.** With every access `Relaxed` (indivisible, but no ordering promise), how many of
-> the two million rounds end with both threads reading 0? None, a handful, or a large fraction?
+:::predict With every access `Relaxed` (indivisible, but no ordering promise), how many of the two million rounds end with both threads reading 0? None, a handful, or a large fraction?
+A large fraction: on the reference Mac, from about half to about two thirds of the two million rounds. `Relaxed` makes no ordering promise, and the hardware uses that freedom. The run below shows it.
+:::
 
 ```sh
 ./litmus sb relaxed
@@ -717,9 +710,10 @@ forever: a lost wakeup again, built from a different row of the same table.
 
 :::lab litmus
 
-The interactive `litmus` lab, planned for this page and chapter 16, is not published yet. It will
-simulate a weak memory model with visible store buffers so you can step the machine and list every
-outcome the rules allow. Until it is, do the same exercise by hand with the program you built:
+The `litmus` lab simulates a weak memory model with visible store buffers: step the machine and
+list every outcome the rules allow, on arm64, on x86-64 and on the "every interleaving on paper"
+model this primer opens with. Then hold its
+answers against the program you built (if the lab does not load, fill the "rules" column by hand):
 
 1. Run all eight combinations: `./litmus sb relaxed|acqrel|seqcst|fence` and
    `./litmus mp relaxed|acqrel|seqcst|fence`, three times each.
@@ -833,6 +827,8 @@ diagram above. If any link in your drawing has no label, that is where a bug wou
   7, "Understanding the Processor", which disassembles atomics on arm64 and x86-64 as we did here.
 
 ## Checkpoint
+
+:::checkpoint
 
 You can now explain the puzzle: each thread's store waited in its store buffer while its load ran,
 release and acquire do not order a store before a later load, and store-load ordering on both

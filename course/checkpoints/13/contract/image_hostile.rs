@@ -1,6 +1,6 @@
-// Checkpoint 13 contract (L1), frozen from the reference test crates/vmm/tests/image_hostile.rs.
+// Checkpoint 13 contract, frozen from the reference test crates/vmm/tests/image_hostile.rs.
 // It names only items the chapter 13 lesson teaches; the harness runs it against your crates.
-//! Hostile arm64 Image headers (PLAN M9 security test `image_hostile`, threat model LDR-3).
+//! Hostile arm64 Image headers (Security test `image_hostile`, threat model: docs/security/threat-model.md).
 //!
 //! Every header here is synthetic (no kernel binary is committed). Each malformed one must be a
 //! typed `LoaderError`, never a panic and never a placement outside RAM; the last cases are

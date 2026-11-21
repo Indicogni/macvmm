@@ -1,7 +1,7 @@
-// Checkpoint 19 contract (L1), frozen from the reference test crates/vmm/tests/virtio_net_hostile.rs.
+// Checkpoint 19 contract, frozen from the reference test crates/vmm/tests/virtio_net_hostile.rs.
 // It names only items chapters 15 to 19 teach; the harness runs it against your crates.
-//! PLAN M24 acceptance (host): the virtio-net device model against hostile rings and frames
-//! (virtio 1.2 §5.1; architecture §11.3; threat model NET-5, VQ-4..VQ-11).
+//! Host acceptance: the virtio-net device model against hostile rings and frames
+//! (virtio 1.2 §5.1; threat model: docs/security/threat-model.md).
 //!
 //! The device is driven as the worker and the RX thread drive it (`process_queue(TX)` and
 //! `Net::receive`) with `VecMemory` as guest RAM and a `MockBackend` as the wire, plus the

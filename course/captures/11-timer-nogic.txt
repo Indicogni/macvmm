@@ -1,5 +1,5 @@
 # scripts/capture.sh 11: run "timer-nogic" of course/checkpoints/11, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 11; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 11; never edit by hand (course/STYLE.md appendix A).
 $ macvmm run --irqchip none --mem 64M --raw {guests}/timer-nogic.bin@0x40080000 --stats --trace exits:{out}/t.jsonl:all --timeout 10
 exit: 0
 --- stdout ---

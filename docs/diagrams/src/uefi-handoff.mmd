@@ -1,0 +1,9 @@
+sequenceDiagram
+    participant FW as UEFI firmware
+    participant L as EFI application (Linux stub, loader.efi)
+    participant OS as OS kernel
+    FW->>L: StartImage: x0 = image handle, x1 = System Table
+    L->>FW: boot services: allocate, read files, print, GetMemoryMap
+    L->>FW: ExitBootServices(handle, MapKey)
+    L->>OS: jump to kernel entry
+    OS->>FW: runtime services only: GetTime, SetVariable, ResetSystem

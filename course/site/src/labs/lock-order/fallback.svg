@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 250" role="img" aria-labelledby="lock-order-fb-title lock-order-fb-desc">
+  <title id="lock-order-fb-title">The deadlock from deadlock.rs as a wait-for cycle</title>
+  <desc id="lock-order-fb-desc">After four steps (vCPU thread locks device, stdin thread locks input, vCPU thread asks for input, stdin thread asks for device) the device lock is held by the vCPU thread, which waits for the input lock, which is held by the stdin thread, which waits for the device lock. The arrows form a cycle, so neither thread can ever move. If both threads take device first, the cycle cannot form.</desc>
+  <defs>
+    <marker id="lock-order-fb-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="2.5" marker-end="url(#lock-order-fb-arrow)">
+    <line x1="200" y1="52" x2="270" y2="105"/>
+    <line x1="270" y1="148" x2="200" y2="198" stroke-dasharray="6 4"/>
+    <line x1="160" y1="198" x2="90" y2="148"/>
+    <line x1="90" y1="105" x2="160" y2="52" stroke-dasharray="6 4"/>
+  </g>
+  <g font-family="sans-serif" font-size="12" text-anchor="middle" fill="currentColor">
+    <rect x="146" y="22" width="68" height="30" rx="4" fill="none" stroke="currentColor"/>
+    <text x="180" y="41" font-family="monospace">device</text>
+    <ellipse cx="300" cy="125" rx="50" ry="20" fill="none" stroke="currentColor"/>
+    <text x="300" y="129">vCPU thread</text>
+    <rect x="146" y="198" width="68" height="30" rx="4" fill="none" stroke="currentColor"/>
+    <text x="180" y="217" font-family="monospace">input</text>
+    <ellipse cx="60" cy="125" rx="50" ry="20" fill="none" stroke="currentColor"/>
+    <text x="60" y="129">stdin thread</text>
+    <text x="262" y="70">held by</text>
+    <text x="262" y="188">waits for</text>
+    <text x="98" y="188">held by</text>
+    <text x="98" y="70">waits for</text>
+    <text x="180" y="130" font-weight="bold">cycle</text>
+  </g>
+</svg>

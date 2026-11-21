@@ -1,11 +1,11 @@
-// Checkpoint 08 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/smccc_dispatch.rs.
+// Checkpoint 08 contract, frozen from the reference test crates/vmm/tests/smccc_dispatch.rs.
 // It names only items the chapter 08 lesson teaches; the harness runs it against your crates.
-//! Host test: SMCCC dispatch, one case per row of architecture §8.6 (PLAN M5 "Acceptance:
-//! host"; threat model HC-1, HC-2).
+//! Host test: SMCCC dispatch, one case per row of the SMCCC dispatch table (host
+//! acceptance; threat model: docs/security/threat-model.md).
 //!
 //! Plus: `hvc` with an immediate other than 0 is not SMCCC (-1); with `--no-debug-hvc` the
-//! debug calls are -1 like any unknown ID; SMC32 calls see only `W1..W3`; and the HC-1
-//! property: 10,000 random `x0..x3` through the real exit handler never panic and never touch
+//! debug calls are -1 like any unknown ID; SMC32 calls see only `W1..W3`; and the
+//! "never panics" property: 10,000 random `x0..x3` through the real exit handler never panic and never touch
 //! `x4` and above.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 

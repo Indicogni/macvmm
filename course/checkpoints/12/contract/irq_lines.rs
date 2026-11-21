@@ -1,7 +1,7 @@
-// Checkpoint 12 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/irq_lines.rs.
+// Checkpoint 12 contract, frozen from the reference test crates/vmm/tests/irq_lines.rs.
 // It names only items the chapter 12 lesson teaches; the harness runs it against your crates.
-//! Host test `irq_lines` (PLAN M8 "Acceptance: host" and "Security tests"; architecture §6.3;
-//! threat model §10.2 M8).
+//! Host test `irq_lines` (host acceptance and security tests; threat model:
+//! docs/security/threat-model.md).
 //!
 //! 1. `GicSpi::new` refuses an INTID outside the GIC's SPI range or inside the MSI block, with
 //!    a fake range provider (no HVF needed);

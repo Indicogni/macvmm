@@ -1,0 +1,9 @@
+{
+  "title": "Litmus",
+  "goal": "Step two threads through a machine with visible store buffers, list every outcome arm64, x86-64 and the paper model allow, and tell a lucky zero from a guaranteed one.",
+  "reference": "sb.arm.rnr.rnr.a0b0a2b2",
+  "outcomes": {
+    "sb.relaxed": { "arm": 4, "tso": 4, "sc": 3 },
+    "mp.relaxed": { "arm": 4, "tso": 3, "sc": 3 }
+  }
+}

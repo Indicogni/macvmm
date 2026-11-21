@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" role="img" aria-labelledby="cpi-fb-title cpi-fb-desc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="currentColor">
+  <title id="cpi-fb-title">cpio inspector: both.cpio, as the kernel and a host tool read it</title>
+  <desc id="cpi-fb-desc">both.cpio is 1,024 bytes: two newc archives of one 512-byte block each. Archive 1 holds init (21 bytes, echo hello): a 110-byte header at 0, the name init and its NUL at 110 to 114, one padding byte, the data at 116 to 136, three padding bytes, then TRAILER!!! at 140, whose next header would start at 264, and zeros to 512. Archive 2 at 512 holds init again (22 bytes, echo second) and its own trailer. A host cpio tool stops at the first TRAILER!!! and lists one init of 21 bytes. The kernel treats each trailer as the end of one member, keeps reading, and the second init replaces the first.</desc>
+  <text x="8" y="18" font-weight="700">both.cpio (1,024 bytes)</text>
+  <rect x="8" y="30" width="300" height="34" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="16" y="52">member 1 at 0: init (21) + TRAILER!!!</text>
+  <rect x="320" y="30" width="312" height="34" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="328" y="52">member 2 at 512: init (22) + TRAILER!!!</text>
+  <text x="8" y="92" font-weight="700">one entry: header, name, pad, data, pad</text>
+  <rect x="8" y="102" width="220" height="28" fill="none" stroke="currentColor"/>
+  <text x="14" y="121">0 header (110)</text>
+  <rect x="228" y="102" width="80" height="28" fill="none" stroke="currentColor" stroke-dasharray="4 2"/>
+  <text x="234" y="121">110 init\0</text>
+  <rect x="308" y="102" width="16" height="28" fill="none" stroke="currentColor" stroke-dasharray="1 2"/>
+  <rect x="324" y="102" width="200" height="28" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="330" y="121">116 data (21 bytes)</text>
+  <rect x="524" y="102" width="28" height="28" fill="none" stroke="currentColor" stroke-dasharray="1 2"/>
+  <text x="560" y="121">140 next</text>
+  <text x="8" y="162">host cpio -itv: stops at the first TRAILER!!!, lists one init (21 bytes)</text>
+  <text x="8" y="184">kernel: reads both members; /init is member 2's (echo second)</text>
+</svg>

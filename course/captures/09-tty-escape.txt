@@ -1,5 +1,5 @@
 # scripts/capture.sh 09: run "tty-escape" of course/checkpoints/09, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 09; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 09; never edit by hand (course/STYLE.md appendix A).
 $ /usr/bin/script -q /dev/null /bin/sh -c stty -g; "$0" run --mem 64M --raw "$1" --timeout 10; echo "rc=$?"; stty -g {macvmm} {guests}/uart-echo.bin@0x40080000
 exit: 0
 --- stdout ---

@@ -1,7 +1,6 @@
-// Checkpoint 09 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/bus_overlap.rs.
+// Checkpoint 09 contract, frozen from the reference test crates/vmm/tests/bus_overlap.rs.
 // It names only items the chapter 09 lesson teaches; the harness runs it against your crates.
-//! Host test: building the MMIO bus (PLAN M6 "Acceptance: host"; architecture §6.2; threat
-//! model MMIO-7).
+//! Host test: building the MMIO bus (host acceptance; threat model: docs/security/threat-model.md).
 //!
 //! The bus is built once per boot from the device table, so these are the rules that make
 //! "at most one device owns an address" true: overlapping windows are refused, adjacent ones

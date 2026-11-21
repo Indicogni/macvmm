@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 589" role="img" aria-labelledby="vq-fb-title vq-fb-desc">
+  <title id="vq-fb-title">One request through a virtqueue, and a ring the device refuses</title>
+  <desc id="vq-fb-desc">Top, the toy: the guest writes 4096 bytes at 0x4410_0000 into its RAM, writes descriptor 0 (addr 0x4410_0000, len 4096) and puts head 0 in the available ring, then stores to the doorbell at 0x0a00_0050, the first VM exit. Our VMM reads avail.idx, the head and the descriptor, copies the 4096 bytes out of guest RAM to disk sector 8, writes used element id 0, len 0, publishes used.idx 1 and raises the interrupt line with no exit. The guest's handler reads InterruptStatus and writes InterruptACK, two more exits: 3 in all, where the PL011 path needed about 11,000. Bottom, the hostile ring: N is 8, descriptor 0 at addr 0x4000_8000, len 8, flags NEXT, next 0 points at itself; avail.idx is 1 and next_avail 0, so 1 request is pending with head 0. The walk takes hop 1 with budget 8 to 7, and so on to hop 8 with budget 1 to 0; hop 9 finds the budget exhausted, the device answers virtqueue: ChainTooLong { budget: 8 }, sets DEVICE_NEEDS_RESET and raises a configuration interrupt.</desc>
+  <g font-family="ui-monospace, Menlo, monospace" font-size="13" fill="currentColor">
+    <text x="12" y="24" font-weight="700">The toy: one descriptor, one doorbell, one "done"</text>
+    <text x="12" y="43">1 guest writes 4096 bytes at 0x4410_0000</text>
+    <text x="12" y="62">    (ordinary RAM: no exit)</text>
+    <text x="12" y="81">2 guest desc 0 = {0x4410_0000, 4096}</text>
+    <text x="12" y="100">    avail.idx 0 -&gt; 1 (no exit)</text>
+    <text x="12" y="119">3 guest stores to QueueNotify 0x0a00_0050</text>
+    <text x="12" y="138">    exit 1</text>
+    <text x="12" y="157">4 VMM reads avail.idx, head 0, desc 0</text>
+    <text x="12" y="176">5 VMM copies 4096 bytes to disk sector 8</text>
+    <text x="12" y="195">6 VMM used.ring[0] = {id 0, len 0}</text>
+    <text x="12" y="214">    used.idx = 1</text>
+    <text x="12" y="233">7 VMM raises the line (no exit)</text>
+    <text x="12" y="252">8 guest InterruptStatus, InterruptACK</text>
+    <text x="12" y="271">    exits 2 and 3</text>
+    <text x="12" y="290" font-weight="700">3 exits for 4096 bytes.</text>
+    <text x="12" y="309" font-weight="700">Through the PL011: about 11,000.</text>
+    <line x1="12" y1="322" x2="388" y2="322" stroke="currentColor" stroke-width="1"/>
+    <text x="12" y="342" font-weight="700">Hostile: descriptor 0's next is itself</text>
+    <text x="12" y="361">N = 8</text>
+    <text x="12" y="380">desc 0: addr 0x4000_8000, len 8,</text>
+    <text x="12" y="399">        flags NEXT, next 0</text>
+    <text x="12" y="418">avail.idx 1, next_avail 0: 1 pending</text>
+    <text x="12" y="437">hop 1: desc 0 (budget 8 -&gt; 7)</text>
+    <text x="12" y="456">...</text>
+    <text x="12" y="475">hop 8: desc 0 (budget 1 -&gt; 0)</text>
+    <text x="12" y="494">hop 9: budget exhausted</text>
+    <text x="12" y="513" font-weight="700">virtqueue: ChainTooLong { budget: 8 }</text>
+    <text x="12" y="532">-&gt; DEVICE_NEEDS_RESET and a</text>
+    <text x="12" y="551">   configuration interrupt;</text>
+    <text x="12" y="570">   the VM keeps running</text>
+  </g>
+</svg>

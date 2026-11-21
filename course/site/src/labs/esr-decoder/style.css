@@ -1,0 +1,462 @@
+/* ESR decoder lab. Every rule is scoped to this lab and uses only the site's tokens. */
+
+.lab[data-lab="esr-decoder"] .lab__root {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  min-width: 0;
+}
+
+/* Controls */
+.lab[data-lab="esr-decoder"] .esr__controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+  gap: 0.75rem 1rem;
+  align-items: end;
+}
+.lab[data-lab="esr-decoder"] .esr__control {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.lab[data-lab="esr-decoder"] .esr__control label {
+  font-family: var(--sans);
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.lab[data-lab="esr-decoder"] .esr__input,
+.lab[data-lab="esr-decoder"] .esr__select,
+.lab[data-lab="esr-decoder"] .esr__num {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  max-width: 100%;
+  min-width: 0;
+}
+.lab[data-lab="esr-decoder"] .esr__input,
+.lab[data-lab="esr-decoder"] .esr__select {
+  width: 100%;
+}
+.lab[data-lab="esr-decoder"] .esr__input {
+  font-family: var(--mono);
+  font-size: 1.05rem;
+}
+.lab[data-lab="esr-decoder"] .esr__input[aria-invalid="true"] {
+  border: 2px dashed var(--danger);
+}
+.lab[data-lab="esr-decoder"] .esr__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.lab[data-lab="esr-decoder"] .esr__btn {
+  min-height: 44px;
+  padding: 0.25rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--accent);
+  font-family: var(--sans);
+  cursor: pointer;
+}
+.lab[data-lab="esr-decoder"] .esr__btn:hover {
+  background: var(--accent-tint);
+}
+.lab[data-lab="esr-decoder"] .esr__error {
+  grid-column: 1 / -1;
+  margin: 0;
+  min-height: 1.25em;
+  color: var(--danger);
+  font-family: var(--sans);
+}
+.lab[data-lab="esr-decoder"] .esr__hint {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.lab[data-lab="esr-decoder"] .esr__try {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--ink);
+}
+
+/* Bit bar */
+.lab[data-lab="esr-decoder"] .esr__viz {
+  min-width: 0;
+}
+.lab[data-lab="esr-decoder"] .esr__hex {
+  margin: 0 0 0.5rem;
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+.lab[data-lab="esr-decoder"] .esr__scrollhint {
+  margin: 0 0 0.25rem;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+.lab[data-lab="esr-decoder"] .esr__scrollwrap {
+  position: relative;
+}
+/* An edge fade while more bits sit off to the right; the text hint above says the same in words. */
+.lab[data-lab="esr-decoder"] .esr__scrollwrap--more::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2.5rem;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--card));
+}
+.lab[data-lab="esr-decoder"] .esr__scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  padding-bottom: 0.25rem;
+}
+.lab[data-lab="esr-decoder"] .esr__grid {
+  display: grid;
+  gap: 2px;
+  width: max-content;
+}
+.lab[data-lab="esr-decoder"] .esr__labels,
+.lab[data-lab="esr-decoder"] .esr__bits,
+.lab[data-lab="esr-decoder"] .esr__index {
+  display: grid;
+  grid-template-columns: repeat(32, 28px);
+  gap: 0;
+}
+.lab[data-lab="esr-decoder"] .esr__label {
+  overflow: hidden;
+  padding: 2px 0;
+  border: 1px solid var(--rule);
+  border-bottom: none;
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  text-align: center;
+  white-space: nowrap;
+}
+.lab[data-lab="esr-decoder"] .esr__label--alt {
+  background-color: var(--accent-tint);
+}
+.lab[data-lab="esr-decoder"] .esr__label--unused {
+  color: var(--muted);
+  font-style: italic;
+}
+.lab[data-lab="esr-decoder"] .esr__bit {
+  width: 28px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-left-width: 0;
+  background-color: var(--card);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+.lab[data-lab="esr-decoder"] .esr__bit--alt {
+  background-color: var(--accent-tint);
+}
+.lab[data-lab="esr-decoder"] .esr__bit:first-child {
+  border-left-width: 1px;
+}
+.lab[data-lab="esr-decoder"] .esr__bit--edge {
+  border-right: 3px solid var(--ink);
+}
+.lab[data-lab="esr-decoder"] .esr__bit--on {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lab[data-lab="esr-decoder"] .esr__bit--unused {
+  background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--rule) 4px 5px);
+}
+.lab[data-lab="esr-decoder"] .esr__bit:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+  position: relative;
+  z-index: 1;
+}
+.lab[data-lab="esr-decoder"] .esr__idx {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: center;
+}
+.lab[data-lab="esr-decoder"] .esr__focusinfo {
+  margin: 0.25rem 0 0;
+  min-height: 1.25em;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+.lab[data-lab="esr-decoder"] .esr__help,
+.lab[data-lab="esr-decoder"] .esr__muted,
+.lab[data-lab="esr-decoder"] .esr__high,
+.lab[data-lab="esr-decoder"] .esr__layout {
+  margin: 0.25rem 0 0;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* The summary echoed under the bar: only on narrow screens, where the readout is far below. */
+.lab[data-lab="esr-decoder"] .esr__echo {
+  display: none;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem 0.5rem;
+  border-left: 4px solid var(--accent);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+/* Stale readout: said in words (the line), and the readout is dimmed and dashed as well. */
+.lab[data-lab="esr-decoder"] .esr__stale {
+  margin: 0 0 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px dashed var(--danger);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+.lab[data-lab="esr-decoder"] .esr__readout--stale {
+  opacity: 0.6;
+}
+
+/* Readout */
+.lab[data-lab="esr-decoder"] .esr__readout {
+  min-width: 0;
+}
+.lab[data-lab="esr-decoder"] .esr__h {
+  margin: 1rem 0 0.25rem;
+  font-family: var(--sans);
+  font-size: 1rem;
+  color: var(--ink);
+}
+.lab[data-lab="esr-decoder"] .esr__summary {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-tint);
+  color: var(--ink);
+}
+.lab[data-lab="esr-decoder"] .esr__prints {
+  margin: 0.5rem 0 0;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.lab[data-lab="esr-decoder"] .esr__display {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  color: var(--code-ink);
+  padding: 0 0.25rem;
+  border-radius: 3px;
+}
+.lab[data-lab="esr-decoder"] .esr__tablewrap {
+  position: relative;
+  overflow-x: auto;
+  max-width: 100%;
+  margin-top: 0.5rem;
+}
+.lab[data-lab="esr-decoder"] .esr__tablewrap--more {
+  /* An inset shadow on the right edge while more columns sit off to the right; the wrapper's
+     name ("Fields table, scrolls sideways") says the same in words. */
+  box-shadow: inset -14px 0 10px -10px var(--ink);
+}
+.lab[data-lab="esr-decoder"] .esr__tablewrap:focus-visible,
+.lab[data-lab="esr-decoder"] .esr__code:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.lab[data-lab="esr-decoder"] .esr__fields {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+}
+.lab[data-lab="esr-decoder"] .esr__fields caption {
+  caption-side: bottom;
+  padding-top: 0.25rem;
+  text-align: left;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.lab[data-lab="esr-decoder"] .esr__fields th,
+.lab[data-lab="esr-decoder"] .esr__fields td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: middle;
+}
+.lab[data-lab="esr-decoder"] .esr__fields th[scope="row"],
+.lab[data-lab="esr-decoder"] .esr__bitsrange,
+.lab[data-lab="esr-decoder"] .esr__val {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+.lab[data-lab="esr-decoder"] .esr__valcell {
+  white-space: nowrap;
+}
+.lab[data-lab="esr-decoder"] .esr__hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.lab[data-lab="esr-decoder"] .esr__valcell input[type="checkbox"] {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  accent-color: var(--accent);
+  vertical-align: middle;
+}
+.lab[data-lab="esr-decoder"] .esr__num {
+  width: 6.5rem;
+  font-family: var(--mono);
+}
+.lab[data-lab="esr-decoder"] .esr__num[aria-invalid="true"] {
+  border: 2px dashed var(--danger);
+}
+.lab[data-lab="esr-decoder"] .esr__fieldmsg {
+  margin: 0.25rem 0 0;
+  min-height: 1.25em;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+.lab[data-lab="esr-decoder"] .esr__row--unused {
+  color: var(--muted);
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--rule) 6px 7px);
+}
+.lab[data-lab="esr-decoder"] .esr__row--unused th[scope="row"] {
+  font-style: italic;
+}
+.lab[data-lab="esr-decoder"] .esr__code {
+  margin: 0.25rem 0;
+  padding: 0.5rem 0.75rem;
+  overflow-x: auto;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+.lab[data-lab="esr-decoder"] .esr__links {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
+.lab[data-lab="esr-decoder"] .esr__links a {
+  color: var(--accent);
+}
+
+/* Spec-hunt cards */
+.lab[data-lab="esr-decoder"] .esr__cards > summary,
+.lab[data-lab="esr-decoder"] .esr__card summary {
+  min-height: 44px;
+  display: list-item;
+  padding: 0.5rem 0;
+  cursor: pointer;
+  font-family: var(--sans);
+  color: var(--accent);
+}
+.lab[data-lab="esr-decoder"] .esr__cardlist {
+  display: grid;
+  gap: 0.75rem;
+  padding-left: 1.5rem;
+}
+.lab[data-lab="esr-decoder"] .esr__card {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--card);
+}
+.lab[data-lab="esr-decoder"] .esr__q {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Narrow screens: controls, then visualization, then readout (already the order). */
+@media (max-width: 720px) {
+  .lab[data-lab="esr-decoder"] .esr__controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lab[data-lab="esr-decoder"] .esr__echo {
+    display: block;
+  }
+  /* The field table becomes one card per field: name and bits, then the control, then the
+     meaning, so nothing sits off-screen to the right. The roles in view.mjs keep it a table for
+     screen readers. */
+  .lab[data-lab="esr-decoder"] .esr__fields,
+  .lab[data-lab="esr-decoder"] .esr__fields tbody {
+    display: block;
+  }
+  .lab[data-lab="esr-decoder"] .esr__fields thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .lab[data-lab="esr-decoder"] .esr__fields caption {
+    display: block;
+  }
+  .lab[data-lab="esr-decoder"] .esr__fields tbody tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.25rem 0.75rem;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .lab[data-lab="esr-decoder"] .esr__fields tbody th,
+  .lab[data-lab="esr-decoder"] .esr__fields tbody td {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+  }
+  .lab[data-lab="esr-decoder"] .esr__fields td.esr__bitsrange::before {
+    content: "bits ";
+    font-family: var(--sans);
+    color: var(--muted);
+  }
+  .lab[data-lab="esr-decoder"] .esr__fields td.esr__valcell,
+  .lab[data-lab="esr-decoder"] .esr__fields td.esr__meaning {
+    grid-column: 1 / -1;
+  }
+  .lab[data-lab="esr-decoder"] .esr__valcell {
+    white-space: normal;
+  }
+  .lab[data-lab="esr-decoder"] .esr__val {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .lab[data-lab="esr-decoder"] .esr__code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="esr-decoder"] .esr__bit {
+    transition: none;
+  }
+}

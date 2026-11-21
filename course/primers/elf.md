@@ -4,17 +4,10 @@ slug: elf
 kind: primer
 minutes: 20
 required_by: [13]
-also_used_by: [03, 27]
 labs: [elf-inspector]
 runs: mac+browser
 command: head -c 4 target/guests/aarch64-unknown-none/release/hello | xxd
 expect: 00000000: 7f45 4c46                                .ELF
-objectives:
-- Identify an ELF file from its first 16 bytes and decode the class, byte order and machine fields of its ELF header.
-- Find the program-header table from the ELF header alone, and decode one 56-byte program header by hand from a hex dump.
-- Explain the difference between `p_filesz` and `p_memsz`, and say what a loader does with the bytes in between.
-- Explain why a loader reads program headers (segments) and ignores section headers.
-- List the checks a loader must make before trusting an ELF file's numbers, and say which arithmetic must be overflow-checked.
 ---
 
 # Three sizes for one program
@@ -205,12 +198,11 @@ fields.) The `e_entry` value is the "where to start" that a flat binary could no
 `0x4008_0000` because the linker script in `guests/common/link.ld` placed `_start` there, as you saw
 in [`bare-metal-rust`](/build-your-own/vmm/primers/bare-metal-rust/).
 
-> **Predict.** The header gives `e_phoff = 64`, `e_phentsize = 56` and `e_phnum = 4`. At which byte
-> offset does the third program header start, and at which byte does the whole table end?
-
+:::predict The header gives `e_phoff = 64`, `e_phentsize = 56` and `e_phnum = 4`. At which byte offset does the third program header start, and at which byte does the whole table end?
 Program header *i* (counting from 0) starts at `e_phoff + i × e_phentsize`. The third one is index
 2, at 64 + 2 × 56 = 176 = `0xb0`. The table ends at 64 + 4 × 56 = 288 = `0x120`. Keep that formula
 in mind: in the Security section below it becomes the first thing a loader must check.
+:::
 
 ## Program headers: the loader's to-do list
 
@@ -527,6 +519,8 @@ byte (the class, the machine, or a `p_filesz`).
   its own 64-byte header, rather than from the ELF `vmlinux`.
 
 ## Checkpoint
+
+:::checkpoint
 
 - **What you can do now.** Run `head -c 4 target/guests/aarch64-unknown-none/release/hello | xxd`
   and see `00000000: 7f45 4c46                                .ELF`. Decode an ELF header and a

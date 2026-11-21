@@ -1,6 +1,6 @@
-// Checkpoint 13 contract (L1), frozen from the reference test crates/vmm/tests/elf_hostile.rs.
+// Checkpoint 13 contract, frozen from the reference test crates/vmm/tests/elf_hostile.rs.
 // It names only items the chapter 13 lesson teaches; the harness runs it against your crates.
-//! Hostile ELF corpus (PLAN M3 security test; threat model LDR-2, architecture §12.1).
+//! Hostile ELF corpus (Security test; threat model: docs/security/threat-model.md).
 //!
 //! Each case starts from a valid minimal ELF built here, breaks one rule, and asserts a typed
 //! `LoaderError`: never a panic, never a write outside RAM. The last cases load valid ones.

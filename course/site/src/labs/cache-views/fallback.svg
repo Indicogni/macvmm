@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" role="img">
+  <title>Two observers of one guest RAM line</title>
+  <desc>The VMM writes 0x4D through its write-back cache, so the line sits dirty in the cache while RAM still holds 0x00. The guest, with its MMU off, reads RAM around the cache and gets the stale 0x00. Cleaning the line to the Point of Coherency writes 0x4D to RAM and fixes the guest's read. In the other direction, a guest write goes straight to RAM, the VMM's cached copy becomes stale, and invalidating the line fixes the VMM's read. Invalidating a dirty line instead of cleaning it throws the VMM's write away.</desc>
+  <rect class="cvfb-b" x="20" y="30" width="140" height="56" rx="6"/>
+  <text class="cvfb-t" x="40" y="54">VMM</text>
+  <text class="cvfb-m" x="40" y="74">cacheable map</text>
+  <rect class="cvfb-b" x="250" y="30" width="140" height="56" rx="6"/>
+  <text class="cvfb-t" x="266" y="54">cache: 0x4D</text>
+  <text class="cvfb-m" x="266" y="74">Dirty</text>
+  <rect class="cvfb-b" x="250" y="170" width="140" height="56" rx="6"/>
+  <text class="cvfb-t" x="266" y="194">RAM: 0x00</text>
+  <text class="cvfb-m" x="266" y="214">the PoC</text>
+  <rect class="cvfb-d" x="480" y="170" width="140" height="56" rx="6"/>
+  <text class="cvfb-t" x="496" y="194">guest reads</text>
+  <text class="cvfb-x" x="496" y="214">0x00  STALE</text>
+  <path class="cvfb-a" d="M160 58 H246"/>
+  <path class="cvfb-a" d="M240 52 l8 6 l-8 6"/>
+  <text class="cvfb-m" x="170" y="50">write</text>
+  <path class="cvfb-a" d="M320 86 V166"/>
+  <path class="cvfb-a" d="M314 158 l6 8 l6 -8"/>
+  <text class="cvfb-m" x="328" y="130">clean (DC CVAC)</text>
+  <path class="cvfb-a" d="M476 198 H394"/>
+  <path class="cvfb-a" d="M402 192 l-8 6 l8 6"/>
+  <text class="cvfb-m" x="404" y="160">MMU off:</text>
+  <text class="cvfb-m" x="404" y="174">around the cache</text>
+  <text class="cvfb-m" x="20" y="130">Invalidate drops a</text>
+  <text class="cvfb-m" x="20" y="146">dirty line: write lost.</text>
+</svg>

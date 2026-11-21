@@ -4,17 +4,10 @@ slug: u-boot
 kind: primer
 minutes: 20
 required_by: [21]
-also_used_by: [22]
 labs: [boot-chain]
 runs: mac+browser
 command: strings .cache/macvmm/u-boot.bin | grep -m1 '^bootcmd='
 expect: bootcmd=bootflow scan -lb
-objectives:
-- Read the first 48 bytes of `u-boot.bin` and explain why a flat binary with no file header can run from address `0x0` with `PC = 0`.
-- List, in order, what U-Boot does between its first instruction and the `=>` prompt, and match each step to a line of its boot banner.
-- Read, set and run environment variables (`printenv`, `setenv`, `run`, `bootcmd`, `bootdelay`), and say where `saveenv` writes and why that matters to a VMM.
-- Use `virtio scan`, `virtio info`, `bdinfo` and `fdt` to check what U-Boot believes about the machine, and trace each belief back to the DTB.
-- Contrast `booti` and `bootefi` by who sets up the kernel's entry state and how the DTB is handed over, and say which one FreeBSD's `loader.efi` needs.
 ---
 
 # What does a 1.4 MB file with no header do at address zero?
@@ -207,6 +200,10 @@ U-Boot  0x5f69_a000  U-Boot itself, after relocation          (relocaddr), up to
 *Caption: notice that U-Boot moves itself and the DTB to the top of RAM, leaving the bottom free
 for the OS it is about to load.*
 
+The copy's address depends on the run. This page's numbers come from QEMU, whose DTB is 1 MiB
+(`totalsize: 0x100000` below); macvmm's is 1687 bytes, so under macvmm the copy sits about 1 MiB
+higher: chapter 21's capture shows `fdtcontroladdr=5e6596e0`.
+
 > **Production note.** On a real Arm board, U-Boot is rarely the first code to run. A boot ROM in
 > the chip runs first, often loads a small "SPL" stage of U-Boot to set up DRAM, then Trusted
 > Firmware-A at EL3 (the CPU's most privileged level), which provides PSCI, and only then U-Boot
@@ -216,7 +213,7 @@ for the OS it is about to load.*
 
 ## Meet the prompt
 
-> **Optional hands-on.** The rest of this primer shows real transcripts, so you can read it
+> **Aside: optional hands-on.** The rest of this primer shows real transcripts, so you can read it
 > without running anything. Following along in QEMU adds about 20 minutes.
 
 macvmm cannot run firmware until chapter 21, so for this primer we borrow a reference machine.
@@ -241,13 +238,11 @@ with `poweroff`, or press Ctrl-A then X. Three harmless lines appear before the 
 (`Bloblist at 0 not found` twice, and `alloc space exhausted ptr 400 limit 0`): they come from a hand-off
 area for earlier boot stages that this machine does not have.
 
-> **Predict.** You leave the keyboard alone. The countdown reaches 0, and the disk is blank. Step
-> 8 said U-Boot then boots "whatever the environment says", and U-Boot is a program that wants to
-> stay useful. It could hang, reset and try again forever, or do something else. Which would you
-> design, and why?
+:::predict You leave the keyboard alone. The countdown reaches 0, and the disk is blank. Step 8 said U-Boot then boots "whatever the environment says", and U-Boot is a program that wants to stay useful. It could hang, reset and try again forever, or do something else. Which would you design, and why?
+It searches every place it knows for an OS, finds nothing bootable, and drops to the prompt anyway.
+:::
 
-It goes looking for an OS everywhere it knows, finds nothing bootable, and drops to the prompt
-anyway. We will read that search in a moment. First, the commands that show what U-Boot believes
+We will read U-Boot's search for an OS in a moment. First, the commands that show what U-Boot believes
 about our machine. `version` names the build:
 
 ```text
@@ -452,7 +447,10 @@ the configuration table, `ExitBootServices`. FreeBSD's `loader.efi` and Alpine's
 (an EFI zboot wrapper, a compressed kernel packaged as a PE/COFF file, the Windows-born executable
 format UEFI uses) are EFI applications, so they need `bootefi`; `booti` would refuse them,
 because they are not raw Images. Here U-Boot does *not* set up the kernel's entry state: it only
-puts the DTB in the configuration table. For Linux, the **EFI stub** (a small EFI program built
+puts a DTB in the configuration table. With no `<fdt>` argument, that DTB is a copy of the one at
+`$fdt_addr`, which on this build is `0x4000_0000`: ours. Only if `fdt_addr` were unset would it
+fall back to `$fdtcontroladdr`, U-Boot's own copy (U-Boot's `doc/usage/cmd/bootefi.rst`;
+`efi_install_fdt` in `lib/efi_loader/efi_helper.c`). For Linux, the **EFI stub** (a small EFI program built
 into the front of the kernel file) takes the DTB from that table, calls `ExitBootServices`, and
 itself puts the DTB address in `x0` when it jumps into the kernel. U-Boot carries a tiny EFI application of its own, so you can see
 the interface work without any disk:
@@ -473,10 +471,13 @@ and the hello program does not need them.) `Have device tree` is the line to not
 application looked in the configuration table and found the DTB that U-Boot put there, which is a
 descendant of the one the VMM wrote at `0x4000_0000`.
 
-That word "descendant" is why `fdtcontroladdr` (`0x5e559d80`) differs from `fdt_addr`
-(`0x40000000`). U-Boot works on its own copy, and both `booti` and `bootefi` may edit that copy
-(adding `/chosen` entries, reserving memory U-Boot still uses) before the OS sees it. In firmware
-boot, the DTB the kernel reads is not quite ours.
+That word "descendant" covers two different family lines. U-Boot runs on its own copy,
+`fdtcontroladdr` (`0x5e559d80` here, `0x5e6596e0` under macvmm), while ours stays at `fdt_addr`
+(`0x40000000`). `booti`'s ready-made line passes `${fdtcontroladdr}`, so `booti` hands on U-Boot's
+copy, after writing the initrd and `bootargs` into its `/chosen` and fixing up its memory node.
+`bootefi` instead copies ours from `$fdt_addr` into a fresh page, then edits that copy (`/chosen`
+gains `u-boot,version`, the memory node is fixed up, memory reservations are added) before
+installing it. Either way, in firmware boot the DTB the kernel reads is not quite ours.
 
 U-Boot's last job is the one `os-basics` mentioned: power. `poweroff` and `reset` at the prompt
 are PSCI calls, made with `hvc` because our DTB's `/psci` node says `method = "hvc"`. U-Boot is a
@@ -550,10 +551,12 @@ chapter 21 took (recorded in `docs/compat/uboot.md`): with a flash node in the D
 `bad CRC` again; with no flash node it never looks in flash at all.
 :::
 
-:::predict `printenv fdtcontroladdr` says `5e559d80`, but the VMM wrote the DTB at `0x4000_0000`. Is U-Boot ignoring our DTB?
+:::predict `printenv fdtcontroladdr` says `5e559d80` (under macvmm, `5e6596e0`), but the VMM wrote the DTB at `0x4000_0000`. Is U-Boot ignoring our DTB?
 No. U-Boot relocated itself to the top of RAM and took a copy of the DTB with it; `fdt_blob` in
 `bdinfo` shows the same address. `md.b 0x40000000 8` still shows `d0 0d fe ed`: our original is
-untouched. Edits U-Boot makes before booting an OS go to its copy, which is what the OS receives.
+untouched. Which copy the OS receives depends on the command: `booti` with its ready-made line
+hands on U-Boot's copy, while `bootefi` makes a fresh copy of ours (from `$fdt_addr`) and edits
+that one.
 :::
 
 :::predict You forget the `virtio,mmio` node for the disk slot in the DTB, though the device itself works. What does `virtio info` show?
@@ -610,6 +613,8 @@ syndrome is incomplete, and the VMM must fetch and decode the instruction itself
   *Embedded Base Boot Requirements* (EBBR) for the UEFI subset that `bootefi` provides.
 
 ## Checkpoint
+
+:::checkpoint
 
 - **What you can do now.** Explain why `u-boot.bin` runs from `0x0` with no header, read its
   banner, use the environment, check U-Boot's view of the machine, and choose between `booti` and

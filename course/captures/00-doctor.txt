@@ -1,5 +1,5 @@
 # scripts/capture.sh 00: run "doctor" of course/checkpoints/00, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 00; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 00; never edit by hand (course/STYLE.md appendix A).
 $ scripts/doctor.sh
 exit: 0
 --- stdout ---

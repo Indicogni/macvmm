@@ -1,0 +1,4 @@
+{
+  "title": "Two-stage translation walker",
+  "goal": "Walk a guest virtual address through the guest's page tables to an IPA, then through HVF's stage 2, with each stage's granule set separately, and see the exact fault registers when a walk fails."
+}

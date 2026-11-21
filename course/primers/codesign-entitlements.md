@@ -4,14 +4,6 @@ slug: codesign-entitlements
 kind: primer
 minutes: 20
 required_by: [01]
-also_used_by: [00, 19, 23, 25]
-objectives:
-- Predict, from `codesign -dv` and `codesign -d --entitlements -` output, whether a program is killed at launch, gets `HV_DENIED` from `hv_vm_create`, or creates a VM
-- Ad-hoc sign a program with exactly one entitlement and confirm the result by reading the signature back
-- Explain why every rebuild must be re-signed, and therefore why macvmm runs through a signing runner
-- (Going deeper) Name the moments macOS checks a signature (launch, page-in, the hypervisor call) and say which one catches tampering, a restricted entitlement and a missing hypervisor entitlement
-- (Going deeper) Show with `DYLD_PRINT_LIBRARIES` what the hardened runtime changes, and say why macvmm signs with `-o runtime`
-- (Going deeper) Explain why macvmm needs no provisioning profile, no SIP change and no sudo, and why its entitlement is not a security boundary
 labs: []
 ---
 
@@ -104,10 +96,9 @@ signature before we touched it, put there by the compiler's last step; that is w
 needs `-f` (force) to overwrite it. The next section explains where that signature came from, and
 `--remove-signature` is how copy A lost its copy of it.
 
-> **Predict.** Run each copy with `./copy-a; echo "exit status $?"` (and the same for B and C).
-> `$?` is the **exit status**: the number a program hands back to the shell when it ends, 0 for
-> success and anything else for failure.
-> Which one is killed, which one is refused, which one succeeds? Commit to a guess.
+:::predict Run each copy with `./copy-a; echo "exit status $?"` (and the same for B and C). `$?` is the **exit status**: the number a program hands back to the shell when it ends, 0 for success and anything else for failure. Which one is killed, which one is refused, which one succeeds? Commit to a guess.
+Copy A is killed before `main` runs (exit status 137), copy B runs but its `hv_vm_create` is refused, and copy C succeeds. The output below is from the reference Mac; the rest of this primer explains each outcome.
+:::
 
 Here is what the reference Mac (M5 Pro, macOS 27.2) printed:
 
@@ -334,13 +325,7 @@ from build to the first hypervisor call. Notice that the hypervisor entitlement 
 long after launch, which is why copy B could print. (`exec` is the kernel operation that starts a
 program from a file: the moment you press Enter on `./copy-c`.)
 
-```mermaid
-graph LR
-  B["clang / cargo build"] -- "writes linker signature" --> S["codesign -s -<br/>adds entitlements"]
-  S -- "exec checks signature,<br/>restricted entitlements" --> L["launch<br/>(copy A dies here)"]
-  L -- "kernel hashes each page<br/>as it loads" --> P["page-in<br/>(tampered copy dies here)"]
-  P -- "program calls" --> H["hv_vm_create<br/>(copy B refused here)"]
-```
+:::diagram src=docs/diagrams/codesign-checks.svg alt="Where each signature check happens, from build to hv_vm_create"
 
 *Caption: three checks at three moments; only the last one is about the hypervisor.*
 

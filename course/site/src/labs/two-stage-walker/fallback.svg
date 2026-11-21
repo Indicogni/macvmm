@@ -1,0 +1,29 @@
+<svg viewBox="0 0 640 300" role="img" font-family="ui-monospace, Menlo, monospace" font-size="12">
+  <title>Chapter 05's store walked through both stages</title>
+  <desc>The va-alias guest stores to virtual address 0x0b10_0000. Stage 1, the guest's three-level table with 4 KiB pages, reads level 1 index 0 at 0x4008_4000 (table at 0x4008_5000), level 2 index 0x58 at 0x4008_52c0 (table at 0x4008_6000), and level 3 index 0x100 at 0x4008_6800, a Device page at IPA 0x0b00_0000. Stage 2, HVF's tables with 16 KiB pages and a 36-bit IPA space, starts at level 2; entry 5 is invalid, so the store is a translation fault at level 2: ESR_EL2 0x93890046, FAR_EL2 0x0b10_0000, HPFAR_EL2 0x000b_0000, and the VMM sees IPA 0x0b00_0000.</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="10" y="20" width="140" height="44" rx="6"/>
+    <rect x="180" y="20" width="130" height="44" rx="6"/>
+    <rect x="340" y="20" width="130" height="44" rx="6"/>
+    <rect x="500" y="20" width="130" height="44" rx="6"/>
+    <rect x="180" y="170" width="290" height="44" rx="6" stroke-dasharray="6 4"/>
+    <path d="M150 42h30M310 42h30M470 42h30"/>
+    <path d="M565 64v60H325v46"/>
+  </g>
+  <g fill="currentColor">
+    <text x="20" y="38" font-weight="700">VA 0x0b10_0000</text>
+    <text x="20" y="56">str w9, [x8]</text>
+    <text x="190" y="38" font-weight="700">S1 L1[0]</text>
+    <text x="190" y="56">0x4008_4000</text>
+    <text x="350" y="38" font-weight="700">S1 L2[0x58]</text>
+    <text x="350" y="56">0x4008_52c0</text>
+    <text x="510" y="38" font-weight="700">S1 L3[0x100]</text>
+    <text x="510" y="56">page 0x0b00_0000</text>
+    <text x="335" y="118">IPA 0x0b00_0000</text>
+    <text x="190" y="188" font-weight="700">S2 L2[0x5]: invalid (16 KiB, 36-bit)</text>
+    <text x="190" y="206">translation fault, level 2: VM exit</text>
+    <text x="10" y="250">ESR_EL2   0x9389_0046   (EC 0x24, ISV=1, SRT=9, WnR=1, DFSC 0x6)</text>
+    <text x="10" y="268">FAR_EL2   0x0b10_0000   (the guest's VA)</text>
+    <text x="10" y="286">HPFAR_EL2 0x000b_0000   (IPA page 0x0b00_0000)</text>
+  </g>
+</svg>

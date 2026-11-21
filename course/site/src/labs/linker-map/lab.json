@@ -1,0 +1,4 @@
+{
+  "title": "Linker map",
+  "goal": "Move sections, change the start address and the stack, and watch the symbol addresses, the program headers (filesz versus memsz) and the exact bytes of the flat binary change together."
+}

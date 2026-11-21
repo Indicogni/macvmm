@@ -34,14 +34,15 @@ skip() {
   skips=$((skips + 1))
   if (( strict )); then die "--strict: SKIP is a failure ($*)"; fi
 }
-# Run a milestone script if it exists yet; otherwise SKIP (checks for future files pass vacuously).
+# Run a script if it exists yet; otherwise SKIP (checks for future files pass vacuously).
+# The second argument says what the missing script would have checked.
 maybe() {
-  local script="$1" milestone="$2"
+  local script="$1" what="$2"
   shift 2
   if [[ -x "$script" ]]; then
     "$script" "$@"
   else
-    skip "$script (not yet created, $milestone)"
+    skip "$script (not yet created: $what)"
   fi
 }
 
@@ -50,11 +51,23 @@ step "cargo fmt";     cargo fmt --all --check
 step "cargo clippy";  cargo clippy --locked --workspace --all-targets -- -D warnings
 step "cargo test";    cargo test --locked --workspace
 step "check-unsafe";  scripts/check-unsafe
-step "check-ffi";     maybe scripts/check-ffi.sh M1
+step "check-ffi";     maybe scripts/check-ffi.sh "the FFI oracle"
 step "check-anchors"; scripts/check-anchors
 step "check-lessons"; scripts/check-lessons
-step "build-guests";  maybe scripts/build-guests.sh M3
+step "build-guests";  maybe scripts/build-guests.sh "the test guests"
 # ANCHOR_END: check_gate
+
+# The course site (course/site/DESIGN.md section 10): renderer, lab-model and vector tests, then a
+# full build that fails on broken internal links or #anchors, missing assets, CSP violations and
+# contrast regressions. Node built-ins only; the output goes to the gitignored course/site/dist/.
+step "course site"
+if command -v node >/dev/null 2>&1 \
+  && node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 22 ? 0 : 1)'; then
+  node --test course/site/
+  node course/site/build.mjs --check
+else
+  skip "course site (needs Node 22 or later)"
+fi
 
 # M21: the experimental vmapple board is off by default, so the gate above never compiles it.
 step "experimental-vmapple (M21)"

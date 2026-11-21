@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run a chapter checkpoint (PLAN M27; CURRICULUM §3.3).
+# Run a chapter checkpoint.
 #
 #   scripts/checkpoint.sh NN                targets ./learner if it exists, else the reference
 #   scripts/checkpoint.sh NN --ref          the reference (authors and CI use this)

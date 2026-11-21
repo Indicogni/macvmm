@@ -1,5 +1,5 @@
 # scripts/capture.sh 14: run "ring-dump" of course/checkpoints/14, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 14; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 14; never edit by hand (course/STYLE.md appendix A).
 $ macvmm run --kernel <repo>/.cache/macvmm/Image-virt --initrd <repo>/.cache/macvmm/initramfs-test.img --mem 512M --on-reset exit --cmdline console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test=shell --timeout 30
 exit: 0
 --- stdout ---

@@ -34,7 +34,7 @@ This is still row 1 of the problem ledger, the processor, which from here on we 
 :::objectives
 - Say which software owns the CPU's most privileged level on a Mac, and what it lets an ordinary process do.
 - Draw the macOS stack from memory (guest apps and guest kernel, our process, Hypervisor.framework, the kernel's EL2 part, the CPU), mark which layer decides what traps and which decides what to do about it, and say what Virtualization.framework adds and why this course uses Hypervisor.framework.
-- After sorting the ten guest actions in `trap-or-not` (unscored), explain three of them in your own words: which ledger row, and which layer decides.
+- After sorting the ten guest actions in `trap-or-not` (unscored), explain three of them in your own words: which ledger row, what stops the guest, and who handles it.
 - Interpret every line of the doctor's output, and explain from the Predict run why a missing entitlement is a run-time error and not a link error.
 - Write `extern "C"` declarations for `hv_vm_create` and `hv_vm_destroy` that match the SDK (software development kit) headers, checked by reading the headers, not from memory.
 - Convert `hv_return_t` into an `HvError` enum whose `Display` names the error and keeps unknown codes; write a `// SAFETY:` comment for each `unsafe` call stating the invariant it relies on; observe and explain "one VM per process".
@@ -105,26 +105,30 @@ Nothing is scored, and you have met no Arm yet, so guess freely: what counts is 
 
 :::lab trap-or-not
 
-If the lab does not load, sort these on paper first, then read the table. The ten actions: load a value from RAM (`ldr`); store a byte to the serial port's address, `0x0900_0000` (`str`); wait until an interrupt (`wfi`); call the level above (`hvc`); read the clock counter (`mrs CNTVCT_EL0`); touch a virtual address the guest kernel's own page tables do not map; an app inside the guest asks its kernel for a service (`svc`); call the firmware (`smc`); set the debugger's lock register (`msr OSLAR_EL1`); store to the interrupt controller's registers.
+If the lab does not load, sort these on paper first, then open the reference sort below. The ten actions: load a value from RAM (`ldr`); store a byte to the serial port's address, `0x0900_0000` (`str`); wait until an interrupt (`wfi`); the guest kernel calls the level above (`hvc`); read the clock counter (`mrs CNTVCT_EL0`); touch a virtual address the guest kernel's own page tables do not map; an app inside the guest asks its kernel for a service (`svc`); the guest kernel calls the firmware (`smc`); set the debugger's lock register (`msr OSLAR_EL1`); store to the interrupt controller's registers.
 
-| Guest action | Bucket | Who decides, and why | Ledger row |
+:::predict Reference sort: open it after you have sorted all ten.
+
+| Guest action | Bucket | What stops it, who handles it, and why | Ledger row |
 |---|---|---|---|
 | `ldr`, "load a register from memory", from RAM | never leaves the guest | the hardware translates the address to memory our VMM gave the guest, without stopping (chapter 05) | 2 |
-| `str`, "store a register to memory", to `0x0900_0000` | reaches our VMM | our VMM gave the guest RAM at some addresses and deliberately left this one empty (the second translation stage from chapter 00; chapter 05); the CPU stops, EL2 forwards it, we play the device (chapter 07) | 3 |
+| `str`, "store a register to memory", to `0x0900_0000` | reaches our VMM | the hardware stops it, because our VMM gave the guest RAM at some addresses and deliberately left this one empty (the second translation stage from chapter 00; chapter 05); EL2 forwards it, and our VMM handles it by playing the device (chapter 07) | 3 |
 | `wfi`, "wait until an interrupt" | the kernel handles it | with the in-kernel interrupt controller this course uses, the kernel parks the vCPU until an interrupt arrives, without asking us (chapter 12) | 6, 7 |
-| `hvc`, "call the level above" | reaches our VMM | a deliberate call to EL2, forwarded (chapter 02) | 1, 4 |
+| `hvc`, "call the level above" | reaches our VMM | a deliberate call to EL2, forwarded (chapter 02); chapter 03 finds one small block of calls the kernel answers itself | 1, 4 |
 | `mrs CNTVCT_EL0`, "read a clock the hardware virtualizes" | never leaves the guest | the hardware shows the guest its own offset view of the counter (chapter 11) | 7 |
 | a page fault in the guest's own tables | never leaves the guest | the guest kernel's business, as in the `os-basics` primer: its own exception at EL1 | 2 |
 | `svc`, "call my own kernel", from a guest app | never leaves the guest | an app calling its own kernel, inside the guest (chapter 02) | 1 |
-| `smc`, "call the firmware" | reaches our VMM | there is no firmware level; EL2 intercepts and forwards it (chapter 02) | 4 |
+| `smc`, "call the firmware" | reaches our VMM | the guest's machine has no firmware level of its own; EL2 is set to catch every `smc` and forwards it (chapter 02) | 4 |
 | `msr OSLAR_EL1`, "write a system register", here the debugger's lock | reaches our VMM | EL2 traps this debug register and forwards it; we decide what it does (chapter 08) | 1 |
 | store to the interrupt controller | the kernel handles it | the kernel emulates the controller itself, so no exit reaches us (chapter 12) | 6 |
 
-*Most of what a guest does never leaves it. The two supervisors split the rest.*
+*Measured by how often each happens, most of what a guest does never leaves it: a running guest executes millions of loads for every exit. The two supervisors split the rest.*
+
+:::
 
 Notice the first two rows: a load and a store look alike, yet one never stops and the other always does. Journal question 1 asks you why.
 
-Now close the page and redraw the stack figure on paper. Then pick three actions you sorted wrongly (or, if none, the three you were least sure of), and under Q1 in your journal write, for each, its ledger row and the layer that decides.
+Now close the page and redraw the stack figure on paper. Then pick three actions you sorted differently from the reference (or, if none, the three you were least sure of), and under Q1 in your journal write, for each, its ledger row, what stops the guest, and who handles it.
 
 :::stopping-point Good place to stop. Sitting B needs your Mac, your learner workspace and about 2.5 hours.
 

@@ -1,5 +1,5 @@
 # scripts/capture.sh 25: run "phase-vq-empty" of course/checkpoints/25, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (course/STYLE.md appendix A).
 $ macvmm run --mem 64M --kernel {guests}/hostile-vq --timeout 30
 exit: 0
 --- stdout ---

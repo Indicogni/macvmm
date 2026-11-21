@@ -1,7 +1,6 @@
-// Checkpoint 07 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/esr_vectors.rs.
+// Checkpoint 07 contract, frozen from the reference test crates/vmm/tests/esr_vectors.rs.
 // It names only items the chapter 07 lesson teaches; the harness runs it against your crates.
-//! Host test: `Exit::from_hv` against the ESR vector corpus, plus the decode panic sweep (PLAN M4
-//! acceptance; threat model MMIO-1; course ch07 L1 checkpoint).
+//! Host test: `Exit::from_hv` against the ESR vector corpus, plus the decode panic sweep (acceptance; threat model: docs/security/threat-model.md).
 //!
 //! `tests/data/esr_vectors.json` holds ≥ 40 `ESR_EL2` values with the decode each must give,
 //! written from the field values by an encoder that shares no code with `arch/esr.rs` (ARM ARM

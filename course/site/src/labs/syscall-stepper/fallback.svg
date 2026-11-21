@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" role="img" aria-labelledby="ss-fb-title ss-fb-desc">
+  <title id="ss-fb-title">A system call, step by step</title>
+  <desc id="ss-fb-desc">The app in user mode runs mov x16, #20 then svc #0x80. The hardware switches to kernel mode, masks interrupts, saves the return address 0x1008 (the instruction after the svc) and the reason "svc #0x80", and jumps to the vector table slot at base 0x8000 plus 0x400. The kernel reads the reason (an svc), reads the request in x16 (20, getpid), puts the answer 42 in x0 and runs eret, which restores user mode and jumps to the saved address 0x1008. A page fault differs in one way: the saved address is the faulting instruction itself, so it runs again.</desc>
+  <g font-family="ui-monospace, Menlo, monospace" font-size="13" fill="currentColor">
+    <text x="20" y="28" font-weight="700">app (user mode, EL0)</text>
+    <text x="360" y="28" font-weight="700">kernel (kernel mode, EL1)</text>
+    <text x="20" y="60">0x1000 mov x16, #20</text>
+    <text x="20" y="84">0x1004 svc #0x80</text>
+    <text x="20" y="230">0x1008 mov x1, x0</text>
+    <text x="360" y="84">0x8400 b sync_from_user</text>
+    <text x="360" y="108">0x9000 mrs x9, esr_el1</text>
+    <text x="360" y="132">  ...  is it svc? yes</text>
+    <text x="360" y="156">0x9010 cmp x16, #20  getpid?</text>
+    <text x="360" y="180">0x9018 mov x0, #42</text>
+    <text x="360" y="204">0x901c eret</text>
+    <text x="170" y="112" font-size="11">saved return address = 0x1008</text>
+    <text x="170" y="126" font-size="11">reason = svc #0x80</text>
+    <text x="170" y="236" font-size="11">restore user mode, PC = 0x1008</text>
+    <text x="20" y="280" font-size="11">Page fault: the saved address is the faulting instruction, so it runs again.</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1.5" fill="none">
+    <path d="M160 80 L350 80"/>
+    <path d="M342 75 L350 80 L342 85"/>
+    <path d="M350 200 L170 226"/>
+    <path d="M176 219 L170 226 L179 228"/>
+  </g>
+</svg>

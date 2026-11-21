@@ -1,17 +1,16 @@
-// Checkpoint 18 contract (L1), frozen from the reference test crates/vmm/tests/blk_short_read.rs.
+// Checkpoint 18 contract, frozen from the reference test crates/vmm/tests/blk_short_read.rs.
 // It names only items chapters 04 and 15 to 18 teach; the harness runs it against your crates.
-//! PLAN M14 security test (host): short reads and I/O errors from the block backend (threat
-//! model BLK-6, BLK-7, VQ-9, VQ-11).
+//! Host security test: short reads and I/O errors from the block backend (see docs/security/threat-model.md).
 //!
-//! **Why this matters.** A disk image can shrink under a running VM (the `flock` of BLK-8 is
+//! **Why this matters.** A disk image can shrink under a running VM (the disk lock is
 //! advisory, so a non-macvmm process can truncate it), and a host disk can fail. In both cases
 //! the device must:
 //! - answer IOERR (never OK with a partial buffer);
-//! - report a used `len` that counts only the bytes it actually produced (VQ-9): the guest
+//! - report a used `len` that counts only the bytes it actually produced: the guest
 //!   trusts that number;
 //! - never copy anything to the guest beyond what the host really read. Bounce buffers are
-//!   zero-initialised per request (VQ-11), so even a bug that copied the whole buffer could only
-//!   leak zeros, never another request's (or another disk's) data (BLK-7). The mock asserts
+//!   zero-initialised per request, so even a bug that copied the whole buffer could only
+//!   leak zeros, never another request's (or another disk's) data. The mock asserts
 //!   that every buffer it is handed is all zeros.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 

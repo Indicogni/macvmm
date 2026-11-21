@@ -1,5 +1,5 @@
 # scripts/capture.sh 25: run "phase-mmio" of course/checkpoints/25, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 25; never edit by hand (course/STYLE.md appendix A).
 $ macvmm run --mem 64M --testdev --unhandled-mmio log --kernel {guests}/hostile-mmio --timeout 60
 exit: 0
 --- stdout ---

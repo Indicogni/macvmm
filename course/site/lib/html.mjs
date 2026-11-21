@@ -7,14 +7,17 @@ export function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ESC[c]);
 }
 
-/** Heading text -> URL fragment id ("Two stages, one map" -> "two-stages-one-map"). */
+/**
+ * Heading text -> URL fragment id ("Two stages, one map" -> "two-stages-one-map"). An underscore
+ * becomes a hyphen ("`hv_vcpu_run`" -> "hv-vcpu-run"), the same rule as glossary anchors.
+ */
 export function slugify(s) {
   return (
     String(s)
       .toLowerCase()
       .replace(/<[^>]*>/g, "")
       .replace(/&[a-z#0-9]+;/g, "")
-      .replace(/[`*_]/g, "")
+      .replace(/[`*]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "section"
   );

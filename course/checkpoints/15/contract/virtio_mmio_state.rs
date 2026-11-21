@@ -1,4 +1,4 @@
-// Checkpoint 15 contract (L1), adapted from the reference test crates/vmm/tests/virtio_mmio_state.rs.
+// Checkpoint 15 contract, adapted from the reference test crates/vmm/tests/virtio_mmio_state.rs.
 // It names only items chapters 04, 09, 12 and 15 teach; the harness runs it against your crates.
 // The reference suite's ring-walking, alignment and worker-thread cases belong to chapters 16 and
 // 17; the doorbell and InterruptACK cases here use a mock device that never reads a ring.

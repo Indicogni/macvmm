@@ -1,5 +1,5 @@
 # scripts/capture.sh 19: run "probe-net" of course/checkpoints/19, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 19; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 19; never edit by hand (course/STYLE.md appendix A).
 $ course/checkpoints/19/net.sh probe {macvmm} <repo> {guests}/virtio-probe
 exit: 0
 --- stdout ---

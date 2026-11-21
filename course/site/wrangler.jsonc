@@ -1,0 +1,22 @@
+// Cloudflare Worker for https://indicogni.com/build-your-own/vmm/ (DESIGN.md section 10.1).
+// Static assets only: no Worker script, no bindings. The asset tree in ./dist mirrors the URL
+// path (dist/build-your-own/vmm/...), and dist/_headers carries the CSP and caching rules.
+//
+// Build first: node build.mjs --check. Deploying is the lead's call; nothing in this repository
+// runs wrangler. The route is the most specific one on the zone, so it wins over the root site's
+// indicogni.com/*. Disable Rocket Loader, email obfuscation and auto-minify for this route: they
+// inject inline script, which the CSP blocks.
+{
+  "name": "indicogni-vmm",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "indicogni.com/build-your-own/vmm*", "zone_name": "indicogni.com" }
+  ],
+  "workers_dev": false,
+  "preview_urls": false
+}

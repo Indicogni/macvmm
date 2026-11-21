@@ -1,10 +1,10 @@
-// Checkpoint 09 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/pl031_regs.rs.
+// Checkpoint 09 contract, frozen from the reference test crates/vmm/tests/pl031_regs.rs.
 // It names only items the chapter 09 lesson teaches; the harness runs it against your crates.
-//! Host test: the PL031 real-time clock (PLAN M6 "Acceptance: host"; ARM DDI 0224B §3.3;
-//! threat model MMIO-8, MMIO-9).
+//! Host test: the PL031 real-time clock (host acceptance; ARM DDI 0224B §3.3;
+//! threat model: docs/security/threat-model.md).
 //!
 //! The host clock is injected, so "DR advances with host time" is exact, and the wrapping u32
-//! arithmetic of `LR` (MMIO-9) is checked at the edges.
+//! arithmetic of `LR` is checked at the edges.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::sync::Arc;

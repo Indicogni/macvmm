@@ -1,0 +1,6 @@
+{
+  "title": "PL011 poke",
+  "goal": "Write and read the UART's registers as the guest, type bytes as the host, and watch FR, the receive FIFO, RIS, MIS and the interrupt line change.",
+  "reference": "w0.68_w38.10_h6f6b_w44.70_r0_r0_r0",
+  "capture": "captures/09-poke.txt"
+}

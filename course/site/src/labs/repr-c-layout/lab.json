@@ -1,0 +1,4 @@
+{
+  "title": "repr(C) layout",
+  "goal": "Type a Rust struct and see where each field lands, where the padding goes, and whether it matches the C struct in the header."
+}

@@ -1,0 +1,559 @@
+/* image-inspector lab. Every rule is scoped to this lab and uses site tokens only (LABS.md section 5).
+   Never color alone: a byte's field is also in its accessible name and in the field table next to the
+   same swatch; an edited byte is underlined and carries a dot; a check's status is a mark plus words;
+   map segments are listed as text with exact addresses below the bar. */
+
+.lab[data-lab="image-inspector"] .ii__muted {
+  color: var(--muted);
+}
+
+.lab[data-lab="image-inspector"] .ii__small {
+  font-size: 0.875rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__ctlrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem 1rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__ctl {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+}
+
+.lab[data-lab="image-inspector"] .ii__buttons,
+.lab[data-lab="image-inspector"] .ii__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.lab[data-lab="image-inspector"] .ii__buttons {
+  align-self: flex-end;
+}
+
+.lab[data-lab="image-inspector"] .ii__label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__input,
+.lab[data-lab="image-inspector"] .ii__select,
+.lab[data-lab="image-inspector"] .ii__paste {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.lab[data-lab="image-inspector"] .ii__input {
+  width: 12rem;
+  font-family: var(--mono);
+}
+
+.lab[data-lab="image-inspector"] .ii__input--byte {
+  width: 5rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__paste {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__input[aria-invalid="true"],
+.lab[data-lab="image-inspector"] .ii__paste[aria-invalid="true"] {
+  border-color: var(--danger);
+  border-style: dashed;
+  border-width: 2px;
+}
+
+.lab[data-lab="image-inspector"] .ii__err {
+  margin: 0.25rem 0 0;
+  min-height: 1.2em;
+  font-size: 0.875rem;
+  color: var(--danger);
+}
+
+.lab[data-lab="image-inspector"] .ii__btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.lab[data-lab="image-inspector"] .ii__btn:hover {
+  border-color: var(--accent);
+}
+
+.lab[data-lab="image-inspector"] .ii__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.lab[data-lab="image-inspector"] .ii__btn:focus-visible,
+.lab[data-lab="image-inspector"] .ii__cell:focus-visible,
+.lab[data-lab="image-inspector"] .ii__input:focus-visible,
+.lab[data-lab="image-inspector"] .ii__select:focus-visible,
+.lab[data-lab="image-inspector"] .ii__paste:focus-visible,
+.lab[data-lab="image-inspector"] .ii__scroll:focus-visible,
+.lab[data-lab="image-inspector"] .ii__pre:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.lab[data-lab="image-inspector"] .ii__drop {
+  flex: 1 1 18rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 2px dashed var(--rule);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.lab[data-lab="image-inspector"] .ii__drop--over {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+
+/* The native file input stays in the accessibility tree; its visible face is the label button. */
+.lab[data-lab="image-inspector"] .ii__fileinput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.lab[data-lab="image-inspector"] .ii__fileinput:focus-visible + span,
+.lab[data-lab="image-inspector"] .ii__drop:focus-within {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.lab[data-lab="image-inspector"] .ii__details > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: list-item;
+}
+
+.lab[data-lab="image-inspector"] .ii__source {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 1100px) {
+  .lab[data-lab="image-inspector"] .ii__body {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.lab[data-lab="image-inspector"] .ii__panel {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.lab[data-lab="image-inspector"] .ii__h {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__h4 {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* The grid: an offset column then 16 byte cells per row. Cells are at least 28px (dense grid). */
+.lab[data-lab="image-inspector"] .ii__grid {
+  display: grid;
+  grid-template-columns: auto repeat(16, minmax(28px, 1fr));
+  gap: 2px;
+  min-width: 34rem;
+  margin: 0.25rem 0 0.75rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__rowoff {
+  align-self: center;
+  padding-right: 0.4rem;
+  color: var(--muted);
+}
+
+.lab[data-lab="image-inspector"] .ii__cell {
+  position: relative;
+  min-width: 28px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-bottom-width: 4px;
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.lab[data-lab="image-inspector"] .ii__cell--sel {
+  background: var(--accent-tint);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.lab[data-lab="image-inspector"] .ii__cell--patched {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  font-weight: 700;
+}
+
+.lab[data-lab="image-inspector"] .ii__cell--patched::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.lab[data-lab="image-inspector"] .ii__cell--absent {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+/* Field colors: the bottom border of each byte, and the swatch in the field table. */
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--code0,
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--code1,
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--mz,
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--zimg {
+  border-bottom-color: var(--tok-com);
+}
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--text_offset,
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--payload_offset {
+  border-bottom-color: var(--tok-fn);
+}
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--image_size,
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--payload_size {
+  border-bottom-color: var(--tok-num);
+}
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--flags,
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--compression {
+  border-bottom-color: var(--tok-kw);
+}
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--magic,
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--linux_pe_magic {
+  border-bottom-color: var(--tok-str);
+}
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--res5,
+.lab[data-lab="image-inspector"] .ii__cell.ii__f--e_lfanew {
+  border-bottom-color: var(--tok-ty);
+}
+
+.lab[data-lab="image-inspector"] .ii__swatch {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  vertical-align: middle;
+  background: var(--paper);
+}
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--code0,
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--code1,
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--mz,
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--zimg {
+  background: var(--tok-com);
+}
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--text_offset,
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--payload_offset {
+  background: var(--tok-fn);
+}
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--image_size,
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--payload_size {
+  background: var(--tok-num);
+}
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--flags,
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--compression {
+  background: var(--tok-kw);
+}
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--magic,
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--linux_pe_magic {
+  background: var(--tok-str);
+}
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--res5,
+.lab[data-lab="image-inspector"] .ii__swatch.ii__f--e_lfanew {
+  background: var(--tok-ty);
+}
+
+.lab[data-lab="image-inspector"] .ii__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__table caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 0.25rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__table th,
+.lab[data-lab="image-inspector"] .ii__table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.25rem 0.5rem 0.25rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.lab[data-lab="image-inspector"] .ii__fieldform {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: flex-start;
+}
+
+.lab[data-lab="image-inspector"] .ii__code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.lab[data-lab="image-inspector"] .ii__summary {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.lab[data-lab="image-inspector"] .ii__checks,
+.lab[data-lab="image-inspector"] .ii__plain {
+  list-style: none;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0;
+}
+
+.lab[data-lab="image-inspector"] .ii__plain > li {
+  padding: 0.2rem 0;
+}
+
+.lab[data-lab="image-inspector"] .ii__check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.2rem 0;
+}
+
+.lab[data-lab="image-inspector"] .ii__mark {
+  flex: none;
+  display: inline-block;
+  min-width: 1.4em;
+  text-align: center;
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.lab[data-lab="image-inspector"] .ii__check--ok .ii__mark {
+  color: var(--ok);
+}
+
+.lab[data-lab="image-inspector"] .ii__check--bad {
+  border-left: 4px solid var(--danger);
+  padding-left: 0.4rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__check--bad .ii__mark,
+.lab[data-lab="image-inspector"] .ii__warn .ii__mark {
+  color: var(--danger);
+}
+
+.lab[data-lab="image-inspector"] .ii__check--skip {
+  color: var(--muted);
+}
+
+.lab[data-lab="image-inspector"] .ii__term {
+  margin: 0.5rem 0;
+}
+
+.lab[data-lab="image-inspector"] .ii__pre {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.lab[data-lab="image-inspector"] .ii__dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.2rem 0.75rem;
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__dl dt {
+  color: var(--muted);
+}
+
+.lab[data-lab="image-inspector"] .ii__dl dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.lab[data-lab="image-inspector"] .ii__bar {
+  display: block;
+  width: 100%;
+  min-width: 18rem;
+  height: 44px;
+}
+
+.lab[data-lab="image-inspector"] .ii__seg {
+  stroke: var(--ink);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Map segments: fill plus a distinct stroke style, and the same swatch in the list below. */
+.lab[data-lab="image-inspector"] .ii__seg--dtb,
+.lab[data-lab="image-inspector"] .ii__seg--hdr {
+  fill: var(--tok-ty);
+}
+.lab[data-lab="image-inspector"] .ii__seg--kfile,
+.lab[data-lab="image-inspector"] .ii__seg--code {
+  fill: var(--accent);
+}
+.lab[data-lab="image-inspector"] .ii__seg--bss,
+.lab[data-lab="image-inspector"] .ii__seg--stub {
+  fill: var(--accent);
+  fill-opacity: 0.35;
+  stroke-dasharray: 4 3;
+}
+.lab[data-lab="image-inspector"] .ii__seg--gap,
+.lab[data-lab="image-inspector"] .ii__seg--pehdr {
+  fill: var(--rule);
+}
+.lab[data-lab="image-inspector"] .ii__seg--initrd,
+.lab[data-lab="image-inspector"] .ii__seg--payload {
+  fill: var(--tok-str);
+}
+.lab[data-lab="image-inspector"] .ii__seg--free,
+.lab[data-lab="image-inspector"] .ii__seg--data {
+  fill: var(--paper);
+}
+
+/* The wrong plan's overlap: the danger colour plus a dash, so it does not rely on colour alone. */
+.lab[data-lab="image-inspector"] .ii__seg--overlap {
+  fill: var(--danger);
+  fill-opacity: 0.6;
+  stroke-dasharray: 2 2;
+}
+.lab[data-lab="image-inspector"] .ii__seg-sw--overlap {
+  background: var(--danger);
+  border-style: dotted;
+}
+
+.lab[data-lab="image-inspector"] .ii__seg-sw--dtb,
+.lab[data-lab="image-inspector"] .ii__seg-sw--hdr {
+  background: var(--tok-ty);
+}
+.lab[data-lab="image-inspector"] .ii__seg-sw--kfile,
+.lab[data-lab="image-inspector"] .ii__seg-sw--code {
+  background: var(--accent);
+}
+.lab[data-lab="image-inspector"] .ii__seg-sw--bss,
+.lab[data-lab="image-inspector"] .ii__seg-sw--stub {
+  background: var(--accent-tint);
+  border-style: dashed;
+  border-color: var(--accent);
+}
+.lab[data-lab="image-inspector"] .ii__seg-sw--gap,
+.lab[data-lab="image-inspector"] .ii__seg-sw--pehdr {
+  background: var(--rule);
+}
+.lab[data-lab="image-inspector"] .ii__seg-sw--initrd,
+.lab[data-lab="image-inspector"] .ii__seg-sw--payload {
+  background: var(--tok-str);
+}
+.lab[data-lab="image-inspector"] .ii__seg-sw--free,
+.lab[data-lab="image-inspector"] .ii__seg-sw--data {
+  background: var(--paper);
+}
+
+.lab[data-lab="image-inspector"] .ii__seglist {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.lab[data-lab="image-inspector"] .ii__seglist > li {
+  padding: 0.1rem 0;
+}
+
+@media (max-width: 719px) {
+  .lab[data-lab="image-inspector"] .ii__input {
+    width: 100%;
+  }
+  .lab[data-lab="image-inspector"] .ii__ctl {
+    flex: 1 1 100%;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lab[data-lab="image-inspector"] .ii__btn,
+  .lab[data-lab="image-inspector"] .ii__cell,
+  .lab[data-lab="image-inspector"] .ii__drop {
+    transition: border-color 120ms ease, background-color 120ms ease;
+  }
+}

@@ -1,13 +1,13 @@
-// Checkpoint 08 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/psci_state.rs.
+// Checkpoint 08 contract, frozen from the reference test crates/vmm/tests/psci_state.rs.
 // It names only items the chapter 08 lesson teaches; the harness runs it against your crates.
-//! Host test: the PSCI per-vCPU state machine (PLAN M5 "Acceptance: host"; architecture §8.6;
-//! Arm DEN 0022 §5.1.3–5.1.5; threat model HC-3, HC-4).
+//! Host test: the PSCI per-vCPU state machine (host acceptance;
+//! Arm DEN 0022 §5.1.3–5.1.5; threat model: docs/security/threat-model.md).
 //!
 //! Every transition: `Off → OnPending` by CPU_ON, `OnPending → On` when the target takes its
 //! mailbox, `On → Off` by CPU_OFF; and every refusal: ALREADY_ON (-4), ON_PENDING (-5), an
 //! unknown or malformed MPIDR (-2), an entry point outside RAM or misaligned (-9, decided by
 //! the SMCCC layer and passed in here), AFFINITY_INFO level > 0 (-2). A racing CPU_ON storm
-//! from several threads starts the target exactly once (HC-3).
+//! from several threads starts the target exactly once.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::sync::Arc;

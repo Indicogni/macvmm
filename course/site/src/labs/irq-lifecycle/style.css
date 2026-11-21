@@ -1,0 +1,85 @@
+/* irq-lifecycle: every rule scoped under the lab's shell (course/site/LABS.md section 5).
+   Site tokens only, so dark mode follows the page. State is never shown by color alone: the
+   current GIC state carries a marker and the word "(current)", flags carry a filled or empty dot
+   and their text, the last history row is bold and outlined. */
+
+.lab[data-lab="irq-lifecycle"] .il-wrap { display: grid; gap: 1rem; min-width: 0; font-family: var(--sans); color: var(--ink); }
+.lab[data-lab="irq-lifecycle"] .il-controls { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: flex-end; }
+.lab[data-lab="irq-lifecycle"] .il-field { display: flex; flex-direction: column; gap: .25rem; min-width: 0; margin: 0; }
+.lab[data-lab="irq-lifecycle"] fieldset.il-field { border: 1px solid var(--rule); border-radius: 6px; padding: .25rem .75rem .5rem; }
+.lab[data-lab="irq-lifecycle"] .il-load { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.lab[data-lab="irq-lifecycle"] .il-load select { min-width: 0; max-width: 100%; }
+.lab[data-lab="irq-lifecycle"] fieldset[hidden] { display: none; }
+.lab[data-lab="irq-lifecycle"] legend { font-size: .9rem; color: var(--muted); padding: 0 .25rem; }
+.lab[data-lab="irq-lifecycle"] .il-radios { flex-direction: row; flex-wrap: wrap; gap: 0 1rem; }
+.lab[data-lab="irq-lifecycle"] .il-radio { display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; }
+.lab[data-lab="irq-lifecycle"] .il-radio input { width: 1.25rem; height: 1.25rem; margin: 0; }
+.lab[data-lab="irq-lifecycle"] select { min-height: 44px; max-width: 100%; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--control); border-radius: 6px; padding: 0 .5rem; }
+.lab[data-lab="irq-lifecycle"] .il-intro { margin: 0; color: var(--muted); }
+
+.lab[data-lab="irq-lifecycle"] .il-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lab[data-lab="irq-lifecycle"] .il-action { display: inline-flex; flex-direction: column; gap: .2rem; max-width: 15rem; }
+.lab[data-lab="irq-lifecycle"] .il-help { font-size: .8rem; color: var(--muted); }
+.lab[data-lab="irq-lifecycle"] .il-btn { min-height: 44px; min-width: 44px; padding: 0 1rem; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 6px; cursor: pointer; transition: border-color 150ms; }
+.lab[data-lab="irq-lifecycle"] .il-btn:hover:not(:disabled) { border-color: var(--ink); }
+.lab[data-lab="irq-lifecycle"] .il-btn--primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+.lab[data-lab="irq-lifecycle"] .il-btn:disabled { opacity: .55; cursor: not-allowed; }
+.lab[data-lab="irq-lifecycle"] .il-btn:focus-visible,
+.lab[data-lab="irq-lifecycle"] select:focus-visible,
+.lab[data-lab="irq-lifecycle"] input:focus-visible,
+.lab[data-lab="irq-lifecycle"] summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+.lab[data-lab="irq-lifecycle"] .il-btn--primary:focus-visible { outline-color: var(--paper); box-shadow: 0 0 0 5px var(--ink); }
+.lab[data-lab="irq-lifecycle"] .il-script { margin: 0; padding: .5rem .75rem; border: 1px dashed var(--rule); border-radius: 6px; }
+
+.lab[data-lab="irq-lifecycle"] .il-main { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) {
+  .lab[data-lab="irq-lifecycle"] .il-main { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+.lab[data-lab="irq-lifecycle"] .il-side { display: grid; gap: .75rem; align-content: start; min-width: 0; }
+.lab[data-lab="irq-lifecycle"] .il-cards { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+.lab[data-lab="irq-lifecycle"] .il-card { min-width: 0; padding: .6rem .75rem; background: var(--card); border: 1px solid var(--rule); border-radius: 6px; }
+.lab[data-lab="irq-lifecycle"] .il-card h4 { margin: 0 0 .4rem; font-family: var(--serif); font-size: 1rem; }
+.lab[data-lab="irq-lifecycle"] .il-card--pending { box-shadow: inset 4px 0 0 var(--accent); }
+.lab[data-lab="irq-lifecycle"] .il-card--handler { border: 2px dashed var(--ink); }
+.lab[data-lab="irq-lifecycle"] .il-flag { display: inline-flex; gap: .3rem; align-items: center; font-family: var(--mono); font-size: .9rem; }
+.lab[data-lab="irq-lifecycle"] .il-flag--on { font-weight: 700; }
+.lab[data-lab="irq-lifecycle"] .il-flag--on .il-mark { color: var(--accent); }
+.lab[data-lab="irq-lifecycle"] .il-flag--big { font-size: 1rem; }
+.lab[data-lab="irq-lifecycle"] .il-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .2rem .75rem; margin: .5rem 0; font-size: .9rem; }
+.lab[data-lab="irq-lifecycle"] .il-dl dt { color: var(--muted); }
+.lab[data-lab="irq-lifecycle"] .il-dl dd { margin: 0; overflow-wrap: anywhere; }
+.lab[data-lab="irq-lifecycle"] .il-last { margin: 0; font-size: .9rem; }
+.lab[data-lab="irq-lifecycle"] .il-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.lab[data-lab="irq-lifecycle"] p.il-label { margin: 0; }
+
+.lab[data-lab="irq-lifecycle"] .il-gic { padding: .6rem .75rem; background: var(--card); border: 1px solid var(--rule); border-radius: 6px; }
+.lab[data-lab="irq-lifecycle"] .il-states { list-style: none; margin: .75rem 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.lab[data-lab="irq-lifecycle"] .il-state { padding: .4rem .6rem; border: 1px solid var(--rule); border-radius: 6px; font-family: var(--mono); font-size: .9rem; color: var(--muted); }
+.lab[data-lab="irq-lifecycle"] .il-state--current { border: 2px solid var(--accent); background: var(--accent-tint); color: var(--ink); font-weight: 700; }
+.lab[data-lab="irq-lifecycle"] .il-mark { color: var(--accent); }
+
+.lab[data-lab="irq-lifecycle"] .il-readout { margin: 0; padding: .6rem .75rem; border-left: 3px solid var(--accent); background: var(--card); }
+.lab[data-lab="irq-lifecycle"] .il-real { display: grid; gap: .3rem; }
+.lab[data-lab="irq-lifecycle"] .il-real:empty { display: none; }
+.lab[data-lab="irq-lifecycle"] .il-real p { margin: 0; }
+.lab[data-lab="irq-lifecycle"] .il-quote code { font-family: var(--mono); background: var(--code-bg); color: var(--code-ink); padding: .1rem .3rem; border-radius: 4px; overflow-wrap: anywhere; }
+.lab[data-lab="irq-lifecycle"] .il-src { font-size: .85rem; color: var(--muted); }
+
+.lab[data-lab="irq-lifecycle"] .il-h { margin: 0; font-family: var(--serif); font-size: 1.05rem; }
+.lab[data-lab="irq-lifecycle"] .il-scroll { overflow-x: auto; max-width: 100%; }
+.lab[data-lab="irq-lifecycle"] .il-table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+.lab[data-lab="irq-lifecycle"] .il-table caption { text-align: left; color: var(--muted); padding-bottom: .4rem; }
+.lab[data-lab="irq-lifecycle"] .il-table th,
+.lab[data-lab="irq-lifecycle"] .il-table td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.lab[data-lab="irq-lifecycle"] .il-table thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.lab[data-lab="irq-lifecycle"] .il-table tbody th { font-weight: 400; }
+.lab[data-lab="irq-lifecycle"] .il-row--last th,
+.lab[data-lab="irq-lifecycle"] .il-row--last td { font-weight: 700; background: var(--accent-tint); }
+.lab[data-lab="irq-lifecycle"] .il-row--last td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+
+.lab[data-lab="irq-lifecycle"] .il-more summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.lab[data-lab="irq-lifecycle"] .il-vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lab[data-lab="irq-lifecycle"] * { transition: none !important; }
+}

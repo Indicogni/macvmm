@@ -1,7 +1,6 @@
-// Checkpoint 09 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/pl011_regs.rs.
+// Checkpoint 09 contract, frozen from the reference test crates/vmm/tests/pl011_regs.rs.
 // It names only items the chapter 09 lesson teaches; the harness runs it against your crates.
-//! Host test: the PL011 register model (PLAN M6 "Acceptance: host"; ARM DDI 0183G §3.3; threat
-//! model MMIO-8, MMIO-9, TTY-1, TTY-10).
+//! Host test: the PL011 register model (host acceptance; ARM DDI 0183G §3.3; threat model: docs/security/threat-model.md).
 //!
 //! The UART is driven exactly as the bus drives it (`MmioDevice::read`/`write` with an offset
 //! and an access size), with an in-memory sink for TX, a real `SerialInput` (and its push

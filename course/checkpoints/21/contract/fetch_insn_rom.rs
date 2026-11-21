@@ -1,7 +1,7 @@
-// Checkpoint 21 contract (L1), frozen from the reference test crates/vmm/tests/fetch_insn_rom.rs.
+// Checkpoint 21 contract, frozen from the reference test crates/vmm/tests/fetch_insn_rom.rs.
 // It names only items the chapter 21 lesson teaches; the harness runs it against your crates.
-//! Host test: the ISV = 0 instruction fetch from flash ROM (`arch::stage1_walk::fetch_insn_rom`,
-//! PLAN M18; threat model MEM-3, MMIO-5; course ch21).
+//! Host test: the ISV = 0 instruction fetch from flash ROM (`arch::stage1_walk::fetch_insn_rom`;
+//! threat model: docs/security/threat-model.md).
 //!
 //! The on-machine `uboot_prompt` e2e test shows the hook working for U-Boot's first `STP`;
 //! this file pins down, without HVF, *when* the hook is consulted and when it must not be:
@@ -11,7 +11,7 @@
 //! - with the MMU off the PC is the IPA; with it on, a VA that a block maps onto the ROM IPA
 //!   is read from the ROM at the *translated* address;
 //! - page tables are still read from RAM only: `TTBR0` pointing into the ROM is
-//!   `Walk(TableOutsideRam)`, not a ROM read (MMIO-5);
+//!   `Walk(TableOutsideRam)`, not a ROM read;
 //! - a ROM miss (an IPA past the ROM's end, or a misaligned word) is still `NotRam`.
 //!
 //! `RomRegion`'s own `read_insn` (an `hv_vm_allocate`d buffer, so it needs the hypervisor

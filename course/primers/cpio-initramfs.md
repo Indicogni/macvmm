@@ -4,14 +4,7 @@ slug: cpio-initramfs
 kind: primer
 minutes: 15
 required_by: [13]
-also_used_by: [14, 23]
 labs: [cpio-inspector]
-objectives:
-- Explain in two sentences why Linux needs files before it has a disk driver, and how an initramfs differs from the older initrd
-- Decode a newc cpio header from a hex dump into its 13 fields, including the file type and permissions packed into c_mode
-- Compute where the name, the data and the next header start, given c_namesize and c_filesize and the 4-byte padding rule
-- Predict what the kernel builds from two concatenated archives, and why a host cpio tool shows you something different
-- Name the boot-log lines that show the initramfs being unpacked and run, and what the kernel does when unpacking fails
 ---
 
 # Why does cpio hide my /init?
@@ -37,11 +30,14 @@ cpio -itv < both.cpio 2>/dev/null
 
 One file, 21 bytes: the *first* `init`. The second has vanished. Yet when macvmm hands an
 archive built exactly like this to Linux (in chapter 13 of the course, which loads a Linux
-kernel), the kernel runs the *second* one, every time. The date and time will differ on your
+kernel), the kernel picks the *second* one as `/init`, every time. (To actually run it, the
+script also needs the `/bin/sh` its first line asks for; macvmm appends the archive to
+Alpine's, which supplies one.) The date and time will differ on your
 machine; the size and the single line will not.
 
-> **Predict.** Is `cpio` wrong, is the kernel wrong, or are they both right? Hold your guess; we
-> come back to it once we can read the bytes.
+:::predict Is `cpio` wrong, is the kernel wrong, or are they both right? Hold your guess; we come back to it once we can read the bytes.
+Both are right. `cpio` stops at the first archive's end marker; the kernel keeps reading after it, unpacks the second archive too, and its `init` replaces the first. "The puzzle, solved" shows it byte by byte.
+:::
 
 :::prereqs
 - What a kernel does at boot, and what a filesystem and a file mode are ([`os-basics`](/build-your-own/vmm/primers/os-basics/)).
@@ -152,8 +148,9 @@ instead of your own user ID, because inside the guest your Mac's 501 means nothi
 `1 block` line is `cpio` reporting, on standard error (so it is not part of the archive), that
 it wrote one 512-byte block. `wc -c` counts the archive's bytes: 512.
 
-> **Predict.** Leave out `-H newc` and the archive starts with different bytes. What will
-> Linux say when it meets it?
+:::predict Leave out `-H newc` and the archive starts with different bytes. What will Linux say when it meets it?
+It refuses the archive with `incorrect cpio method used: use -H newc option`. The paragraph below shows the bytes it recognises.
+:::
 
 Try it: `(cd tree && echo init | cpio -o) | head -c 6` prints `070707`. A **magic** (or magic
 number) is a fixed set of bytes at the start of a file that says which format it is. This is
@@ -324,15 +321,7 @@ newc member starts with the character `0` (of `070701`); a gzip member starts wi
 `1f 8b`. A **decompressor** is the code that turns a compressed member back into a raw one. So
 the kernel loops, looking at the byte at the current position:
 
-```mermaid
-flowchart TD
-    A[next byte in the buffer] -->|"the character 0, at a multiple of 4: a raw newc member"| B[parse newc entries]
-    A -->|a zero byte| C[skip it]
-    A -->|anything else| D[pick a decompressor by magic, e.g. 1f 8b = gzip]
-    B -->|TRAILER!!! seen| A
-    C --> A
-    D -->|decompressed stream is parsed as newc| A
-```
+:::diagram src=docs/diagrams/initramfs-unpack.svg alt="How the kernel walks the initramfs buffer, one archive at a time"
 
 *The buffer is a sequence of members, each raw or compressed; a trailer ends a member, not the
 buffer.*
@@ -357,7 +346,7 @@ When the buffer is used up, the kernel looks for the program named by the `rdini
 its command line, by default `/init`. If it is there and executable, you see the line chapter
 14's checkpoint waits for. If not, the kernel gives up on the initramfs and falls back to
 mounting a disk named by the `root=` option. With no disk that ends in
-`VFS: Unable to mount root fs on unknown-block(0,0)`, a panic (the kernel stops for good).
+`VFS: Unable to mount root fs on "" or unknown-block(0,0)`, a panic (the kernel stops for good).
 
 The lines to look for in a boot log are these (chapter 14 shows them in a real capture, and the
 aside below explains why other lines can appear between them). `<size>` is the initramfs size
@@ -445,17 +434,17 @@ gzip -dc "$f" | cpio -itv init 2>/dev/null   # Alpine's own /init
 
 :::lab cpio-inspector
 
-*Optional, and coming later: this in-browser lab is not built yet. Nothing else in the primer
-depends on it.*
+*Optional: nothing else in the primer depends on it.*
 
 The `cpio-inspector` lab (embedded here and in chapter 13) takes a file you drop on the page,
 parsed locally in your browser and never uploaded. It shares its drop zone with
 `image-inspector` and `elf-inspector`. For each entry it shows the 13 header fields with their
 offsets, decodes `c_mode` into type and permissions, and highlights the name, data and padding
 bytes. Unlike `bsdcpio`, it walks every member the way the kernel does, marks each
-`TRAILER!!!`, and flags entries that a later member overwrites. Drop `both.cpio` into it, then
-break a copy and see which kernel error message the lab predicts. To change the sixth byte of
-the magic from `1` to `8` (offset 5, counting from 0):
+`TRAILER!!!`, and flags entries that a later member overwrites. Its default sample is `both.cpio`. Pick it, then
+use "Break a copy" with offset 5 and byte `'8'` (the values it starts with) and see which kernel
+error message the lab predicts. That is the same change as this command on your Mac, which
+sets the sixth byte of the magic from `1` to `8` (offset 5, counting from 0):
 
 ```sh
 cp both.cpio bad.cpio
@@ -503,8 +492,11 @@ loop by putting the needed files in RAM before the kernel starts.
 The kernel treats the end as exclusive and computes the size as `end - start`, so it sees one
 byte too few: an archive at 100 with size 10 should have end 110, but this VMM writes 109, and
 byte 109 is lost. If that last byte was only padding, nothing visible happens. Bonus: if it was
-the last byte of a compressed member, the decompressor finds its input cut short and unpacking
-fails with an error. An off-by-one that only sometimes bites is the worst kind, which is why
+the last byte of a gzip member, there is no decompressor error at all, because that byte belongs
+to the 8-byte trailer (checksum and size) that the kernel never reads. Instead the kernel steps
+over the trailer it assumes is there, its count of bytes left wraps around to a huge number,
+and it reads on past the end of the buffer into whatever memory follows. A lost byte inside the
+compressed data itself is caught: unpacking fails with `read error`. An off-by-one that only sometimes bites is the worst kind, which is why
 chapter 13 has a test for exactly this.
 :::
 

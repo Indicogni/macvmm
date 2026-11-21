@@ -1172,7 +1172,7 @@ fn write_capture(
     let n = |s: &str| normalize(s, env, out_dir, guests);
     let mut text = format!(
         "# scripts/capture.sh {id}: run {name:?} of course/checkpoints/{id}, captured from the reference\n\
-         # on real hardware. Regenerate with scripts/capture.sh {id}; never edit by hand (CURRICULUM §3.6).\n\
+         # on real hardware. Regenerate with scripts/capture.sh {id}; never edit by hand (course/STYLE.md appendix A).\n\
          $ {}\nexit: {}\n--- stdout ---\n{}\n--- stderr ---\n{}\n",
         n(&argv.join(" ")),
         p.code

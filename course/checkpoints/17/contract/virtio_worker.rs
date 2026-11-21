@@ -1,7 +1,6 @@
-// Checkpoint 17 contract (L1), frozen from the reference test crates/vmm/tests/virtio_worker.rs.
+// Checkpoint 17 contract, frozen from the reference test crates/vmm/tests/virtio_worker.rs.
 // It names only items chapters 15 to 17 teach; the harness runs it against your crates.
-//! PLAN M12 acceptance (host): the device worker thread (architecture §14.1, §14.3; threat
-//! model VQ-12, VQ-14, RUST-7).
+//! Host acceptance: the device worker thread (see docs/security/threat-model.md).
 //!
 //! - notify coalescing: ten doorbells → between one and ten `process_queue` calls, and every
 //!   buffer consumed;
@@ -9,7 +8,7 @@
 //! - a Status = 0 reset while a batch runs waits for the batch and leaves no queues behind,
 //!   and a doorbell that raced the reset is not turned into NEEDS_RESET;
 //! - a batch that *fails* while a reset waits never leaves the fresh device in NEEDS_RESET;
-//! - `worker_panic_stops_vm` (RUST-7): a device that panics in `process_queue` stops the VM
+//! - `worker_panic_stops_vm`: a device that panics in `process_queue` stops the VM
 //!   with the exit-1 reason, the panic hook ran, and the transport never calls the dead device
 //!   again; the panic overrides a guest verdict posted before it (`worker::final_reason`, what
 //!   `Machine::run` returns);

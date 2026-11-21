@@ -121,7 +121,7 @@ The lab steps one level line and one edge line through these states. Try never l
 
 :::lab irq-lifecycle
 
-If the lab does not load, here is what the lab steps through, written out by hand (a simulation, not a capture):
+If the lab does not load, here is what the lab steps through (a simulation from the lab's model, not a capture):
 
 ```text
 step                          line   state of INTID 33
@@ -134,7 +134,7 @@ CPU reads IAR (returns 33)    high   active and pending
 handler writes EOI            high   pending           taken again at once: a storm
 --- an edge-triggered line ---
 rising edge                   high   pending
-CPU reads IAR, line held high high   active            not active and pending
+CPU reads IAR, line held high high   active            active only: the IAR cleared pending
 handler writes EOI            high   inactive          no re-delivery
 ```
 

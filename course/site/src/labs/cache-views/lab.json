@@ -1,0 +1,4 @@
+{
+  "title": "Cache views",
+  "goal": "Write guest RAM from the VMM or an MMU-off guest, then clean or invalidate cache lines and see who reads stale data and which operation can lose a write."
+}

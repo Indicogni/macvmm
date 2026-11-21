@@ -1,5 +1,5 @@
 # scripts/capture.sh 22: run "freebsd-login" of course/checkpoints/22, captured from the reference
-# on real hardware. Regenerate with scripts/capture.sh 22; never edit by hand (CURRICULUM §3.6).
+# on real hardware. Regenerate with scripts/capture.sh 22; never edit by hand (course/STYLE.md appendix A).
 $ /bin/bash -c set -euo pipefail; cp -c "<repo>/.cache/macvmm/freebsd-15.1-ufs.raw" "{out}/f.raw"; "{macvmm}" run --bios "<repo>/.cache/macvmm/u-boot.bin" --disk "{out}/f.raw" --mem 2G --cpus 2 --timeout 240 --on-reset exit | /usr/bin/perl -e '$|=1; my $c=q(); while (sysread(STDIN, my $b, 4096)) { $b = $c . $b; $c = ($b =~ s/(\e(\[[0-9;?]*)?)\z//) ? $1 : q(); $b =~ s/\e\[[0-9;?]*[A-Za-z]|\e[78]|\r//g; print $b }'
 exit: 0
 --- stdout ---

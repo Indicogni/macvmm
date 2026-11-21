@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 216" role="img" aria-labelledby="gpa-fb-title gpa-fb-desc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="currentColor">
+  <title id="gpa-fb-title">Guest address translator: the opening puzzle</title>
+  <desc id="gpa-fb-desc">One RAM region from 0x4000_0000 to 0x4400_0000, host base H. Checked: 8 bytes at 0x4000_1000 end at 0x4000_1008, ok, host address H + 0x1000. Checked: 8 bytes at 0xFFFF_FFFF_FFFF_FFFC overflow, checked_add returns None, fault, no host address. Wrapping: the same request sums to 0x4 after wrapping, the check passes, and the VMM forms H - 0x4000_0004, about 1 GiB below its RAM allocation.</desc>
+  <text x="8" y="22" font-weight="700">One region, 0x4000_0000..0x4400_0000, host base H</text>
+  <g>
+    <text x="8" y="56" font-weight="700">mode</text>
+    <text x="84" y="56" font-weight="700">addr</text>
+    <text x="250" y="56" font-weight="700">len</text>
+    <text x="290" y="56" font-weight="700">addr + len</text>
+    <text x="440" y="56" font-weight="700">verdict</text>
+    <text x="510" y="56" font-weight="700">host address</text>
+    <line x1="8" y1="64" x2="632" y2="64" stroke="currentColor" stroke-width="1"/>
+    <text x="8" y="88">checked</text>
+    <text x="84" y="88">0x4000_1000</text>
+    <text x="250" y="88">8</text>
+    <text x="290" y="88">0x4000_1008</text>
+    <text x="440" y="88">ok</text>
+    <text x="510" y="88">H + 0x1000</text>
+    <text x="8" y="116">checked</text>
+    <text x="84" y="116">0xFFFF_FFFF_FFFF_FFFC</text>
+    <text x="250" y="116">8</text>
+    <text x="290" y="116">overflow (None)</text>
+    <text x="440" y="116">fault</text>
+    <text x="510" y="116">none</text>
+    <text x="8" y="144">wrapping</text>
+    <text x="84" y="144">0xFFFF_FFFF_FFFF_FFFC</text>
+    <text x="250" y="144">8</text>
+    <text x="290" y="144">0x4 (wrapped)</text>
+    <text x="440" y="144">"ok"</text>
+    <text x="510" y="144">H - 0x4000_0004</text>
+    <rect x="4" y="128" width="632" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="6 4"/>
+  </g>
+  <text x="8" y="184">Dashed row: the check passes, but the host pointer lands about 1 GiB</text>
+  <text x="8" y="202">below the VMM's RAM allocation.</text>
+</svg>

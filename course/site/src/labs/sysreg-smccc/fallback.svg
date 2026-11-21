@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" role="img" aria-labelledby="sysreg-smccc-fb-title sysreg-smccc-fb-desc">
+  <title id="sysreg-smccc-fb-title">Two numbers, taken apart by field</title>
+  <desc id="sysreg-smccc-fb-desc">Top: the SMCCC function ID 0x8400_0008 split into its fields. Bit 31 is 1, a fast call; bit 30 is 0, the 32-bit convention; bits 29 to 24 are 4, the owner "standard secure service calls"; bits 23 to 16 are zero, as they must be; bits 15 to 0 are 8. Owner 4, function 8 is PSCI SYSTEM_OFF, and macvmm powers the VM off with exit code 0. Bottom: the instruction word 0xD53B_9C00 split into its fields: L is 1 (mrs), op0 3, op1 3, CRn 9, CRm 12, op2 0, Rt 0. The coordinates (3, 3, 9, 12, 0) name PMCR_EL0, so the word is mrs x0, PMCR_EL0; if it traps, its syndrome is 0x6230_E419 and macvmm injects UNDEF, because the guest was told it has no performance monitor.</desc>
+  <g font-family="ui-monospace, Menlo, monospace" font-size="13" fill="currentColor">
+    <text x="20" y="28" font-weight="700">SMCCC function ID 0x8400_0008</text>
+    <text x="20" y="56">bit 31  bit 30  29..24  23..16  15..0</text>
+    <text x="20" y="78">  1       0       4      0x00    0x0008</text>
+    <text x="20" y="100">fast    32-bit  owner   zero    function</text>
+    <text x="20" y="126">owner 4, function 8 = PSCI_SYSTEM_OFF: the VM powers off, exit code 0</text>
+    <text x="20" y="170" font-weight="700">Instruction word 0xD53B_9C00</text>
+    <text x="20" y="198">L  op0 op1 CRn CRm op2 Rt</text>
+    <text x="20" y="220">1   3   3   9  12   0   0</text>
+    <text x="20" y="246">(3, 3, 9, 12, 0) = PMCR_EL0: mrs x0, PMCR_EL0</text>
+    <text x="20" y="270">trap syndrome 0x6230_E419; macvmm injects UNDEF (no PMU)</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1" fill="none">
+    <path d="M20 140 L620 140"/>
+  </g>
+</svg>

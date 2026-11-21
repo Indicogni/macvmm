@@ -1,12 +1,12 @@
-// Checkpoint 08 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/sysreg_policy.rs.
+// Checkpoint 08 contract, frozen from the reference test crates/vmm/tests/sysreg_policy.rs.
 // It names only items the chapter 08 lesson teaches; the harness runs it against your crates.
-//! Host test: the system-register trap policy (PLAN M5 "Acceptance: host"; architecture §8.4;
-//! threat model HC-6).
+//! Host test: the system-register trap policy (host acceptance;
+//! threat model: docs/security/threat-model.md).
 //!
 //! - the OS-lock registers are emulated per vCPU, in both directions, and only in the
 //!   architected direction (`MRS OSLAR_EL1` and `MSR OSLSR_EL1` are UNDEF);
 //! - every PMU register is UNDEF (`PMUVer = 0`), and so is every unlisted register, swept over
-//!   all 65,536 encodings (HC-6: the default is never "let it through");
+//!   all 65,536 encodings (the default is never "let it through");
 //! - debug breakpoint/watchpoint registers are RAZ/WI;
 //! - the FEAT_LOR registers read as zero (the guest sees `ID_AA64MMFR1_EL1.LO = 1`, so they
 //!   exist), `LORID_EL1` is read-only;

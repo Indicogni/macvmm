@@ -1,7 +1,7 @@
-// Checkpoint 01 contract (PLAN M27 L1). It names only items the chapter 01 lesson teaches
+// Checkpoint 01 contract. It names only items the chapter 01 lesson teaches
 // (`hvf::HvError`, `hvf::ffi::hv_return_t` and the `HV_*` constants); the harness runs it
 // against your `crates/hvf`.
-//! `hv_return_t` decoding (PLAN M1; CURRICULUM ch01 checkpoint).
+//! `hv_return_t` decoding.
 //!
 //! The expected values are the header's, not the reference's: `hv_kern_types.h` (macOS 27.2
 //! SDK) builds every code as `err_local | err_sub(0xba5) | n` = `0xfae94000 | n`. A learner whose

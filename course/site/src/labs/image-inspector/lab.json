@@ -1,0 +1,4 @@
+{
+  "title": "Image inspector",
+  "goal": "Drop a kernel file, or pick one, flip a header byte, and see which of the loader's checks fails first and where everything would go in RAM."
+}

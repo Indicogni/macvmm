@@ -1,0 +1,4 @@
+{
+  "title": "Boot timeline",
+  "goal": "See where a Linux boot's VM exits cluster and where they stop: chapter 14's real reference boot, its three deliberate breakages, or a trace file from your own run, on one zoomable time axis."
+}

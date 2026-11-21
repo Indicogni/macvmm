@@ -1,0 +1,5 @@
+{
+  "title": "Boot chain",
+  "goal": "Step through direct boot and firmware boot side by side: who loads what, where, what is in x0 and x1, whether boot services are alive, and who owns the DTB at each step.",
+  "reference": "efi-linux.f.kr@7"
+}

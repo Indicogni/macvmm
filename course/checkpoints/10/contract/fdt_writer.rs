@@ -1,12 +1,12 @@
-// Checkpoint 10 contract (PLAN M27 L1), frozen from the reference test crates/vmm/tests/fdt_writer.rs.
+// Checkpoint 10 contract, frozen from the reference test crates/vmm/tests/fdt_writer.rs.
 // It names only items the chapter 10 lesson teaches; the harness runs it against your crates.
-//! `FdtWriter` rules and the `reader.rs` hostile-input cases (PLAN M7 "Acceptance: host";
-//! threat model FDT-1, FDT-2; Devicetree Specification v0.4 ch. 5).
+//! `FdtWriter` rules and the `reader.rs` hostile-input cases (host acceptance;
+//! threat model: docs/security/threat-model.md; Devicetree Specification v0.4 ch. 5).
 //!
 //! The writer is checked against the format rules directly (header fields, alignment, string
 //! dedup, ordering, names, size cap), then through the test-only reader (a round trip must
 //! preserve the tree). `fdt_reader_hostile` feeds the reader malformed blobs: every one must be
-//! an `Err`, never a panic, because the reader is the future fuzz target (M22).
+//! an `Err`, never a panic, because the reader is the future fuzz target (chapter 25).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use vmm::fdt::reader::{self, Node, ReadError};
