@@ -14,12 +14,14 @@
 //! is never multicast or all-zero).
 //!
 //! **Invariants (`check_front_end`, M22 SBX-4):**
-//! - `split_flags` removes only the three sandbox tokens, and only outside a *value position*
+//! - `split_flags` removes only the four sandbox tokens, and only outside a *value position*
 //!   (the argument right after a flag that takes its value as the next argument): the kept
 //!   arguments are the input in order with exactly those tokens taken out, so
 //!   `--cmdline --sandbox` keeps `--sandbox` as a command line;
-//! - its verdict agrees with a reference model written here: `--sandbox-selftest` without
-//!   `--sandbox` is `Err`, a second `--sandbox` is `Err`, `--sandbox=<other>` is `Err`;
+//! - its verdict agrees with a reference model written here: the sandbox is on (enforce) when no
+//!   flag is given, `--sandbox-selftest` with `--no-sandbox` is `Err`, any second mode flag
+//!   (`--sandbox`, `--sandbox=best-effort`, `--no-sandbox`) is `Err`, `--sandbox=<other>` and
+//!   `--no-sandbox=<anything>` are `Err`;
 //! - `parse_run` does not panic. (Its own `Ok` already means "`validate` accepted it", since it
 //!   ends with `cfg.validate()?`, so re-validating would check nothing.) Two properties that do
 //!   not restate the parser: an unknown flag appended to an accepted argument list is always
@@ -67,6 +69,7 @@ const FLAGS: &[&str] = &[
     "--sandbox",
     "--sandbox=best-effort",
     "--sandbox-selftest",
+    "--no-sandbox",
     "--cpus",
     "--log",
     "--frob",
@@ -151,7 +154,12 @@ pub enum SandboxMode {
 /// What `split_flags` returned on success: the mode, `--sandbox-selftest`, the kept arguments.
 pub type Split = (SandboxMode, bool, Vec<String>);
 
-const SANDBOX_TOKENS: &[&str] = &["--sandbox", "--sandbox=best-effort", "--sandbox-selftest"];
+const SANDBOX_TOKENS: &[&str] = &[
+    "--sandbox",
+    "--sandbox=best-effort",
+    "--sandbox-selftest",
+    "--no-sandbox",
+];
 
 /// For each argument, true if it is the value of the flag before it (`value_flags`, given as
 /// the next argument). A value is never itself a flag, so `--cmdline --mem 1G` makes `--mem` a
@@ -169,7 +177,7 @@ fn value_positions(args: &[String], value_flags: &[&str]) -> Vec<bool> {
 
 /// The reference model of `split_flags` (module docs); `None` means "must be `Err`".
 fn reference_split(args: &[String], value_flags: &[&str]) -> Option<Split> {
-    let mut mode = SandboxMode::Off;
+    let mut mode = None;
     let mut selftest = false;
     let mut rest = Vec::new();
     for (a, is_value) in args.iter().zip(value_positions(args, value_flags)) {
@@ -177,21 +185,26 @@ fn reference_split(args: &[String], value_flags: &[&str]) -> Option<Split> {
             _ if is_value => None,
             "--sandbox" => Some(SandboxMode::Enforce),
             "--sandbox=best-effort" => Some(SandboxMode::BestEffort),
+            "--no-sandbox" => Some(SandboxMode::Off),
             "--sandbox-selftest" => {
                 selftest = true;
                 continue;
             }
-            s if s.starts_with("--sandbox=") || s.starts_with("--sandbox-selftest=") => {
+            s if s.starts_with("--sandbox=")
+                || s.starts_with("--sandbox-selftest=")
+                || s.starts_with("--no-sandbox=") =>
+            {
                 return None;
             }
             _ => None,
         };
         match set {
-            Some(_) if mode != SandboxMode::Off => return None,
-            Some(m) => mode = m,
+            Some(_) if mode.is_some() => return None,
+            Some(m) => mode = Some(m),
             None => rest.push(a.clone()),
         }
     }
+    let mode = mode.unwrap_or(SandboxMode::Enforce);
     if selftest && mode == SandboxMode::Off {
         return None;
     }
@@ -247,7 +260,7 @@ pub fn check_front_end(
     }
     if selftest && mode == SandboxMode::Off {
         return Err(format!(
-            "--sandbox-selftest accepted without --sandbox: {args:?}"
+            "--sandbox-selftest accepted with --no-sandbox: {args:?}"
         ));
     }
     // `parse_run`: no panic (the caller's test harness catches one), plus two properties.

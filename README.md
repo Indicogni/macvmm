@@ -17,7 +17,8 @@ verbatim run). On a QEMU-`virt`-compatible machine model with a generated device
   Virtualization.framework path, and an experimental `vmapple` board runs Apple's AVPBooter
   until it stalls on a device macvmm does not model yet, the `cfg` block (`docs/macos/status.md`).
 - Hardening: a threat model (`docs/security/threat-model.md`), hostile-input tests,
-  dependency-free fuzzers (`scripts/fuzz.sh`), an opt-in `--sandbox` and resource limits.
+  dependency-free fuzzers (`scripts/fuzz.sh`), a macOS sandbox that `macvmm run` applies to
+  itself by default (`--no-sandbox` opts out, for debugging) and resource limits.
 
 See `docs/PLAN.md` for the milestones and `docs/architecture.md` for the design.
 
@@ -103,8 +104,12 @@ release gate: it does all of the above in a fresh copy and ends with `FRESH CLON
   did not already have.
 - **"No network entitlement" confines nothing on its own.** Outside the App Sandbox, a process
   without `com.apple.security.network.*` can still open sockets, files and child processes.
-  Containment comes from a sandbox profile (milestone M22) and, later, from splitting device
-  emulation into a separate unentitled process, never from the entitlement list.
+  Containment comes from a sandbox profile and, later, from splitting device emulation into a
+  separate unentitled process, never from the entitlement list. `macvmm run` applies that
+  profile to itself by default, once every file is open and before the first guest
+  instruction: from then on it can open no file by path, reach no network and start no
+  process. `--no-sandbox` turns it off (for debugging, or for `--net ...,learn`, whose peer is
+  not known in advance); see threat model §7.12.
 - What the minimal set does do is keep the signature honest and reviewable, and keep out the
   entitlements that would weaken the process: `allow-jit`, `allow-unsigned-executable-memory`,
   `disable-library-validation`, `allow-dyld-environment-variables`, `get-task-allow`.

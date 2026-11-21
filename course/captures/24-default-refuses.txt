@@ -1,4 +1,4 @@
-# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit dad6c99, 2026-11-20.
+# scripts/capture-cmd 24: real output, Apple M5 Pro, macOS 27.2.1, commit 64871bd, 2026-11-20.
 # Run with the default build (no experimental-vmapple feature).
 # Regenerate with scripts/capture-cmd (course/STYLE.md appendix A); never edit by hand.
 $ scripts/sign-and-run.sh target/debug/macvmm run --machine vmapple --bios /System/Library/Frameworks/Virtualization.framework/Versions/A/Resources/AVPBooter.vmapple2.bin
@@ -70,7 +70,10 @@ options:
   --stats                  print the console I/O counters, the exit counts, the vCPU exec and
                            WFI time and the host CPU time when the VM stops
   --log LEVEL              error|warn|info|debug|trace (default warn; also MACVMM_LOG)
-  --sandbox[=best-effort]  after opening every file, confine macvmm: no file opened by path, no
-                           network, no new process (macOS sandbox, threat model SBX-2). Exits 1
-                           if the sandbox cannot be applied; best-effort warns and runs anyway.
-                           Not with --net ...,learn
+  --no-sandbox             run unconfined. By default, after opening every file, macvmm
+                           confines itself: no file opened by path, no network, no new process
+                           (macOS sandbox, threat model SBX-2), and exits 1 if the sandbox
+                           cannot be applied. Needed for --net ...,learn
+  --sandbox[=best-effort]  --sandbox is the default and changes nothing; best-effort warns
+                           and runs unconfined if the sandbox cannot be applied. Not together
+                           with --no-sandbox

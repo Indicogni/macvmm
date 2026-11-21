@@ -36,7 +36,9 @@
 //! `--initrd` or `--cmdline`; `VmConfig::validate`).
 //! M22 adds `--sandbox[=best-effort]` and the hidden `--sandbox-selftest` (`sandbox.rs`; threat
 //! model SBX-1..SBX-4): they are split off before [`parse_run`], and the lockdown is applied
-//! after `HostIo::open` and the host threads, right before the first guest instruction.
+//! after `HostIo::open` and the host threads, right before the first guest instruction. The
+//! sandbox is now on by default (`--no-sandbox` opts out; `--sandbox` is a no-op kept for
+//! scripts written before the switch).
 //!
 //! **M6: the terminal and the exit path.** Before the VM starts, `run` puts the terminal in raw
 //! mode when stdin is a TTY and the serial sink is `stdio` (`term.rs`, PROC-1), starts the
@@ -121,10 +123,13 @@ options:
   --stats                  print the console I/O counters, the exit counts, the vCPU exec and
                            WFI time and the host CPU time when the VM stops
   --log LEVEL              error|warn|info|debug|trace (default warn; also MACVMM_LOG)
-  --sandbox[=best-effort]  after opening every file, confine macvmm: no file opened by path, no
-                           network, no new process (macOS sandbox, threat model SBX-2). Exits 1
-                           if the sandbox cannot be applied; best-effort warns and runs anyway.
-                           Not with --net ...,learn
+  --no-sandbox             run unconfined. By default, after opening every file, macvmm
+                           confines itself: no file opened by path, no network, no new process
+                           (macOS sandbox, threat model SBX-2), and exits 1 if the sandbox
+                           cannot be applied. Needed for --net ...,learn
+  --sandbox[=best-effort]  --sandbox is the default and changes nothing; best-effort warns
+                           and runs unconfined if the sandbox cannot be applied. Not together
+                           with --no-sandbox
 ";
 
 /// Parse a size with an optional binary suffix: `K`, `M`, `G` (case-insensitive; `KiB`,
@@ -620,9 +625,10 @@ fn exit(code: i32) -> ExitCode {
 }
 
 // ANCHOR: sandbox_confine
-/// M22 (SBX-3, SBX-4): apply `--sandbox[=best-effort]` and the optional self-test. `Err` is
-/// the line to print before exiting 1 (enforce mode could not lock down, or the self-test
-/// failed); best-effort warns and carries on unconfined. Called once every host file is open.
+/// SBX-3, SBX-4: apply the sandbox (on unless `--no-sandbox`) and the optional self-test.
+/// `Err` is the line to print before exiting 1 (enforce mode could not lock down, or the
+/// self-test failed); best-effort warns and carries on unconfined. Called once every host file
+/// is open.
 fn confine(sandbox: crate::sandbox::Opts, cfg: &VmConfig) -> Result<(), String> {
     use crate::sandbox::Mode;
     if sandbox.mode == Mode::Off {
@@ -633,7 +639,11 @@ fn confine(sandbox: crate::sandbox::Opts, cfg: &VmConfig) -> Result<(), String> 
         Err(e) if sandbox.mode == Mode::BestEffort => err(&format!(
             "macvmm: warning: --sandbox=best-effort: {e}; running WITHOUT the sandbox"
         )),
-        Err(e) => return Err(format!("macvmm: --sandbox: {e}")),
+        Err(e) => {
+            return Err(format!(
+                "macvmm: sandbox: {e} (--no-sandbox runs unconfined, for debugging)"
+            ));
+        }
     }
     if sandbox.selftest {
         let line = crate::sandbox::selftest().map_err(|line| format!("macvmm: {line}"))?;
@@ -655,7 +665,10 @@ pub fn run(args: &[String]) -> ExitCode {
         }
     };
     let args = args.as_slice();
-    let cfg = match parse_run(args) {
+    let cfg = match parse_run(args).and_then(|cfg| {
+        crate::sandbox::check_config(sandbox.mode, &cfg)?;
+        Ok(cfg)
+    }) {
         Ok(cfg) => cfg,
         Err(msg) => {
             err(&format!("macvmm: {msg}"));
@@ -672,8 +685,8 @@ pub fn run(args: &[String]) -> ExitCode {
         }
     };
     // M9: `--dry-run` describes the boot and exits; no terminal setup, no HVF call. It still
-    // parses the untrusted kernel and initrd headers, so a `--sandbox` applies here too (SBX-4:
-    // a sandbox flag never silently does nothing).
+    // parses the untrusted kernel and initrd headers, so the sandbox applies here too (SBX-4:
+    // the sandbox is never silently skipped).
     if cfg.dry_run {
         if let Err(line) = confine(sandbox, &cfg) {
             host.close_sinks(&[]);
@@ -732,8 +745,8 @@ pub fn run(args: &[String]) -> ExitCode {
     // first guest instruction. vCPU creation and any reboot run under the sandbox.
     // ANCHOR: sandbox_confine_call
     if let Err(line) = confine(sandbox, &cfg) {
-        // Fail closed: `--sandbox` was asked for, so never run unconfined. Nothing ran yet; undo
-        // the terminal and stop.
+        // Fail closed: only `--no-sandbox` runs unconfined, never a failed lockdown. Nothing ran
+        // yet; undo the terminal and stop.
         host.close_sinks(&[]);
         terminal.restore();
         err(&line);

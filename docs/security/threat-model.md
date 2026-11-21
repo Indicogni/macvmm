@@ -3,6 +3,8 @@
 - **Status:** v1 draft, 2026-11-18, written before implementation by the security engineer. It is
   normative for every milestone. M10 checks it against the code that exists then (PLAN M10 "v0"),
   and M22 completes it with measured results (sandbox self-test, fuzz campaign numbers).
+  **2026-11-20 (DECISIONS D21):** the sandbox is the default for `macvmm run`; `--no-sandbox`
+  opts out (SBX-4 "Default", RR9, RR12).
   Revision 2 (same day) adds four on-machine experiments (hardened runtime, `sandbox-exec` with
   HVF, Unix-socket permissions and sender filtering; §13) and flaws F19–F24.
   **v0 review against the code: done in M10 (2026-11-19).** Every §5 row for M0–M10 now names
@@ -198,7 +200,7 @@ bugs (residual, §12), microarchitectural side channels between the guest and ho
 | S24 | Linux boot inputs (M10; no new parser) | the M9 loaders (S12) fed the pinned Alpine `Image-virt` and `initramfs-test.img`; `scripts/initramfs/init` runs **in the guest only** (SC-4); `scripts/run-linux.sh` | A2 (kernel, initrd), A1 (the running kernel) | M10 | Same checks as S12 (LDR-1, LDR-3..5); the kernel and initramfs are hash-pinned or built from tracked sources (SC-5, §0.4 PLAN). The kernel then exercises S1–S6, S11, S15, S16 as a real hostile-capable guest. Tests: e2e suite `linux` (`linux_boot`, `linux_boot_exits`, `linux_shell`, `linux_panic_resets`, `linux_sigint`, `linux_timer_latency`, `linux_tty_attack`, `linux_ring_dump`) |
 | S25 | Course harness (M27): checkpoint definitions, marker files, the JSONL traces and the stdout/stderr of the code under test; learner-mode file copies (`learner start`, `lifeline`); bug hunts | `crates/xtask/src/checkpoint/{mod,toml_lite,json_lite,markers,run,report,bughunt}.rs`, `crates/xtask/src/learner/*.rs`, `scripts/{checkpoint.sh,learner,capture.sh,bughunt.sh}` | A4 (a learner's own tree, an edited or forked `course/`), A1 (a guest shapes the trace and the output the harness reads) | M27 | No network code and no telemetry (`.progress.toml` stays local); `toml_lite` and `json_lite` cap input at 64 KiB and nesting (one table level; JSON depth 4, no unbounded recursion); traces capped at 32 MiB, child streams at 16 MiB, every echoed line sanitized (controls made visible) and captures escaped; checkpoint paths are plain relative names inside the checkpoint directory; every learner write goes through `learner::safe_dest` (no `..`, not absolute, no symlink in any component) and never overwrites (`<file>.scaffold`; a lifeline keeps `<file>.mine`); runs get a timeout plus a hard kill at +10 s; the harness signs only private copies under the target dir (SIGN-4); bug hunts work in a new 0700 directory under `$TMPDIR` (SC-1) and `scripts/bughunt.sh` asserts `git status --porcelain` is unchanged. Tests: `xtask/tests/checkpoint.rs` (16: caps, refusals, fixture table), `xtask/tests/learner.rs` (10, incl. `learner_never_overwrites`), `macvmm/tests/markers_shared.rs` |
 | S26 | ext4 root and reboot persistence (M15): the guest-written ext4 image (every byte A1 after a run), read on the host only by `e2fsck -fn` in `rootfs_fsck_clean`; the modloop squashfs, parsed only by the guest kernel; `/.macvmm-modes`, written by `mkrootfs` and applied by the initramfs **in the guest** | `crates/xtask/src/{rootfs,image_audit}.rs`, `scripts/rootfs/macvmm-init`, `scripts/initramfs/init` (`initramfs_rootfs`), `crates/macvmm/tests/e2e_rootfs.rs` | A1 (the written image), A3 (minirootfs, modloop) | M15 | SC-5 (pin checked inside `mkrootfs`), SC-7/SC-9 (staging), SC-10 (modloop pin cross-checked: Alpine RSA signature + netboot tarball hash), SC-14 (e2fsck read-only, on the `cp -c` clone only, empty environment, the e2fsck binary itself checked ≥ 1.47.0 (`-V`) by the test and by `setup.sh`, a 60 s deadline (killed on expiry: a crafted image can make e2fsck hang); its output, which echoes the guest-chosen ext4 volume label verbatim, reaches the terminal only through the `strict` `AnsiFilter` (TTY-1, SINK-1); no `hdiutil`/`mount`/`open` of an image in a script, test or lesson: audit rule `no-host-mount-of-guest-image`, matched on the command's basename (`/sbin/mount`, `/usr/bin/hdiutil`), through `sudo`/`env`/`nohup` prefixes, `hdiutil attach|mount` of any argument, and any Rust `Command::new("…hdiutil|mount|mount_*|open|diskutil")`; residual: a program name held in a variable or constant is not decidable by a text scan). The modloop is a `,ro` disk (BLK-5: `O_RDONLY`, `VIRTIO_BLK_F_RO`). Tests: `xtask/tests/rootfs.rs` (8, incl. `mkrootfs_staging_only`), `xtask/tests/image_audit.rs` (5, incl. `audit_rejects_host_mount_of_guest_image`, `rust_command_forms`), e2e `linux_rootfs_persist`, `rootfs_fsck_clean`, `fsck_output_is_filtered` |
-| S27 | Confinement and the fuzz harness (M22): `--sandbox[=best-effort]` and the hidden `--sandbox-selftest` (split off before `parse_run`); the SBPL profile and the lockdown; the self-test probes (one `open`, one loopback `connect`, one `posix_spawn("/usr/bin/true")` with an empty environment, run **only** with `--sandbox-selftest` and **only after** the lockdown, so they are expected to fail; if one succeeds macvmm exits 1); `RLIMIT_NOFILE` lowering; the exec-time fallback wrapper; `crates/fuzz` (a dev tool: writes failing inputs to `target/fuzz/crashes/` 0700/0600 `create_new`, and the `tar` target extracts into a private 0700 directory under `$TMPDIR`, created fresh with an unpredictable name and never reused if it exists (`mkdtemp`-style), whose per-iteration trees it removes with the symlink-safe `remove_dir_all`) | `crates/macvmm/src/sandbox.rs` (anchors `sandbox_profile`, `sandbox_lockdown`), `crates/hvf/src/host.rs` (anchor `host_sandbox`), `crates/macvmm/src/cli.rs` (`run`), `scripts/sandbox-exec-fallback.sh`, `crates/fuzz/**`, `scripts/{fuzz,bughunt-selftest}.sh` | B5 (flags, paths written into the profile: only `--net` peer paths, refused if they hold `"`, `\` or a control character; the fallback passes user paths as `-D` parameters, never as profile text) | M22 | §7.12 SBX-1..SBX-4, PROC-4, TEST-3, TEST-4, TEST-10. Tests: `sandbox::tests` (flag grammar, profile shape: no `mach-lookup`, no `iokit`, no `TIOCSTI`, the `/tmp` symlink allowance, quote refusal, `,learn` refusal), `cli::tests::cli_fuzz` (the real `split_flags` then `parse_run`, 10,000 generated argv, the invariants of §9.3 "cli"), `cli::tests::value_flags_match_parse_run`, `crates/fuzz` unit tests (every target's seeds pass), e2e suite `sandbox` (12, including `sandbox_dry_run`), `scripts/fuzz.sh all --seconds 60`, `scripts/bughunt-selftest.sh` (4/4) |
+| S27 | Confinement and the fuzz harness (M22): `--sandbox[=best-effort]`, `--no-sandbox` (D21: the sandbox is on by default) and the hidden `--sandbox-selftest` (split off before `parse_run`); the SBPL profile and the lockdown; the self-test probes (one `open`, one loopback `connect`, one `posix_spawn("/usr/bin/true")` with an empty environment, run **only** with `--sandbox-selftest` and **only after** the lockdown, so they are expected to fail; if one succeeds macvmm exits 1); `RLIMIT_NOFILE` lowering; the exec-time fallback wrapper; `crates/fuzz` (a dev tool: writes failing inputs to `target/fuzz/crashes/` 0700/0600 `create_new`, and the `tar` target extracts into a private 0700 directory under `$TMPDIR`, created fresh with an unpredictable name and never reused if it exists (`mkdtemp`-style), whose per-iteration trees it removes with the symlink-safe `remove_dir_all`) | `crates/macvmm/src/sandbox.rs` (anchors `sandbox_profile`, `sandbox_lockdown`), `crates/hvf/src/host.rs` (anchor `host_sandbox`), `crates/macvmm/src/cli.rs` (`run`), `scripts/sandbox-exec-fallback.sh`, `crates/fuzz/**`, `scripts/{fuzz,bughunt-selftest}.sh` | B5 (flags, paths written into the profile: only `--net` peer paths, refused if they hold `"`, `\` or a control character; the fallback passes user paths as `-D` parameters, never as profile text) | M22 | §7.12 SBX-1..SBX-4, PROC-4, TEST-3, TEST-4, TEST-10. Tests: `sandbox::tests` (flag grammar including the D21 default and `--no-sandbox`, profile shape: no `mach-lookup`, no `iokit`, no `TIOCSTI`, the `/tmp` symlink allowance, quote refusal, `,learn` refusal), `cli::tests::cli_fuzz` (the real `split_flags` then `parse_run`, 10,000 generated argv, the invariants of §9.3 "cli"), `cli::tests::value_flags_match_parse_run`, `crates/fuzz` unit tests (every target's seeds pass), e2e suite `sandbox` (13, including `sandbox_dry_run` and, since D21, `sandbox_default_confined`), `scripts/fuzz.sh all --seconds 60`, `scripts/bughunt-selftest.sh` (4/4) |
 
 Surfaces that **do not exist** in v1, and must not appear without an ADR that updates this
 model: guest-named host paths (9p or virtiofs), PCI config space, USB, a user-space GIC, host
@@ -237,7 +239,7 @@ any code path that executes a host binary chosen by guest data.
 | D | The guest spins every vCPU at 100%. | B1k | Accepted: the user chose `--cpus`. Document `nice` and `taskpolicy`. | Inherent. |
 | D | Terminal DoS: charset switch (SO/SI), alternate screen left on, mouse reporting left on, a 10 MB OSC string. | S11 | TTY-2..6. | — |
 | **E**levation of privilege | A memory-safety bug in `unsafe` (`hvf`, `memory/host.rs`) or in std. | S2, S8 | The `unsafe` quarantine (architecture §4), MEM-1..7, Miri on the pure parts (TEST-6). | A std or compiler bug. |
-| E | A logic bug in a device gives host code execution. | S6–S10 | Rust, plus §7 limits, plus fuzzing (§9). Containment by the sandbox (§7.12). | Until M22, a full compromise of the VMM equals the user account. |
+| E | A logic bug in a device gives host code execution. | S6–S10 | Rust, plus §7 limits, plus fuzzing (§9). Containment by the sandbox (§7.12; on by default since D21). | Until M22, a full compromise of the VMM equals the user account; since D21, only with `--no-sandbox`. |
 | E | Terminal-emulator escape to host code execution (OSC/DCS bugs in iTerm2, tmux passthrough). | S11 | TTY-1..8 (allow-list filter, default on). | Bugs in the terminal's handling of *allowed* sequences such as SGR and CSI cursor movement. Low. |
 | E | Host extraction tools write outside the staging dir (`tar.rs` symlink chains, unsquashfs CVE-2021-40153 and CVE-2021-41072). | S17 | SC-7..9. | Bugs in Homebrew tools. Dev-only. |
 | E | A guest kernel bug reaches XNU's hypervisor (stage-2, GIC, vtimer). | B1k | Keep exposure minimal (no EL2, no MSI, no private ISA), track macOS updates. | Residual (§12). |
@@ -723,8 +725,8 @@ Requirements:
   setup (M22). **Done (M22, 2026-11-19):** `sandbox::lockdown` sets soft = hard = highest open
   fd + 1 + 16 just before `sandbox_init` (measured: 21 for a test guest, 22 for Linux with one
   disk, against 1,048,576 unsandboxed in this shell); `--stats` prints `rlimit core=0 nofile=<n>` (e2e
-  `rlimit_stats`, `sandbox_reboot`). The lowering is part of `--sandbox`; without it the limit
-  is left alone.
+  `rlimit_stats`, `sandbox_reboot`). The lowering is part of the sandbox lockdown (on by
+  default since D21); with `--no-sandbox` the limit is left alone.
 - **PROC-5** No environment variable changes security behaviour, except `MACVMM_LOG` (verbosity)
   and `MACVMM_CACHE` (scripts only). The `MACVMM_E2E_ALLOW_SKIP` variable is read by the test
   harness, never by `macvmm`.
@@ -874,14 +876,26 @@ Requirements:
   plus two measured allowances:
   1. `file-ioctl` restricted to `TIOCSETA`, `TIOCSETAW`, `TIOCSETAF` and `TIOCFLUSH`.
      `(deny default)` refuses `tcsetattr`/`tcflush` with `EPERM` (measured), which would leave the
-     user's terminal raw after a `--sandbox` run (PROC-1, TTY-6). `TIOCSTI` (inject input into the
+     user's terminal raw after every sandboxed run, the default one (PROC-1, TTY-6). `TIOCSTI` (inject input into the
      user's shell) stays denied (measured). Needed by: e2e `sandbox_tty_restored`;
   2. per `--net unixgram` NIC, `network-outbound` to its peer socket's path (as given and with
      the directory resolved), because M24 sends every frame with `send_to(peer)`, plus
      `file-read-metadata` on each symlink in the peer path as given (resolving `/var/folders/...`
      reads the `/var` link, which `(deny default)` refuses: measured `EPERM`). `,learn` NICs are
-     refused under `--sandbox` (the peer is unknown when the profile is written). Needed by: e2e
-     `sandbox_net` (two sandboxed VMs, ping 5/5 and 32 MiB with equal hashes).
+     refused while the sandbox is on (the peer is unknown when the profile is written; a usage
+     error, exit code 2, before any socket is bound, that names `peer=PATH` and `--no-sandbox`).
+     Needed by: e2e `sandbox_net` (two sandboxed VMs, ping 5/5 and 32 MiB with equal hashes).
+
+  **The default switch (D21, 2026-11-20) added no allowance.** With the sandbox on by default,
+  every e2e suite (`scripts/test-e2e.sh all`, 14 suites: guests, serial and trace files,
+  virtio-blk/rng/console/net, U-Boot and FreeBSD from flash, SMP, the hostile guests), and
+  `e2e_vmapple` in the `experimental-vmapple` build (6 tests, including the AVPBooter ROM read
+  in place), passed under the profile above unchanged. The reason is SBX-3's timing:
+  `HostIo::open` has already opened every file, socket and ROM the run will touch, and the
+  profile only removes what is opened *later*, by path. Two command lines changed instead of
+  the profile: `--net ...,learn` needs `--no-sandbox` (above), and
+  `scripts/sandbox-exec-fallback.sh` passes `--no-sandbox` itself (a process already inside a
+  `sandbox-exec` profile cannot apply a second one).
 
   The `[U]` "already-open fds keep working" is **`[V]`**: reads, writes, `pread`/`pwrite`,
   `F_FULLFSYNC`, a held `flock`, pipes and socket send/recv all work after the lockdown, while
@@ -900,7 +914,8 @@ Requirements:
 
   **Done (M22, 2026-11-19, all `[V]`):** the lockdown runs in `cli::run` after `HostIo::open`,
   the terminal setup and the signal and stdin threads, immediately before `vmm::run`. Measured
-  under `--sandbox --sandbox-selftest` (each prints `sandbox: open denied, socket denied, spawn
+  under `--sandbox --sandbox-selftest` (since D21, plain `--sandbox-selftest`: the sandbox is the
+  default; each prints `sandbox: open denied, socket denied, spawn
   denied` first): (1) `--cpus 4` smp-race, all markers, exit 0 (e2e `sandbox_smp`); (2)
   psci-probe with the default `--on-reset reboot`: `psci-probe: boot 1`, guest output after the
   reboot, exit 0 (`sandbox_reboot`); (3) Linux `macvmm.test=vda` (sha256 equals the host's) and
@@ -910,16 +925,35 @@ Requirements:
   (`sandbox_tty_restored`): the SINK-1 writer threads and the TTY-10 stdin thread survive the
   lockdown. Two sandboxed VMs also talk over `--net unixgram` (`sandbox_net`).
 - **SBX-4** If the sandbox cannot coexist with HVF, `--sandbox` stays opt-in and off, and this
-  document records the evidence (PLAN M22). Never ship a sandbox flag that silently does nothing:
+  document records the evidence (PLAN M22). Never ship a sandbox that silently does nothing:
   if `sandbox_init` returns an error, macvmm exits 1 unless `--sandbox=best-effort` was given.
   **Done (M22):** e2e `sandbox_fail_closed` runs macvmm under `sandbox-exec` (where a second
   `sandbox_init` fails): `--sandbox` → exit 1 before any guest instruction, `--sandbox=best-effort`
   → `running WITHOUT the sandbox` warning and exit 0. `--dry-run` is no exception (M22 review: it
   used to return before the lockdown, silently unconfined while it parsed the kernel and initrd
   headers): it now locks down, and runs the self-test, before planning the boot (e2e
-  `sandbox_dry_run`, and the dry-run case of `sandbox_fail_closed`). **Default:** HVF coexists with the sandbox on
-  SMP, reboot and blk, so by DECISIONS D15 the default is now the lead's call; until then
-  `--sandbox` stays opt-in.
+  `sandbox_dry_run`, and the dry-run case of `sandbox_fail_closed`).
+
+  **Default: on (DECISIONS D21, 2026-11-20; resolves D15).** HVF coexists with the sandbox on
+  SMP, reboot and blk (SBX-3), and every e2e suite passes with it on, so `macvmm run` now
+  locks down unless told otherwise:
+  - no flag, or `--sandbox` (kept as a no-op alias so older scripts keep working): enforce,
+    exit 1 if `sandbox_init` fails, with a message that names `--no-sandbox`;
+  - `--sandbox=best-effort`: warn and run unconfined if it fails;
+  - `--no-sandbox`: never call `sandbox_init` (for debugging, for `--net ...,learn`, and for
+    `scripts/sandbox-exec-fallback.sh`, which adds it). It is the only way to run unconfined
+    without a warning, and the user has to type it.
+  - Two of these together (`--sandbox --no-sandbox`, `--no-sandbox` twice) and
+    `--sandbox-selftest --no-sandbox` are usage errors (exit code 2). So is `--net ...,learn`
+    with the sandbox on, checked before `HostIo::open` so no socket is bound.
+
+  e2e `sandbox_default_confined` proves the default: a run with no sandbox flag passes the
+  self-test and has `RLIMIT_NOFILE` lowered, `--sandbox` is identical, `--no-sandbox` is not
+  lowered and prints no sandbox line, and the three usage errors exit 2. `sandbox_fail_closed`
+  covers the no-flag case as well as `--sandbox`, and `rlimit_stats` compares the default with
+  `--no-sandbox`. Why default on: the cost is zero for every shipped feature but `,learn`
+  (measured above), and the benefit is that the confinement protects learners who never read
+  this document, which is exactly who an opt-in flag fails to protect.
 
 ### 7.13 Post-v1 surfaces (POST)
 
@@ -1084,7 +1118,7 @@ Each target runs under `cargo run -p fuzz --release -- <target> --seconds S --se
 | `pl011`, `pl031`, `testdev`, `razwi`, `flash` | MMIO sequences | no panic; the PL011 IRQ level equals `(RIS & IMSC) != 0` |
 | `smccc` | x0–x3 + PSCI state | total; x4+ are never written; state-machine invariants (at most one ON per CPU_ON race) |
 | `ansi` | byte streams biased toward ESC, `[`, `]`, `P`, `_`, 0x9B, and UTF-8 lead bytes | the output contains no forbidden sequence (reference recognizer); bounded state; idempotent |
-| `cli` | argv vectors | the `vmm` grammar pieces (`--raw`, `mac=`, trace categories) against reference parses; the real front end (`cli_fuzz`): `sandbox::split_flags` removes only sandbox tokens outside a value position and agrees with a reference model (`--sandbox-selftest` without `--sandbox` is `Err`), `parse_run` does not panic, an appended unknown flag is always rejected, and an appended `--dry-run` changes only `dry_run`. (`parse_run`'s `Ok` already implies `validate`, so that is not counted as a check.) |
+| `cli` | argv vectors | the `vmm` grammar pieces (`--raw`, `mac=`, trace categories) against reference parses; the real front end (`cli_fuzz`): `sandbox::split_flags` removes only sandbox tokens outside a value position and agrees with a reference model (enforce when no flag is given; two mode flags, or `--sandbox-selftest` with `--no-sandbox`, are `Err`), `parse_run` does not panic, an appended unknown flag is always rejected, and an appended `--dry-run` changes only `dry_run`. (`parse_run`'s `Ok` already implies `validate`, so that is not counted as a check.) |
 | `tar`, `cpio`, `zboot` (xtask) | archive bytes | the extraction root contains everything written (a canary outside is untouched) |
 | post-v1: `snapshot`, `gdb_packet`, `api_json`, `net` | — | caps and no panic |
 
@@ -1290,15 +1324,15 @@ regress:
 | RR6 | **Advisory locks** (flock) don't stop non-macvmm writers or work over network filesystems. | Documented (BLK-8). The guest can only corrupt its own disk. | — |
 | RR7 | **Upstream compromise of a pinned release** (Alpine, FreeBSD, U-Boot). | The pin gives reproducibility. The VMM treats the guest as hostile anyway (A1). Host tools parse but never execute it (SC-4). | Upstream advisories. |
 | RR8 | **Homebrew dev tools** (`dtc`, `e2fsprogs`, `squashfs`, `xz`) are unpinned. | Dev-only and optional, with version floors (SC-8). | — |
-| RR9 | **Without `--sandbox`, a compromised VMM process equals the user account** (no confinement). M22: `--sandbox` exists and works with SMP, reboot and blk `[V]`, but stays opt-in until the lead decides the default (DECISIONS D15). Even with it, the process keeps the guest's RAM, its open disks and output files, and the hypervisor (SBX-1 "process split" is the post-v1 answer). | It is a teaching project, and Rust plus §7 reduce the likelihood. | D15; the post-v1 process split. |
-| RR10 | **`sandbox_init` may break in any macOS release** (deprecated, undocumented string mode `[H]`; works on 27.2 `[V]`). | Fail closed (`--sandbox` exits 1, SBX-4, e2e `sandbox_fail_closed`) and `scripts/sandbox-exec-fallback.sh` (e2e `sandbox_exec_fallback`), which is slightly weaker than `--sandbox` (SBX-1: dyld's system reads and path-lookup metadata on the user's paths stay allowed for the whole run). | Run `scripts/test-e2e.sh sandbox` on each macOS major. |
+| RR9 | **With `--no-sandbox`, a compromised VMM process equals the user account** (no confinement). M22: the sandbox works with SMP, reboot and blk `[V]`; since D21 (2026-11-20) it is on by default, so this needs the user to type `--no-sandbox` (or to use `--sandbox=best-effort` on a macOS where `sandbox_init` fails, which warns). Even with it, the process keeps the guest's RAM, its open disks and output files, and the hypervisor (SBX-1 "process split" is the post-v1 answer). | Opting out is explicit and documented as a debugging aid; Rust plus §7 reduce the likelihood. | The post-v1 process split. |
+| RR10 | **`sandbox_init` may break in any macOS release** (deprecated, undocumented string mode `[H]`; works on 27.2 `[V]`). Since D21 that would make every default `macvmm run` exit 1. | Fail closed (the default run exits 1 and names `--no-sandbox`, SBX-4, e2e `sandbox_fail_closed`) and `scripts/sandbox-exec-fallback.sh` (e2e `sandbox_exec_fallback`), which is slightly weaker than the built-in sandbox (SBX-1: dyld's system reads and path-lookup metadata on the user's paths stay allowed for the whole run). | Run `scripts/test-e2e.sh sandbox` on each macOS major. |
 | RR11 | **The sandbox profile allows four termios ioctls (`TIOCSETA*`, `TIOCFLUSH`) on any fd the process holds.** A compromised VMM can change the settings of the user's terminal (for example turn echo off) until it exits. | Needed to restore the terminal (PROC-1); the dangerous ioctl, `TIOCSTI`, stays denied `[V]`, and the shell's own `stty sane` undoes the rest. | — |
-| RR12 | **`--net ...,learn` cannot be sandboxed** (refused with `--sandbox`), and a sandboxed NIC may `send_to` its configured peer path, which the user chose. | Learning mode is a convenience for local experiments; `peer=` is the documented default (NET-2). | — |
+| RR12 | **`--net ...,learn` cannot be sandboxed** (a usage error unless `--no-sandbox`, since the sandbox is the default), and a sandboxed NIC may `send_to` its configured peer path, which the user chose. | Learning mode is a convenience for local experiments; `peer=` is the documented default (NET-2). | — |
 | RR13 | **The fuzzers are blind (no coverage feedback)**: deep states in `blk`, `insn` and `ansi` may stay unexplored. | The planted-bug self-test (TEST-4, 4/4) shows the targets' invariants catch the bug classes we care about; the targets are exported as `fuzz_<target>` for an optional libFuzzer wrapper (TEST-5, not built here). | Run TEST-5 before a release. |
 | RR14 | **Cargo feature unification**: `crates/fuzz` depends on `vmm` with `test-util` (which compiles `VecMemory` and the FDT reader). A `cargo build [--release] --workspace` builds the shipped `macvmm` with those modules linked in, though unreachable from `run` (FDT-1 is about reachability, and the audit rule `fdt-reader-unreachable` still holds). A **plain `cargo build`** at the root did the same until the M22 review, because every member was a default member. | `default-members` in the root `Cargo.toml` leaves `crates/fuzz` out, so a plain `cargo build` (the one the primers use) and `-p macvmm` do not unify with it; `scripts/check.sh` fails if either shows `vmm` feature `test-util` (`cargo tree -e normal,features -i vmm`). Only `--workspace` still unifies. | M23 builds the release binary with `-p macvmm`. |
 
 **Residual-risk review (M22, 2026-11-19).** RR1–RR8 are unchanged: none of them depends on M22.
-RR9 shrinks from "always" to "unless `--sandbox`": the measured lockdown removes path-based file
+RR9 shrinks from "always" to "unless `--sandbox`" (and, since D21, to "only with `--no-sandbox`"): the measured lockdown removes path-based file
 access, network and process creation from a compromised VMM (e2e `sandbox` suite), leaving the
 assets that are inherently its own (guest RAM, the opened disks and sinks, the terminal's
 termios via RR11). RR10 is now covered by a failing-closed flag and a tested fallback. RR11–RR14

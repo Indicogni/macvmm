@@ -47,20 +47,21 @@ timeout = 600
 expect_exit_code = 0
 serial = "expected/bughunt-3.txt"
 
-# The sandbox self-test: after the lockdown an open, a socket connect and a spawn are each
-# refused, then the guest runs to completion. --stats shows the core-dump limit.
+# The sandbox self-test, with no sandbox flag (the sandbox is on by default): after the lockdown
+# an open, a socket connect and a spawn are each refused, then the guest runs to completion.
+# --stats shows the core-dump limit.
 [[run]]
 name = "sandbox-check"
 guest = "hello"
-args = ["run", "--mem", "64M", "--sandbox", "--sandbox-selftest", "--stats", "--kernel", "{guest}", "--timeout", "10"]
+args = ["run", "--mem", "64M", "--sandbox-selftest", "--stats", "--kernel", "{guest}", "--timeout", "10"]
 expect_exit_code = 0
 serial = "expected/sandbox-check.txt"
 
-# RLIMIT_CORE is 0 without --sandbox too: it is set first thing in main.
+# RLIMIT_CORE is 0 with --no-sandbox too: it is set first thing in main.
 [[run]]
 name = "rlimit-check"
 guest = "hello"
-args = ["run", "--mem", "64M", "--stats", "--kernel", "{guest}", "--timeout", "10"]
+args = ["run", "--mem", "64M", "--no-sandbox", "--stats", "--kernel", "{guest}", "--timeout", "10"]
 expect_exit_code = 0
 serial = "expected/rlimit-check.txt"
 
@@ -171,5 +172,5 @@ predict = true
 [hints]
 conceptual = "Three questions, three tools. The fuzzer asks whether the parsers have a bug: it needs replayable randomness (a seeded PRNG), mutations that know the ring's shape, and invariants that judge every input, not only panics. The hostile guest asks whether the whole VMM survives a guest attacking on purpose: every misdeed must become a guest-visible answer or a defined stop, never exit 1. The sandbox asks what an attacker gets if both missed: after set-up, no new file, socket or process."
 spec = "virtio 1.2 section 2.7 (the split ring the virtqueue target builds and damages) and 2.7.5.3 (indirect descriptors); ECMA-48 section 5.6 (control strings) for the output filter; man 2 setrlimit (RLIMIT_CORE, soft and hard limits); the macos-sandbox primer for sandbox_init and the deny-default profile."
-pseudocode = "fuzz loop: for i in 0..: rng = derive(seed, i); input = target.seed(rng); repeat 1..8 times: if rng.coin() then structural mutation else byte flip; verdict = target.run(input); if a panic or an invariant fails: save input (0600, never overwrite), print FAILURE with i and the seed, exit 1. Watchdog thread: an iteration over 2 s saves the input, prints HANG, exits 1. Virtqueue invariants: reads per pop <= 2N + 1; each descriptor read once; every validated buffer inside one region (u128 sum); every device write inside a writable buffer or the used ring. main: setrlimit(CORE, 0/0) first; set-up; then sandbox_init(profile) if --sandbox; never fork or exec."
+pseudocode = "fuzz loop: for i in 0..: rng = derive(seed, i); input = target.seed(rng); repeat 1..8 times: if rng.coin() then structural mutation else byte flip; verdict = target.run(input); if a panic or an invariant fails: save input (0600, never overwrite), print FAILURE with i and the seed, exit 1. Watchdog thread: an iteration over 2 s saves the input, prints HANG, exits 1. Virtqueue invariants: reads per pop <= 2N + 1; each descriptor read once; every validated buffer inside one region (u128 sum); every device write inside a writable buffer or the used ring. main: setrlimit(CORE, 0/0) first; set-up; then sandbox_init(profile) unless --no-sandbox (on by default); never fork or exec."
 anchor = "crates/fuzz/src/main.rs (anchor fuzz_loop), crates/fuzz/src/rng.rs (fuzz_rng_next, fuzz_rng_derive), crates/fuzz/src/targets/virtqueue.rs (fuzz_virtqueue_target, fuzz_read_once), crates/fuzz/src/targets/mod.rs (fuzz_in_one_region), crates/macvmm/src/sandbox.rs (sandbox_selftest)."

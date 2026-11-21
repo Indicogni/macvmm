@@ -426,11 +426,12 @@ suite, which Chapter 25 walks through.
 | Held fds keep working; checks happen at acquisition | Documented in `sandbox(7)`, and checked on a real Mac for the cases above |
 | There is no public SBPL reference | true; Apple's own profiles in `/System/Library/Sandbox/Profiles` (553 files here) are the best reading |
 | HVF works under an exec-time `(deny default)` profile with no `mach-lookup` or `iokit-open` | Checked on a real Mac by macvmm's tests, macOS 27.2.1 |
-| HVF keeps working after a *mid-process* `sandbox_init`, including the in-kernel GIC, 4 vCPUs created after it, a full reboot and disk I/O | Checked on a real Mac by macvmm's tests, macOS 27.2.1 (`macvmm run --sandbox`) |
+| HVF keeps working after a *mid-process* `sandbox_init`, including the in-kernel GIC, 4 vCPUs created after it, a full reboot and disk I/O | Checked on a real Mac by macvmm's tests, macOS 27.2.1 (`macvmm run`, sandboxed by default) |
 
-This is why macvmm's sandbox is opt-in (`--sandbox`), fails closed (it exits if `sandbox_init`
-returns an error, unless you ask for `--sandbox=best-effort`), and has a `sandbox-exec` wrapper as
-its fallback.
+This is why macvmm's sandbox, although it is on by default (`--no-sandbox` turns it off, for
+debugging), fails closed (it exits if `sandbox_init` returns an error, unless you ask for
+`--sandbox=best-effort`), and has a `sandbox-exec` wrapper as its fallback. The checks in the
+table are what made it safe to switch on by default: every feature macvmm has was tested under it.
 
 > **Production note.** Shipping Mac apps use **App Sandbox**: an entitlement,
 > `com.apple.security.app-sandbox`, which makes the system apply a fixed, documented profile and
@@ -567,7 +568,7 @@ child's first `malloc` waits forever. That is why POSIX allows the child only
 **async-signal-safe** calls, a short list of functions that take no such locks, until it
 `exec`s. macvmm has a thread per vCPU, so `fork` there is a trap. Second, a child process is a fresh place for an attacker to run code with your rights,
 outside whatever we confined. Third, the lockdown denies `process-fork` and `process-exec*`
-anyway, so a run path that needed them would break under `--sandbox`. The only subcommand that
+anyway, so a run path that needed them would break under the default sandbox. The only subcommand that
 starts a child is `macvmm doctor`, a diagnostic command the course introduces early to check
 that your build is set up and signed correctly. It runs `/usr/bin/codesign` by absolute path, with no
 shell, and creates no VM.
@@ -622,7 +623,8 @@ everything start-up needs; `sandbox_init` after set-up can deny all of it.
 ## Where this shows up in macvmm
 
 - **Chapter 25, [`security`](../../production/security/)** (requires this primer): you set
-  `RLIMIT_CORE = 0`, apply the lockdown with `--sandbox`, run `--sandbox-selftest` (probes for
+  `RLIMIT_CORE = 0`, apply the lockdown on every run unless `--no-sandbox` is given, run
+  `--sandbox-selftest` (probes for
   `open`, `connect` (or `sendto`) and spawn, not `socket`, which succeeds), and measure which
   operations the profile denies.
 - **Chapter 09, [`mmio-pl011`](../../devices/mmio-pl011/)**: `--serial file:F` is opened with

@@ -69,7 +69,7 @@ linking chapters/primers. Never use a concept before it is taught or linked.
   check overflow (`checked_add`), never trust lengths, cap descriptor-chain lengths, detect loops.
 - Downloads: HTTPS only, sha256-pinned in a manifest, stored under `~/.cache/macvmm` or `./.cache`
   (gitignored), never executed on the host. Scripts are `set -euo pipefail`, quote everything.
-- Minimal entitlements; no networking entitlement by default (this alone is NOT confinement — see `--sandbox`). Guest output is filtered (AnsiFilter) on every sink, not only TTYs. Document the threat model in `docs/security/`.
+- Minimal entitlements; no networking entitlement by default (this alone is NOT confinement — the self-applied sandbox is, and it is on by default; `--no-sandbox` opts out for debugging, D21). Guest output is filtered (AnsiFilter) on every sink, not only TTYs. Document the threat model in `docs/security/`.
 - No secrets, no personal data, no telemetry.
 
 ## Quality bar

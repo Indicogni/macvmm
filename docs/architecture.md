@@ -725,7 +725,7 @@ pub struct VmConfig { machine, mem_bytes, cpus, boot: BootSource, disks: Vec<Dis
     console: Option<SinkSpec>, serial: SinkSpec, trace: Option<TraceSpec>, dtb_out: Option<PathBuf>,
     on_reset: ResetAction, timeout: Option<Duration>, unhandled_mmio: MmioPolicy,
     debug_hvc: DebugHvc /* Auto | On | Off, HC-2 */, irqchip: IrqChip /* InKernelGicV3 | None, §9.1 */,
-    testdev: bool, stats: bool, dry_run: bool, sandbox: SandboxMode /* Off | On | BestEffort, M22 */,
+    testdev: bool, stats: bool, dry_run: bool, sandbox: SandboxMode /* Off | On (default, D21) | BestEffort, M22 */,
     net: Vec<NetSpec> /* M24 */, /* post-v1: gdb, snapshot_to, restore */ }
 pub struct SinkSpec { pub kind: SinkKind /* Stdio | File(PathBuf) | None */,
                       pub policy: FilterPolicy /* Safe (default) | Strict | Raw */, pub max_bytes: u64 }
@@ -1381,7 +1381,7 @@ sequenceDiagram
   U->>C: macvmm run --kernel Image --initrd initrd --cpus 2
   C->>C: umask 077, RLIMIT_CORE 0, argv to VmConfig, validate
   C->>C: HostIo open (read inputs once, open and lock disks, open sinks O_NOFOLLOW 0600, inode clash check)
-  C->>C: tty raw (if a TTY), signal pipe, optional sandbox lockdown (M22)
+  C->>C: tty raw (if a TTY), signal pipe, sandbox lockdown (M22; default on, D21)
   C->>R: run(cfg, host_io)
   R->>MB: build(cfg, host_io, generation)
   MB->>H: Capabilities probe (max IPA, max vCPUs)
@@ -1482,7 +1482,7 @@ overflow. Every path flag follows the path policy of §21.3.
 | `--testdev` | map the echo device at `0x0b00_0000` | M4 |
 | `--debug-hvc` / `--no-debug-hvc` | force the `0xC600_*` calls on or off. Default: on for ELF and `--raw`, off for Image, `--bios`, vmapple (HC-2) | M5 |
 | `--irqchip none` (hidden) | the no-GIC teaching mode of §9.1; ELF/`--raw` and `--cpus 1` only | M8 |
-| `--sandbox[=best-effort]` | post-setup lockdown (§21.6). Plain `--sandbox` fails closed (exit 1) if `sandbox_init` fails. Default decided in M22 (PLAN D15). | M22 |
+| `--no-sandbox`, `--sandbox[=best-effort]` | post-setup lockdown (§21.6), **on by default** (DECISIONS D21). The default fails closed (exit 1) if `sandbox_init` fails; `--sandbox` is a no-op alias kept for older scripts; `best-effort` warns and runs unconfined; `--no-sandbox` opts out (debugging, `--net ...,learn`). Two of them together is a usage error (exit 2). | M22, D21 |
 | `--sandbox-selftest` (hidden) | after lockdown, probe that `open`, `socket` and `posix_spawn` fail, then boot normally | M22 |
 | `--stats` | print exit counts and exec/WFI time at stop | M8 |
 | `--log error\|warn\|info\|debug\|trace` | also `MACVMM_LOG` | M0 |
@@ -1997,8 +1997,9 @@ need: no EL2 guests, no MSI frame without PCI, no private ISA, authenticated sna
   `sandbox.rs` with its reason. Mechanism order: `sandbox_init` with the SBPL string
   mid-process (undocumented string mode `[H]`), else the `sandbox-exec -p` wrapper, which is the
   form already shown to coexist with HVF. vCPU creation and the reboot path (`hv_vm_create`, `hv_vm_allocate`,
-  `hv_gic_create`) run after lockdown, so the self-test MUST cover them. Plain `--sandbox` fails
-  closed; a sandbox flag never silently does nothing.
+  `hv_gic_create`) run after lockdown, so the self-test MUST cover them. The lockdown is on by
+  default (DECISIONS D21) and fails closed; only `--no-sandbox` runs unconfined silently, and
+  the sandbox is never skipped without the user asking.
 
 ### 21.7 Requirement-to-module map
 

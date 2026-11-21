@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 # Run macvmm under an exec-time sandbox (PLAN M22, threat model SBX-1): the FALLBACK for a macOS
-# release where `macvmm run --sandbox` (a mid-process `sandbox_init` with SBPL text, an
-# undocumented mode) stops working.
+# release where macvmm's own sandbox (on by default: a mid-process `sandbox_init` with SBPL text,
+# an undocumented mode) stops working.
 #
 #   scripts/sandbox-exec-fallback.sh [--read PATH]... [--write PATH]... -- MACVMM run ARGS...
 #
 #   --read PATH   an input macvmm opens read-only (--kernel, --initrd, --raw, --bios, --disk F,ro)
 #   --write PATH  a file macvmm opens for writing (--disk F, --serial file:, --trace, --dtb-out)
 #
-# Do NOT pass --sandbox to macvmm here: a process that is already sandboxed cannot call
-# sandbox_init again, so `--sandbox` would (correctly) exit 1.
+# The wrapper adds --no-sandbox after `run`: a process that is already sandboxed cannot call
+# sandbox_init again, so macvmm's default sandbox would (correctly) exit 1. Do not pass any of
+# --sandbox, --sandbox=best-effort or --no-sandbox yourself.
 #
-# How it differs from --sandbox. `sandbox-exec -p PROFILE -D NAME=VALUE... CMD` applies the
+# How it differs from macvmm's own sandbox. `sandbox-exec -p PROFILE -D NAME=VALUE... CMD` applies the
 # profile from exec onward, so it must also allow what macvmm does *before* its own lockdown:
 # dyld loading the system libraries and the binary itself, and HostIo opening the user's files.
 # Each user path is passed as a `-D` parameter and referenced as `(param "R0")`, never pasted
@@ -19,9 +20,9 @@
 # `file-read-metadata` on the directories (and symlinks such as /var -> private/var) along each
 # path, so the profile allows it on exactly those: every ancestor of the binary, of each --read
 # and --write path, and of the working directory, both as given and as resolved. A stat of any
-# other host path (~/.ssh/..., say) is denied, as under --sandbox. Everything else is the M22
+# other host path (~/.ssh/..., say) is denied, as under macvmm's own sandbox. Everything else is the M22
 # lockdown profile: no network, no process creation (beyond this one exec), no mach-lookup, no
-# IOKit (HVF needs none: threat model §13). The two remaining differences from --sandbox are
+# IOKit (HVF needs none: threat model §13). The two remaining differences from it are
 # the read allowances dyld and HostIo need before macvmm runs (they last for the whole run) and
 # the per-path allowances above (threat model SBX-1, RR10). The `sandbox-exec` tool is
 # deprecated but still ships as /usr/bin/sandbox-exec on macOS 27.2.
@@ -38,14 +39,14 @@ while (( $# > 0 )); do
     --read) reads+=("${2:?--read needs a path}"); shift 2 ;;
     --write) writes+=("${2:?--write needs a path}"); shift 2 ;;
     --) shift; break ;;
-    -h|--help) sed -n '2,29p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,28p' "$0"; exit 0 ;;
     *) die "unknown option $1 (the macvmm command line goes after --)" ;;
   esac
 done
 (( $# >= 1 )) || die "usage: scripts/sandbox-exec-fallback.sh [--read P]... [--write P]... -- MACVMM run ..."
 [[ -x /usr/bin/sandbox-exec ]] || die "/usr/bin/sandbox-exec is missing on this macOS"
 for a in "$@"; do
-  [[ "$a" != --sandbox* ]] || die "do not pass $a: this wrapper is the sandbox"
+  [[ "$a" != --sandbox* && "$a" != --no-sandbox* ]] || die "do not pass $a: this wrapper is the sandbox"
 done
 
 # Resolve to physical absolute paths: the kernel checks the real path of every file.
@@ -67,6 +68,18 @@ logical() {
 given_bin="$(logical "$1")"
 bin="$(physical_file "$1")"
 shift
+# The macvmm arguments with --no-sandbox right after the `run` subcommand (header comment);
+# global flags such as `--log LEVEL` may come before it.
+args=()
+added=0
+for a in "$@"; do
+  args+=("$a")
+  if (( added == 0 )) && [[ "$a" == run ]]; then
+    args+=(--no-sandbox)
+    added=1
+  fi
+done
+(( added == 1 )) || die "the macvmm command line must contain the run subcommand"
 
 # Every path whose metadata a lookup may read (header comment), deduplicated.
 meta=()
@@ -130,4 +143,4 @@ done
 profile+='(deny network*)
 (deny process-fork)
 '
-exec /usr/bin/sandbox-exec -p "$profile" "${params[@]}" -- "$bin" "$@"
+exec /usr/bin/sandbox-exec -p "$profile" "${params[@]}" -- "$bin" "${args[@]}"

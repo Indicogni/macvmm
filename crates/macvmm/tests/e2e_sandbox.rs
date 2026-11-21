@@ -5,10 +5,14 @@
 //! scripts/test-e2e.sh sandbox
 //! ```
 //!
-//! **What it proves.** `macvmm run --sandbox --sandbox-selftest` locks the process down after
-//! `HostIo::open` and before the first guest instruction, prints
-//! `sandbox: open denied, socket denied, spawn denied` (SBX-3 item 4), and then everything a VM
-//! does after that point still works under the profile (SBX-3 items 1–3 and the ch18 reboot):
+//! **What it proves.** The sandbox is on by default: `macvmm run --sandbox-selftest` (no other
+//! sandbox flag) locks the process down after `HostIo::open` and before the first guest
+//! instruction, prints `sandbox: open denied, socket denied, spawn denied` (SBX-3 item 4), and
+//! then everything a VM does after that point still works under the profile (SBX-3 items 1–3
+//! and the ch18 reboot):
+//! - `sandbox_default_confined`: a run with no sandbox flag is confined, `--sandbox` is the
+//!   same run, `--no-sandbox` is not confined, and the contradictory or unconfinable command
+//!   lines are usage errors (exit 2);
 //! - `sandbox_smp`: four vCPUs created after the lockdown race CPU_ON (smp-race);
 //! - `sandbox_reboot`: an in-process reboot (`hv_vm_create`, `hv_vm_allocate`,
 //!   `hv_gic_create` again) and guest output after it (psci-probe, SINK-1 writer threads);
@@ -19,13 +23,14 @@
 //! - `sandbox_tty_restored`: the exit path can still restore the terminal (`stty -g` identical:
 //!   the profile allows exactly the `tcsetattr`/`tcflush` ioctls, PROC-1, TTY-6);
 //! - `sandbox_fail_closed`: if `sandbox_init` fails (here: macvmm already runs under
-//!   `sandbox-exec`, which forbids a second profile), `--sandbox` exits 1 and
-//!   `--sandbox=best-effort` warns and runs (SBX-4), and `--dry-run` fails closed as well;
+//!   `sandbox-exec`, which forbids a second profile), the default run and `--sandbox` exit 1,
+//!   `--sandbox=best-effort` warns and runs, `--no-sandbox` runs (SBX-4), and `--dry-run`
+//!   fails closed as well;
 //! - `sandbox_dry_run`: `--dry-run` (which parses the kernel) runs confined, self-test included;
 //! - `sandbox_exec_fallback`: `scripts/sandbox-exec-fallback.sh` runs a guest with a reboot and
 //!   a serial file under an exec-time `(deny default)` profile (SBX-1);
-//! - `rlimit_stats`: `--stats` prints `rlimit core=0 nofile=<n>`, and `--sandbox` lowers `n`
-//!   (PROC-4);
+//! - `rlimit_stats`: `--stats` prints `rlimit core=0 nofile=<n>`, and the default sandbox
+//!   lowers `n` below the `--no-sandbox` value (PROC-4);
 //! - `sandbox_net`: two sandboxed VMs exchange 32 MiB over `--net unixgram` (the profile's
 //!   per-peer `network-outbound` allowance, SBX-2).
 //!
@@ -69,7 +74,6 @@ fn sandbox_smp() {
     let o = run(
         &[
             "run",
-            "--sandbox",
             "--sandbox-selftest",
             "--cpus",
             "4",
@@ -92,7 +96,6 @@ fn sandbox_reboot() {
     let o = run(
         &[
             "run",
-            "--sandbox",
             "--sandbox-selftest",
             "--kernel",
             &guest("psci-probe"),
@@ -152,7 +155,6 @@ fn linux_blk(disk: &Path, case: &str) -> Option<support::Outcome> {
     Some(run(
         &[
             "run",
-            "--sandbox",
             "--sandbox-selftest",
             "--kernel",
             &kernel,
@@ -207,7 +209,7 @@ fn sandbox_blk_flush() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// The ch18 rootfs reboot test (`e2e_rootfs` `linux_rootfs_persist`, M15) under `--sandbox`:
+/// The ch18 rootfs reboot test (`e2e_rootfs` `linux_rootfs_persist`, M15) under the sandbox:
 /// boot 1 writes a file on ext4 and resets, boot 2 of the same process verifies it.
 #[test]
 fn sandbox_rootfs_persist() {
@@ -239,7 +241,6 @@ fn sandbox_rootfs_persist() {
     let o = run(
         &[
             "run",
-            "--sandbox",
             "--sandbox-selftest",
             "--kernel",
             &kernel,
@@ -293,16 +294,7 @@ fn sandbox_ctrl_a_x() {
     std::fs::write(&spin, [0x00, 0x00, 0x00, 0x14]).unwrap(); // `b .`
     let raw = format!("{}@0x40080000", spin.display());
     let mut r = Running::spawn(
-        &[
-            "run",
-            "--sandbox",
-            "--mem",
-            "64M",
-            "--raw",
-            &raw,
-            "--timeout",
-            "10",
-        ],
+        &["run", "--mem", "64M", "--raw", &raw, "--timeout", "10"],
         true,
     );
     std::thread::sleep(Duration::from_millis(500));
@@ -324,7 +316,7 @@ fn sandbox_ctrl_a_x() {
 #[test]
 fn sandbox_tty_restored() {
     let shell = format!(
-        "stty -g; {} run --sandbox --mem 64M --kernel {} --timeout 10; echo \"rc=$?\"; stty -g",
+        "stty -g; {} run --mem 64M --kernel {} --timeout 10; echo \"rc=$?\"; stty -g",
         sh_quote(&macvmm().to_string_lossy()),
         sh_quote(&guest("tty-hygiene"))
     );
@@ -341,7 +333,7 @@ fn sandbox_tty_restored() {
     assert_eq!(
         stty[0],
         stty[1],
-        "stty -g changed under --sandbox\n{}",
+        "stty -g changed under the sandbox\n{}",
         o.dump()
     );
 }
@@ -359,18 +351,24 @@ fn under_sandbox_exec(args: &[&str]) -> std::process::Output {
         .unwrap()
 }
 
-/// SBX-4: a sandbox flag never silently does nothing.
+/// SBX-4: the sandbox is never silently skipped. Only `--no-sandbox` runs unconfined.
 #[test]
 fn sandbox_fail_closed() {
     let hello = guest("hello");
-    let o = under_sandbox_exec(&["run", "--sandbox", "--kernel", &hello, "--timeout", "5"]);
-    let err = String::from_utf8_lossy(&o.stderr);
-    assert_eq!(o.status.code(), Some(1), "{err}");
-    assert!(err.contains("macvmm: --sandbox: sandbox_init:"), "{err}");
-    assert!(
-        !String::from_utf8_lossy(&o.stdout).contains("hello from guest"),
-        "the guest ran although the sandbox failed"
-    );
+    for flags in [&[][..], &["--sandbox"][..]] {
+        let mut args = vec!["run"];
+        args.extend_from_slice(flags);
+        args.extend_from_slice(&["--kernel", &hello, "--timeout", "5"]);
+        let o = under_sandbox_exec(&args);
+        let err = String::from_utf8_lossy(&o.stderr);
+        assert_eq!(o.status.code(), Some(1), "{flags:?}: {err}");
+        assert!(err.contains("macvmm: sandbox: sandbox_init:"), "{err}");
+        assert!(err.contains("--no-sandbox"), "the opt-out is named: {err}");
+        assert!(
+            !String::from_utf8_lossy(&o.stdout).contains("hello from guest"),
+            "{flags:?}: the guest ran although the sandbox failed"
+        );
+    }
     let o = under_sandbox_exec(&[
         "run",
         "--sandbox=best-effort",
@@ -383,22 +381,101 @@ fn sandbox_fail_closed() {
     assert_eq!(o.status.code(), Some(0), "{err}");
     assert!(err.contains("running WITHOUT the sandbox"), "{err}");
     assert!(String::from_utf8_lossy(&o.stdout).contains("hello from guest"));
+    // `--no-sandbox` never calls `sandbox_init`, so it runs inside another sandbox silently.
+    let o = under_sandbox_exec(&["run", "--no-sandbox", "--kernel", &hello, "--timeout", "5"]);
+    let err = String::from_utf8_lossy(&o.stderr);
+    assert_eq!(o.status.code(), Some(0), "{err}");
+    assert!(!err.contains("sandbox"), "{err}");
+    assert!(String::from_utf8_lossy(&o.stdout).contains("hello from guest"));
     // Review fix: `--dry-run` is no exception; it parses the kernel, so it fails closed too.
-    let o = under_sandbox_exec(&["run", "--sandbox", "--dry-run", "--kernel", &hello]);
+    let o = under_sandbox_exec(&["run", "--dry-run", "--kernel", &hello]);
     let err = String::from_utf8_lossy(&o.stderr);
     assert_eq!(o.status.code(), Some(1), "{err}");
-    assert!(err.contains("macvmm: --sandbox: sandbox_init:"), "{err}");
+    assert!(err.contains("macvmm: sandbox: sandbox_init:"), "{err}");
     assert!(o.stdout.is_empty(), "a boot plan was printed unconfined");
 }
 
-/// SBX-4 (review fix): `--dry-run` parses the untrusted kernel and initrd headers, so
-/// `--sandbox` confines it as well, and `--sandbox-selftest` reports, before the plan is printed.
+/// D21: with no sandbox flag the run is confined (the self-test passes and `RLIMIT_NOFILE` is
+/// lowered), `--sandbox` is the same run, and `--no-sandbox` is not confined. Contradictory
+/// flags, a self-test without a sandbox and a `,learn` NIC under the default sandbox are usage
+/// errors (exit 2), refused before any file or socket is opened.
+#[test]
+fn sandbox_default_confined() {
+    let hello = guest("hello");
+    for flags in [&[][..], &["--sandbox"][..]] {
+        let mut args = vec!["run"];
+        args.extend_from_slice(flags);
+        args.extend_from_slice(&[
+            "--sandbox-selftest",
+            "--kernel",
+            &hello,
+            "--timeout",
+            "5",
+            "--stats",
+        ]);
+        let o = run(&args, T10);
+        expect_code("sandbox_default_confined", &o, 0);
+        expect("hello", &o);
+        markers(&o, SELFTEST);
+        assert!((19..=64).contains(&nofile(&o)), "{flags:?}\n{}", o.dump());
+    }
+    let open = run(
+        &[
+            "run",
+            "--no-sandbox",
+            "--kernel",
+            &hello,
+            "--timeout",
+            "5",
+            "--stats",
+        ],
+        T10,
+    );
+    expect_code("sandbox_default_confined (--no-sandbox)", &open, 0);
+    expect("hello", &open);
+    assert!(!open.stderr.contains("sandbox:"), "{}", open.dump());
+    assert!(nofile(&open) > 64, "{}", open.dump());
+    let t = scratch("sandbox_default_confined");
+    std::fs::set_permissions(&t, std::os::unix::fs::PermissionsExt::from_mode(0o700)).unwrap();
+    let learn = format!("unixgram:{},learn", t.join("a.sock").display());
+    for (args, want) in [
+        (
+            vec!["run", "--sandbox", "--no-sandbox", "--kernel", &hello],
+            "macvmm: --sandbox and --no-sandbox cannot be used together",
+        ),
+        (
+            vec![
+                "run",
+                "--no-sandbox",
+                "--sandbox-selftest",
+                "--kernel",
+                &hello,
+            ],
+            "macvmm: --sandbox-selftest cannot be used with --no-sandbox",
+        ),
+        (
+            vec!["run", "--kernel", &hello, "--net", &learn],
+            "macvmm: --net ...,learn cannot run under the sandbox",
+        ),
+    ] {
+        let o = run(&args, T10);
+        expect_code("sandbox_default_confined (usage)", &o, 2);
+        assert!(o.stderr.contains(want), "{args:?}\n{}", o.dump());
+    }
+    assert!(
+        !t.join("a.sock").exists(),
+        "the learn NIC's socket was bound before the usage error"
+    );
+    let _ = std::fs::remove_dir_all(&t);
+}
+
+/// SBX-4 (review fix): `--dry-run` parses the untrusted kernel and initrd headers, so the
+/// sandbox confines it as well, and `--sandbox-selftest` reports, before the plan is printed.
 #[test]
 fn sandbox_dry_run() {
     let o = run(
         &[
             "run",
-            "--sandbox",
             "--sandbox-selftest",
             "--dry-run",
             "--kernel",
@@ -441,20 +518,15 @@ fn sandbox_exec_fallback() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// PROC-4: `RLIMIT_CORE` is 0 always; `--sandbox` lowers `RLIMIT_NOFILE` to the fds in use
-/// plus 16.
+/// PROC-4: `RLIMIT_CORE` is 0 always; the default sandbox lowers `RLIMIT_NOFILE` to the fds in
+/// use plus 16, and `--no-sandbox` leaves it alone.
 #[test]
 fn rlimit_stats() {
     let hello = guest("hello");
     let plain = run(
-        &["run", "--kernel", &hello, "--timeout", "5", "--stats"],
-        T10,
-    );
-    expect_code("rlimit_stats", &plain, 0);
-    let boxed = run(
         &[
             "run",
-            "--sandbox",
+            "--no-sandbox",
             "--kernel",
             &hello,
             "--timeout",
@@ -463,9 +535,14 @@ fn rlimit_stats() {
         ],
         T10,
     );
+    expect_code("rlimit_stats", &plain, 0);
+    let boxed = run(
+        &["run", "--kernel", &hello, "--timeout", "5", "--stats"],
+        T10,
+    );
     expect_code("rlimit_stats", &boxed, 0);
     let (p, b) = (nofile(&plain), nofile(&boxed));
-    assert!(b < p, "nofile {b} under --sandbox, {p} without");
+    assert!(b < p, "nofile {b} under the sandbox, {p} with --no-sandbox");
     assert!((19..=64).contains(&b), "nofile {b}\n{}", boxed.dump());
 }
 
@@ -493,7 +570,6 @@ fn sandbox_net() {
             format!("console=ttyAMA0 earlycon=pl011,0x09000000 panic=-1 macvmm.test={case}");
         [
             "run",
-            "--sandbox",
             "--sandbox-selftest",
             "--kernel",
             &kernel,

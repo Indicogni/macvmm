@@ -3,7 +3,7 @@
 $ course/checkpoints/25/bughunt.sh <repo> <repo> {out} 1 540
 exit: 0
 --- stdout ---
-bughunt: plant 1 (missing checked_add) found after 1s
+bughunt: plant 1 (missing checked_add) found after 0s
     fuzz virtqueue: FAILURE at iteration 250 (seed 1): validated buffer 0x4002e6e9+0x5193a is not inside one RAM region (VQ-4)
 
 --- stderr ---

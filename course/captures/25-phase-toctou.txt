@@ -5,107 +5,188 @@ exit: 0
 --- stdout ---
 hostile-smp: 2 cpus, 2 virtio devices, RAM ends at 0x44000000
 hostile-smp: canary 0x42e00000+0x1000000 hash 0x6300ec9a4c71f456
-hostile-smp: live toctou blk slot 0: notifies=111437 served=2365 resets=28005 scribbles=300846825 recovered
+hostile-smp: live toctou blk slot 0: notifies=80008 served=3999 resets=75975 scribbles=395062237 recovered
 hostile-smp: canary intact after blk
-hostile-smp: live toctou rng slot 1: notifies=102558 served=2532 resets=36400 scribbles=318469929 recovered
+hostile-smp: live toctou rng slot 1: notifies=79896 served=4154 resets=75647 scribbles=394316261 recovered
 hostile-smp: canary intact after rng
 hostile-smp: survived
 check: read-only disk image unchanged
-check: MMIO exits traced: 1780613, outside the virtio window: 0
+check: MMIO exits traced: 3503988, outside the virtio window: 0
 
 --- stderr ---
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 19, size: 16 }
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1139555976, len: 4294967295 }
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 134217728, len: 1443212 }
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 8 }
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 134217728, len: 4294967295 }
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: Overflow { addr: 18446744073709551608, len: 1090894 }
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850680, len: 1318465 }
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 11 }
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 16, size: 16 }
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: device: blk request without a writable status byte
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850688, len: 911789 }
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 17, size: 16 }
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 16, size: 16 }
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: AvailIdxJump { avail_idx: 25, next_avail: 0, size: 16 }
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 18, size: 16 } (989 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140682616, len: 1346388 }
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 134217728, len: 65537 } (989 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850688, len: 65537 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: Overflow { addr: 18446744073709551608, len: 1349338 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 18, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 12 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850688, len: 1254553 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 150994944, len: 4294967295 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 134217728, len: 512 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 16, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 14 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 19, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850688, len: 4294967295 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 3 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: device: blk request without a writable status byte (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 19, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 16, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: device: blk request without a writable status byte (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 3 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 17, size: 16 } (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: device: blk request without a writable status byte (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 134217728, len: 1 } (999 similar messages suppressed)
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 1 } (999 similar messages suppressed)
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 17, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 18, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 12 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 16, size: 16 } (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79 (989 similar messages suppressed)
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 13 } (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850688, len: 4294967295 } (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 17, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: device: blk request without a writable status byte (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 134217728, len: 65537 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: device: blk request without a writable status byte (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 19, size: 16 } (999 similar messages suppressed)
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: Overflow { addr: 18446744073709551608, len: 65537 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 18, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 7 } (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 18, size: 16 } (999 similar messages suppressed)
 macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-blk-0] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 11 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 18, size: 16 } (999 similar messages suppressed)
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79 (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 5 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: TooLarge { total: 2069312, max: 65536 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 19, size: 16 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: TooLarge { total: 65537, max: 65536 } (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850688, len: 65537 } (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
+macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
+macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
+macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: TooLarge { total: 2051944, max: 65536 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 134217728, len: 4294967295 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850680, len: 512 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 16, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 150994944, len: 4294967295 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 17, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 18, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 3 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 134217728, len: 1092471 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 19, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 16, size: 16 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850688, len: 1 } (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: TooLarge { total: 65537, max: 65536 } (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: TooLarge { total: 2065792, max: 65536 } (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850688, len: 512 } (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: TooLarge { total: 69633, max: 65536 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 150994944, len: 1 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79 (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 18, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850688, len: 2006226 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: TooLarge { total: 1396712, max: 65536 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 0 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 16, size: 16 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 134217728, len: 1888436 } (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 10 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 19, size: 16 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 17, size: 16 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 0 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: TooLarge { total: 65537, max: 65536 } (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: Overflow { addr: 18446744073709551608, len: 65537 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: TooLarge { total: 1845581, max: 65536 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 18, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: TooLarge { total: 972346, max: 65536 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: Overflow { addr: 18446744073709551608, len: 512 } (999 similar messages suppressed)
 macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
-macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=439 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
-macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 1781057: hvc 444, data abort 1780613
-macvmm: stats: vcpu0 time: exec 11.509 s, wfi 0.000 s
+macvmm: warn: [vcpu0] guest: virtio-mmio: QueueNotify 0 ignored in status 79
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: ZeroLength { index: 5 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850688, len: 4096 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 16, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 19, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: Overflow { addr: 18446744073709551608, len: 4096 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 150994944, len: 4294967295 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 17, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 150994944, len: 65537 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 19, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 17, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850680, len: 692708 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 18, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 16, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 150994944, len: 1 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 150994944, len: 1 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 1140850680, len: 4294967295 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: BufferOutOfRam { addr: 150994944, len: 893561 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: HeadOutOfRange { head: 16, size: 16 } (999 similar messages suppressed)
+macvmm: warn: [virtio-rng-1] guest: virtio: queue 0 failed, device needs reset: virtqueue: IndirectNotNegotiated (999 similar messages suppressed)
+macvmm: stats: serial_input_dropped=0 serial_input_queued=0 serial_written=437 serial_sink_dropped=0 serial_capped=0 serial_lost=0 serial_filtered=0
+macvmm: stats: vcpu0 exits: vtimer 0, wfx 0, total 3504430: hvc 442, data abort 3503988
+macvmm: stats: vcpu0 time: exec 9.280 s, wfi 0.000 s
 macvmm: stats: vcpu1 exits: vtimer 0, wfx 0, total 1: canceled 1
-macvmm: stats: vcpu1 time: exec 19.763 s, wfi 0.000 s
-macvmm: stats: host cpu 39.755 s over 20.283 s wall (197%)
-macvmm: stats: rlimit core=0 nofile=1048576
+macvmm: stats: vcpu1 time: exec 20.195 s, wfi 0.000 s
+macvmm: stats: host cpu 40.963 s over 20.226 s wall (203%)
+macvmm: stats: rlimit core=0 nofile=23
 

@@ -1,5 +1,7 @@
-//! `--sandbox`: confine the running VMM with a `(deny default)` profile (PLAN M22; threat model
-//! §7.12 SBX-1..SBX-4, F5; PROC-4).
+//! The sandbox: confine the running VMM with a `(deny default)` profile (PLAN M22; threat model
+//! §7.12 SBX-1..SBX-4, F5; PROC-4). It is **on by default** for `macvmm run`; `--no-sandbox`
+//! turns it off (for debugging), `--sandbox` is accepted and changes nothing, and
+//! `--sandbox=best-effort` runs unconfined with a warning if the profile cannot be applied.
 //!
 //! **Why.** The VMM parses hostile guest data (virtqueues, MMIO, the console stream). If a
 //! parser bug ever lets a guest run code inside `macvmm`, the attacker has whatever the process
@@ -43,20 +45,25 @@
 //! spare for anything the profile might still allow). The slack covers what later work opens
 //! without a path (vCPU threads, a reboot's VM).
 //!
-//! **Fail closed (SBX-4).** `--sandbox` exits 1 if `sandbox_init` fails; `--sandbox=best-effort`
-//! warns and continues unconfined. A sandbox flag never silently does nothing.
+//! **Fail closed (SBX-4).** The default (and `--sandbox`) exits 1 if `sandbox_init` fails;
+//! `--sandbox=best-effort` warns and continues unconfined. Only `--no-sandbox`, which the user
+//! typed, runs unconfined without a word; the sandbox is never silently skipped.
+//!
+//! **What cannot run confined.** A `--net ...,learn` NIC: its peer is unknown when the profile
+//! is written, and a profile cannot grow after `sandbox_init`. With the sandbox on it is a usage
+//! error (exit code 2, [`check_config`]) that points at `peer=PATH` or `--no-sandbox`.
 
 use std::path::{Path, PathBuf};
 use vmm::VmConfig;
 use vmm::config::NetPeer;
 
-/// What `--sandbox` asks for.
+/// What the sandbox flags ask for.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Mode {
-    /// No `--sandbox` flag (the default until the lead decides otherwise, DECISIONS D15).
-    #[default]
+    /// `--no-sandbox`: run unconfined (for debugging).
     Off,
-    /// `--sandbox`: lock down or exit 1.
+    /// The default (no flag, or `--sandbox`): lock down or exit 1.
+    #[default]
     Enforce,
     /// `--sandbox=best-effort`: lock down, or warn and run unconfined.
     BestEffort,
@@ -95,10 +102,12 @@ pub(crate) const VALUE_FLAGS: &[&str] = &[
     "--log",
 ];
 
-/// Split `--sandbox[=best-effort]` and `--sandbox-selftest` off `args`; the rest goes to
-/// `cli::parse_run` unchanged.
+/// Split `--sandbox[=best-effort]`, `--no-sandbox` and `--sandbox-selftest` off `args`; the
+/// rest goes to `cli::parse_run` unchanged. At most one of the first three may appear (two
+/// say contradictory or redundant things, and a script that says both is a bug).
 pub fn split_flags(args: &[String]) -> Result<(Opts, Vec<String>), String> {
     let mut o = Opts::default();
+    let mut given: Option<&str> = None;
     let mut rest = Vec::with_capacity(args.len());
     let mut value_next = false;
     for a in args {
@@ -110,14 +119,18 @@ pub fn split_flags(args: &[String]) -> Result<(Opts, Vec<String>), String> {
         let mode = match a.as_str() {
             "--sandbox" => Some(Mode::Enforce),
             "--sandbox=best-effort" => Some(Mode::BestEffort),
+            "--no-sandbox" => Some(Mode::Off),
             "--sandbox-selftest" => {
                 o.selftest = true;
                 None
             }
             s if s.starts_with("--sandbox=") => {
                 return Err(format!(
-                    "invalid {s:?}: use --sandbox or --sandbox=best-effort"
+                    "invalid {s:?}: use --sandbox, --sandbox=best-effort or --no-sandbox"
                 ));
+            }
+            s if s.starts_with("--no-sandbox=") => {
+                return Err("--no-sandbox takes no value".into());
             }
             s if s.starts_with("--sandbox-selftest=") => {
                 return Err("--sandbox-selftest takes no value".into());
@@ -128,16 +141,36 @@ pub fn split_flags(args: &[String]) -> Result<(Opts, Vec<String>), String> {
             }
         };
         if let Some(m) = mode {
-            if o.mode != Mode::Off {
-                return Err("--sandbox given twice".into());
+            match given {
+                Some(prev) if prev == a => return Err(format!("{a} given twice")),
+                Some(prev) => {
+                    return Err(format!("{prev} and {a} cannot be used together"));
+                }
+                None => {}
             }
+            given = Some(a.as_str());
             o.mode = m;
         }
     }
     if o.selftest && o.mode == Mode::Off {
-        return Err("--sandbox-selftest needs --sandbox".into());
+        return Err("--sandbox-selftest cannot be used with --no-sandbox".into());
     }
     Ok((o, rest))
+}
+
+/// The configuration checks the sandbox needs, made before any file is opened so a conflict is
+/// a usage error (exit code 2) and not a half-started VM: in enforce mode, a `,learn` NIC
+/// cannot be confined (module docs). Best-effort leaves the verdict to [`lockdown`], which
+/// warns and runs unconfined.
+pub fn check_config(mode: Mode, cfg: &VmConfig) -> Result<(), String> {
+    if mode == Mode::Enforce && cfg.net.iter().any(|n| n.peer == NetPeer::Learn) {
+        return Err(
+            "--net ...,learn cannot run under the sandbox, which is on by default (the peer \
+             must be known when the sandbox is applied): use peer=PATH, or --no-sandbox"
+                .into(),
+        );
+    }
+    Ok(())
 }
 
 // ANCHOR: sandbox_profile
@@ -167,7 +200,7 @@ fn sbpl_literal(p: &Path) -> Result<String, String> {
         .ok_or_else(|| format!("{}: not UTF-8", p.display()))?;
     if s.chars().any(|c| c == '"' || c == '\\' || c.is_control()) {
         return Err(format!(
-            "--sandbox: the path {s:?} cannot be written into the sandbox profile"
+            "the path {s:?} cannot be written into the sandbox profile"
         ));
     }
     Ok(format!("\"{s}\""))
@@ -235,8 +268,8 @@ pub fn profile_for(cfg: &VmConfig) -> Result<String, String> {
             }
             NetPeer::Learn => {
                 return Err(
-                    "--sandbox: --net ...,learn is not supported (the peer must be known when the \
-                     sandbox is applied); use peer=PATH"
+                    "--net ...,learn is not supported under the sandbox (the peer must be known \
+                     when the sandbox is applied); use peer=PATH, or --no-sandbox"
                         .into(),
                 );
             }
@@ -277,7 +310,7 @@ pub fn lockdown(cfg: &VmConfig) -> Result<Lockdown, String> {
 // ANCHOR_END: sandbox_lockdown
 
 /// The `--stats` line for the process limits in force (PROC-4): `rlimit core=0 nofile=<n>`
-/// (`nofile` is lowered by `--sandbox`, [`lockdown`]).
+/// (`nofile` is lowered by the sandbox, [`lockdown`]).
 pub fn rlimit_stats() -> String {
     let lim = |r| hvf::host::get_rlimit(r).map_or_else(|_| "?".into(), |(s, _)| s.to_string());
     format!(
@@ -340,28 +373,54 @@ mod tests {
 
     #[test]
     fn flags_split_off() {
+        // On by default: no flag at all is enforce mode.
+        let (o, rest) = split_flags(&v(&["--kernel", "k"])).unwrap();
+        assert_eq!(o, Opts::default());
+        assert_eq!((o.mode, o.selftest), (Mode::Enforce, false));
+        assert_eq!(rest, v(&["--kernel", "k"]));
+        // `--sandbox` is kept for compatibility and changes nothing.
         let (o, rest) = split_flags(&v(&["--sandbox", "--kernel", "k"])).unwrap();
-        assert_eq!(o.mode, Mode::Enforce);
-        assert!(!o.selftest);
+        assert_eq!(o, Opts::default());
+        assert_eq!(rest, v(&["--kernel", "k"]));
+        let (o, rest) = split_flags(&v(&["--no-sandbox", "--kernel", "k"])).unwrap();
+        assert_eq!(o.mode, Mode::Off);
         assert_eq!(rest, v(&["--kernel", "k"]));
         let (o, _) = split_flags(&v(&["--sandbox=best-effort", "--sandbox-selftest"])).unwrap();
         assert_eq!((o.mode, o.selftest), (Mode::BestEffort, true));
-        assert_eq!(
-            split_flags(&v(&["--mem", "64M"])).unwrap().0,
-            Opts::default()
-        );
+        let (o, _) = split_flags(&v(&["--sandbox-selftest"])).unwrap();
+        assert_eq!((o.mode, o.selftest), (Mode::Enforce, true));
         // A flag's value is never taken for a sandbox flag.
-        let (o, rest) = split_flags(&v(&["--cmdline", "--sandbox", "--kernel", "k"])).unwrap();
+        let (o, rest) = split_flags(&v(&["--cmdline", "--no-sandbox", "--kernel", "k"])).unwrap();
         assert_eq!(o, Opts::default());
-        assert_eq!(rest, v(&["--cmdline", "--sandbox", "--kernel", "k"]));
+        assert_eq!(rest, v(&["--cmdline", "--no-sandbox", "--kernel", "k"]));
         for bad in [
             &["--sandbox", "--sandbox"][..],
+            &["--no-sandbox", "--no-sandbox"][..],
             &["--sandbox=strict"][..],
-            &["--sandbox-selftest"][..],
+            &["--no-sandbox=1"][..],
+            &["--no-sandbox", "--sandbox-selftest"][..],
             &["--sandbox", "--sandbox-selftest=1"][..],
+            &["--sandbox=best-effort", "--no-sandbox"][..],
         ] {
             assert!(split_flags(&v(bad)).is_err(), "{bad:?}");
         }
+        let e = split_flags(&v(&["--sandbox", "--no-sandbox"])).unwrap_err();
+        assert_eq!(e, "--sandbox and --no-sandbox cannot be used together");
+    }
+
+    #[test]
+    fn learn_needs_no_sandbox() {
+        let mut cfg = VmConfig::default();
+        assert!(check_config(Mode::Enforce, &cfg).is_ok());
+        cfg.net.push(vmm::config::NetSpec {
+            local: "/t/a.sock".into(),
+            peer: NetPeer::Learn,
+            mac: None,
+        });
+        let e = check_config(Mode::Enforce, &cfg).unwrap_err();
+        assert!(e.contains("--no-sandbox") && e.contains("peer=PATH"), "{e}");
+        assert!(check_config(Mode::Off, &cfg).is_ok());
+        assert!(check_config(Mode::BestEffort, &cfg).is_ok());
     }
 
     #[test]

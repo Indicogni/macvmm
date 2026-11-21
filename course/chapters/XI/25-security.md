@@ -35,7 +35,7 @@ Chapter 00's [problem ledger](/build-your-own/vmm/glossary/#problem-ledger) list
 - (Sitting A) Write a threat model for your VMM in STRIDE style (a six-letter checklist of threat kinds, below): assets, every trust boundary, what each attacker can do. Cross-check it against the reference's `docs/security/threat-model.md`.
 - (Sitting A) Build a dependency-free fuzz harness (a seeded generator, structure-aware mutation of descriptor chains, invariants checked after every input) that runs device models on the host, find each planted bug in the queue code, and minimise each reproducer.
 - (Sitting B) Run the hostile guest's eight attack phases (MMIO, ISV=0, system registers, SMCCC (SMC calling convention, where SMC is the Secure Monitor Call instruction) calls, virtqueues with a live time-of-check-to-time-of-use (TOCTOU) race, terminal strings, a reset storm, an output flood) and explain each expected exit code.
-- (Sitting B) Confine the process after set-up with `--sandbox`, set `RLIMIT_CORE` to 0, and measure what the sandbox denies.
+- (Sitting B) Confine the process after set-up with a sandbox that is on by default (`--no-sandbox` opts out), set `RLIMIT_CORE` to 0, and measure what the sandbox denies.
 :::
 
 **Before you start.** From the repository root, run `scripts/learner start 25`; it copies this chapter's journal to `learner/journal/25.md`, "your journal" below. There is no starter code: you create `learner/crates/fuzz/` and `learner/crates/macvmm/src/sandbox.rs` in Your turn.
@@ -102,7 +102,7 @@ guest to VMM
   R  n/a: we do not hold the guest to account
   I  reads past its buffer                 -> bounds-checked GuestMemory (chapter 04)
   D  a descriptor chain that loops         -> the hop budget (chapter 16)
-  E  runs code inside macvmm               -> --sandbox (sitting B)
+  E  runs code inside macvmm               -> the sandbox, on by default (sitting B)
 ```
 
 > **Aside.** STRIDE comes from Microsoft ([their description](https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats)). The reference's `docs/security/threat-model.md` has a STRIDE table naming each surface and mitigation; its row tags (`VQ-5`, `MEM-7`, `SBX-2` and so on) reappear in the reference's code and messages below.
@@ -307,7 +307,7 @@ Suppose a bug survives all that and a guest runs code inside macvmm. Our one ent
 
 :::code anchor=sandbox_profile file=crates/macvmm/src/sandbox.rs
 
-Four `ioctl`s (device commands, here to the terminal) are allowed so the exit path can restore your terminal settings; `TIOCSTI`, which fakes typed input, stays denied. There is no `mach-lookup` and no `iokit-open`: Hypervisor.framework needs neither to create, run, destroy and re-create a virtual machine (VM). One thing is added per run: for each `--net ...,peer=PATH` (chapter 19), `profile_for` appends an `allow network-outbound` rule for exactly that Unix socket, plus metadata reads of the symbolic links on its path. `--net ...,learn` is refused under `--sandbox`, because its peer is not known when the profile is written. Three tests checked this on a real Mac: four vCPUs created after the lockdown, an in-process reboot that builds a new VM under it, and the limits line:
+Four `ioctl`s (device commands, here to the terminal) are allowed so the exit path can restore your terminal settings; `TIOCSTI`, which fakes typed input, stays denied. There is no `mach-lookup` and no `iokit-open`: Hypervisor.framework needs neither to create, run, destroy and re-create a virtual machine (VM). One thing is added per run: for each `--net ...,peer=PATH` (chapter 19), `profile_for` appends an `allow network-outbound` rule for exactly that Unix socket, plus metadata reads of the symbolic links on its path. `--net ...,learn` is refused while the sandbox is on, because its peer is not known when the profile is written: it is a usage error (exit code 2) that tells you to use `peer=PATH` or `--no-sandbox`. Three tests checked this on a real Mac: four vCPUs created after the lockdown, an in-process reboot that builds a new VM under it, and the limits line:
 
 :::term source=captures/25-sandbox-reboot.txt
 
@@ -319,11 +319,11 @@ and only then locks down, before the first guest instruction:
 
 :::code anchor=sandbox_confine_call file=crates/macvmm/src/cli.rs
 
-`confine`, above it, [fails closed](/build-your-own/vmm/glossary/#fail-closed): `--sandbox` exits 1 if the lockdown fails; only `--sandbox=best-effort` warns and runs without it. The lockdown first drops the file-descriptor limit (`RLIMIT_NOFILE`, `nofile=` in `--stats`) to one past the highest descriptor in use, plus 16. The profile still lets the process create descriptors that need no path, so the cap bounds how many a compromised macvmm could hoard; the 16 spare cover what later work opens without a path, such as vCPU threads and the new VM of a reboot:
+This runs on every `macvmm run`: the sandbox is on by default. A protection you have to remember to ask for protects nobody on the day you forget, and the list of what it costs is short: everything a VM does after the lockdown works under it (the e2e suites all pass with it on), and only `,learn` needs it off. `--no-sandbox` turns it off, for debugging; `--sandbox` is still accepted and changes nothing, so older scripts keep working; giving both is a usage error (exit code 2), because one of them must be a mistake. `confine`, above it, [fails closed](/build-your-own/vmm/glossary/#fail-closed): if the lockdown fails, macvmm exits 1 and names `--no-sandbox`; only `--sandbox=best-effort` warns and runs without it. The lockdown first drops the file-descriptor limit (`RLIMIT_NOFILE`, `nofile=` in `--stats`) to one past the highest descriptor in use, plus 16. The profile still lets the process create descriptors that need no path, so the cap bounds how many a compromised macvmm could hoard; the 16 spare cover what later work opens without a path, such as vCPU threads and the new VM of a reboot:
 
 :::code anchor=sandbox_lockdown file=crates/macvmm/src/sandbox.rs
 
-The `sandbox_init` call is one of the few `unsafe` blocks, in the `hvf` crate. Its header declares it deprecated, and passing profile text rather than a built-in profile name is undocumented. Deprecated means Apple may stop honouring it in a future macOS. If the call ever started failing, a silent fallback would run the guest unconfined while you believed otherwise, so `--sandbox` treats any failure as fatal:
+The `sandbox_init` call is one of the few `unsafe` blocks, in the `hvf` crate. Its header declares it deprecated, and passing profile text rather than a built-in profile name is undocumented. Deprecated means Apple may stop honouring it in a future macOS. If the call ever started failing, a silent fallback would run the guest unconfined while you believed otherwise, so the sandbox treats any failure as fatal:
 
 :::code anchor=host_sandbox file=crates/hvf/src/host.rs
 
@@ -336,22 +336,22 @@ The hidden `--sandbox-selftest` flag tries three things after the lockdown and r
 :::code anchor=sandbox_selftest file=crates/macvmm/src/sandbox.rs
 
 ```sh
-cargo run -q -p macvmm -- run --mem 64M --sandbox --sandbox-selftest --stats --kernel target/guests/aarch64-unknown-none/release/hello --timeout 10
+cargo run -q -p macvmm -- run --mem 64M --sandbox-selftest --stats --kernel target/guests/aarch64-unknown-none/release/hello --timeout 10
 ```
 
 :::term source=captures/25-sandbox-selftest.txt
 
-The guest ran to completion under the profile. Unsandboxed:
+No sandbox flag was needed: the default run locked down, and the guest ran to completion under the profile. With `--no-sandbox`:
 
 :::term source=captures/25-stats-unsandboxed.txt
 
-`core=0` in both, and the file-descriptor limit fell from 1,048,576 to 21 (the unsandboxed number is inherited from your shell). The kernel also reports each denial to the unified log, as the primer showed. `--last 10s` only covers the last ten seconds, so run `log show` within ten seconds of the self-test, or widen it to `--last 1m`:
+`core=0` in both, and the file-descriptor limit is 21 under the sandbox against 1,048,576 without it (the unsandboxed number is inherited from your shell). The kernel also reports each denial to the unified log, as the primer showed. `--last 10s` only covers the last ten seconds, so run `log show` within ten seconds of the self-test, or widen it to `--last 1m`:
 
 :::term source=captures/25-sandbox-log.txt
 
 The open of `/etc/hosts` died resolving the symbolic link `/etc` (on macOS, `/etc` is a link to `/private/etc`, the `macos-sandbox` primer), the connect as `network-outbound`, the spawn at `process-fork`. The socket itself was created: only its use was refused.
 
-> **Production note.** Inside `--sandbox` the process keeps what it holds: guest RAM, the opened disks, the hypervisor. Production VMMs such as crosvm also confine each device in its own process.
+> **Production note.** Inside the sandbox the process keeps what it holds: guest RAM, the opened disks, the hypervisor. Production VMMs such as crosvm also confine each device in its own process.
 
 > **Security.** The fuzzer asks "is there a bug in the parsers?", the hostile guest "does the whole VMM survive a guest that misbehaves on purpose?", the sandbox "if both missed one, what does the attacker get?". Rely on only one and you fail the day it misses.
 
@@ -365,7 +365,7 @@ The reference shows the finished harness; yours goes in `learner/crates/fuzz/`. 
 4. Plant each bug by hand in a copy of your own tree: delete the hop-budget decrement; check a buffer's first and last byte separately with wrapping addition; take the used slot modulo `N + 1`; re-read a descriptor after validating it; and the verdict cache, skipping the RAM check when a buffer's address equals the one two hops earlier. Record how long your fuzzer takes on each, and write its times for the hop budget and the verdict cache under your journal's Predict entry, next to ours.
 5. Optional: write a second target, for the virtio-mmio register file or the Image header, with one invariant each.
 6. Run each hostile phase in the table on your VMM, from `learner/`, with the flags in its capture. Every phase must end with its exit code; fix what does not.
-7. Write `sandbox.rs` (the profile, `profile_for` with its `--net` peers, `lockdown`, the self-test) and call `harden_process` first in `main`. Add `--sandbox` and `--sandbox=best-effort`, the hidden `--sandbox-selftest`, and the `--stats` line `macvmm: stats: rlimit core=0 nofile=N`. Call the lockdown after every file is open and every thread exists, as `run` does above. The self-test must print exactly `sandbox: open denied, socket denied, spawn denied` on stderr (after the `macvmm: ` prefix), the line the checkpoint matches.
+7. Write `sandbox.rs` (the profile, `profile_for` with its `--net` peers, `lockdown`, the self-test) and call `harden_process` first in `main`. Make the lockdown the default, with `--no-sandbox` to opt out, `--sandbox` accepted as a no-op and `--sandbox=best-effort`; `--sandbox` together with `--no-sandbox` is a usage error (exit code 2). Add the hidden `--sandbox-selftest`, and the `--stats` line `macvmm: stats: rlimit core=0 nofile=N`. Call the lockdown after every file is open and every thread exists, as `run` does above. The self-test must print exactly `sandbox: open denied, socket denied, spawn denied` on stderr (after the `macvmm: ` prefix), the line the checkpoint matches.
 8. Finish your threat model, then compare it with the reference's, row by row.
 
 Stuck? `scripts/learner hint 25` gives a ladder of hints, from the concept to the reference file to read. Read the matching reference file only after a real attempt.
@@ -380,7 +380,7 @@ The plants cannot apply to your walker, so the checkpoint brings your fuzzer to 
 
 - a 20-second control on the unplanted reference finds nothing (a fuzzer that reports everything proves nothing);
 - plants 1 to 3 (the missing `checked_add`, the missing hop budget, the ring-index off-by-one) are each found within ten minutes, build included, each printing a line such as `bughunt: plant 2 (missing hop budget) found after 0s`;
-- the sandbox self-test with `hello` prints the three denials and exits 0, and `--stats` shows `rlimit core=0` with and without `--sandbox`;
+- the sandbox self-test with `hello`, with no sandbox flag, prints the three denials and exits 0, and `--stats` shows `rlimit core=0` both then and with `--no-sandbox`;
 - each hostile phase on your VMM ends with its exit code and the guest's lines; no forbidden escape sequence in stdout, a flood file of exactly 1 MiB, an unchanged read-only disk, every TOCTOU-phase MMIO access in the virtio window;
 - your journal answers every question.
 

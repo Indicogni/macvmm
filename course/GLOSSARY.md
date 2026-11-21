@@ -456,7 +456,7 @@ expansion only for acronyms. A term earned in a primer goes under Primers and en
 - **minimisation**: Shrinking a failing input, by zeroing or deleting chunks while it still fails, until it is small enough for a person to see the cause.
 - **hostile guest**: Any guest that misbehaves on purpose (a malicious guest); in this course also the suite of test guests that attacks the VMM from inside a real virtual machine, phase by phase, each phase with the exit code the VMM must end with.
 - **sandbox**: Rules the kernel enforces on a process, which the process cannot lift; macvmm applies one with `sandbox_init` after set-up, so a compromised VMM can open no file, start no program and reach no network except its configured peer.
-- **fail closed**: To stop when a safety mechanism cannot be applied, instead of carrying on without it; `--sandbox` exits 1 if the lockdown fails.
+- **fail closed**: To stop when a safety mechanism cannot be applied, instead of carrying on without it; macvmm's default sandbox exits 1 if the lockdown fails.
 - **RLIMIT_CORE**: The resource limit on the size of a core dump, the file a crashing process can leave with its whole memory; macvmm sets it to 0 so no file of guest RAM is ever written.
 
 ## Chapter 26
