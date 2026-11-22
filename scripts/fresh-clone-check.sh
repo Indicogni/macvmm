@@ -12,7 +12,7 @@
 # Other options:
 #   --dir PARENT        where macvmm-fresh-<ts>/ is created (default: $TMPDIR)
 #
-# Layout: <PARENT>/macvmm-fresh-<ts>/{src,cache,logs}. `src` is the copy: `git clone --no-local`
+# Layout: <PARENT>/macvmm-fresh-<ts>/{src,logs}; the cache is src/.cache/macvmm. `src` is the copy: `git clone --no-local`
 # for --from-git; for --from-worktree, the files `git ls-files -co --exclude-standard` lists
 # (tracked plus untracked-but-not-ignored), committed into a throwaway repository so step
 # `git-status-clean` can ask git whether the run left stray files outside .gitignore.
@@ -87,7 +87,12 @@ mkdir -- "$logs"
 if (( reuse_cache )); then
   cache="$(cache_dir)"
 else
-  cache="$base/cache"   # created 0700 by the first scripts/fetch.sh (SC-3), empty until then
+  # The default location inside the fresh copy, which is where a newcomer's downloads go and
+  # where the lessons' and checkpoints' commands look (`.cache/macvmm/Image-virt`). It does not
+  # exist in a clone (.cache is gitignored), so it is empty until the first scripts/fetch.sh
+  # creates it 0700 (SC-3). A cache anywhere else would pass every script that honours
+  # MACVMM_CACHE and fail every command a learner types as written.
+  cache="$src/.cache/macvmm"
 fi
 
 # The children see only what a newcomer's shell would: no inherited target dir, no skip switch.
