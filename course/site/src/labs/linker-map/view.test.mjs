@@ -223,3 +223,16 @@ test("shipped lab code avoids forbidden constructs", () => {
   assert.match(svg, /<desc/);
   assert.doesNotMatch(svg, /<script|on[a-z]+=|foreignObject|href=/);
 });
+
+test("a link naming an Object.prototype key as the preset mounts the default instead of throwing", () => {
+  // `#linker-map=p:constructor`: PRESETS["constructor"] is truthy, so the old check let it through
+  // and mount threw on `p.id`.
+  for (const key of ["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf"]) {
+    const v = setup(`p:${key}`);
+    assert.match(v.summary(), /68 bytes/, key);
+    v.api.destroy();
+    const w = setup(`p:guest;o:${key}-${key}-${key}-${key}`);
+    assert.match(w.summary(), /Flat binary 11,866 bytes/, key);
+    w.api.destroy();
+  }
+});

@@ -34,6 +34,12 @@ export const LIMITS = Object.freeze({
   maxArrayLen: 1 << 20,
   maxSize: 2 ** 31, // bytes; any struct larger than this is rejected
   maxDepth: 12, // nesting of types (struct in struct in array ...)
+  // Fields a struct may have once every struct inside it (by value) is written out. Structs,
+  // fields and depth are each capped above, but their product is not: six 64-field structs nested
+  // by value are 64^6 leaves from under 2 KiB of source (or of share link). Checked while laying
+  // out, before anything is flattened.
+  maxLeaves: 512,
+  expandLeaves: 64, // an array of at most this many elements compares element by element
   // Characters of share state accepted from the URL: the worst case for maxSource is 3 UTF-8
   // bytes per UTF-16 unit, base64 makes that 4/3 longer, plus the suffix (view name capped).
   maxShare: Math.ceil((8192 * 3) / 3) * 4 + 96,
@@ -469,14 +475,21 @@ class Cursor {
 
 const OPEN = { "(": ")", "[": "]", "{": "}" };
 
+/**
+ * `table[key]` for the table's own keys only. The keys looked up in this file are names from the
+ * reader's source (or a share link), and `PRIMS["constructor"]`, `RUST_ALIASES["toString"]` and
+ * the like are truthy things inherited from Object.prototype, not types.
+ */
+const own = (table, key) => (Object.hasOwn(table, key) ? table[key] : undefined);
+
 /** Skips one balanced group starting at an opening bracket. */
 function skipGroup(cur) {
   const open = cur.next();
-  const stack = [OPEN[open.v]];
+  const stack = [own(OPEN, open.v)];
   while (stack.length) {
     const tok = cur.next();
     if (tok.k !== "p") continue;
-    if (OPEN[tok.v]) stack.push(OPEN[tok.v]);
+    if (own(OPEN, tok.v)) stack.push(OPEN[tok.v]);
     else if (tok.v === stack[stack.length - 1]) stack.pop();
     else if (tok.v === ")" || tok.v === "]" || tok.v === "}") throw cur.err(`unbalanced \`${tok.v}\``, tok);
   }
@@ -815,14 +828,14 @@ function layoutProgram(prog) {
       }
     }
     if (isC) {
-      const p = C_TYPES[name];
+      const p = own(C_TYPES, name);
       if (p) return { ...PRIMS[p], c: name, prim: p };
     } else {
-      if (PRIMS[name]) {
+      if (own(PRIMS, name)) {
         if (PRIMS[name].note) warn(PRIMS[name].note, ty.tok.line);
         return { ...PRIMS[name], prim: name };
       }
-      const a = RUST_ALIASES[name];
+      const a = own(RUST_ALIASES, name);
       if (a) return { ...PRIMS[a[0]], c: a[1], prim: a[0] };
       if (name === "c_void") {
         throw new LabError("`c_void` has no size: use it only behind a pointer, as `*mut c_void`", ty.tok.line, ty.tok.col);
@@ -837,8 +850,8 @@ function layoutProgram(prog) {
   function pointeeC(ty) {
     if (ty.kind === "named") {
       if (ty.name === "c_void") return "void";
-      if (RUST_ALIASES[ty.name]) return RUST_ALIASES[ty.name][1];
-      if (PRIMS[ty.name]) return PRIMS[ty.name].c;
+      if (own(RUST_ALIASES, ty.name)) return RUST_ALIASES[ty.name][1];
+      if (own(PRIMS, ty.name)) return PRIMS[ty.name].c;
       return ty.name;
     }
     if (ty.kind === "ptr" || ty.kind === "ref") return `${pointeeC(ty.to)} *`;
@@ -852,7 +865,13 @@ function layoutProgram(prog) {
     }
   }
 
+  // Every type carries its leaf counts (see countLeaves), filled in bottom-up here so that no
+  // later pass has to walk a nested type to find out how big its flattening is.
   function layoutType(ty, depth) {
+    return countLeaves(layoutTypeInner(ty, depth));
+  }
+
+  function layoutTypeInner(ty, depth) {
     if (depth > LIMITS.maxDepth) throw new LabError("types are nested too deeply", ty.tok.line, ty.tok.col);
     switch (ty.kind) {
       case "named":
@@ -920,6 +939,27 @@ function layoutProgram(prog) {
         return { index: i, name: f.name, rust: f.ty.text, c: t.c, size: t.size, align: t.align, type: t, line: f.tok.line };
       });
       result = placeFields(def, fields);
+      // The flattened size, from the fields' own counts (one addition per field, never a walk).
+      // Refused here, at the innermost struct that is too big, so nothing that costs time in
+      // proportion to the product of the nested field counts ever runs.
+      let leafN = 0;
+      let leafX = 0;
+      let leafFull = 0;
+      for (const f of fields) {
+        leafN = satLeaves(leafN + f.type.leafN);
+        leafX = satLeaves(leafX + f.type.leafX);
+        leafFull = satLeaves(leafFull + f.type.leafFull);
+      }
+      if (leafN > LIMITS.maxLeaves || leafX > LIMITS.maxLeaves) {
+        throw new LabError(
+          `\`${def.name}\` has more than ${LIMITS.maxLeaves} fields once the structs inside it are written out, more than this lab handles; put a large inner struct behind a pointer or in a long array`,
+          def.tok.line,
+          def.tok.col,
+        );
+      }
+      result.leafN = leafN;
+      result.leafX = leafX;
+      result.leafFull = leafFull;
       // Promised: fixed by a repr all the way down (see the file header).
       let brokenBy = null;
       if (def.repr.kind === "Rust") brokenBy = def.name;
@@ -1001,25 +1041,57 @@ function layoutProgram(prog) {
 
 /**
  * Flattens a struct layout to its leaf fields (primitives, pointers, arrays), with absolute
- * offsets. With `expand`, small arrays (up to 64 leaves) are split into one leaf per element
+ * offsets. With `expand`, small arrays (up to LIMITS.expandLeaves leaves) are split into one leaf per element
  * (`s[0]`, `s[1]`, ...), so `[u64; 3]` compares like three u64 fields.
  */
 export function leaves(layout, opts = {}, base = 0, prefix = "") {
   const out = [];
-  for (const f of layout.fields) pushLeaves(f.type, base + f.offset, prefix ? `${prefix}.${f.name}` : f.name, f.rust, opts, out);
+  pushFields(layout, base, prefix, opts, out);
   return out;
 }
 
-function leafCount(t) {
-  if (t.struct) return t.struct.fields.reduce((s, f) => s + leafCount(f.type), 0);
-  if (t.array) return t.array.len * leafCount(t.array.elem);
-  return 1;
+// Leaf counts saturate here: far above every limit, far below 2^53, so no sum or product of
+// counts (a product has at most LIMITS.maxArrayLen as its other factor) can lose precision.
+const LEAF_SAT = 2 ** 31;
+const satLeaves = (n) => (n > LEAF_SAT ? LEAF_SAT : n);
+
+/**
+ * Stamps a laid-out type with three counts, each computed from its parts' counts in O(1):
+ *   leafFull  leaves if every array were split into its elements (what decides `expand`);
+ *   leafN     leaves `leaves()` returns for it (an array is one leaf);
+ *   leafX     leaves `leaves(.., {expand: true})` returns (arrays of up to expandLeaves split).
+ * Struct layouts carry the same three (set in layoutStruct, where LIMITS.maxLeaves is enforced).
+ */
+function countLeaves(t) {
+  if (t.struct) {
+    t.leafFull = t.struct.leafFull;
+    t.leafN = t.struct.leafN;
+    t.leafX = t.struct.leafX;
+  } else if (t.array) {
+    t.leafFull = satLeaves(t.array.len * t.array.elem.leafFull);
+    t.leafN = 1;
+    t.leafX = t.leafFull <= LIMITS.expandLeaves ? t.leafFull : 1;
+  } else {
+    t.leafFull = 1;
+    t.leafN = 1;
+    t.leafX = 1;
+  }
+  return t;
+}
+
+// A loop, not `out.push(...leaves(..))`: spreading a large array into a call's arguments throws
+// RangeError, and the recursion appends in place instead of copying each level's result.
+function pushFields(layout, base, prefix, opts, out) {
+  for (const f of layout.fields) pushLeaves(f.type, base + f.offset, prefix ? `${prefix}.${f.name}` : f.name, f.rust, opts, out);
 }
 
 function pushLeaves(t, off, path, rust, opts, out) {
   if (t.struct) {
-    out.push(...leaves(t.struct, opts, off, path));
-  } else if (t.array && opts.expand && leafCount(t) <= 64) {
+    pushFields(t.struct, off, path, opts, out);
+  } else if (t.array && opts.expand && t.leafFull <= LIMITS.expandLeaves) {
+    // leafFull === 0 (a zero-length array somewhere inside): nothing to push, and no reason to
+    // count to `len` to find that out.
+    if (t.leafFull === 0) return;
     const e = t.array.elem;
     for (let i = 0; i < t.array.len; i++) pushLeaves(e, off + i * e.size, `${path}[${i}]`, null, opts, out);
   } else {
@@ -1186,7 +1258,7 @@ export function renderC(result, rootName) {
       done.add(`type ${t.aliasName}`);
       need(t.aliasOf);
       // Names the platform headers already declare (stdint, Hypervisor.framework) need no typedef.
-      if (!RUST_ALIASES[t.aliasName]) lines.push(`typedef ${decl(t.aliasOf.c, t.aliasName + arrSuffix(t.aliasOf))};`, "");
+      if (!own(RUST_ALIASES, t.aliasName)) lines.push(`typedef ${decl(t.aliasOf.c, t.aliasName + arrSuffix(t.aliasOf))};`, "");
       return;
     }
     if (t.struct) emit(t.struct.name);

@@ -61,7 +61,7 @@ strategies"; the verifier failures of chapters 03 (Device memory clause), 06 (ID
 
 ## 3. Chapters, by number (owner: chapter authors)
 
-- **blocker** (00) · Timeline dates (CP-40/67, VM/370 1972, VMware 1999, Denali 2002, Xen 2003, VT-x 2005, AMD-V 2006, NPT/EPT, ARMv7 VE 2010, ARMv8 2011) and the Popek-Goldberg / Adams-Agesen DOIs were not checked against primary sources · check each and cite.
+- **fixed** (was blocker; dates and DOIs re-checked 2026-11-21, and each timeline row cites its source) (00) · Timeline dates (CP-40/67, VM/370 1972, VMware 1999, Denali 2002, Xen 2003, VT-x 2005, AMD-V 2006, NPT/EPT, ARMv7 VE 2010, ARMv8 2011) and the Popek-Goldberg / Adams-Agesen DOIs were not checked against primary sources · check each and cite.
 - **nice** (00) · Line 158 says the VMM delivers "clock ticks included" but the toy has no timer · add one clause that no interrupt arrives in this run.
 - **nice** (00) · Mode F ("each new block") and mode G (HCALL's r1) cannot be traced exactly on paper · pin both down when the lab lands.
 - **nice** (00) · The `checkpoint: implementation <tree>/learner` line and the word "threads" (line 59) are not explained · add a clause each.
@@ -96,7 +96,7 @@ strategies"; the verifier failures of chapters 03 (Device memory clause), 06 (ID
 - **should** (14) · KASLR sentence says every trace shares pc 0xffff800080041338; only one does · say the captures share the unrandomised 0xffff8000_8xxx_xxxx base.
 - **should** (14, all) · Ctrl-C at a guest prompt goes to the guest shell in raw mode, not to macvmm · sweep all chapters for "Ctrl-C quits the VM" wording.
 - **nice** (14) · Cite chapter 09 for the `gicr-unused` RAZ/WI device; explain `exit: 1` from `grep -c` in `14-gic-mmio.txt`; expand DABT · fix the three.
-- **blocker** (15, final) · Lines 83 and 260 send learners to `virtqueue-visualizer` and `virtio-status` with no paper fallback, and neither lab exists · add text fallbacks like chapters 00 and 10.
+- **fixed** (was blocker; both labs exist) (15, final) · Lines 83 and 260 send learners to `virtqueue-visualizer` and `virtio-status` with no paper fallback, and neither lab exists · add text fallbacks like chapters 00 and 10.
 - **nice** (15) · Public-path list omits `Queue`, `QueueProgress`, `VirtioDevice`, `VirtioError`; Queue API list omits `max_size()`, `GuestAddress` returns, `Clone`, `Display`, `VirtioInterrupt::status()` · add them.
 - **nice** (16) · `FromLeBytes` is called "chapter 04's" but chapter 04 never names it in prose · add a one-line gloss.
 - **should** (14, 15, 17) · CURRICULUM's ch15 cites "one exit per PL011 byte"; chapter 17 measured two (flag read + data write) · use the measured number in 14, 15 and 17.
@@ -117,9 +117,9 @@ strategies"; the verifier failures of chapters 03 (Device memory clause), 06 (ID
 
 ### Primers (owner: primer authors)
 
-- **blocker** (infra verify) · `efi-zboot.md` lines 403, 405, 527, 562 name plan milestone "M9" (verified present) and are stale (`Image-virt` now exists) · rewrite in learner terms against the current `fetch.sh linux`.
-- **blocker** (infra verify) · `macos-sandbox.md` teaches and uses `[H]`/`[V]`/`[U]` markers (9 hits), which the hard rules forbid in learner text · reword, or add an explicit STYLE exception.
-- **blocker** (08) · `smccc.md` line 311 says "spike results #5 and #6" (verified present) · cite a capture instead.
+- **fixed** (was blocker) (infra verify) · `efi-zboot.md` lines 403, 405, 527, 562 name plan milestone "M9" (verified present) and are stale (`Image-virt` now exists) · rewrite in learner terms against the current `fetch.sh linux`.
+- **fixed** (was blocker) (infra verify) · `macos-sandbox.md` teaches and uses `[H]`/`[V]`/`[U]` markers (9 hits), which the hard rules forbid in learner text · reword, or add an explicit STYLE exception.
+- **fixed** (was blocker) (08) · `smccc.md` line 311 says "spike results #5 and #6" (verified present) · cite a capture instead.
 - **should** (19) · `unix-sockets.md` "How chapter 19 spells it" says macvmm connects to PEER; the code uses `send_to(peer)` and never calls `connect` · correct the section.
 - **should** (13) · `caches.md` says chapter 13's `image::load` has a comment citing the memtest evidence; it does not · add the comment (section 5) or reword the primer.
 - **nice** (16) · `memory-ordering.md` cites `mp relaxed` seen 4 times in 26 M rounds with an earlier harness · re-run with the current harness or label it as earlier.

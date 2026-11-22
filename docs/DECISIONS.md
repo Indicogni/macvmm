@@ -5,7 +5,7 @@ reasonable defaults the repository owner may override.
 
 | # | Decision |
 |---|---|
-| D1 | Code: dual **MIT OR Apache-2.0** (Rust ecosystem norm, friendly to future productization). Course prose & diagrams: **CC BY 4.0**. **(provisional — owner to confirm)** |
+| D1 | Code: dual **MIT OR Apache-2.0** (Rust ecosystem norm, friendly to future productization). Course prose & diagrams: **CC BY 4.0**. **(confirmed by D22)** |
 | D2 | No third-party mirror. Pin exact *versioned* upstream URLs + sha256 in `scripts/fetch-manifest.txt`; on hash mismatch, fail loudly with instructions. Cache in `./.cache` (gitignored). |
 | D3 | Allowed: IPSW download for the M20 companion uses Apple's HTTPS URL as returned by Virtualization.framework (`VZMacOSRestoreImage.fetchLatestSupported`), trust-on-first-use, size + sha256 printed and recorded. Opt-in only, never run by default tests. |
 | D4 | M21 scope: load `AVPBooter.vmapple2.bin` **from the system path at runtime** (never copied into the repo or cache, never redistributed), and only log its first device accesses. No reverse-engineering writeups of Apple code beyond the device-access trace. |
@@ -36,3 +36,8 @@ reasonable defaults the repository owner may override.
 | D22 | Confirms D1: code is MIT OR Apache-2.0; course text is CC BY 4.0. No longer provisional. |
 | D23 | Confirms D7: the supported floor is macOS 15+ on Apple Silicon M1 or later. The landing page and README say only macOS 27.2 on an M5 Pro was tested, and older versions are expected to work. |
 | D24 | Publishing: the site is built and checked locally. The Worker is deployed, and the card added to indicogni-site, only after the owner approves a local preview. |
+
+## Owner decisions (2026-11-21)
+| # | Decision |
+|---|---|
+| D25 | The repository is public at `https://github.com/Indicogni/macvmm` (default branch `main`), because the course tells learners to clone it. Commits are authored and committed as `Indicogni LLC <noreply@indicogni.com>`; no personal name, username or home path appears in tracked content or history. The copyright holder in the licence files is Indicogni LLC. |

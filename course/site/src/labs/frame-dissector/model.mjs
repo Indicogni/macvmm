@@ -40,6 +40,14 @@ export const VMS = {
   b: { id: "b", name: "VM B", mac: [0x02, 0x6d, 0x76, 0x00, 0x00, 0x02], ip: [10, 0, 0, 2] },
 };
 
+/**
+ * True for the ids VMS really has. `VMS[id]` alone is also truthy for "constructor", "toString"
+ * and every other name on Object.prototype, and the id can come from a share link.
+ */
+export function isVm(id) {
+  return typeof id === "string" && Object.hasOwn(VMS, id);
+}
+
 export const LAYERS = {
   hdr: "virtio-net header",
   eth: "Ethernet",
@@ -382,7 +390,7 @@ function dissectHeader(b, c, fields, dir, strip) {
 }
 
 function receiverOf(to) {
-  return VMS[to] || VMS.b;
+  return isVm(to) ? VMS[to] : VMS.b;
 }
 
 function dissectEthernet(b, c, fields, me) {
@@ -851,6 +859,17 @@ export function encodeShare(s) {
   return str === "p=arp" ? "" : str;
 }
 
+/**
+ * What the lab keeps in the address bar without being asked: `encodeShare` for a preset (an id
+ * and settings, nothing of the reader's), `null` for bytes the reader typed or pasted. Those go
+ * into the address only when the reader presses "Copy link" (the view then uses `encodeShare`).
+ */
+export function encodeAuto(s) {
+  if (!s.preset || !preset(s.preset)) return null;
+  const str = encodeShare(s);
+  return str === "" ? null : str;
+}
+
 /** Decode a share string; `null` for anything malformed (the view then starts at the default). */
 export function decodeShare(str) {
   if (typeof str !== "string" || str.length === 0 || str.length > MAX_BYTES * 2 + 64) return null;
@@ -885,7 +904,7 @@ export function decodeShare(str) {
   }
   if (kv.has("r")) {
     const r = kv.get("r");
-    if (!VMS[r]) return null;
+    if (!isVm(r)) return null;
     s.to = r;
   }
   return s;

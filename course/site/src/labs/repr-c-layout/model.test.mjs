@@ -468,3 +468,103 @@ test("the order preset opens on its wasteful struct", () => {
   assert.equal(a.root, "Wasteful");
   assert.equal(a.layout.bestSize, 16);
 });
+
+// Regression: structs, fields and depth were each capped, but by-value nesting multiplies them.
+// Each of these came from a share link (the fragment is analysed on mount, with nobody asking).
+const nest = (levels, fan, leaf = "u8") =>
+  Array.from({ length: levels }, (_, k) => `#[repr(C)] struct S${k} {${Array.from({ length: fan }, (_, i) => ` a${i}: ${k ? `S${k - 1}` : leaf},`).join("")} }`).join("\n");
+const timed = (fn) => {
+  const t = performance.now();
+  const r = fn();
+  return [r, performance.now() - t];
+};
+
+test("nested structs: the flattened leaf count is capped before anything is expanded", () => {
+  // (a) six 64-field structs: 64^6 leaves; analyze did not return in 20 s.
+  // (b) nine 4-field structs (a 685-character link): 262,144 leaves, 2.36 million DOM nodes.
+  // (c) ten 4-field structs (761 characters): `out.push(...leaves())` threw RangeError.
+  for (const [levels, fan] of [
+    [6, 64],
+    [9, 4],
+    [10, 4],
+  ]) {
+    const src = nest(levels, fan);
+    assert.ok(src.length <= LIMITS.maxSource);
+    for (const compare of ["none", "exit"]) {
+      const [a, ms] = timed(() => analyze(src, { compare }));
+      assert.equal(a.ok, false, `${levels}x${fan}`);
+      assert.match(a.error.message, /more than 512 fields once the structs inside it are written out/);
+      assert.ok(a.error.line >= 1);
+      assert.ok(ms < 100, `${levels}x${fan} took ${ms.toFixed(1)} ms`);
+    }
+  }
+  // The same through the share link, as the view's mount does it.
+  const st = decodeShare(encodeShare(step(initialState(), { type: "edit", source: nest(10, 4) })));
+  const [a, ms] = timed(() => analyze(st.source, { compare: st.compare, view: st.view }));
+  assert.equal(a.ok, false);
+  assert.ok(ms < 100);
+});
+
+test("zero-length arrays do not hide a nested product from the leaf cap or the expander", () => {
+  // `[u8; 0]` fields are 0 leaves when arrays are expanded and 1 leaf each when they are not:
+  // the cap has to count both ways. Before the fix this spent 64^k steps counting to zero.
+  const src = `${nest(6, 64, "[u8; 0]")}\n#[repr(C)] struct T { x: [S5; 1] }`;
+  const [a, ms] = timed(() => analyze(src, { compare: "exit", view: "T" }));
+  assert.equal(a.ok, false);
+  assert.match(a.error.message, /more than 512 fields/);
+  assert.ok(ms < 100, `${ms.toFixed(1)} ms`);
+  // An array of a million empty elements expands to nothing, without counting to a million
+  // (2^40 steps for the nested one, before the fix).
+  const zst = "#[repr(C)] struct E { e: [u8; 0] }\n#[repr(C)] struct Z { a: [[E; 1048576]; 1048576], b: u64 }";
+  const [z, zms] = timed(() => analyze(zst, { compare: "exit" }));
+  assert.equal(z.ok, true);
+  assert.deepEqual(leaves(z.layout, { expand: true }).map((l) => l.path), ["b"]);
+  assert.ok(zms < 100, `${zms.toFixed(1)} ms`);
+});
+
+test("the leaf cap is exact, and ordinary nesting is unaffected", () => {
+  // 8 x 64 = 512 leaves is allowed; one more is not.
+  const at = "#[repr(C)] struct A {" + Array.from({ length: 64 }, (_, i) => `f${i}: u8,`).join("") + "}\n#[repr(C)] struct B { a0: A, a1: A, a2: A, a3: A, a4: A, a5: A, a6: A, a7: A }";
+  const a = ok(at, { compare: "exit" });
+  assert.equal(a.root, "B");
+  assert.equal(leaves(a.layout).length, LIMITS.maxLeaves);
+  assert.equal(a.layout.size, 512);
+  assert.equal(analyze(at.replace("a7: A }", "a7: A, one_more: u8 }")).ok, false);
+  // A long array of a big struct is one leaf, as before: it is not expanded.
+  const arr = ok(`${at}\n#[repr(C)] struct C { all: [B; 1000], n: u32 }`);
+  assert.deepEqual(leaves(arr.layout, { expand: true }).map((l) => [l.path, l.offset, l.size]), [
+    ["all", 0, 512000],
+    ["n", 512000, 4],
+  ]);
+  // Small arrays still expand element by element, through nested structs.
+  const small = ok("#[repr(C)] struct P { x: u16, y: u16 }\n#[repr(C)] struct Q { ps: [P; 3], tail: [u64; 2] }");
+  assert.deepEqual(leaves(small.layout, { expand: true }).map((l) => [l.path, l.offset]), [
+    ["ps[0].x", 0],
+    ["ps[0].y", 2],
+    ["ps[1].x", 4],
+    ["ps[1].y", 6],
+    ["ps[2].x", 8],
+    ["ps[2].y", 10],
+    ["tail[0]", 16],
+    ["tail[1]", 24],
+  ]);
+});
+
+test("type names that are Object.prototype keys are ordinary unknown names", () => {
+  // `PRIMS["constructor"]` is a function, so `a: constructor` used to be taken for a primitive
+  // with no size (and reported as a struct "larger than 2147483648 bytes"), and `*mut toString`
+  // printed `undefined *` in the C rendering.
+  for (const w of ["constructor", "__proto__", "toString", "hasOwnProperty", "valueOf", "isPrototypeOf"]) {
+    assert.match(analyze(`#[repr(C)] struct A { a: ${w} }`).error.message, new RegExp(`^unknown type \`${w}\``), w);
+    assert.match(analyze(`#[repr(C)] struct A { a: [${w}; 2] }`).error.message, /^unknown type/, w);
+    const ptr = ok(`#[repr(C)] struct A { a: *mut ${w} }`);
+    assert.equal(ptr.c, `typedef struct {\n    ${w} *a;\n} A;`, w);
+    // A reader's own type of that name is theirs: laid out, and its typedef is written.
+    const alias = ok(`type ${w} = u32; #[repr(C)] struct B { x: ${w} }`);
+    assert.equal(alias.layout.size, 4, w);
+    assert.match(alias.c, new RegExp(`^typedef uint32_t ${w};`), w);
+    assert.equal(ok(`#[repr(C)] struct ${w} { a: u8 } #[repr(C)] struct B { x: ${w}, y: u16 }`).layout.size, 4, w);
+    // In a skipped attribute group an identifier is never a bracket.
+    assert.equal(ok(`#[derive(${w})] #[repr(C)] struct A { a: u8 }`).layout.size, 1, w);
+  }
+});

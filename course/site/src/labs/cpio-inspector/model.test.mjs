@@ -22,6 +22,7 @@ import {
   rootfsRows, hostView, lsLine, regions, hexRows, previewText, newcEntry, concat, buildNewc,
   tinyCpio, MINI_ALPINE, PRESETS, presetBytes, REFERENCE, encodeShare, decodeShare, applyPatches,
   parseNumber, parseByte, summary, MAX_PATCHES, scriptInterp, memberLabel, displayText, displayName,
+  MAX_MEMBERS, MAX_PATH_DEPTH, MAX_WALK, MAX_ENTRIES,
 } from "./model.mjs";
 import { inflateRaw, crc32 } from "./inflate.mjs";
 
@@ -812,4 +813,149 @@ test("names with bidi overrides or invisible characters are shown escaped", () =
   assert.equal(displayName(latin), "init\\u{202e}hs.exe\\u{200b}");
   const r = unpack(concat(newcEntry({ name: latin, mode: 0o100644, data: "x" }), tr()));
   assert.equal(r.entries[0].nameDisplay, "init\\u{202e}hs.exe\\u{200b}");
+});
+
+// ---- Hostile files: the lab's own limits (members, path depth, path steps) ----
+
+const timed = (fn) => {
+  const t = performance.now();
+  const r = fn();
+  return [r, performance.now() - t];
+};
+const DIR = 0o040755, REG = 0o100644, LNK = 0o120777;
+const TRAILER_ENTRY = newcEntry({ name: "TRAILER!!!", nlink: 1 });
+
+test("members are capped: 100,000 empty gzip members stop the lab at once, with the limit named", () => {
+  // About 58 s and 1.44 GB before the cap (every member is walked, listed and given a table).
+  const first = gz(TRAILER_ENTRY);
+  const empty = gz(new Uint8Array(0));
+  const buf = concat(first, ...Array(100_000).fill(empty));
+  assert.ok(buf.length < 16 * 1024 * 1024);
+  const [r, ms] = timed(() => unpack(buf));
+  assert.ok(ms < 1000, `unpack took ${ms.toFixed(0)} ms`);
+  assert.equal(r.members.length, MAX_MEMBERS);
+  assert.equal(r.error, null);
+  assert.match(r.labStop, /^More than 1,024 members \(archives and compressed streams, one after another\): the lab stops here\./);
+  const [hv, ms2] = timed(() => hostView(buf));
+  assert.ok(ms2 < 1000, `hostView took ${ms2.toFixed(0)} ms`);
+  assert.equal(hv.ok, false);
+  assert.match(hv.text, /More than 1,024 gzip members/);
+  assert.equal(bootLog(r).outcome, "unknown");
+  assert.match(summary(r, hv), /More than 1,024 members/);
+  assert.doesNotMatch(summary(r, hv), /lists nothing/);
+  // One under the cap is followed to the end.
+  const fits = unpack(concat(first, ...Array(MAX_MEMBERS - 1).fill(empty)));
+  assert.equal(fits.members.length, MAX_MEMBERS);
+  assert.equal(fits.labStop, null);
+});
+
+test("raw members are capped too, and many of them no longer cost a scan each", () => {
+  // 100,000 TRAILER!!! entries, each its own member: 4.4 s before (a search of the item list per entry).
+  const buf = concat(...Array(100_000).fill(TRAILER_ENTRY));
+  const [r, ms] = timed(() => unpack(buf));
+  assert.ok(ms < 1000, `took ${ms.toFixed(0)} ms`);
+  assert.equal(r.members.length, MAX_MEMBERS);
+  assert.match(r.labStop, /More than 1,024 members/);
+  // Under the cap: every member's extent is still recorded (the item is updated in place).
+  const few = unpack(concat(...Array(5).fill(TRAILER_ENTRY)));
+  assert.equal(few.labStop, null);
+  assert.deepEqual(few.items.map((x) => [x.type, x.start, x.end]), [0, 1, 2, 3, 4].map((k) => ["member", k * TRAILER_ENTRY.length, (k + 1) * TRAILER_ENTRY.length]));
+});
+
+test("path depth is capped: a directory tree 2,000 deep stops at level 65, with the limit named", () => {
+  // The 203 KB gzip of the review: ~2,000 nested directories and files at the bottom. Resolving
+  // each name walked every level and built every prefix; the tab ran out of memory.
+  const parts = [];
+  let p = "a";
+  while (p.length + 2 < 4080) { parts.push(newcEntry({ name: p, mode: DIR })); p += "/a"; }
+  for (let i = 0; i < 2000; i++) parts.push(newcEntry({ name: `${p}/f`, mode: REG }));
+  const raw = concat(...parts, TRAILER_ENTRY);
+  for (const buf of [raw, gz(raw)]) {
+    const [r, ms] = timed(() => unpack(buf));
+    assert.ok(ms < 1000, `unpack took ${ms.toFixed(0)} ms`);
+    assert.equal(r.entries.length, MAX_PATH_DEPTH + 1);
+    assert.equal(r.error, null, "a lab limit is not a kernel error");
+    assert.equal(r.labStop, `Member 1, entry ${MAX_PATH_DEPTH + 1}: its path is more than 64 directories deep, deeper than this lab follows. The lab stops here; the kernel has no such limit and would carry on.`);
+    const last = r.entries[r.entries.length - 1];
+    assert.equal(last.outcome.status, "lab");
+    assert.match(last.outcome.text, /^The lab stops at this entry: its path is more than 64 directories deep/);
+    assert.equal(r.entries[MAX_PATH_DEPTH - 1].outcome.status, "created", "64 deep is still followed");
+    assert.equal(bootLog(r).outcome, "unknown");
+    const [, ms2] = timed(() => hostView(buf));
+    assert.ok(ms2 < 2000, `hostView took ${ms2.toFixed(0)} ms`);
+  }
+});
+
+test("path steps are capped: symlink chains cannot multiply the work of every entry", () => {
+  // 40 links, each a 60-component detour to the next, then entries that walk all 40 hops: about
+  // 2,500 lookups per name, four names resolved per entry. 20,000 such entries are 2.4 MB raw
+  // and a few KB gzipped; unbounded, they are 200 million lookups.
+  const parts = [newcEntry({ name: "d", mode: DIR })];
+  const detour = "d/../".repeat(29);
+  for (let k = 0; k < 40; k++) parts.push(newcEntry({ name: `l${k}`, mode: LNK, data: k === 39 ? "d" : `${detour}l${k + 1}` }));
+  for (let i = 0; i < 20_000; i++) parts.push(newcEntry({ name: `l0/f${i}`, mode: REG }));
+  const raw = concat(...parts, TRAILER_ENTRY);
+  const [r, ms] = timed(() => unpack(gz(raw)));
+  assert.ok(ms < 2000, `took ${ms.toFixed(0)} ms`);
+  assert.ok(r.entries.length < 2000, `${r.entries.length} entries walked`);
+  assert.equal(r.error, null);
+  assert.match(r.labStop, /^Member 1, entry \d+: resolving the names up to here has taken more than 2,000,000 path steps \(very deep directories, very long paths or long chains of symlinks\), more than this lab spends\. The lab stops here/);
+  assert.ok(r.rootfs.work <= MAX_WALK + 70_000);
+  // The first of those entries did resolve through all 40 links, as the kernel would.
+  assert.equal(r.entries[41].path, "/d/f0");
+  // A symlink whose own target is deeper than the cap is refused when it is made.
+  const deepLink = unpack(concat(newcEntry({ name: "s", mode: LNK, data: "x/".repeat(MAX_PATH_DEPTH + 1) }), TRAILER_ENTRY));
+  assert.match(deepLink.labStop, /^Member 1, entry 1: its path is more than 64 directories deep/);
+});
+
+test("the limits leave ordinary archives alone", () => {
+  // Every preset, and a tree exactly at the depth cap with a file at the bottom.
+  for (const p of PRESETS) {
+    const r = unpack(presetBytes(p.key));
+    assert.ok(!r.labStop || !/more than|More than/.test(r.labStop), `${p.key}: ${r.labStop}`);
+    assert.ok(r.rootfs.work < 10_000, `${p.key}: ${r.rootfs.work} steps`);
+  }
+  const parts = [];
+  let p = "";
+  for (let d = 1; d < MAX_PATH_DEPTH; d++) { p += (d > 1 ? "/" : "") + `d${d}`; parts.push(newcEntry({ name: p, mode: DIR })); }
+  parts.push(newcEntry({ name: `${p}/init`, mode: 0o100755, data: "#!/bin/sh\n" }));
+  parts.push(newcEntry({ name: "init", mode: LNK, data: `${p}/init` }));
+  const r = unpack(concat(...parts, TRAILER_ENTRY));
+  assert.equal(r.labStop, null);
+  assert.equal(r.error, null);
+  assert.equal(initSource(r).path, `/${p}/init`);
+  assert.equal(bootLog(r).outcome, "noinit", "the script is found; its /bin/sh is what is missing");
+});
+
+test("after unpacking, a lookup that hits a limit is reported as the lab's, not as a kernel line", () => {
+  // The unpacker refuses such a link when it is made, so plant one in the finished rootfs: an
+  // /init whose target is deeper than the lab follows.
+  const r = unpack(presetBytes("tiny"));
+  assert.equal(r.labStop, null);
+  assert.equal(bootLog(r).outcome, "noinit");
+  r.rootfs.nodes.set("/init", { type: "symlink", mode: LNK, target: "x/".repeat(MAX_PATH_DEPTH + 1), src: null });
+  const log = bootLog(r);
+  assert.equal(log.outcome, "unknown");
+  assert.equal(log.why, "labStop");
+  const last = log.lines[log.lines.length - 1];
+  assert.equal(last.source, "lab");
+  assert.match(last.note, /cannot say which program the kernel runs: looking for it, its path is more than 64 directories deep/);
+  assert.ok(!log.lines.some((l) => /check access|Run \/init/.test(l.text)), "no kernel line the lab cannot stand behind");
+  assert.equal(initSource(r), null);
+});
+
+test("long names are built flat: 30,000 names of 4 KiB do not exhaust memory in the host view", () => {
+  const name = `${"n".repeat(4000)}`;
+  const one = newcEntry({ name, mode: REG });
+  const buf = gz(concat(...Array(8000).fill(one), TRAILER_ENTRY));
+  const before = process.memoryUsage().heapUsed;
+  const [hv, ms] = timed(() => hostView(buf));
+  assert.equal(hv.ok, true);
+  assert.equal(hv.items.length, 8000);
+  assert.ok(ms < 3000, `took ${ms.toFixed(0)} ms`);
+  // 8,000 names x 4,000 characters, twice (raw and displayed), is 64 MB flat; as one rope node
+  // per character it was over 1 GB.
+  const grew = process.memoryUsage().heapUsed - before;
+  assert.ok(grew < 400 * 1024 * 1024, `heap grew by ${(grew / 1048576).toFixed(0)} MiB`);
+  assert.equal(hv.items[7999].name, name);
 });

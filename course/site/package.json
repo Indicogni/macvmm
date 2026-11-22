@@ -1,6 +1,7 @@
 {
   "name": "indicogni-vmm-course",
   "private": true,
+  "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "description": "Course site for Build a VMM. Zero dependencies: Node built-ins only.",
   "engines": { "node": ">=22" },

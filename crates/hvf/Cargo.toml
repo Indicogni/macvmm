@@ -5,6 +5,8 @@ description = "Hand-written FFI to Apple's Hypervisor.framework (arm64) plus thi
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+license.workspace = true
+repository.workspace = true
 
 # The Hypervisor.framework FFI is hand-written from the SDK headers (ADR-0002). `libc` is used
 # only by the libSystem shims in `host.rs` (umask, rlimits, open flags; docs/dependencies.md).

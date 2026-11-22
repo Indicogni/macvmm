@@ -8,6 +8,8 @@
 //     reason. Every read is bounds-checked against the buffer and `totalsize`, names must end in a
 //     NUL inside their block, nesting depth and token count are capped. A malformed blob is an
 //     error value, never an exception. Devicetree Specification v0.4, chapter 5.
+//     One limit is the lab's own and not the reference's: a name longer than MAX_NAME bytes is
+//     refused as `LabLimit(...)`, marked `lab: true`.
 //   * On top of the reference it records *where* every byte went (header field, reservation
 //     entry, token, name, value, padding, string), so the view can colour the hex dump and link a
 //     tree node to its bytes. That bookkeeping never changes what is accepted.
@@ -38,6 +40,16 @@ export const MAX_RESERVATIONS = 1024;
 export const MAX_FILE = 16 * 1024 * 1024;
 /** Most byte changes the learner may stack on a blob. */
 export const MAX_PATCHES = 16;
+/**
+ * Longest node or property name the lab reads, in bytes. A lab limit, not one of reader.rs's: the
+ * specification allows 1 to 31 characters (section 2.2.1 and 2.2.4), and real trees stay far below
+ * this. Without it one megabyte-long string in the strings block can be named by every property,
+ * and each use is scanned, decoded and copied into three labels: a 1.96 MB file ran the tab out of
+ * memory.
+ */
+export const MAX_NAME = 256;
+/** Most reg/ranges entries of one property that the lab writes out in words. */
+export const MAX_RANGES_SHOWN = 16;
 
 export const TOKEN_NAMES = {
   [FDT_BEGIN_NODE]: "FDT_BEGIN_NODE",
@@ -77,6 +89,9 @@ const EXPLAIN = {
   BadToken: "A structure word is not one of the five tokens (1, 2, 3, 4, 9).",
   BadStructure: "The nodes do not nest properly: unbalanced, a property outside a node or after a child, or a second root.",
   TooComplex: "Deeper than 64 levels, or more tokens than the reader's cap.",
+  // The lab's own limit (see MAX_NAME); `err` marks it `lab: true` so the view does not claim
+  // that macvmm's reader refuses the blob the same way.
+  LabLimit: `A node or property name here is longer than ${MAX_NAME} bytes. The specification allows 31 characters, so this lab stops reading: a file like this is damaged or built to waste time. macvmm's reader has no such limit and would read on.`,
 };
 
 function err(code, arg, at) {
@@ -85,7 +100,9 @@ function err(code, arg, at) {
   else if (typeof arg === "string") text = `${code}(${JSON.stringify(arg)})`;
   else if (typeof arg === "number") text = `${code}(${arg})`;
   else text = `${code} { ${Object.entries(arg).map(([k, v]) => `${k}: ${v}`).join(", ")} }`;
-  return { code, text, explain: EXPLAIN[code], at: at ?? null };
+  const e = { code, text, explain: EXPLAIN[code], at: at ?? null };
+  if (code === "LabLimit") e.lab = true;
+  return e;
 }
 
 // ---- Small helpers ----
@@ -113,6 +130,18 @@ function utf8(bytes) {
 function nulIn(b, from, limit) {
   for (let i = from; i < limit; i++) if (b[i] === 0) return i;
   return -1;
+}
+
+/**
+ * The NUL that ends a name starting at `from` in a block ending at `limit`, looking at no more
+ * than MAX_NAME bytes of name. Returns { nul } or { tooLong: true } (more than MAX_NAME bytes
+ * with no NUL yet and block left over) or { nul: -1 } (the block ends first, as reader.rs sees it).
+ */
+function nameEnd(b, from, limit) {
+  const stop = Math.min(limit, from + MAX_NAME + 1);
+  const nul = nulIn(b, from, stop);
+  if (nul >= 0) return { nul };
+  return stop < limit ? { tooLong: true } : { nul: -1 };
 }
 
 /** Lower-case hex of a number or BigInt, with 0x. */
@@ -247,6 +276,9 @@ export function parse(input) {
   const stack = []; // node ids; has-child flag lives on the node
   const hasChild = new Map();
   let rootId = null;
+  // Property names by name offset: thousands of properties share a handful of strings, so each
+  // string is found and decoded once, however many properties name it.
+  const nameAt = new Map();
   const read32 = (what) => {
     if (pos + 4 > lim) return { e: err("Truncated", what, pos) };
     const v = be32(b, pos);
@@ -261,7 +293,9 @@ export function parse(input) {
     if (tok === FDT_BEGIN_NODE) {
       if (rootId !== null) return fail(err("BadStructure", "a second root node", tokAt));
       if (stack.length >= MAX_DEPTH) return fail(err("TooComplex", undefined, tokAt));
-      const nul = nulIn(b, pos, lim);
+      const ne = nameEnd(b, pos, lim);
+      if (ne.tooLong) return fail(err("LabLimit", `node name longer than ${MAX_NAME} bytes`, pos));
+      const nul = ne.nul;
       if (nul < 0) return fail(err("UnterminatedName", undefined, pos));
       const name = utf8(b.subarray(pos, nul));
       if (name === null) return fail(err("NotUtf8", undefined, pos));
@@ -313,10 +347,19 @@ export function parse(input) {
       pos = align4(valOff + len - base) + base;
       // cstr(strings, nameoff): a NUL inside the strings block.
       const at = sBase + nameoff;
-      const nul = nameoff < sLim - sBase ? nulIn(b, at, sLim) : -1;
-      if (nul < 0) return fail(err("BadNameOffset", nameoff, tokAt + 8));
-      const name = utf8(b.subarray(at, nul));
-      if (name === null) return fail(err("NotUtf8", undefined, at));
+      let known = nameAt.get(nameoff);
+      if (!known) {
+        const ne = nameoff < sLim - sBase ? nameEnd(b, at, sLim) : { nul: -1 };
+        if (ne.tooLong) known = { e: err("LabLimit", `property name longer than ${MAX_NAME} bytes`, at) };
+        else if (ne.nul < 0) known = { e: err("BadNameOffset", nameoff, tokAt + 8) };
+        else {
+          const text = utf8(b.subarray(at, ne.nul));
+          known = text === null ? { e: err("NotUtf8", undefined, at) } : { name: text };
+        }
+        nameAt.set(nameoff, known);
+      }
+      if (known.e) return fail(known.e);
+      const name = known.name;
       if (!stack.length) return fail(err("BadStructure", "a property outside any node", tokAt));
       const owner = stack[stack.length - 1];
       if (hasChild.get(owner)) return fail(err("BadStructure", "a property after a child node", tokAt));
@@ -498,10 +541,26 @@ export function toDts(r) {
 
 // ---- reg and ranges ----
 
+// Per parse result, per node: property name -> the first property with that name. Built the
+// first time a node is asked about, so looking up `#address-cells` in a parent costs one Map
+// read per child instead of a walk over all the parent's properties (80,000 properties in the
+// root and 40,000 children took 13 s that way).
+const PROP_INDEX = new WeakMap();
+
 function propOf(r, nodeId, name) {
   if (nodeId < 0) return null;
-  for (const pid of r.nodes[nodeId].props) if (r.props[pid].name === name) return r.props[pid];
-  return null;
+  let perNode = PROP_INDEX.get(r);
+  if (!perNode) PROP_INDEX.set(r, (perNode = new Map()));
+  let byName = perNode.get(nodeId);
+  if (!byName) {
+    byName = new Map();
+    for (const pid of r.nodes[nodeId].props) {
+      const p = r.props[pid];
+      if (!byName.has(p.name)) byName.set(p.name, p); // the first wins, as the walk did
+    }
+    perNode.set(nodeId, byName);
+  }
+  return byName.get(name) ?? null;
 }
 
 /** A node's own #address-cells / #size-cells, with where each came from (spec 2.3.5 defaults). */
@@ -813,9 +872,10 @@ function regLines(reg) {
   const from = (x) => (x === "default" ? "the specification's default, the parent does not say" : `from ${x}`);
   lines.push(`reg read with #address-cells = ${reg.ac} (${from(reg.acFrom)}) and #size-cells = ${reg.sc} (${from(reg.scFrom)}).`);
   lines.push(reg.message + ".");
-  for (const e of reg.entries) {
+  for (const e of reg.entries.slice(0, MAX_RANGES_SHOWN)) {
     lines.push(reg.sc === 0 ? `address ${hexGrouped(e.addr)}, no size` : `address ${hexGrouped(e.addr)}, size ${hexGrouped(e.size)} (${sizeWords(e.size)})`);
   }
+  if (reg.entries.length > MAX_RANGES_SHOWN) lines.push(`... and ${reg.entries.length - MAX_RANGES_SHOWN} more ranges, not listed.`);
   if (reg.loose) {
     lines.push(
       `A reader that skips the check takes the first ${reg.entry} bytes anyway: address ${hexGrouped(reg.loose.addr)}, size ${hexGrouped(reg.loose.size)} (${sizeWords(reg.loose.size)}).`,

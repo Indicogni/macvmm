@@ -116,7 +116,9 @@ test("reads a shared hash, edits bytes, refuses bad hex, fixes checksums", async
   hexIn.value = bytes.join(" ");
   hexIn.dispatch("change");
   assert.equal(hexIn.attrs["aria-invalid"], undefined);
-  assert.match(t.hash(), /^b=/);
+  // Was `assert.match(t.hash(), /^b=/)`: edited bytes used to be written to the address on every
+  // render. They now reach it only through "Copy link" (next test).
+  assert.equal(t.hash(), null, "edited bytes are not put in the address unasked");
   assert.match(t.root.textContent, /header checksum is wrong/);
   t.btn("Fix checksums").dispatch("click");
   assert.match(t.root.textContent, /10\.0\.0\.3 is not its address/);
@@ -260,4 +262,53 @@ test("a Try this list gives a first path; Page Down moves 8 rows", async () => {
   grid.dispatch("keydown", { key: "PageUp" });
   assert.equal(t.cells()[0].attrs.tabindex, "0");
   t.handle.destroy();
+});
+
+test("own bytes reach the address only through Copy link; a link that carries bytes still opens", async (t0) => {
+  const realNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", { value: { clipboard: { writeText: async () => {} } }, configurable: true });
+  t0.after(() => (realNavigator ? Object.defineProperty(globalThis, "navigator", realNavigator) : delete globalThis.navigator));
+  const t = await setup();
+  const hexIn = t.byId("hex");
+  hexIn.value = "de ad be ef 5a 51 58 4a";
+  hexIn.dispatch("change");
+  assert.equal(t.cells().length, 8);
+  assert.equal(t.hash(), null, "pasted bytes are not copied into the address");
+  // Settings changed on pasted bytes do not leak them either.
+  t.byId("dir").value = "rx";
+  t.byId("dir").dispatch("change");
+  assert.equal(t.hash(), null);
+  t.btn("Copy link").dispatch("click");
+  assert.equal(t.hash(), "b=deadbeef5a51584a;d=rx;r=b");
+  assert.match(t.root.textContent, /only if you press Copy link/);
+  // The next edit is new content nobody asked to share: the address is cleared again.
+  hexIn.value = "00 11";
+  hexIn.dispatch("change");
+  assert.equal(t.hash(), null);
+  // A preset is still reflected as it is chosen.
+  t.byId("preset").value = "ping";
+  t.byId("preset").dispatch("change");
+  assert.equal(t.hash(), "p=ping");
+  t.handle.destroy();
+
+  // Opening a link with bytes: they are dissected, the address is left as it was, and an edit
+  // clears it.
+  const u = await setup("b=deadbeef;d=rx");
+  assert.equal(u.cells().length, 4);
+  assert.equal(u.byId("dir").value, "rx");
+  assert.equal(u.hash(), "b=deadbeef;d=rx");
+  u.byId("hex").value = "01 02 03";
+  u.byId("hex").dispatch("change");
+  assert.equal(u.hash(), null);
+  u.handle.destroy();
+});
+
+test("a link naming an Object.prototype key as the receiver falls back to the default, without throwing", async () => {
+  for (const key of ["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf"]) {
+    const t = await setup(`p=arp;r=${key}`);
+    assert.equal(t.cells().length, 54, key);
+    assert.equal(t.byId("to").value, "b", key);
+    assert.match(t.root.textContent, /VM B's guest/);
+    t.handle.destroy();
+  }
 });

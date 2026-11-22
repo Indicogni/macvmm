@@ -719,7 +719,8 @@ rule({
 rule({
   id: "frame", re: /^\s+([\w.]+)\+0x[0-9a-f]+\/0x[0-9a-f]+/, kind: "context", stage: null,
   title: "A call-trace frame", what: "One function in the call trace: name, then offset/size in bytes.",
-  check(m) { const s = FRAME_STAGE[m[1]]; return s ? [`\`${m[1]}\` runs stage ${s}: ${STAGES[s].name}.`] : []; },
+  // hasOwn: the name is whatever the pasted log says, and `constructor+0x0/0x0` is a valid frame.
+  check(m) { const s = Object.hasOwn(FRAME_STAGE, m[1]) ? FRAME_STAGE[m[1]] : null; return s ? [`\`${m[1]}\` runs stage ${s}: ${STAGES[s].name}.`] : []; },
 });
 rule({
   id: "regs", re: /^(pc|lr|sp) : |^x\d+\s*: [0-9a-f]{16}/, kind: "context", stage: null,
@@ -1143,7 +1144,7 @@ export function chList(ids) {
 function upTo(n) { return n === 1 ? "Stage 1" : n === 2 ? "Stages 1 and 2" : `Stages 1 to ${n}`; }
 function cap(s) { return s[0].toUpperCase() + s.slice(1); }
 export function exitSentence(code) {
-  const m = EXIT_MEANING[code];
+  const m = Object.hasOwn(EXIT_MEANING, code) ? EXIT_MEANING[code] : null;
   return m ? `\`macvmm\` exited with status ${code}: ${m}.` : `\`macvmm\` exited with status ${code}.`;
 }
 

@@ -258,9 +258,18 @@ const SECTION_FLAGS = { text: "RX", rodata: "R", data: "RW", bss: "RW" };
 // ---------------------------------------------------------------------------------------------
 // State.
 
+/**
+ * True for the ids PRESETS really has. `PRESETS[id]` alone is also truthy for "constructor",
+ * "toString" and every other name on Object.prototype, and the id can come from a share link
+ * (`#linker-map=p:constructor` used to throw on mount).
+ */
+export function isPreset(id) {
+  return typeof id === "string" && Object.hasOwn(PRESETS, id);
+}
+
 /** The lab's state: one plain object. Addresses are BigInt. */
 export function initialState(presetId = "bare") {
-  const p = PRESETS[presetId] || PRESETS.bare;
+  const p = isPreset(presetId) ? PRESETS[presetId] : PRESETS.bare;
   const pieces = p.id === "bare" ? barePieces(false) : guestPieces();
   const order = ["text", "rodata", "data", "bss"].filter((k) => pieces[k].length > 0);
   return {
@@ -295,7 +304,7 @@ export function step(state, action) {
     case "reset":
       return initialState(s.preset);
     case "preset":
-      return initialState(PRESETS[action.id] ? action.id : "bare");
+      return initialState(isPreset(action.id) ? action.id : "bare");
     case "move": {
       const i = s.order.indexOf(action.section);
       const j = i + action.delta;
@@ -391,12 +400,12 @@ export function encodeHash(state) {
 /** Parse a share string. Anything malformed falls back to the preset's defaults. */
 export function decodeHash(str) {
   if (typeof str !== "string" || str.length > 200) return initialState();
-  const kv = {};
+  const kv = Object.create(null); // keys come from the link
   for (const part of str.split(";")) {
     const m = /^([a-z]):([0-9a-zA-Z_-]{1,40})$/.exec(part);
     if (m) kv[m[1]] = m[2];
   }
-  let s = initialState(PRESETS[kv.p] ? kv.p : "bare");
+  let s = initialState(isPreset(kv.p) ? kv.p : "bare");
   if (kv.w === "1") s = step(s, { type: "where", on: true });
   if (kv.f) {
     s = step(s, { type: "far", on: true });
@@ -406,7 +415,7 @@ export function decodeHash(str) {
   if (kv.k) s = step(s, { type: "stack", text: kv.k });
   if (kv.l) s = step(s, { type: "load", text: kv.l });
   if (kv.o) {
-    const order = kv.o.split("-").map((c) => CODE_ORDER[c]);
+    const order = kv.o.split("-").map((c) => (Object.hasOwn(CODE_ORDER, c) ? CODE_ORDER[c] : null));
     const want = wantedSections(s);
     const same = order.length === want.length && want.every((w) => order.includes(w));
     if (same) s = { ...s, order };

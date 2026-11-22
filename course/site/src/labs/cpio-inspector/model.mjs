@@ -17,6 +17,8 @@
 //
 // Everything here treats the file as hostile: sizes are capped, every offset is checked before it
 // is read, symlink resolution has a hop limit, and nothing is ever turned into code or HTML.
+// Where the kernel itself has no limit (how many members, how deep a path, how much work the
+// names take to resolve) the lab has its own, below, and stops with a sentence that says which.
 
 import { inflateRaw, crc32 } from "./inflate.mjs";
 
@@ -25,6 +27,19 @@ export const PATH_MAX = 4096;
 export const MAX_INPUT = 16 * 1024 * 1024;
 export const MAX_OUTPUT = 128 * 1024 * 1024;
 export const MAX_ENTRIES = 100_000;
+// Three more limits are the lab's own (the kernel has none of them). Each ends the walk with a
+// `labStop` sentence that names the limit; none changes what a smaller archive unpacks to.
+/** Members (raw newc runs and compressed streams) the lab follows. A real initramfs has one to
+ * three; 100,000 empty gzip members took about a minute and 1.4 GB to walk and draw. */
+export const MAX_MEMBERS = 1024;
+/** Directories deep a name, a symlink target or a resolved path may be. Real trees are about a
+ * dozen deep; the cost of resolving a name grows with the square of its depth. */
+export const MAX_PATH_DEPTH = 64;
+/** Path steps the whole unpack may spend resolving names (one per component looked up, more for
+ * very long paths): deep trees and chains of symlinks multiply the work per entry. */
+export const MAX_WALK = 2_000_000;
+/** Path steps one name may take (after unpacking too, when the lab looks for /init). */
+const MAX_WALK_ONE = 65_536;
 export const MAX_PATCHES = 16;
 
 export const S_IFMT = 0o170000;
@@ -90,9 +105,12 @@ export function parseField(bytes, off) {
   return { value: v, raw: latin1(bytes, off, end), clean };
 }
 
+// In chunks, not one `s += char` per byte: that builds a rope with a node per character, about
+// thirty times the bytes it stands for until something flattens it, and a file of long names
+// (30,000 names of 4 KiB from a 200 KB gzip) ran the tab out of memory that way.
 function latin1(bytes, from, to) {
   let s = "";
-  for (let i = from; i < to; i++) s += String.fromCharCode(bytes[i]);
+  for (let i = from; i < to; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(to, i + 8192)));
   return s;
 }
 
@@ -172,40 +190,88 @@ function parentOf(p) {
 }
 const join = (dir, name) => (dir === "/" ? `/${name}` : `${dir}/${name}`);
 
+/** Why a lookup hit one of the lab's limits, in words that finish "Member 1, entry 2: ...". */
+const LIMIT_TEXT = {
+  depth: `its path is more than ${MAX_PATH_DEPTH} directories deep, deeper than this lab follows`,
+  walk: `resolving the names up to here has taken more than ${MAX_WALK.toLocaleString("en-US")} path steps (very deep directories, very long paths or long chains of symlinks), more than this lab spends`,
+  one: "resolving this one name takes too many path steps (long paths behind chains of symlinks), more than this lab spends",
+};
+const pathDepth = (path) => {
+  let n = 0;
+  for (const c of path.split("/")) if (c !== "") n++;
+  return n;
+};
+
 class Rootfs {
   constructor() {
     this.nodes = new Map();
     this.nodes.set("/", { type: "dir", mode: 0o040755, children: new Set(), src: null });
+    // The lab's limits on lookups (see MAX_PATH_DEPTH and MAX_WALK). `metered` is true while the
+    // archive is being unpacked: then the steps of every lookup add up in `work`. `limit` is the
+    // first limit hit ("depth", "walk" or "one"); a lookup that hits one answers ENOENT and the
+    // caller that cares (the unpacker, bootLog) reads `limit` afterwards.
+    this.metered = false;
+    this.work = 0;
+    this.limit = null;
   }
   /** Path lookup from "/" (the unpacker runs with cwd "/"), following symlinks in every
-   * component but the last unless `follow`. At most 40 symlinks, as Linux (MAXSYMLINKS). */
+   * component but the last unless `follow`. At most 40 symlinks, as Linux (MAXSYMLINKS).
+   * The walk is bounded: a step costs 1 plus 1 per 512 characters of the path it looks up, a
+   * name may take MAX_WALK_ONE steps, the unpack MAX_WALK in all, and no path may be more than
+   * MAX_PATH_DEPTH directories deep. */
   resolve(path, follow) {
     let cur = "/";
+    let depth = 0; // of `cur`
+    let spent = 0;
+    const over = (why) => {
+      this.limit = this.limit || why;
+      return { error: ENOENT, limit: this.limit };
+    };
+    // Spends `n` more steps; returns the limit that ran out, or null to go on.
+    const spend = (n) => {
+      spent += n;
+      if (this.metered) {
+        this.work += n;
+        if (this.work > MAX_WALK) return "walk";
+      }
+      return spent > MAX_WALK_ONE ? "one" : null;
+    };
+    let out = this.metered ? this.limit : null; // an unpack that hit a limit looks up nothing more
+    if (out || (out = spend(1 + (path.length >> 9)))) return over(out);
     let comps = path.split("/").filter((c) => c !== "");
     let hops = 0;
     if (comps.length === 0) return path === "" ? { error: ENOENT } : { self: true, path: "/", node: this.nodes.get("/") };
-    while (comps.length) {
-      const c = comps.shift();
-      const last = comps.length === 0;
+    if (comps.length > MAX_PATH_DEPTH) return over("depth");
+    let at = 0; // comps[at] is the next component: no shift(), which moves the whole list
+    while (at < comps.length) {
+      const c = comps[at++];
+      const last = at === comps.length;
       if (c === "." || c === "..") {
-        if (c === "..") cur = parentOf(cur);
+        if ((out = spend(1))) return over(out);
+        if (c === ".." && cur !== "/") { cur = parentOf(cur); depth--; }
         if (last) return { self: true, path: cur, node: this.nodes.get(cur) };
         continue;
       }
       const p = join(cur, c);
+      if ((out = spend(1 + (p.length >> 9)))) return over(out);
       const n = this.nodes.get(p);
       if (last && !follow) return { parent: cur, name: c, path: p, node: n || null };
       if (!n) return last ? { parent: cur, name: c, path: p, node: null } : { error: ENOENT };
       if (n.type === "symlink") {
         if (++hops > 40) return { error: ELOOP };
-        if (n.target.startsWith("/")) cur = "/";
-        comps = n.target.split("/").filter((x) => x !== "").concat(comps);
+        if ((out = spend(1 + (n.target.length >> 9)))) return over(out);
+        if (n.target.startsWith("/")) { cur = "/"; depth = 0; }
+        const tc = n.target.split("/").filter((x) => x !== "");
+        if (tc.length > MAX_PATH_DEPTH) return over("depth");
+        comps = tc.concat(comps.slice(at));
+        at = 0;
         if (comps.length === 0) return { self: true, path: cur, node: this.nodes.get(cur) };
         continue;
       }
       if (last) return { parent: cur, name: c, path: p, node: n };
       if (n.type !== "dir") return { error: ENOTDIR };
       cur = p;
+      if (++depth > MAX_PATH_DEPTH) return over("depth");
     }
     return { self: true, path: cur, node: this.nodes.get(cur) };
   }
@@ -244,7 +310,8 @@ function builtinRootfs() {
  *   items    - the buffer in order: members, zero runs, and where it stopped ({ type, start, end })
  *   entries  - every entry, in the order the kernel met it
  *   error    - { message, member, at, stream } : the text after "Initramfs unpacking failed: ", or null
- *   labStop  - why the lab could not follow the rest (a compressor it cannot run, a size cap), or null
+ *   labStop  - why the lab could not follow the rest (a compressor it cannot run, or one of the
+ *              lab's limits: MAX_OUTPUT, MAX_ENTRIES, MAX_MEMBERS, MAX_PATH_DEPTH, MAX_WALK), or null
  *   rootfs   - the resulting filesystem (Rootfs)
  *   length   - bytes.length
  */
@@ -252,11 +319,13 @@ export function unpack(bytes, opts = {}) {
   const maxOut = opts.maxOut ?? MAX_OUTPUT;
   const res = { members: [], items: [], entries: [], error: null, labStop: null, length: bytes.length, notes: [] };
   const fs = builtinRootfs();
+  fs.metered = true; // until the walk below ends: see Rootfs.resolve
   res.rootfs = fs;
   let links = new Map(); // find_link's hash, freed at every TRAILER!!!
   let message = null;
   let state = "Start";
   let curRaw = null; // the raw member entries are being added to
+  let curRawItem = null; // its row in res.items (kept here: finding it again is a scan per entry)
   let totalOut = 0;
 
   const setError = (msg, member, at, stream) => { if (!message) { message = msg; res.error = { message: msg, member, at, stream }; } };
@@ -335,6 +404,15 @@ export function unpack(bytes, opts = {}) {
     e.nameDisplay = displayText(nameBytes);
     if (nul !== p + HEADER + namesize - 1) (e.notes ||= []).push(`The name contains a NUL before its end; the kernel uses only "${e.nameDisplay}".`);
 
+    // One of the lab's own limits on names (MAX_PATH_DEPTH, MAX_WALK) was hit creating `e`:
+    // stop here and say which, instead of walking on for seconds or minutes.
+    const labLimit = () => {
+      if (!fs.limit) return null;
+      const why = LIMIT_TEXT[fs.limit];
+      e.outcome = { status: "lab", text: `The lab stops at this entry: ${why}.` };
+      res.labStop = res.labStop || `Member ${member.index + 1}, entry ${e.index + 1}: ${why}. The lab stops here; the kernel has no such limit and would carry on.`;
+      return { consumed: avail, complete: false, stop: true, entry: e };
+    };
     if (isLnk) {
       let t = nameEnd;
       while (t < nameEnd + filesize && buf[t] !== 0) t++;
@@ -342,7 +420,7 @@ export function unpack(bytes, opts = {}) {
       e.targetDisplay = displayText(buf.subarray(nameEnd, t));
       e.kind = "symlink";
       doSymlink(e, member);
-      return skipTo("created", "");
+      return labLimit() || skipTo("created", "");
     }
     if (e.name === "TRAILER!!!") {
       e.kind = "trailer";
@@ -357,6 +435,8 @@ export function unpack(bytes, opts = {}) {
       const have = Math.max(0, Math.min(end, dataEnd) - e.dataOff);
       e.dataEnd = dataEnd;
       doName(e, buf, have);
+      const stopped = labLimit();
+      if (stopped) return stopped;
       if (dataEnd > end) {
         e.truncated = true;
         if (e.outcome.status === "created" || e.outcome.status === "replaced") e.outcome = { status: "partial", text: `Only ${have} of ${filesize} data bytes are here. The kernel has already set the file's size to ${filesize}, so the rest reads as zeros.` };
@@ -371,7 +451,7 @@ export function unpack(bytes, opts = {}) {
       return skipTo(e.outcome.status, e.outcome.text);
     }
     doName(e, buf, 0);
-    return skipTo(e.outcome.status, e.outcome.text);
+    return labLimit() || skipTo(e.outcome.status, e.outcome.text);
   }
 
   const ref = (src) => (src === BUILTIN ? "the kernel's built-in archive" : `member ${src.member + 1}, entry ${src.index + 1}`);
@@ -463,6 +543,9 @@ export function unpack(bytes, opts = {}) {
     e.outcome = { status: "ignored", text: `File type ${decodeMode(mode).typeOctal} is not one the kernel creates.` };
   }
   function doSymlink(e) {
+    // A target deeper than the lab follows is refused when the link is made, not each time a
+    // later name walks through it.
+    if (pathDepth(e.target) > MAX_PATH_DEPTH) { fs.limit = fs.limit || "depth"; return; }
     // do_symlink runs clean_path(name, 0) first, then init_symlink(target, name).
     cleanPath(e, e.name, 0);
     // symlink() refuses an empty target (ENOENT), so nothing is created; clean_path has
@@ -517,6 +600,13 @@ export function unpack(bytes, opts = {}) {
     }
   }
 
+  // The lab's cap on members, checked before each new one is started.
+  const tooManyMembers = () => {
+    if (res.members.length < MAX_MEMBERS) return false;
+    res.labStop = res.labStop || `More than ${MAX_MEMBERS.toLocaleString("en-US")} members (archives and compressed streams, one after another): the lab stops here. The kernel has no such limit and would carry on.`;
+    return true;
+  };
+
   // ---- unpack_to_rootfs ------------------------------------------------------------------------
   const B = bytes;
   const len = B.length;
@@ -526,15 +616,18 @@ export function unpack(bytes, opts = {}) {
     if (B[i] === 0x30 && (th & 3) === 0) {
       state = "Start";
       if (!curRaw) {
+        if (tooManyMembers()) break;
         curRaw = { index: res.members.length, kind: "newc", start: i, end: i, entries: [] };
         res.members.push(curRaw);
-        res.items.push({ type: "member", member: curRaw.index, start: i, end: i });
+        curRawItem = { type: "member", member: curRaw.index, start: i, end: i };
+        res.items.push(curRawItem);
       }
       const m = curRaw;
+      const item = curRawItem; // parseEntry clears curRaw at a TRAILER!!!
       const r = parseEntry(B, i, len, th, m, "input");
       i += r.consumed; th += r.consumed;
       m.end = i;
-      res.items.find((x) => x.type === "member" && x.member === m.index).end = i;
+      item.end = i;
       if (!r.complete) break;
       state = "Reset";
       const z = reset(B, i, len, th, m, "input");
@@ -559,6 +652,7 @@ export function unpack(bytes, opts = {}) {
       res.items.push({ type: "junk", start: i, end: len, why: `bytes ${hex(B[i], 2)} ${len - i >= 2 ? hex(B[i + 1], 2) : ""}${why}`.trim() });
       break;
     }
+    if (tooManyMembers()) break;
     const member = { index: res.members.length, kind: name, start: i, end: i, entries: [] };
     res.members.push(member);
     res.items.push({ type: "member", member: member.index, start: i, end: i });
@@ -575,7 +669,9 @@ export function unpack(bytes, opts = {}) {
     member.end = Math.min(len, i + g.consumed);
     res.items[res.items.length - 1].end = member.end;
     feedStream(g.out, member);
-    if (g.capped) { res.labStop = `Member ${member.index + 1} decompresses to more than the lab's ${maxOut / 1048576} MiB limit, so the lab stops here.`; break; }
+    if (g.capped) { res.labStop = res.labStop || `Member ${member.index + 1} decompresses to more than the lab's ${maxOut / 1048576} MiB limit, so the lab stops here.`; break; }
+    // A lab limit inside the stream (entries, path depth, path steps) is not the kernel's "junk".
+    if (res.labStop) break;
     if (g.error) setError(g.error, member.index, i, "input");
     if (!message && state !== "Reset") setError("junk at the end of compressed archive", member.index, member.end, "input");
     if (g.pastEnd) {
@@ -586,6 +682,7 @@ export function unpack(bytes, opts = {}) {
     i += g.consumed;
   }
   if (res.error) res.items.push({ type: "stop", start: res.error.stream === "input" ? res.error.at : (res.members[res.error.member] || {}).start ?? 0, message: res.error.message });
+  fs.metered = false; // later lookups (the /init checks) are bounded one by one, not in total
   return res;
 }
 
@@ -733,6 +830,15 @@ export function bootLog(res) {
     return { lines: L, outcome: "unknown", why: "labStop" };
   }
   const fs = res.rootfs;
+  // Dry run of every lookup below. Each is bounded (Rootfs.resolve); if one hits a bound, the
+  // lab says so instead of printing a kernel line it cannot stand behind.
+  fs.limit = null;
+  accessCheck(fs, "/init");
+  for (const p of ["/init", "/sbin/init", "/etc/init", "/bin/init", "/bin/sh"]) execCheck(fs, p);
+  if (fs.limit) {
+    add("...", "lab", `The lab cannot say which program the kernel runs: looking for it, ${LIMIT_TEXT[fs.limit]}.`);
+    return { lines: L, outcome: "unknown", why: "labStop" };
+  }
   const acc = accessCheck(fs, "/init");
   if (acc) {
     // The capture only shows -2 (no /init at all); any other code follows from the source.
@@ -842,6 +948,8 @@ export function hostView(bytes) {
     let off = 0;
     let total = 0;
     while (off + 2 <= bytes.length && bytes[off] === 0x1f && bytes[off + 1] === 0x8b && total < MAX_OUTPUT) {
+      // The lab's member cap applies to this reading of the file too.
+      if (outs.length >= MAX_MEMBERS) return { ok: false, lab: true, text: `More than ${MAX_MEMBERS.toLocaleString("en-US")} gzip members: the lab does not follow a host tool that far.` };
       const g = gunzip(bytes, off, bytes.length, MAX_OUTPUT - total, { host: true });
       outs.push(g.out);
       total += g.out.length;
@@ -1195,7 +1303,7 @@ export function memberLabel(m) {
   const first = m.entries[0];
   if (!first || first.kind === "cut") return "uncompressed, cut short";
   if (first.kind === "bad") {
-    const known = MAGIC_NAME[first.magic];
+    const known = Object.hasOwn(MAGIC_NAME, first.magic) ? MAGIC_NAME[first.magic] : null; // six bytes of the file
     return `uncompressed, magic ${safeText(first.magic)}${known ? `, which is ${known}` : ""}, not newc`;
   }
   return "raw newc";
@@ -1222,6 +1330,6 @@ export function summary(res, host) {
     if (src && src.src && src.src !== BUILTIN) parts.push(`/init comes from member ${src.src.member + 1}, entry ${src.src.index + 1}.`);
     else parts.push("There is no /init in the rootfs.");
   }
-  if (host) parts.push(host.ok ? `A host cpio tool lists ${host.items.length} entr${host.items.length === 1 ? "y" : "ies"}.` : "A host cpio tool lists nothing.");
+  if (host) parts.push(host.ok ? `A host cpio tool lists ${host.items.length} entr${host.items.length === 1 ? "y" : "ies"}.` : host.lab ? host.text : "A host cpio tool lists nothing.");
   return parts.join(" ");
 }

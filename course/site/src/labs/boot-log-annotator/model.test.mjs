@@ -528,3 +528,22 @@ test("lab.json's reference and captures agree with the model and the samples", (
   assert.deepEqual(lab.captures, [...SAMPLES.samples.map((s) => s.source), SAMPLES.dts.source]);
   assert.deepEqual(M.SAMPLE_IDS, SAMPLES.samples.map((s) => s.id));
 });
+
+test("a call-trace frame named after an Object.prototype key is an ordinary frame", () => {
+  // Pasted text: `FRAME_STAGE["constructor"]` is a function, so the frame rule's lookup took it
+  // for a stage number and threw reading `STAGES[fn].name`. annotate() catches a throwing check,
+  // so the lab survived; the lookup is now an own-key test and does not rely on that.
+  const names = ["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf", "isPrototypeOf"];
+  const frame = M.ruleById("frame");
+  for (const n of names) assert.deepEqual(frame.check(frame.re.exec(` ${n}+0x10/0x40`)), [], n);
+  assert.match(frame.check(frame.re.exec(" time_init+0x10/0x40"))[0], /`time_init` runs stage 4/);
+  const text = ["Call trace:", ...names.map((n) => ` ${n}+0x10/0x40`), " time_init+0x10/0x40"].join("\n");
+  const r = M.annotate(text);
+  for (let i = 0; i < names.length; i++) {
+    assert.equal(r.lines[i + 1].ruleId, "frame", names[i]);
+    assert.deepEqual(r.lines[i + 1].notes, [], names[i]);
+    assert.doesNotThrow(() => M.explain(r.lines[i + 1]), names[i]);
+  }
+  for (const code of ["constructor", "toString", "__proto__"]) assert.equal(M.exitSentence(code), `\`macvmm\` exited with status ${code}.`);
+  assert.match(M.exitSentence(5), /--timeout/);
+});

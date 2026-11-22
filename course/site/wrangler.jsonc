@@ -2,7 +2,7 @@
 // Static assets only: no Worker script, no bindings. The asset tree in ./dist mirrors the URL
 // path (dist/build-your-own/vmm/...), and dist/_headers carries the CSP and caching rules.
 //
-// Build first: node build.mjs --check. Deploying is the lead's call; nothing in this repository
+// Build first: node build.mjs --check. Deploying is the maintainer's call; nothing in this repository
 // runs wrangler. The route is the most specific one on the zone, so it wins over the root site's
 // indicogni.com/*. Disable Rocket Loader, email obfuscation and auto-minify for this route: they
 // inject inline script, which the CSP blocks.

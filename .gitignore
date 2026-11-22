@@ -6,3 +6,9 @@
 /guests/target
 /course/site/dist
 /course/site/dist.partial
+
+# Cloudflare and Node tooling (the site builder has no dependencies; wrangler creates these).
+.wrangler/
+node_modules/
+.env*
+.dev.vars

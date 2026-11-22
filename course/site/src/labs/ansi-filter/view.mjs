@@ -1,7 +1,9 @@
 // ansi-filter: the view. It renders what model.mjs computes and turns events into model calls.
 // DOM is built with createElement and textContent only: every string shown here may come from
 // a reader's paste or a share link, so none of it is ever parsed as HTML. Nothing outside `el`
-// is touched except ctx.hash and ctx.announce. Speech goes through ctx.announce only (the page's
+// is touched except ctx.hash and ctx.announce (and, when the reader presses "Copy link", the
+// clipboard, which gets location.href). The reader's own text is never written to the address
+// unless they press that button. Speech goes through ctx.announce only (the page's
 // one polite live region); the readout on screen is a plain paragraph, so nothing is read twice.
 import {
   PRESETS,
@@ -9,7 +11,10 @@ import {
   presetById,
   initialState,
   encodeHash,
+  encodeAuto,
   decodeHash,
+  MAX_INPUT,
+  MAX_LINK_INPUT,
   analyze,
   checkPrediction,
   summary,
@@ -58,6 +63,12 @@ export function mount(el, ctx) {
   };
   const fromHash = decodeHash(ctx.hash.get());
   let state = fromHash || initialState();
+  // Text that came in the link (not a preset). While the input is still exactly that text it is
+  // held to MAX_LINK_INPUT: the link was analysed on load, with nobody asking.
+  const linkText = fromHash && !fromHash.preset ? fromHash.text : null;
+  // The one `t:` share string the reader has asked for: the link they opened, or the last
+  // "Copy link". Text typed or pasted since then is never put in the address by itself.
+  let asked = linkText === null ? null : encodeHash(fromHash);
   let result = null;
   let announceTimer = null;
   let lastAnnounce = 0;
@@ -97,6 +108,7 @@ export function mount(el, ctx) {
   const predictResult = h("p", { class: "af__pres", id: id("pres") });
   const runBtn = h("button", { type: "button", class: "af__btn", text: "Run" });
   const resetBtn = h("button", { type: "button", class: "af__btn af__btn--quiet", text: "Reset" });
+  const copyBtn = h("button", { type: "button", class: "af__btn af__btn--quiet", text: "Copy link" });
 
   controls.append(
     h("div", { class: "af__row" }, [h("label", { for: id("preset"), text: "Example" }), presetSel]),
@@ -107,7 +119,7 @@ export function mount(el, ctx) {
     help,
     h("label", { class: "af__label", for: id("predict"), text: "Your prediction of the safe output (optional, same notation)" }),
     predict,
-    h("div", { class: "af__row" }, [runBtn, resetBtn]),
+    h("div", { class: "af__row" }, [runBtn, resetBtn, copyBtn]),
     predictResult,
   );
 
@@ -325,9 +337,11 @@ export function mount(el, ctx) {
       legend.hidden = true;
       return;
     }
-    result = analyze(state.text, { maxTokens: MAX_TOKENS_SHOWN, maxSegments: 2000 });
+    const fromLink = linkText !== null && state.text === linkText;
+    result = analyze(state.text, { maxTokens: MAX_TOKENS_SHOWN, maxSegments: 2000, max: fromLink ? MAX_LINK_INPUT : MAX_INPUT });
     if (!result.ok) {
-      err.textContent = `Cannot read the input at character ${result.at + 1}: ${result.error}.`;
+      err.textContent = `Cannot read the input at character ${result.at + 1}: ${result.error}.` +
+        (fromLink && result.tooLong ? ` This text came in a link, and a link's text may expand to at most ${MAX_LINK_INPUT} bytes (64 KiB); text you type here may be larger.` : "");
       input.setAttribute("aria-invalid", "true");
       idle.hidden = false;
       legend.hidden = true;
@@ -356,8 +370,44 @@ export function mount(el, ctx) {
     state = { ...state, text: input.value, prediction: predict.value, ran: true };
     if (state.preset && presetById(state.preset)?.text !== state.text) state.preset = null;
     render();
-    ctx.hash.set(result && result.ok ? encodeHash(state) : null);
+    writeHash(false);
   }
+
+  // A preset's id is reflected in the address when it is run. The reader's own text only on
+  // request (`byAsking`), and it stays there only while it is still the text that was asked for.
+  function writeHash(byAsking) {
+    let enc = null;
+    if (result && result.ok) {
+      enc = encodeAuto(state);
+      if (enc === null) {
+        const own = encodeHash(state);
+        if (byAsking) asked = own;
+        enc = own !== null && own === asked ? own : null;
+      }
+    }
+    ctx.hash.set(enc);
+  }
+
+  const onCopy = async () => {
+    if (!state.ran || !result || !result.ok || input.value !== state.text) {
+      announce("Press Run first: the link holds the input that was run.");
+      return;
+    }
+    if (encodeAuto(state) === null && encodeHash(state) === null) {
+      ctx.hash.set(null);
+      announce("This input is too long to fit in a link.");
+      return;
+    }
+    writeHash(true);
+    const own = encodeAuto(state) === null;
+    try {
+      if (typeof navigator === "undefined" || !navigator.clipboard || typeof location === "undefined") throw new Error("no clipboard");
+      await navigator.clipboard.writeText(location.href);
+      announce(own ? "Link copied. It holds the text you typed." : "Link copied.");
+    } catch {
+      announce(own ? "Copy the address from the address bar: it now holds the text you typed." : "Copy the address from the address bar: it holds this example.");
+    }
+  };
 
   const onPreset = () => {
     const p = presetById(presetSel.value);
@@ -399,6 +449,7 @@ export function mount(el, ctx) {
   predict.addEventListener("keydown", onPredictKey);
   runBtn.addEventListener("click", run);
   resetBtn.addEventListener("click", onReset);
+  copyBtn.addEventListener("click", onCopy);
 
   render();
 

@@ -78,5 +78,7 @@ linking chapters/primers. Never use a concept before it is taught or linked.
   this machine before claiming success. Report real outputs; never claim a guest booted without seeing it.
 - Every module has doc comments explaining the *why* (this is a teaching codebase): cite the ARM ARM, GIC spec,
   virtio 1.2 spec, Linux `Documentation/arch/arm64/booting.rst`, DTB spec by section where relevant.
-- Don't commit to git; the lead will handle commits.
+- Commits are authored and committed as `Indicogni LLC <noreply@indicogni.com>` (decision D25). No personal
+  name, username, email or home path goes into tracked content, captures or commit messages.
+- Licence (decision D22): code MIT OR Apache-2.0, course text and diagrams CC BY 4.0.
 - Lead decisions on open questions: `docs/DECISIONS.md`. Execution plan: `docs/PLAN.md`; architecture: `docs/architecture.md`.

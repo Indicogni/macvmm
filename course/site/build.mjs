@@ -435,7 +435,7 @@ export function build(opts = {}) {
       robots: noindex ? '<meta name="robots" content="noindex">\n' : "",
       css: url(cssName), js: url(jsName), headExtra: labCss,
       scriptsExtra: needsLabJs ? `<script type="module" src="${url(labsJsName)}"></script>\n` : "",
-      bodyClass, skipLabel, base: url(), topnav: topnav(section, path.endsWith(".html") ? null : url(path)), body, year, email: esc(C.email),
+      bodyClass, skipLabel, base: url(), topnav: topnav(section, path.endsWith(".html") ? null : url(path)), body, year, email: esc(C.email), repo: esc(C.repo),
     }, "layout.html");
     const file = path.endsWith(".html") ? join(root, path) : join(root, path, "index.html");
     writeOut(file, html);
@@ -797,7 +797,7 @@ export function build(opts = {}) {
       : `<p>${builtCount} of ${current.length} labs are built so far.</p>`;
     const main = `<main id="main" class="page"><header class="page__head"><p class="tag">Labs</p><h1>In-browser labs</h1>` +
       `<p class="lead">Decoders, walkers and visualizers that run in any browser, no Mac needed. Each one is also embedded in the chapter that uses it. A lab never replaces the native work: every checkpoint still runs on your Mac.</p>` +
-      countLine + `</header><ul class="labs-grid">${current.map(card).join("")}</ul>` +
+      countLine + `</header><ul class="labs-grid">${current.map((n) => card(n)).join("")}</ul>` +
       (planned.length ? `<section class="section"><h2 id="planned">Planned with later chapters</h2><p>These labs belong to chapters that are not written yet.</p><ul class="labs-grid">${planned.map((n) => card(n, 3)).join("")}</ul></section>` : "") +
       `</main>`;
     page("labs/", { title: `Labs · ${C.short_title}`, description: "In-browser labs for the VMM course.", body: `<div class="wrap">${main}</div>`, section: "labs" });
@@ -863,7 +863,7 @@ export function build(opts = {}) {
       `<p class="continue" data-continue="${continueData}" hidden><a href="${first.href}">Continue</a></p>` +
       `<div class="meta-row">${badges("mac")} <span>${parts.length} parts · ${written.length} chapters written</span> ${badges("browser")} <span>${builtLabs} labs built · ${primers.length} primers</span></div></section>` +
       `<section class="section" aria-labelledby="need"><h2 id="need">What you need</h2><ul class="grid3">` +
-      `<li><div class="card"><h3>${ICONS.chip} Needs a Mac</h3><p>An Apple Silicon Mac with a recent macOS, Xcode command-line tools and Rust, for the chapters that run your VMM.</p></div></li>` +
+      `<li><div class="card"><h3>${ICONS.chip} Needs a Mac</h3><p>A Mac with Apple Silicon (Apple M1 or later) on macOS 15 or later, with Xcode command-line tools and Rust, for the chapters that run your VMM. Tested only on macOS 27.2 on an M5 Pro; older ones are expected to work. The code is on <a href="${esc(C.repo)}">GitHub</a>, and chapter 00 shows how to get it.</p></div></li>` +
       `<li><div class="card"><h3>${ICONS.window} Runs in a browser</h3><p>Reading, the primers and the labs need only a browser. Labs run entirely on your machine; nothing is uploaded.</p></div></li>` +
       `<li><div class="card"><h3>${ICONS.pen} You should know</h3><p>Some Rust or C, what a process and a memory address are, and a terminal. No virtualization or ARM background needed: Part 0 starts from zero.</p></div></li>` +
       `</ul></section>` +
@@ -938,6 +938,7 @@ export function headersFile(base) {
     "  Referrer-Policy: strict-origin-when-cross-origin",
     "  Permissions-Policy: camera=(), microphone=(), geolocation=()",
     "  Cross-Origin-Opener-Policy: same-origin",
+    "  Cross-Origin-Resource-Policy: same-origin",
     `${base}assets/*`,
     "  Cache-Control: public, max-age=31536000, immutable",
     "",

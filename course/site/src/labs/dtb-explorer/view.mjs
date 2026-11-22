@@ -45,6 +45,9 @@ const GROUPS = [
   ["corrupt", "Corrupt blobs the reader must refuse"],
 ];
 const TREE_CAP = 3000; // tree items drawn at most
+const REG_ROWS_CAP = 200; // rows of the reg/ranges table drawn at most
+const REG_ENTRIES_SHOWN = 8; // entries of one reg/ranges property written out in its row
+const DTS_CAP = 256 * 1024; // characters of dtc-style text put in the page
 const KIND_WORDS = {
   hdr: "header field",
   rsv: "reservation map",
@@ -351,7 +354,13 @@ export function mount(el, ctx) {
     renderRegs();
     renderHeader();
     renderPatches();
-    dtsPre.textContent = r.ok ? toDts(r) : "dtc-style text appears once the blob parses.";
+    dtsPre.textContent = r.ok ? dtsText() : "dtc-style text appears once the blob parses.";
+  }
+
+  // The whole tree as text, cut at DTS_CAP characters: a 2 MiB blob prints as several megabytes.
+  function dtsText() {
+    const text = toDts(r);
+    return text.length > DTS_CAP ? `${text.slice(0, DTS_CAP)}\n/* ... ${text.length - DTS_CAP} more characters not shown: this box shows the first ${DTS_CAP}. */\n` : text;
   }
 
   function renderSource() {
@@ -384,7 +393,7 @@ export function mount(el, ctx) {
       const go = r.error.at !== null ? h("button", { type: "button", class: "dtx__btn dtx__btn--small", "data-goto": String(r.error.at), text: "Show the byte" }) : null;
       verdict.append(
         h("p", { class: "dtx__vline" }, h("strong", { text: "Refused: " }), h("code", { text: r.error.text }), `${at}. `, go),
-        h("p", { class: "dtx__hint", text: `${r.error.explain} macvmm's reader refuses it with the same error.` }),
+        h("p", { class: "dtx__hint", text: r.error.lab ? r.error.explain : `${r.error.explain} macvmm's reader refuses it with the same error.` }),
       );
     }
     if (r.warnings.length) {
@@ -638,12 +647,23 @@ export function mount(el, ctx) {
   function renderRegs() {
     regBody.replaceChildren();
     let rows = 0;
+    let hiddenRows = 0;
+    // The first `REG_ENTRIES_SHOWN` entries of a property, then how many were left out.
+    const listed = (list, one) => {
+      const text = list.slice(0, REG_ENTRIES_SHOWN).map(one).join("; ");
+      return list.length > REG_ENTRIES_SHOWN ? `${text}; ... and ${list.length - REG_ENTRIES_SHOWN} more` : text;
+    };
     for (const n of r.nodes) {
       const reg = regInfo(r, n.id);
       const rng = rangesInfo(r, n.id);
       for (const [what, info] of [["reg", reg], ["ranges", rng]]) {
         if (!info) continue;
         rows++;
+        // A blob can hold tens of thousands of nodes with reg: the table stops at REG_ROWS_CAP.
+        if (rows > REG_ROWS_CAP) {
+          hiddenRows++;
+          continue;
+        }
         const prop = r.props[info.prop];
         let used;
         let reads;
@@ -652,11 +672,11 @@ export function mount(el, ctx) {
           const mark = (from, bad) => (bad ? " (not one cell; default used)" : from === "default" ? " (default)" : "");
           used = `${info.ac} address${mark(info.acFrom, info.acBad)}, ${info.sc} size${mark(info.scFrom, info.scBad)}`;
           const list = info.entries.length ? info.entries : info.loose ? [info.loose] : [];
-          reads = list.map((e) => (info.sc === 0 ? `${hexGrouped(e.addr)}` : `${hexGrouped(e.addr)} + ${hexGrouped(e.size)} (${sizeWords(e.size)})`)).join("; ");
+          reads = listed(list, (e) => (info.sc === 0 ? `${hexGrouped(e.addr)}` : `${hexGrouped(e.addr)} + ${hexGrouped(e.size)} (${sizeWords(e.size)})`));
           if (!info.entries.length && info.loose) reads = `if read anyway: ${reads}`;
         } else {
           used = `child ${info.widths[0]}, parent ${info.widths[1]}, size ${info.widths[2]}`;
-          reads = info.identity ? "1:1 (empty ranges)" : info.entries.map((e) => `${hexGrouped(e.child)} -> ${hexGrouped(e.parent)} + ${hexGrouped(e.size)}`).join("; ");
+          reads = info.identity ? "1:1 (empty ranges)" : listed(info.entries, (e) => `${hexGrouped(e.child)} -> ${hexGrouped(e.parent)} + ${hexGrouped(e.size)}`);
         }
         const unitBad = what === "reg" && info.unit && info.unit.matches === false;
         const ok = info.ok && !unitBad;
@@ -674,6 +694,9 @@ export function mount(el, ctx) {
           ),
         );
       }
+    }
+    if (hiddenRows) {
+      regBody.append(h("tr", {}, h("td", { colspan: "6", class: "dtx__hint", text: `Only the first ${REG_ROWS_CAP} rows are shown: ${hiddenRows} more reg or ranges properties are not listed.` })));
     }
     regNote.replaceChildren();
     const rule = "#address-cells and #size-cells belong to the parent: they say how its direct children write addresses, and no deeper.";

@@ -5,6 +5,8 @@ description = "macvmm command-line interface: doctor, first-exit, run"
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 hvf = { path = "../hvf" }

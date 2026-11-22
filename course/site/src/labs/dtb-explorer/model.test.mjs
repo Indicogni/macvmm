@@ -499,3 +499,100 @@ test("clocks are split by the target's #clock-cells", () => {
   const d = M.describe(v, owners, clocks.tok);
   assert.ok(d.lines.some((l) => l.startsWith("Points at: /apb-pclk, /apb-pclk (")));
 });
+
+// ---- Hostile files: limits that keep a dropped file from freezing the tab ----
+
+const timed = (fn) => {
+  const t = performance.now();
+  const r = fn();
+  return [r, performance.now() - t];
+};
+
+test("a name longer than MAX_NAME is refused with the lab's own error, before it is copied", () => {
+  // 80,000 properties that all name one megabyte-long string: 1.96 MB that ran V8 out of heap
+  // (each use was scanned, decoded and pasted into three labels).
+  const words = [1, 0];
+  for (let i = 0; i < 80000; i++) words.push(3, 0, 0);
+  words.push(2, 9);
+  const long = `${"a".repeat(1_000_000 - 1)}\0`;
+  const big = blob(words, long);
+  assert.ok(big.length < M.FDT_MAX_SIZE);
+  const [r, ms] = timed(() => M.parse(big));
+  assert.equal(r.ok, false);
+  assert.equal(r.error.text, 'LabLimit("property name longer than 256 bytes")');
+  assert.equal(r.error.lab, true);
+  assert.match(r.error.explain, /longer than 256 bytes/);
+  assert.match(r.error.explain, /macvmm's reader has no such limit/);
+  assert.equal(r.error.at, r.blocks.strings.start, "points at the name");
+  assert.ok(ms < 1000, `took ${ms.toFixed(0)} ms`);
+  assert.match(M.summary(r, null, "your file"), /refused: LabLimit/);
+  // The same for a node name.
+  const node = M.parse(blob([1, 0, 1, ...name4("n".repeat(M.MAX_NAME + 1)), 2, 2, 9]));
+  assert.equal(node.error.text, 'LabLimit("node name longer than 256 bytes")');
+  // Exactly MAX_NAME bytes is still a name, for a node and for a property.
+  const edge = M.parse(blob([1, 0, 1, ...name4("n".repeat(M.MAX_NAME)), 3, 0, 0, 2, 2, 9], `${"p".repeat(M.MAX_NAME)}\0`));
+  assert.equal(edge.ok, true, edge.error && edge.error.text);
+  assert.equal(edge.nodes[1].name.length, M.MAX_NAME);
+  assert.equal(edge.props[0].name.length, M.MAX_NAME);
+  // No NUL before the block ends is still the reference's error when the block ends within
+  // MAX_NAME bytes; past that the lab has stopped looking, and says so.
+  assert.equal(M.parse(blob([1, 0, 3, 0, 0, 2, 9], "p".repeat(200))).error.text, "BadNameOffset(0)");
+  assert.equal(M.parse(blob([1, 0, 3, 0, 0, 2, 9], "p".repeat(300))).error.text, 'LabLimit("property name longer than 256 bytes")');
+  assert.equal(M.parse(blob([1, 0, 3, 0, 1, 2, 9], "x")).error.text, "BadNameOffset(1)");
+  assert.equal(M.parse(blob([1, 0x61616161])).error.text, "UnterminatedName");
+  // A bad name is refused the same way every time it is named (the per-offset cache keeps errors).
+  const twice = blob([1, 0, 3, 0, 0, 3, 0, 0, 2, 9], "A\0");
+  twice[twice.length - 2] = 0xff;
+  assert.equal(M.parse(twice).error.text, "NotUtf8");
+});
+
+test("a wide parent with many children: cell counts are looked up, not searched for", () => {
+  // 80,000 properties in the root and 40,000 children with reg: 1.92 MB, 13 to 14 s before the
+  // per-node index (each child's reg walked all of the root's properties, twice).
+  const words = [1, 0];
+  for (let i = 0; i < 80000; i++) words.push(3, 0, 0);
+  for (let i = 0; i < 40000; i++) words.push(1, ...name4("a"), 3, 0, 2, 2);
+  words.push(2, 9);
+  const big = blob(words, "x\0reg\0");
+  assert.ok(big.length < M.FDT_MAX_SIZE);
+  const [r, ms] = timed(() => M.parse(big));
+  assert.equal(r.ok, true, r.error && r.error.text);
+  assert.equal(r.nodes.length, 40001);
+  assert.equal(r.props.length, 120000);
+  assert.ok(ms < 3000, `parse took ${ms.toFixed(0)} ms`);
+  const [, ms2] = timed(() => {
+    for (const n of r.nodes) {
+      M.regInfo(r, n.id);
+      M.rangesInfo(r, n.id);
+    }
+  });
+  assert.ok(ms2 < 3000, `reg/ranges for every node took ${ms2.toFixed(0)} ms`);
+  assert.equal(M.regInfo(r, 1).len, 0);
+  assert.deepEqual(M.cellCounts(r, 0), { ac: { n: 2, from: "default", bad: false }, sc: { n: 1, from: "default", bad: false } });
+});
+
+test("the property index keeps the first of duplicate names, like the walk it replaced", () => {
+  // Two #address-cells in the root (1, then 2): the first is the one in force.
+  const be = (n) => n >>> 0;
+  const r = M.parse(blob([1, 0, 3, 4, 0, be(1), 3, 4, 0, be(2), 3, 4, 15, be(1), 1, ...name4("m@0"), 3, 8, 27, 0, 0x1000, 2, 2, 9], "#address-cells\0#size-cells\0reg\0"));
+  assert.equal(r.ok, true, r.error && r.error.text);
+  assert.equal(M.cellCounts(r, 0).ac.n, 1);
+  const reg = M.regInfo(r, 1);
+  assert.equal(reg.ac, 1);
+  assert.deepEqual(reg.entries, [{ addr: 0n, size: 0x1000n }]);
+  assert.equal(M.rangesInfo(r, 1), null);
+});
+
+test("a reg with hundreds of thousands of entries is described in a bounded number of lines", () => {
+  const n = 100000;
+  const words = [1, 0, 3, 4, 0, 1, 3, 4, 15, 0, 1, ...name4("a"), 3, n * 4, 27];
+  for (let i = 0; i < n; i++) words.push(i);
+  words.push(2, 2, 9);
+  const r = M.parse(blob(words, "#address-cells\0#size-cells\0reg\0"));
+  assert.equal(r.ok, true, r.error && r.error.text);
+  const reg = M.regInfo(r, 1);
+  assert.equal(reg.entries.length, n);
+  const d = M.describe(r, M.byteOwners(r), r.props[reg.prop].tok);
+  assert.ok(d.lines.length < M.MAX_RANGES_SHOWN + 12, `${d.lines.length} lines`);
+  assert.ok(d.lines.includes(`... and ${n - M.MAX_RANGES_SHOWN} more ranges, not listed.`));
+});

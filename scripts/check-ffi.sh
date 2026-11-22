@@ -39,6 +39,24 @@ sdk="$(xcrun --show-sdk-path)" || die "xcrun --show-sdk-path failed"
 [[ -d "$sdk/System/Library/Frameworks/Hypervisor.framework/Headers" ]] \
   || die "no Hypervisor.framework headers under $sdk"
 
+# The oracle compares ffi.rs with the headers it was written from: the macOS 27 SDK. An older SDK
+# lacks the newest constants and types (hv_tlbi_op_t, for one), so abi_dump.c cannot compile
+# against it. That says nothing about ffi.rs, so it is a skip, not a failure: exit 77, which
+# scripts/check.sh counts as a SKIP (and --strict turns into a failure). macvmm itself still
+# builds and runs on such a Mac: the newer functions are looked up at run time (optional.rs).
+readonly OLDEST_ORACLE_SDK=27
+# Read from the SDK directory we will compile against, so the answer is about that SDK even when
+# SDKROOT points somewhere `xcrun --show-sdk-version` cannot look up.
+sdk_version="$(plutil -extract Version raw -o - -- "$sdk/SDKSettings.json")" \
+  || die "cannot read the SDK version from $sdk/SDKSettings.json"
+sdk_major="${sdk_version%%.*}"
+[[ "$sdk_major" =~ ^[0-9]+$ ]] || die "unexpected SDK version '$sdk_version'"
+if (( sdk_major < OLDEST_ORACLE_SDK )); then
+  printf 'check-ffi: the macOS %s SDK is older than %s, the SDK ffi.rs is checked against; not run\n' \
+    "$sdk_version" "$OLDEST_ORACLE_SDK" >&2
+  exit 77
+fi
+
 tmp="$(mktemp -d)"
 trap 'rm -rf -- "${tmp:?}"' EXIT
 

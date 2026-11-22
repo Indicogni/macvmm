@@ -39,7 +39,15 @@ This chapter answers that by building the course's [**problem ledger**](/build-y
 
 ## Before you start
 
-You ran `scripts/setup.sh` from the Start here page. Now, from the repository root, run:
+Get the code first. You need the Xcode command line tools (`xcode-select --install`) and [rustup](https://rustup.rs), which installs Rust. Then clone the repository and run its setup script, which checks your Mac and installs the exact Rust version the course uses:
+
+```sh
+git clone https://github.com/Indicogni/macvmm.git
+cd macvmm
+scripts/setup.sh
+```
+
+It ends with `setup: OK`. Now, from the repository root, run:
 
 ```sh
 scripts/learner init

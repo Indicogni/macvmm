@@ -43,7 +43,7 @@ Status line: **observed** AVPBooter's first exit at `pc=0x103478` and 34 unknown
 accesses (cfg, pvpanic); **blocked at** the unmodelled `cfg` block (S2). macOS does not boot in
 macvmm, and nothing here claims it does.
 
-## Open points for the lead
+## Open points
 
 - **M21 / S1** is done to its exit criterion (above). S2 (cfg, bdif, pvpanic, PL031/PL061 at
   the vmapple bases) is post-v1 research with no boot promise (ADR-0008 decision 7).
@@ -51,9 +51,8 @@ macvmm, and nothing here claims it does.
 - **ADR-0008 decision 5**: resolved. The ADR's status line now records the lead's approval as
   DECISIONS **D3**, which is why vz-mac implements `--latest` (opt-in, never in tests) instead of
   printing `blocked: ADR-0008 decision 5 not approved`.
-- **M20 acceptance is blocked on M9**, not on vz-mac code: `.cache/macvmm/Image-virt` needs
-  `cargo xtask unzboot` (`fetch.sh` prints `PENDING Image-virt (needs cargo xtask unzboot, M9)`)
-  and `.cache/macvmm/initramfs-test.img` needs M9's `mkinitramfs` and `scripts/initramfs/init`.
-  Re-run `scripts/fetch.sh linux && tools/vz-mac/test.sh` once M9 lands.
-- **Anchors** `vz_linux_config` and `vz_mac_platform` exist; the ch23 lesson that embeds them is
-  not authored yet (course authoring), so `check-anchors` warns that they are unreferenced.
+- **M20's dependency on M9** is resolved: `scripts/fetch.sh linux` now produces
+  `.cache/macvmm/Image-virt` and `.cache/macvmm/initramfs-test.img`, which `tools/vz-mac/test.sh`
+  needs.
+- **Anchors**: chapter 23 is written and embeds `vz_linux_config`. `vz_mac_platform` is still not
+  referenced by a lesson, so `check-anchors` warns about it.

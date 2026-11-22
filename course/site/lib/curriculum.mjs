@@ -361,6 +361,7 @@ export function chaptersDocument(text) {
       base: "/build-your-own/vmm/",
       origin: "https://indicogni.com",
       email: "feedback@indicogni.com",
+      repo: "https://github.com/Indicogni/macvmm",
     },
     ...data,
   };

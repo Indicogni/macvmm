@@ -31,6 +31,14 @@ at each step; [chapter 25](/build-your-own/vmm/production/security/) brings it t
 model. The site itself loads nothing from other origins and runs no inline scripts: its
 Content-Security-Policy allows only its own files.
 
+## Source and licence
+
+The VMM, the test guests, the lessons and this site's builder live in one public repository:
+[github.com/Indicogni/macvmm](https://github.com/Indicogni/macvmm). Clone it to follow along. The
+code is yours to use under either the MIT or the Apache-2.0 licence, whichever you prefer. The
+course text and diagrams are under Creative Commons Attribution 4.0 (CC BY 4.0): share and adapt
+them, and credit Indicogni.
+
 ## Contact
 
 Corrections and questions are welcome at the address in the footer.

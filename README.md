@@ -5,8 +5,9 @@ Apple Silicon Macs. It is a teaching codebase first (the course lives at
 <https://indicogni.com/build-your-own/vmm/>) and is built to be productizable: hand-written FFI,
 `unsafe` quarantined to two modules, every guest-controlled value treated as hostile.
 
-Status: v1 (milestone M23, the fresh-clone gate; `docs/validation/fresh-clone-v1.md` is the
-verbatim run). On a QEMU-`virt`-compatible machine model with a generated device tree:
+Status: version 1. Everything below was observed on one machine, an Apple M5 Pro running macOS
+27.2 (`docs/validation/` holds the recorded runs). On a QEMU-`virt`-compatible machine model with
+a generated device tree:
 
 - **Linux/arm64** (stock Alpine `linux-virt` 6.18) boots directly to a shell, with virtio-blk
   (an ext4 root that survives a reboot), virtio-rng, virtio-console, virtio-net over a Unix
@@ -15,18 +16,26 @@ verbatim run). On a QEMU-`virt`-compatible machine model with a generated device
   through it (U-Boot's EFI) to a login prompt.
 - **macOS guests** are a stretch goal and do **not** boot: `tools/vz-mac` shows the
   Virtualization.framework path, and an experimental `vmapple` board runs Apple's AVPBooter
-  until it stalls on a device macvmm does not model yet, the `cfg` block (`docs/macos/status.md`).
+  until it stops making progress after its accesses to a device macvmm does not model yet, the
+  `cfg` block (`docs/macos/status.md`).
 - Hardening: a threat model (`docs/security/threat-model.md`), hostile-input tests,
   dependency-free fuzzers (`scripts/fuzz.sh`), a macOS sandbox that `macvmm run` applies to
   itself by default (`--no-sandbox` opts out, for debugging) and resource limits.
 
-See `docs/PLAN.md` for the milestones and `docs/architecture.md` for the design.
+macvmm has **not had an independent security audit**. Treat it as a teaching VMM: do not rely on
+it to contain a guest you do not trust. The threat model lists the risks it accepts, and
+[SECURITY.md](SECURITY.md) says how to report a problem.
+
+See `docs/PLAN.md` for the milestones and `docs/architecture.md` for the design;
+[`docs/README.md`](docs/README.md) explains how to read those records.
 
 ## Prerequisites
 
 - An Apple Silicon Mac (M1 or later) running **macOS 15.0 or later**: the in-kernel GICv3
   (`hv_gic_create`) first shipped in macOS 15 (decision D7). A virtual machine will not do:
   Hypervisor.framework needs the physical CPU.
+  **Tested only on macOS 27.2 on an M5 Pro.** Older Macs and macOS versions back to that floor
+  are expected to work but have not been tried (decision D23); reports are welcome.
 - Xcode command line tools (`xcode-select --install`): clang, `codesign`, `otool`.
 - [rustup](https://rustup.rs). The toolchain is pinned in `rust-toolchain.toml` (Rust 1.99.0)
   and installed on first use.
@@ -37,7 +46,7 @@ No `sudo` is needed, and nothing is installed outside the repository and rustup.
 
 ## Quickstart
 
-Clone the repository and `cd` into it, then:
+Clone the repository (`git clone https://github.com/Indicogni/macvmm.git`) and `cd` into it, then:
 
 <!-- ANCHOR: quickstart -->
 ```sh
@@ -62,6 +71,10 @@ cargo run -p macvmm -- run --kernel .cache/macvmm/Image-virt \
 scripts/check.sh                 # the full host quality gate; ends "CHECK OK"
 scripts/test-e2e.sh guests linux # the bare-metal test guests and the Linux suite
 ```
+
+`check.sh` prints `SKIP` for a step it cannot run on your Mac and still ends `CHECK OK`. One
+step needs the macOS 27 SDK: the FFI oracle (`scripts/check-ffi.sh`), which compares the
+hand-written declarations with Apple's headers. The course-site step needs Node 22 or later.
 
 ## More guests and tests
 
@@ -134,4 +147,18 @@ fetch, checks, e2e · `docs/` architecture, plan, ADRs, threat model, validation
 
 ## Licence
 
-Not yet decided (decision D1 is provisional); `publish = false` until it is.
+Copyright © 2026 Indicogni LLC.
+
+- **Code** (the crates, guests, scripts, tools, the site builder and labs, and the code blocks in
+  the lessons) is licensed under either of [MIT](LICENSE-MIT) or
+  [Apache-2.0](LICENSE-APACHE), at your option.
+- **Course text and diagrams** (the prose and figures under `course/` and `docs/`) are licensed
+  under [CC BY 4.0](course/LICENSE). That file sits in `course/` but covers prose and figures
+  only: code under `course/` (the site builder, labs, checkpoints, scaffolds, examples and
+  patches) is code, under the two licences above.
+- **Captured output** in `course/captures/` and the docs includes text printed by other software
+  (Linux, FreeBSD, U-Boot, Apple tools). That text remains its authors'; it is reproduced as a
+  record of a run.
+
+The crates are not published to crates.io (`publish = false`); they are meant to be read and built
+from this repository.

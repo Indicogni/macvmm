@@ -15,7 +15,10 @@ exclude = ["guests", "spikes", "tools"]
 edition = "2024"
 rust-version = "1.99"
 publish = false
-# `license` is deliberately unset until the lead confirms decision D1 (architecture §19 item 10).
+# Decision D22: code is dual-licensed (LICENSE-MIT, LICENSE-APACHE); course text is CC BY 4.0
+# (course/LICENSE). `publish = false` stays: the crates are read from this repository, not crates.io.
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Indicogni/macvmm"
 
 # RUST-2 (threat model §7.0): an arithmetic overflow we missed must become a clean stop, not a
 # silently wrong guest address. `panic = "unwind"` lets the VMM restore the terminal on a panic.

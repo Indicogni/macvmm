@@ -40,7 +40,15 @@ maybe() {
   local script="$1" what="$2"
   shift 2
   if [[ -x "$script" ]]; then
-    "$script" "$@"
+    # Exit status 77 is a script saying "I cannot run here" (check-ffi.sh on an SDK older than
+    # the one ffi.rs is checked against): a SKIP, so --strict still refuses it.
+    local rc=0
+    "$script" "$@" || rc=$?
+    if (( rc == 77 )); then
+      skip "$script (cannot run on this machine; see the line above)"
+    elif (( rc != 0 )); then
+      return "$rc"
+    fi
   else
     skip "$script (not yet created: $what)"
   fi

@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {
   initialState, step, link, rawLoad, hexRows, flatByte, encodeHash, decodeHash, parseHex,
-  disasm, scriptText, summary, hex, PRESETS, erratumSites, moveText,
+  disasm, scriptText, summary, hex, PRESETS, erratumSites, moveText, isPreset,
 } from "./model.mjs";
 
 const LLD_VECTORS = [
@@ -321,4 +321,19 @@ test("disasm of the words the lab names", () => {
   assert.equal(disasm(0xdeadbeef, 0n), null);
   assert.equal(hex(0x40080000n), "0x4008_0000");
   assert.ok(PRESETS.bare.canWhere);
+});
+
+test("preset ids are own keys only: Object.prototype names fall back to the default", () => {
+  for (const key of ["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf", "isPrototypeOf"]) {
+    assert.equal(isPreset(key), false, key);
+    assert.equal(decodeHash(`p:${key}`).preset, "bare", key);
+    assert.equal(initialState(key).preset, "bare", key);
+    assert.equal(step(initialState("guest"), { type: "preset", id: key }).preset, "bare", key);
+    // A section code that is a prototype key is not a section.
+    assert.deepEqual(decodeHash(`o:${key}-r-d-b`).order, initialState().order, key);
+    // Nor is a key of the link itself.
+    assert.doesNotThrow(() => link(decodeHash(`${key}:1;p:guest`)));
+  }
+  assert.equal(isPreset("guest"), true);
+  assert.equal(isPreset(undefined), false);
 });

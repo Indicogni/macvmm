@@ -387,3 +387,64 @@ test("Copy link's message clears when the view changes", async () => {
   assert.equal(msg.textContent, "");
   Object.defineProperty(globalThis.navigator, "clipboard", { value: saved, configurable: true });
 });
+
+// A structure-words blob with a correct header (the same helper as in model.test.mjs).
+function blobOf(structWords, strings = "") {
+  const str = new TextEncoder().encode(strings);
+  const total = 56 + structWords.length * 4 + str.length;
+  const b = new Uint8Array(total);
+  const dv = new DataView(b.buffer);
+  [0xd00dfeed, total, 56, 56 + structWords.length * 4, 40, 17, 16, 0, str.length, structWords.length * 4].forEach((v, i) => dv.setUint32(i * 4, v));
+  structWords.forEach((w, i) => dv.setUint32(56 + i * 4, w >>> 0));
+  b.set(str, 56 + structWords.length * 4);
+  return b;
+}
+async function openFile(view, bytes, name = "hostile.dtb") {
+  const fileIn = view.q((n) => n.tagName === "INPUT" && n.attrs.type === "file");
+  fileIn.files = [{ name, size: bytes.length, arrayBuffer: async () => bytes.buffer }];
+  const t = performance.now();
+  await fire(fileIn, "change");
+  return performance.now() - t;
+}
+
+test("a file whose properties all name one huge string is refused at once, in the lab's own words", async () => {
+  const words = [1, 0];
+  for (let i = 0; i < 80000; i++) words.push(3, 0, 0);
+  words.push(2, 9);
+  const view = setup();
+  const ms = await openFile(view, blobOf(words, `${"a".repeat(999_999)}\0`));
+  assert.ok(ms < 1000, `took ${ms.toFixed(0)} ms`);
+  assert.match(view.readout(), /refused: LabLimit\("property name longer than 256 bytes"\)/);
+  const verdict = view.el.textContent;
+  assert.match(verdict, /name here is longer than 256 bytes/);
+  assert.match(verdict, /macvmm's reader has no such limit/);
+  assert.doesNotMatch(verdict, /macvmm's reader refuses it with the same error/);
+});
+
+test("a file with 40,000 reg nodes under a wide root opens quickly and the reg table is capped", async () => {
+  const words = [1, 0];
+  for (let i = 0; i < 80000; i++) words.push(3, 0, 0);
+  for (let i = 0; i < 40000; i++) words.push(1, 0x61000000, 3, 0, 2, 2);
+  words.push(2, 9);
+  const view = setup();
+  const ms = await openFile(view, blobOf(words, "x\0reg\0"));
+  assert.ok(ms < 5000, `took ${ms.toFixed(0)} ms`);
+  assert.match(view.readout(), /parsed: 40001 nodes, 120000 properties/);
+  const rows = view.el.findAll((n) => n.tagName === "TR" && /dtx__(pass|fail)/.test(n.className || "") && n.children[0].tagName === "TH" && n.children[0].children[0].attrs["data-goto"] !== undefined);
+  assert.equal(rows.length, 200);
+  assert.match(view.el.textContent, /Only the first 200 rows are shown: 39800 more reg or ranges properties are not listed\./);
+});
+
+test("one reg with 100,000 entries is one short row, and the dtc text is cut", async () => {
+  const n = 100000;
+  const words = [1, 0, 3, 4, 0, 1, 3, 4, 15, 0, 1, 0x61000000, 3, n * 4, 27];
+  for (let i = 0; i < n; i++) words.push(i);
+  words.push(2, 2, 9);
+  const view = setup();
+  await openFile(view, blobOf(words, "#address-cells\0#size-cells\0reg\0"));
+  assert.match(view.readout(), /parsed: 2 nodes, 3 properties/);
+  assert.match(view.el.textContent, /0x0; 0x1; 0x2; 0x3; 0x4; 0x5; 0x6; 0x7; \.\.\. and 99992 more/);
+  const pre = view.q((x) => x.tagName === "PRE");
+  assert.ok(pre.textContent.length < 256 * 1024 + 200, `${pre.textContent.length} characters`);
+  assert.match(pre.textContent, /more characters not shown: this box shows the first 262144\. \*\/\n$/);
+});

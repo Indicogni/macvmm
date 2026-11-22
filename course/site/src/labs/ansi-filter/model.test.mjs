@@ -7,7 +7,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   AnsiFilter, runFilter, parseInput, escapeBytes, escapeCompact, tokenize, analyze, csiVerdict,
-  PRESETS, presetById, initialState, encodeHash, decodeHash, checkPrediction, summary,
+  PRESETS, presetById, initialState, encodeHash, encodeAuto, decodeHash, MAX_LINK_INPUT, checkPrediction, summary,
   HOSTILE_TTY_ATTACKS, EXIT_RESET, MAX_INPUT, CSI_FINALS, PRIVATE_MODES,
 } from "./model.mjs";
 
@@ -386,4 +386,36 @@ test("analyze, prediction check and summary", () => {
   // Replacements are counted on their own, not lost in the removal count.
   assert.match(summary(analyze(presetById("utf8").text)), /removes 1 piece and replaces 3 with U\+FFFD/);
   assert.match(summary(analyze("\\q")), /Input error/);
+});
+
+test("text from a link: a repeat count is refused at MAX_LINK_INPUT before it is expanded", () => {
+  // `#ansi-filter=t:%5Cx9b%7B16777215%7Dm` expanded to 16 MiB and took seconds on page load.
+  const st = decodeHash("t:%5Cx9b%7B16777215%7Dm");
+  assert.equal(st.text, "\\x9b{16777215}m");
+  const t0 = performance.now();
+  const a = analyze(st.text, { max: MAX_LINK_INPUT });
+  const ms = performance.now() - t0;
+  assert.equal(a.ok, false);
+  assert.equal(a.tooLong, true);
+  assert.equal(a.error, "input is longer than 65536 bytes");
+  assert.ok(ms < 50, `took ${ms.toFixed(1)} ms`);
+  // Split over several counts, or reached one byte at a time: the same answer.
+  assert.equal(analyze("\\x41{40000}\\x42{40000}", { max: MAX_LINK_INPUT }).tooLong, true);
+  assert.equal(analyze("\\x41{65536}b", { max: MAX_LINK_INPUT }).tooLong, true);
+  assert.equal(analyze("\\x41{65536}", { max: MAX_LINK_INPUT }).ok, true);
+  // Every preset fits a link by id, and all but the 10 MiB one fit the link cap as text too.
+  for (const p of PRESETS) {
+    assert.equal(decodeHash(p.id).preset, p.id);
+    if (p.id !== "osc-10mb") assert.equal(parseInput(p.text, { max: MAX_LINK_INPUT }).ok, true, p.id);
+  }
+  // Other errors are not size errors.
+  assert.equal(analyze("\\q", { max: MAX_LINK_INPUT }).tooLong, undefined);
+});
+
+test("encodeAuto: preset ids only, never the reader's text", () => {
+  assert.equal(encodeAuto(initialState()), "bold-red");
+  assert.equal(encodeAuto({ text: "my text", preset: null }), null);
+  // A preset id with edited text is the reader's text, not the preset.
+  assert.equal(encodeAuto({ text: "edited", preset: "bold-red" }), null);
+  assert.ok(encodeHash({ text: "my text", preset: null }).startsWith("t:"), "Copy link still carries it");
 });

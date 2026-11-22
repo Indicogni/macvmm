@@ -21,6 +21,15 @@
 
 export const MAX_INPUT = 16 * 1024 * 1024;
 
+/**
+ * The most bytes that text arriving in a share link may expand to. A link is analysed on page
+ * load with nobody asking, and 17 characters of it (`\x9b{16777215}m`) used to expand to 16 MiB
+ * of the filter's slowest input and hold the page for seconds. Text the reader types keeps
+ * MAX_INPUT (the 10 MiB preset needs it); a link's own text is at most MAX_HASH_TEXT characters,
+ * so anything larger than this can only be a repeat count.
+ */
+export const MAX_LINK_INPUT = 64 * 1024;
+
 // ---- The filter (port of backend/ansi.rs) -----------------------------------------------------
 
 /** The most bytes of one pending CSI the filter keeps (TTY-4 in the Rust source). */
@@ -685,7 +694,8 @@ function utf8Encode(cp, out) {
 
 /**
  * Parse the lab's input notation into bytes. Returns { ok: true, bytes } or
- * { ok: false, error, at } (at = character index of the problem).
+ * { ok: false, error, at } (at = character index of the problem; `tooLong: true` when the
+ * problem is the size cap `max`, which is checked before any repeat count is expanded).
  *
  *   \xNN      one byte, two hex digits      \xNN{count}  that byte, count times (count <= 16 MiB)
  *   \e        ESC (0x1B)                    \0, \033     octal, one to three digits (as printf)
@@ -704,9 +714,10 @@ export function parseInput(text, { max = MAX_INPUT } = {}) {
     }
   };
   const fail = (error, at) => ({ ok: false, error, at });
+  const failLong = (at) => ({ ok: false, error: `input is longer than ${max} bytes`, at, tooLong: true });
   let i = 0;
   while (i < text.length) {
-    if (total + cur.length > max) return fail(`input is longer than ${max} bytes`, i);
+    if (total + cur.length > max) return failLong(i);
     if (cur.length >= 65536) flush();
     const ch = text[i];
     if (ch !== "\\") {
@@ -727,7 +738,7 @@ export function parseInput(text, { max = MAX_INPUT } = {}) {
       const m = /^\{([0-9]{1,9})\}/.exec(text.slice(i, i + 11));
       if (m) {
         const n = Number(m[1]);
-        if (n > max || total + cur.length + n > max) return fail(`input is longer than ${max} bytes`, at);
+        if (n > max || total + cur.length + n > max) return failLong(at);
         flush();
         chunks.push(new Uint8Array(n).fill(b));
         total += n;
@@ -766,7 +777,7 @@ export function parseInput(text, { max = MAX_INPUT } = {}) {
     return fail(`unknown escape \\${e}`, at);
   }
   flush();
-  if (total > max) return fail(`input is longer than ${max} bytes`, text.length);
+  if (total > max) return failLong(text.length);
   const bytes = new Uint8Array(total);
   let o = 0;
   for (const c of chunks) {
@@ -1482,6 +1493,16 @@ export function initialState() {
   return { text: p.text, preset: p.id, prediction: "", ran: false };
 }
 
+/**
+ * What the lab keeps in the address bar without being asked: a preset's id, and `null` for text
+ * the reader typed or pasted. That text goes into the address only when the reader presses
+ * "Copy link" (the view then uses `encodeHash`).
+ */
+export function encodeAuto(state) {
+  const p = state.preset && presetById(state.preset);
+  return p && p.text === state.text ? p.id : null;
+}
+
 /** Share state: a preset id, or `t:` + the URI-encoded input text (custom input). */
 export function encodeHash(state) {
   const p = state.preset && presetById(state.preset);
@@ -1510,9 +1531,11 @@ export function decodeHash(s) {
 /**
  * Everything the view shows for one input: parse, tokenize, safe and strict with segments.
  * Returns { ok:false, error, at } or { ok:true, bytes, tokens, safe, strict, raw }.
+ * `max` caps the expanded input in bytes: MAX_INPUT for text the reader typed, MAX_LINK_INPUT
+ * for text that came from a share link.
  */
-export function analyze(text, { maxTokens = 400, maxSegments = 2000 } = {}) {
-  const parsed = parseInput(text);
+export function analyze(text, { maxTokens = 400, maxSegments = 2000, max = MAX_INPUT } = {}) {
+  const parsed = parseInput(text, { max });
   if (!parsed.ok) return parsed;
   const bytes = parsed.bytes;
   const tok = tokenize(bytes, { maxTokens });

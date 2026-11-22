@@ -3,6 +3,7 @@ name = "hvf-hello"
 version = "0.1.0"
 edition = "2024"
 publish = false
+license = "MIT OR Apache-2.0"
 description = "Spike: prove Hypervisor.framework works on this Mac with hand-written Rust FFI"
 
 # Standalone crate: NOT a member of the macvmm workspace.

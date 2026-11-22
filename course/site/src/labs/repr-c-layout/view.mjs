@@ -202,7 +202,8 @@ export function mount(el, ctx) {
 
   function renderTable(a) {
     const l = a.layout;
-    const body = l.fields.map((f) =>
+    // At most LIMITS.maxFields rows: the parser refuses a longer struct (second line, as below).
+    const body = l.fields.slice(0, LIMITS.maxFields).map((f) =>
       h(
         "tr",
         null,
@@ -270,7 +271,10 @@ export function mount(el, ctx) {
     const c = a.compare;
     const cell = (x) => (x ? `${x.path} @ ${x.offset}, ${x.size} B` : "(none)");
     const label = { ok: "Match: ", renamed: "Check: ", bad: "Differs: " };
-    const rows = c.rows.map((r) =>
+    // The model refuses a struct with more than LIMITS.maxLeaves leaves; the cap here is a second
+    // line, so that no model bug can turn one share link into an unbounded number of DOM rows.
+    const hiddenRows = Math.max(0, c.rows.length - LIMITS.maxLeaves);
+    const rows = c.rows.slice(0, LIMITS.maxLeaves).map((r) =>
       h(
         "tr",
         { class: `rcl__${r.status}` },
@@ -313,6 +317,7 @@ export function mount(el, ctx) {
           h("tbody", null, rows),
         ),
       ),
+      hiddenRows ? h("p", { class: "rcl__help", text: `${plural(hiddenRows, "more row")} not shown: this table lists at most ${LIMITS.maxLeaves}.` }) : null,
     );
   }
 

@@ -6,7 +6,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { REFERENCE, presetBytes } from "./model.mjs";
+import zlib from "node:zlib";
+import { REFERENCE, presetBytes, newcEntry, concat } from "./model.mjs";
 
 class FakeEl {
   constructor(tag) {
@@ -252,4 +253,57 @@ test("the odc and bad samples are not called newc; trailer rows have no mode", a
   const t = await setup("tiny");
   const cells = t.root.findAll((e) => e.tagName === "TD" && e.attrs["data-label"] === "mode").map((e) => e.textContent);
   assert.deepEqual(cells, ["-rwxr-xr-x", "(none)"]);
+});
+
+// ---- Hostile files: the whole path from the file input to the drawn page ----
+
+const gzip = (b) => new Uint8Array(zlib.gzipSync(Buffer.from(b)));
+async function drop(s, bytes, name = "hostile.img") {
+  const input = s.byId("file");
+  input.files = [{ name, size: bytes.length, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length) }];
+  const t = performance.now();
+  await input.dispatch("change");
+  await new Promise((r) => setTimeout(r, 0)); // the file is read asynchronously
+  await new Promise((r) => setTimeout(r, 0)); // and a large one is analysed on the next turn
+  return performance.now() - t;
+}
+
+test("100,000 empty gzip members: the page is drawn at once, with the member limit in words", async () => {
+  const trailer = newcEntry({ name: "TRAILER!!!", nlink: 1 });
+  const bytes = concat(gzip(trailer), ...Array(100_000).fill(gzip(new Uint8Array(0))));
+  const s = await setup();
+  const ms = await drop(s, bytes);
+  assert.ok(ms < 2000, `took ${ms.toFixed(0)} ms`);
+  assert.match(s.readout(), /More than 1,024 members \(archives and compressed streams, one after another\): the lab stops here\./);
+  assert.match(s.root.textContent, /824 more parts of the buffer \(members and runs of zero bytes\) not listed: the list shows the first 200\./);
+  assert.match(s.root.textContent, /Showing the first 32 of 1,024 members\./);
+  assert.equal(s.root.findAll((e) => e.tagName === "CAPTION" && /^Member \d+ \(/.test(e.textContent)).length, 32);
+  assert.match(s.root.textContent, /More than 1,024 gzip members: the lab does not follow a host tool that far\./);
+});
+
+test("a directory tree 2,000 deep: refused at level 65 with the depth limit in words", async () => {
+  const parts = [];
+  let p = "a";
+  while (p.length + 2 < 4080) { parts.push(newcEntry({ name: p, mode: 0o040755 })); p += "/a"; }
+  for (let i = 0; i < 2000; i++) parts.push(newcEntry({ name: `${p}/f`, mode: 0o100644 }));
+  const bytes = gzip(concat(...parts, newcEntry({ name: "TRAILER!!!", nlink: 1 })));
+  assert.ok(bytes.length < 300 * 1024, `${bytes.length} bytes`);
+  const s = await setup();
+  const ms = await drop(s, bytes);
+  assert.ok(ms < 3000, `took ${ms.toFixed(0)} ms`);
+  assert.match(s.readout(), /Member 1, entry 65: its path is more than 64 directories deep, deeper than this lab follows\. The lab stops here/);
+  assert.match(s.root.textContent, /the lab stops here/);
+  assert.match(s.root.textContent, /Incomplete: the lab could not follow the whole buffer\./);
+});
+
+test("an entry and a zero run, 20,000 times over: the strip and the tables stay small", async () => {
+  const one = concat(newcEntry({ name: "f", mode: 0o100644 }), new Uint8Array(4));
+  const bytes = concat(...Array(20_000).fill(one));
+  const s = await setup();
+  const ms = await drop(s, bytes);
+  assert.ok(ms < 3000, `took ${ms.toFixed(0)} ms`);
+  const segs = s.root.findAll((e) => e.tagName === "LI" && /ci-seg/.test(e.className));
+  assert.equal(segs.length, 200);
+  assert.match(s.root.textContent, /19,801 more parts of the buffer/);
+  assert.match(s.root.textContent, /Showing the first 400 of 20,000 entries in this member\./);
 });

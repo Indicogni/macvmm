@@ -11,7 +11,7 @@ import {
   MAX_BYTES, HDR_LEN, LEGACY_HDR_LEN, ETH_MIN_FRAME, ETH_MAX_FRAME, MIN_TX_CHAIN, MAX_TX_CHAIN,
   PRESETS, preset, REFERENCE, DEFAULT, LEGACY_RUN, VMS,
   parseHex, formatHexLines, dissect, summary, shiftRows, inetChecksum, fixChecksums,
-  formatIp6, formatMac, txDropDebug, encodeShare, decodeShare, stateBytes,
+  formatIp6, formatMac, txDropDebug, encodeShare, encodeAuto, decodeShare, stateBytes, isVm,
 } from "./model.mjs";
 
 const root = (p) => fileURLToPath(new URL(`../../../../../${p}`, import.meta.url));
@@ -436,4 +436,29 @@ test("Linux details: broadcast pings ignored, truncated ARP, ARP probes, 802.2 L
   assert.equal(preset("big").bytes.length - HDR_LEN, 1515);
   // The run totals explain why they are not 20 copies of the ARP request.
   assert.match(LEGACY_RUN.text, /1200 \/ 20 is not 44/);
+});
+
+test("share and dissect: Object.prototype keys are not VMs", () => {
+  // `#frame-dissector=p=arp;r=constructor` used to decode (VMS["constructor"] is truthy) and the
+  // view then threw on mount, reading `.mac` of a function.
+  for (const key of ["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf", "isPrototypeOf"]) {
+    assert.equal(decodeShare(`p=arp;r=${key}`), null, key);
+    assert.equal(decodeShare(`b=00;r=${key}`), null, key);
+    assert.equal(isVm(key), false, key);
+    // dissect() itself falls back to VM B for an id it does not know.
+    const d = dissect(preset("arp").bytes, { dir: "tx", strip: 12, to: key });
+    assert.deepEqual(d.guest, dissect(preset("arp").bytes, { dir: "tx", strip: 12, to: "b" }).guest, key);
+  }
+  assert.equal(isVm("a"), true);
+  assert.equal(decodeShare("p=arp;r=a").to, "a");
+});
+
+test("encodeAuto: presets only, never the reader's bytes", () => {
+  assert.equal(encodeAuto(DEFAULT), null);
+  assert.equal(encodeAuto({ preset: "pong", bytes: null, dir: "rx", strip: 12, to: "a" }), "p=pong");
+  assert.equal(encodeAuto(decodeShare(REFERENCE)), REFERENCE);
+  const own = { preset: null, bytes: [0xde, 0xad], dir: "tx", strip: 12, to: "b" };
+  assert.equal(encodeAuto(own), null);
+  assert.equal(encodeShare(own), "b=dead", "Copy link still carries them");
+  assert.deepEqual(decodeShare("b=dead"), own);
 });

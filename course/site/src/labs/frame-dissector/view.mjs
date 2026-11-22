@@ -4,7 +4,7 @@
 import {
   PRESETS, preset, VMS, LAYERS, HDR_LEN, LEGACY_HDR_LEN, LEGACY_RUN, DEFAULT,
   parseHex, formatHexLines, dissect, summary, shiftRows, fixChecksums, hex,
-  encodeShare, decodeShare, stateBytes,
+  encodeShare, encodeAuto, decodeShare, stateBytes, isVm,
 } from "./model.mjs";
 
 function h(tag, attrs = {}, ...kids) {
@@ -32,6 +32,10 @@ export function mount(el, ctx) {
   const HN = ctx.standalone ? "h2" : "h4";
   let s = decodeShare(ctx.hash.get()) || { ...DEFAULT };
   let bytes = stateBytes(s);
+  // The one `b=<hex>` share string the reader has asked for: the link they opened, or the last
+  // "Copy link". Bytes typed or pasted since then are never put in the address by themselves
+  // (the address ends up in browser history and in whatever the page is shared through).
+  let asked = s.preset ? null : encodeShare(s);
   let d = null;
   let sel = 0; // selected field index
   let focusByte = 0;
@@ -264,7 +268,7 @@ export function mount(el, ctx) {
     devText.textContent = d.device.text;
     devWarn.textContent = d.device.warn || "";
     devWarn.hidden = !d.device.warn;
-    const peer = VMS[d.to];
+    const peer = isVm(d.to) ? VMS[d.to] : VMS.b;
     peerTitle.hidden = !d.peerDevice;
     peerText.hidden = !d.peerDevice;
     if (d.peerDevice) {
@@ -299,7 +303,7 @@ export function mount(el, ctx) {
     const p = s.preset ? preset(s.preset) : null;
     sourceNote.textContent = p
       ? (p.source === "lesson" ? "These are the bytes chapter 19 prints." : "Built by this lab from the protocol rules, with correct checksums; no run recorded these bytes.")
-      : `Your ${bytes.length} byte${bytes.length === 1 ? "" : "s"}.`;
+      : `Your ${bytes.length} byte${bytes.length === 1 ? "" : "s"}. They stay on this page: the address holds them only if you press Copy link.`;
     showMessage(message);
     stripBox.open = stripBox.open || s.strip === LEGACY_HDR_LEN;
     readout.textContent = summary(d);
@@ -309,9 +313,20 @@ export function mount(el, ctx) {
     renderTable();
     renderVerdicts();
     renderShift();
-    const str = encodeShare(s);
-    ctx.hash.set(str === "" ? null : str);
+    writeHash(false);
     if (announce) say(readout.textContent);
+  }
+
+  // Presets are reflected in the address as they change. Own bytes only on request (`byAsking`),
+  // and they stay there only while the state is still the one that was asked for.
+  function writeHash(byAsking) {
+    if (s.preset) {
+      ctx.hash.set(encodeAuto(s));
+      return;
+    }
+    const str = encodeShare(s);
+    if (byAsking) asked = str;
+    ctx.hash.set(str === asked ? str : null);
   }
 
   function showMessage(text, invalid = false) {
@@ -408,7 +423,7 @@ export function mount(el, ctx) {
     render();
   });
   toSel.addEventListener("change", () => {
-    s = { ...s, to: VMS[toSel.value] ? toSel.value : "b" };
+    s = { ...s, to: isVm(toSel.value) ? toSel.value : "b" };
     render();
   });
   // The hex box applies after a pause in typing (or on change/blur), never on each keystroke:
@@ -457,10 +472,10 @@ export function mount(el, ctx) {
     render();
   });
   shareBtn.addEventListener("click", async () => {
-    render({ rebuild: false, announce: false });
+    writeHash(true);
     try {
       await navigator.clipboard.writeText(window.location.href);
-      say("Link copied.");
+      say(s.preset ? "Link copied." : `Link copied. It holds your ${bytes.length} byte${bytes.length === 1 ? "" : "s"}.`);
     } catch {
       say("Copy is not available here; the link to this state is in the address bar.");
     }

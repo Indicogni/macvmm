@@ -23,10 +23,13 @@ function h(tag, attrs = {}, ...kids) {
 }
 
 const MAX_ROWS = 400;
+const MAX_PARTS = 200; // parts of the buffer (members, zero runs) drawn in the strip and its list
+const MAX_TABLES = 32; // member tables drawn
+const MAX_ROWS_ALL = 2000; // entry rows drawn over all member tables
 const DUMP_DATA = 160;
 const BIG_INPUT = 1024 * 1024; // above this, say "Reading..." and yield before the analysis
 const KIND_LABEL = { file: "file", dir: "directory", symlink: "symlink", chr: "char device", blk: "block device", fifo: "FIFO", sock: "socket", trailer: "trailer", cut: "cut short", bad: "bad header", other: "unknown" };
-const STATUS_LABEL = { created: "created", replaced: "replaces an earlier entry", updated: "already there", ignored: "skipped", trailer: "end of archive", linked: "hard link", partial: "cut short", error: "unpacking stops" };
+const STATUS_LABEL = { created: "created", replaced: "replaces an earlier entry", updated: "already there", ignored: "skipped", trailer: "end of archive", linked: "hard link", partial: "cut short", error: "unpacking stops", lab: "the lab stops here" };
 const REGION_LABEL = { magic: "magic", field: "header field", name: "name + NUL", pad: "padding", data: "data", other: "other" };
 const SITE = "/build-your-own/vmm/";
 const LAB_URL = (name) => `${SITE}labs/${name}/`;
@@ -279,8 +282,11 @@ export function mount(el, ctx) {
   function renderStrip() {
     const total = Math.max(1, res.length);
     const bar = h("ol", { class: "ci-strip", "aria-hidden": "true" });
-    for (const it of res.items) {
-      if (it.type === "stop") continue;
+    // A hostile file can have a thousand members and a zero run after every entry: draw the
+    // first MAX_PARTS parts and say how many were left out.
+    const parts = res.items.filter((it) => it.type !== "stop");
+    const hiddenParts = Math.max(0, parts.length - MAX_PARTS);
+    for (const it of parts.slice(0, MAX_PARTS)) {
       const w = Math.max(2, ((it.end - it.start) / total) * 100);
       const cls = it.type === "member" ? `ci-seg ci-seg--${res.members[it.member].kind === "newc" ? "raw" : "comp"}` : it.type === "zeros" ? "ci-seg ci-seg--zero" : "ci-seg ci-seg--junk";
       const label = it.type === "member" ? `${it.member + 1}` : it.type === "zeros" ? "0" : "!";
@@ -290,7 +296,8 @@ export function mount(el, ctx) {
     }
     stripBox.replaceChildren(bar);
     itemsList.replaceChildren();
-    for (const it of res.items) {
+    // The same first MAX_PARTS parts, then the message the kernel stopped with, if any.
+    for (const it of parts.slice(0, MAX_PARTS).concat(res.items.filter((x) => x.type === "stop"))) {
       if (it.type === "member") {
         const m = res.members[it.member];
         const trailers = m.entries.filter((e) => e.kind === "trailer").length;
@@ -313,6 +320,7 @@ export function mount(el, ctx) {
         itemsList.append(h("li", { class: "ci-bad", text: `Initramfs unpacking failed: ${it.message}` }));
       }
     }
+    if (hiddenParts) itemsList.append(h("li", { class: "ci-muted", text: `${fmt(hiddenParts)} more part${hiddenParts === 1 ? "" : "s"} of the buffer (members and runs of zero bytes) not listed: the list shows the first ${MAX_PARTS}.` }));
     if (res.labStop) itemsList.append(h("li", { class: "ci-warn", text: res.labStop }));
     for (const n of res.notes) itemsList.append(h("li", { class: "ci-warn", text: n }));
   }
@@ -321,7 +329,8 @@ export function mount(el, ctx) {
     entriesBox.replaceChildren();
     rows = new Map();
     if (!res.members.length) { entriesBox.append(h("p", { class: "ci-note", text: "No entries: the kernel never found a cpio header." })); return; }
-    for (const m of res.members) {
+    let rowsLeft = MAX_ROWS_ALL;
+    for (const m of res.members.slice(0, MAX_TABLES)) {
       const table = h("table", { class: "ci-table" });
       table.append(h("caption", { text: `Member ${m.index + 1} (${memberLabel(m)}). Offsets are ${m.kind === "newc" ? "in the file" : "in the decompressed stream"}.` }));
       // Column order puts what teaches first (name, then the kernel's action); on a narrow screen
@@ -330,7 +339,8 @@ export function mount(el, ctx) {
       const COLS = ["#", "name", "what the kernel does", "type", "size", "mode", "offset"];
       table.append(h("thead", {}, h("tr", {}, ...COLS.map((t) => h("th", { scope: "col", text: t })))));
       const body = h("tbody");
-      const shown = m.entries.slice(0, MAX_ROWS);
+      const shown = m.entries.slice(0, Math.min(MAX_ROWS, rowsLeft));
+      rowsLeft -= shown.length;
       for (const e of shown) {
         const isSel = ui.select.member === m.index && ui.select.index === e.index;
         const nameBtn = h("button", { type: "button", class: "ci-link", "aria-current": isSel ? "true" : null, text: e.nameDisplay != null ? (e.nameDisplay || "(empty)") : `(${KIND_LABEL[e.kind] || e.kind})` });
@@ -352,8 +362,9 @@ export function mount(el, ctx) {
       }
       table.append(body);
       entriesBox.append(scroller(`Entries of member ${m.index + 1}`, table));
-      if (m.entries.length > MAX_ROWS) entriesBox.append(h("p", { class: "ci-note", text: `Showing the first ${MAX_ROWS} of ${fmt(m.entries.length)} entries in this member.` }));
+      if (m.entries.length > shown.length) entriesBox.append(h("p", { class: "ci-note", text: `Showing the first ${shown.length} of ${fmt(m.entries.length)} entries in this member.` }));
     }
+    if (res.members.length > MAX_TABLES) entriesBox.append(h("p", { class: "ci-note", text: `Showing the first ${MAX_TABLES} of ${fmt(res.members.length)} members.` }));
   }
 
   function renderDetail() {

@@ -106,6 +106,10 @@ test("custom input round-trips through the hash; bad input and hostile hashes ar
   ta.value = "<img src=x onerror=alert(1)>\\x1b[6n";
   ta.dispatch("input");
   button(root, "Run").dispatch("click");
+  // Was `assert.ok(env.hash().startsWith("t:"))` straight after Run: typed text used to be
+  // written to the address on every Run. It now gets there only through "Copy link".
+  assert.equal(env.hash(), null, "Run does not put typed text in the address");
+  button(root, "Copy link").dispatch("click");
   assert.ok(env.hash().startsWith("t:"));
   assert.match(section(root, 0).textContent, /<img src=x onerror=alert\(1\)>/, "shown as text");
   const saved = env.hash();
@@ -229,7 +233,8 @@ test("the readout and the share hash never go stale", async () => {
   assert.equal(readout(root), "Input changed: press Run.");
   assert.equal(hash(), null);
   button(root, "Run").dispatch("click");
-  assert.ok(hash().startsWith("t:"));
+  // Was `assert.ok(hash().startsWith("t:"))`: see the Copy link test below.
+  assert.equal(hash(), null, "typed text is not written to the address by Run");
   const sel = byTag(root, "SELECT")[0];
   sel.value = "lone-9b";
   sel.dispatch("change");
@@ -244,4 +249,71 @@ test("the mid-sequence preset shows the control the terminal runs inside the seq
   mount(root, ctx).destroy();
   assert.match(section(root, 0).textContent, /Executed mid-sequence/);
   assert.match(section(root, 0).textContent, /red foreground/);
+});
+
+test("typed text reaches the address only through Copy link; a link with text still opens", async () => {
+  const { mount } = await import("./view.mjs");
+  let env = setup();
+  let root = new FakeEl("div");
+  mount(root, env.ctx).destroy();
+  const ta = byTag(root, "TEXTAREA")[0];
+  // Copy link before Run: nothing was run, so there is nothing to link to (and nothing is written).
+  ta.value = "secret ZQXJ \\x1b[6n";
+  ta.dispatch("input");
+  button(root, "Copy link").dispatch("click");
+  assert.equal(env.hash(), null);
+  assert.match(readout(root), /Press Run first/);
+  button(root, "Run").dispatch("click");
+  assert.equal(env.hash(), null, "pasted text is not copied into the address");
+  button(root, "Copy link").dispatch("click");
+  assert.equal(env.hash(), "t:" + encodeURIComponent("secret ZQXJ \\x1b[6n"));
+  // Running the same text again keeps the link that was asked for; new text clears it.
+  button(root, "Run").dispatch("click");
+  assert.ok(env.hash().startsWith("t:"));
+  ta.value = "other";
+  ta.dispatch("input");
+  assert.equal(env.hash(), null);
+  button(root, "Run").dispatch("click");
+  assert.equal(env.hash(), null);
+  // A preset is still reflected when it is run, and Copy link keeps it.
+  const sel = byTag(root, "SELECT")[0];
+  sel.value = "lone-9b";
+  sel.dispatch("change");
+  button(root, "Run").dispatch("click");
+  assert.equal(env.hash(), "lone-9b");
+  button(root, "Copy link").dispatch("click");
+  assert.equal(env.hash(), "lone-9b");
+
+  // A link that carries text: analysed on mount, the address left as it was.
+  env = setup("t:hi%5Cx1b%5B6n");
+  root = new FakeEl("div");
+  mount(root, env.ctx).destroy();
+  assert.equal(byTag(root, "TEXTAREA")[0].value, "hi\\x1b[6n");
+  assert.match(readout(root), /safe policy keeps 2 bytes/);
+  assert.equal(env.hash(), "t:hi%5Cx1b%5B6n");
+});
+
+test("a repeat count in a link is refused before it is expanded; the same text typed in still runs", async () => {
+  const { mount } = await import("./view.mjs");
+  // `#ansi-filter=t:%5Cx9b%7B16777215%7Dm`: 16 MiB of 0x9B, about 4 s of main thread on mount.
+  for (const link of ["t:%5Cx9b%7B16777215%7Dm", "t:\\x9b{16777215}m", "t:a%5Cx41%7B65536%7D"]) {
+    const env = setup(link);
+    const root = new FakeEl("div");
+    const t0 = performance.now();
+    mount(root, env.ctx).destroy();
+    const ms = performance.now() - t0;
+    assert.ok(ms < 100, `${link}: mount took ${ms.toFixed(1)} ms`);
+    assert.match(root.textContent, /input is longer than 65536 bytes\. This text came in a link/, link);
+    assert.equal(byTag(root, "TEXTAREA")[0].attrs["aria-invalid"], "true");
+  }
+  // At the cap it runs; and the reader's own edit of a link's text is held to the typed limit.
+  const env = setup("t:%5Cx41%7B65536%7D");
+  const root = new FakeEl("div");
+  mount(root, env.ctx).destroy();
+  assert.match(readout(root), /^65536 input bytes\./);
+  const ta = byTag(root, "TEXTAREA")[0];
+  ta.value = "\\x41{65537}";
+  ta.dispatch("input");
+  button(root, "Run").dispatch("click");
+  assert.match(readout(root), /^65537 input bytes\./);
 });

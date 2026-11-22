@@ -5,7 +5,8 @@
     "short_title": "Build a VMM",
     "base": "/build-your-own/vmm/",
     "origin": "https://indicogni.com",
-    "email": "feedback@indicogni.com"
+    "email": "feedback@indicogni.com",
+    "repo": "https://github.com/Indicogni/macvmm"
   },
   "parts": [
     {
