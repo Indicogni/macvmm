@@ -70,12 +70,17 @@ function fixedTables() {
  * `truncated` is true when the input ran out before the stream ended, `capped` when the output
  * cap was hit, and `out` holds what was produced before the error.
  */
+const INITIAL_OUT = 64 * 1024;
+
 export function inflateRaw(src, start = 0, opts = {}) {
   const maxOut = opts.maxOut ?? 128 * 1024 * 1024;
   let pos = start;
   let bitBuf = 0;
   let bitCnt = 0;
-  let out = new Uint8Array(Math.min(maxOut, Math.max(1024, (src.length - start) * 4)));
+  // Start small and let grow() double. Sizing this from the input that is left would give every
+  // member of a many-member archive megabytes up front: 1,024 members at the head of a 2 MiB
+  // file came to about 8 GiB of buffers.
+  let out = new Uint8Array(Math.min(maxOut, INITIAL_OUT, Math.max(1024, (src.length - start) * 4)));
   let outLen = 0;
   let truncated = false;
   let capped = false;

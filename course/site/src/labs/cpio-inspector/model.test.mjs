@@ -831,7 +831,13 @@ test("members are capped: 100,000 empty gzip members stop the lab at once, with 
   const empty = gz(new Uint8Array(0));
   const buf = concat(first, ...Array(100_000).fill(empty));
   assert.ok(buf.length < 16 * 1024 * 1024);
+  const buffersBefore = process.memoryUsage().arrayBuffers;
   const [r, ms] = timed(() => unpack(buf));
+  // Memory, not only time: sizing each member's output from the input left over asked for
+  // about 8 GiB here. A fast machine hides that (untouched pages cost nothing); a small one
+  // takes ten seconds over it.
+  const grew = process.memoryUsage().arrayBuffers - buffersBefore;
+  assert.ok(grew < 256 * 1024 * 1024, `unpack allocated ${(grew / 1048576).toFixed(0)} MiB of buffers`);
   assert.ok(ms < 1000, `unpack took ${ms.toFixed(0)} ms`);
   assert.equal(r.members.length, MAX_MEMBERS);
   assert.equal(r.error, null);
