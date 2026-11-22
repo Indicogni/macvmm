@@ -113,6 +113,11 @@ fn dry_run_needs_no_entitlement() {
         .unwrap();
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert_eq!(out.status.code(), Some(1), "{stderr}");
-    assert!(stderr.contains("hv_vm_create"), "{stderr}");
+    // Without a hypervisor at all (a hosted CI runner is itself a VM) the run stops one call
+    // earlier, at the capability probe, with HV_UNSUPPORTED. Either way an HVF call failed.
+    assert!(
+        stderr.contains("hv_vm_create") || stderr.contains("HV_UNSUPPORTED"),
+        "{stderr}"
+    );
     std::fs::remove_dir_all(&dir).unwrap();
 }
