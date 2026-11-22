@@ -221,7 +221,14 @@ fn a_ring_of_slow_requests_cannot_hold_the_device_mutex_or_delay_stop() {
             (acquired, worst)
         })
     };
+    // Let the flood run for a while. A slow host (a hosted CI runner, whose sleeps overrun)
+    // serves fewer batches in the same time, so wait for enough of them rather than for a
+    // fixed time; the bounds asserted below are per batch and do not depend on this.
+    let flood = Instant::now();
     std::thread::sleep(Duration::from_millis(1500));
+    while calls.load(Ordering::SeqCst) <= 10 && flood.elapsed() < Duration::from_secs(15) {
+        std::thread::sleep(Duration::from_millis(50));
+    }
     let batches = calls.load(Ordering::SeqCst);
     let t0 = Instant::now();
     assert!(!worker.stop());
@@ -243,8 +250,9 @@ fn a_ring_of_slow_requests_cannot_hold_the_device_mutex_or_delay_stop() {
         "a batch handled {max} requests: more than an OUT and one FLUSH"
     );
     // One batch is at most an OUT (16 × 2 ms) and a FLUSH (30 ms) ≈ 62 ms; allow scheduling
-    // slack, but stay far below the ≈ 2 s a ring's worth would take.
-    let bound = Duration::from_millis(250);
+    // slack (the 17 sleeps of one batch overran to 205 ms on a hosted CI runner), but stay far
+    // below the ≈ 2 s a ring's worth would take.
+    let bound = Duration::from_millis(500);
     assert!(longest < bound, "one batch held the mutex for {longest:?}");
     assert!(
         stop_took < bound,

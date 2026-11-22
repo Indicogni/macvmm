@@ -82,8 +82,11 @@ fn stalled_writer_bounds_the_producer_and_counts_drops() {
         took >= SINK_FULL_WAIT - Duration::from_millis(1),
         "{took:?}"
     );
+    // The upper bound shows the producer is released, not blocked for as long as the writer
+    // is stalled (which here is forever). The slack is for a slow host whose timed waits
+    // overrun, such as a hosted CI runner.
     assert!(
-        took < SINK_FULL_WAIT + Duration::from_millis(90),
+        took < SINK_FULL_WAIT + Duration::from_millis(500),
         "{took:?}"
     );
     assert_eq!(s.dropped(), 100);
