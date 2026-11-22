@@ -498,23 +498,43 @@ mod tests {
         }
         std::thread::sleep(Duration::from_millis(20));
         assert_eq!(n.load(SeqCst), 1, "one-shot");
-        // Re-arming keeps the first deadline: four re-arms 30 ms apart do not postpone it.
-        k.arm(Duration::from_millis(100));
+        // Re-arming keeps the first deadline: four re-arms 30 ms apart do not postpone it. A
+        // postponed kick could not fire before `last + FIRST`. The deadline is far longer than
+        // the re-arms take, so that a slow machine (hosted CI) whose sleeps overrun still
+        // finishes them before the kick; if it somehow does not, the loop stops re-arming,
+        // because an arm after the kick is a fresh deadline, not a postponement.
+        const FIRST: Duration = Duration::from_millis(400);
+        k.arm(FIRST);
         let t1 = Instant::now();
+        let mut last = t1;
+        let mut rearms = 0;
         for _ in 0..4 {
             std::thread::sleep(Duration::from_millis(30));
-            k.arm(Duration::from_millis(100));
+            if n.load(SeqCst) >= 2 {
+                break;
+            }
+            k.arm(FIRST);
+            last = Instant::now();
+            rearms += 1;
         }
         while n.load(SeqCst) < 2 {
-            assert!(t1.elapsed() < Duration::from_secs(2), "re-arm postponed it");
+            assert!(
+                t1.elapsed() < Duration::from_secs(2),
+                "the kick never fired"
+            );
             std::thread::sleep(Duration::from_millis(1));
         }
-        assert!(t1.elapsed() < Duration::from_millis(1000));
-        // Disarmed before the deadline: nothing fires.
+        if rearms == 4 {
+            assert!(Instant::now() < last + FIRST, "re-arm postponed it");
+        }
+        // Disarmed before the deadline: nothing fires. (The first disarm clears a deadline that
+        // a re-arm racing with the kick above may have set.)
+        k.disarm();
+        let fired = n.load(SeqCst);
         k.arm(Duration::from_millis(50));
         k.disarm();
         std::thread::sleep(Duration::from_millis(120));
-        assert_eq!(n.load(SeqCst), 2);
+        assert_eq!(n.load(SeqCst), fired);
         let t2 = Instant::now();
         drop(k);
         assert!(t2.elapsed() < Duration::from_secs(1), "drop joins promptly");
