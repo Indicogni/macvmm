@@ -1,6 +1,6 @@
 // Consistency checks for course/primers/*.md against course/chapters.json (generated from
 // CURRICULUM.md section 2.1) and the content model of DESIGN.md section 9.
-// Run: node --test course/site/
+// Run: node --test 'course/site/**/*.test.mjs'
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";

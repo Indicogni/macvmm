@@ -157,7 +157,7 @@ section 7). Concretely, a lab must not:
 
 ## 7. Testing and checks
 
-- `node --test course/site/` (Node 22 or later) runs every `*.test.mjs` in the site tree,
+- `node --test 'course/site/**/*.test.mjs'` (Node 22 or later) runs every `*.test.mjs` in the site tree,
   including yours and the shared ones in `course/site/test/`.
 - The builder fails on: a missing `model.mjs` when `view.mjs` exists, a disallowed file type,
   a `view.mjs` that does not contain `export function mount` or `export async function mount`,

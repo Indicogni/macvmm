@@ -1,4 +1,4 @@
-// Tests for the gpa-translator model. Run: node --test course/site/src/labs/gpa-translator/
+// Tests for the gpa-translator model. Run: node --test course/site/src/labs/gpa-translator/*.test.mjs
 //
 // The cases mirror the reference's unit tests in crates/vmm/src/memory/region.rs and address.rs
 // (no exported vector file exists for guest memory; vectors cover ESR, FDT and virtqueue), the

@@ -1,4 +1,4 @@
-// Tests for the cache-views model. Run: node --test course/site/
+// Tests for the cache-views model. Run: node --test 'course/site/**/*.test.mjs'
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {

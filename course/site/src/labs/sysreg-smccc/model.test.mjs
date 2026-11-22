@@ -1,4 +1,4 @@
-// Tests for the sysreg-smccc lab's model. Run: node --test course/site/
+// Tests for the sysreg-smccc lab's model. Run: node --test 'course/site/**/*.test.mjs'
 //
 // The model must reproduce the numbers the smccc primer and chapter 08 quote, print exactly what
 // the reference printed in the real captures, agree with crates/vmm/src/smccc.rs,

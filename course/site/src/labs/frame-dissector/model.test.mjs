@@ -1,4 +1,4 @@
-// Tests for the frame-dissector model. Run: node --test course/site/
+// Tests for the frame-dissector model. Run: node --test 'course/site/**/*.test.mjs'
 //
 // The lab must reproduce chapter 19 exactly: the ARP request's byte table, the "Two bytes off"
 // table, and the numbers it quotes from the captures. These tests read the lesson, the captures

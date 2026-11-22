@@ -1,4 +1,4 @@
-// Tests for the litmus model. Run with: node --test course/site/
+// Tests for the litmus model. Run with: node --test 'course/site/**/*.test.mjs'
 //
 // The primer (course/primers/memory-ordering.md) is the spec: its litmus.rs modes, its quoted
 // counts and its claims about which zeros are luck are re-read from the Markdown here, so the

@@ -1,4 +1,4 @@
-// Tests for the boot-chain model. Run: node --test course/site/
+// Tests for the boot-chain model. Run: node --test 'course/site/**/*.test.mjs'
 // The lab quotes chapter 21's chain table and numbers from real captures; these tests read the
 // lesson, the primers and the capture files, so the lab cannot drift from what the course shows.
 import test from "node:test";

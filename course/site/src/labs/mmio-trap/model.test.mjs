@@ -1,4 +1,4 @@
-// Tests for the mmio-trap model. Run: node --test course/site/
+// Tests for the mmio-trap model. Run: node --test 'course/site/**/*.test.mjs'
 // The lab must reproduce chapter 07's captures exactly, so most tests read the capture files.
 import test from "node:test";
 import assert from "node:assert/strict";

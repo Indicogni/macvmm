@@ -1,5 +1,5 @@
 // Tests for lib/curriculum.mjs against the real course/CURRICULUM.md, plus mutated copies of it
-// for the failure paths. Run: node --test course/site/
+// for the failure paths. Run: node --test 'course/site/**/*.test.mjs'
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";

@@ -1,4 +1,4 @@
-// Tests for the trap-or-not model. Run: node --test course/site/
+// Tests for the trap-or-not model. Run: node --test 'course/site/**/*.test.mjs'
 //
 // The lab must reproduce chapter 01's table exactly (ten actions, their order, the three bucket
 // names, the reference bucket and the ledger rows), so these tests read the lesson itself.

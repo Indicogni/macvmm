@@ -1,4 +1,4 @@
-// Tests for the elf-inspector model. Run: node --test course/site/src/labs/elf-inspector/
+// Tests for the elf-inspector model. Run: node --test course/site/src/labs/elf-inspector/*.test.mjs
 //
 // No exported vector file exists for ELF, so the model is pinned to:
 //   - the elf primer's own dumps and tables (parsed from course/primers/elf.md, so they cannot drift apart);

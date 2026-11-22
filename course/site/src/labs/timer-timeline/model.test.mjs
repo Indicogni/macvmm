@@ -1,4 +1,4 @@
-// node --test course/site/src/labs/timer-timeline/
+// node --test course/site/src/labs/timer-timeline/*.test.mjs
 // The model against its sources: chapter 11's fallback, the reference's trace and --stats
 // captures, the first-read captures, and the Rust rules and unit tests in crates/vmm/src/timer.rs.
 import { test } from "node:test";

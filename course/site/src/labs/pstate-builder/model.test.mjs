@@ -1,4 +1,4 @@
-// Tests for the pstate-builder model. Run: node --test course/site/
+// Tests for the pstate-builder model. Run: node --test 'course/site/**/*.test.mjs'
 //
 // The lab must say exactly what chapter 06 says, so these tests read the real sources:
 //   - the lesson's text fallback (three rows) and its "build 0x3c5 from the fields" steps;

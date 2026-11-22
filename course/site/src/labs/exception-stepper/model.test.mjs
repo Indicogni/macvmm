@@ -1,4 +1,4 @@
-// node --test course/site/src/labs/exception-stepper/
+// node --test course/site/src/labs/exception-stepper/*.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";

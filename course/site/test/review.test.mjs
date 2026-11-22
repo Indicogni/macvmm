@@ -1,6 +1,6 @@
 // Regression tests for the site review fixes: output-directory safety, aria-current, tab stops,
 // lab link names, capture separators, the stylesheet budget, control borders, notation that
-// hides in code spans, and the extra CSP resource checks. Run: node --test course/site/
+// hides in code spans, and the extra CSP resource checks. Run: node --test 'course/site/**/*.test.mjs'
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync, existsSync } from "node:fs";

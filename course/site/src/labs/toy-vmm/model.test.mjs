@@ -1,4 +1,4 @@
-// Tests for the toy-vmm model. Run: node --test course/site/
+// Tests for the toy-vmm model. Run: node --test 'course/site/**/*.test.mjs'
 //
 // The lesson (course/chapters/0/00-orientation.md) lists the toy guest and quotes counts from
 // it; these tests parse that listing and pin every count, so the lab, lab.json and the lesson

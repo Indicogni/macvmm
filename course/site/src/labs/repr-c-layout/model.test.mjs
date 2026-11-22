@@ -1,4 +1,4 @@
-// Tests for the repr-c-layout model. Run: node --test course/site/
+// Tests for the repr-c-layout model. Run: node --test 'course/site/**/*.test.mjs'
 //
 // The expected numbers below were checked on aarch64-apple-darwin with rustc 1.99
 // (size_of / align_of / offset_of!) and Apple clang 21 (sizeof / _Alignof / offsetof on the real

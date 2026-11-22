@@ -1,5 +1,5 @@
 // Renderer tests: every Markdown construct and directive the course uses, escaping, and the
-// negative cases that must be build errors (DESIGN.md §9-10). Run: node --test course/site/
+// negative cases that must be build errors (DESIGN.md §9-10). Run: node --test 'course/site/**/*.test.mjs'
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { renderMarkdown, inline, parseArgs, linkPrimerSlugs, MarkdownError } from "../lib/md.mjs";

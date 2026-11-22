@@ -1,4 +1,4 @@
-// node --test course/site/src/labs/a64-encoder/
+// node --test course/site/src/labs/a64-encoder/*.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";

@@ -1,4 +1,4 @@
-// Tests for the virtio-status model. Run: node --test course/site/
+// Tests for the virtio-status model. Run: node --test 'course/site/**/*.test.mjs'
 // The first tests replay the two captured presets and compare them, line for line, with the real
 // traces the chapter prints (course/captures/15-handshake-trace.txt and 15-linux-handshake.txt).
 // Most of the rest port crates/vmm/tests/virtio_mmio_state.rs and the unit test in

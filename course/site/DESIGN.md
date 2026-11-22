@@ -788,7 +788,7 @@ Pipeline:
    `check-links` (all internal hrefs resolve to an emitted file/id), `check-csp` (grep emitted HTML for
    `<script>` without `src`, `on\w+=`, `http://`, and any `https://` resource that isn't a plain outbound `<a>`),
    `check-size` (every page < 400 KB, see the as-built notes above).
-8. `node --test course/site/` runs the renderer, tokenizer, lab-model and vector tests.
+8. `node --test 'course/site/**/*.test.mjs'` runs the renderer, tokenizer, lab-model and vector tests.
 
 Directory sketch:
 

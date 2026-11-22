@@ -1,4 +1,4 @@
-// Model tests for virtqueue-visualizer. Run with `node --test course/site/`.
+// Model tests for virtqueue-visualizer. Run with `node --test 'course/site/**/*.test.mjs'`.
 //
 // The model is a port of crates/vmm/src/virtio/{queue,chain}.rs, so it is checked against:
 //   - every case in course/site/labs/vectors/virtqueue.json (exported from the reference's

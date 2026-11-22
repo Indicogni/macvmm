@@ -1,5 +1,5 @@
 // Unit tests for the small shared libraries: front matter, HTML helpers and the highlighter.
-// Run: node --test course/site/
+// Run: node --test 'course/site/**/*.test.mjs'
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseFrontMatter, FrontMatterError } from "../lib/frontmatter.mjs";

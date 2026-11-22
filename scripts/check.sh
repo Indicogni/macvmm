@@ -71,7 +71,7 @@ step "build-guests";  maybe scripts/build-guests.sh "the test guests"
 step "course site"
 if command -v node >/dev/null 2>&1 \
   && node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 22 ? 0 : 1)'; then
-  node --test course/site/
+  node --test 'course/site/**/*.test.mjs'
   node course/site/build.mjs --check
 else
   skip "course site (needs Node 22 or later)"

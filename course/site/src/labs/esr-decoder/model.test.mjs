@@ -1,4 +1,4 @@
-// Tests for the ESR decoder lab's model. Run: node --test course/site/
+// Tests for the ESR decoder lab's model. Run: node --test 'course/site/**/*.test.mjs'
 //
 // The model must agree with macvmm's decoder (crates/vmm/src/arch/esr.rs) on every shared
 // vector, print exactly what the reference printed in the real captures, never throw, and

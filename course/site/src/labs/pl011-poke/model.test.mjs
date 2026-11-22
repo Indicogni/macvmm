@@ -1,4 +1,4 @@
-// Tests for the pl011-poke model. Run: node --test course/site/
+// Tests for the pl011-poke model. Run: node --test 'course/site/**/*.test.mjs'
 // The first test replays the lesson's walk and compares it, byte for byte, with the real capture
 // the chapter prints (course/captures/09-poke.txt). The rest port the reference device's own
 // tests (crates/vmm/tests/pl011_regs.rs), so the lab and the Rust PL011 cannot drift apart.

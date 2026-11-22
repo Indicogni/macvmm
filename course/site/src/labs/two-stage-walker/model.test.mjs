@@ -1,7 +1,7 @@
 // Tests for the two-stage-walker model. Every number a lesson or capture quotes for this lab is
 // checked here: chapter 05's hand walk, the va-alias, mmio-poke and ipa-poke captures
 // (course/captures/05-*.txt), the page-tables primer's worked example and its 24 reads, and the
-// page-granules primer's index split. Run: node --test course/site/
+// page-granules primer's index split. Run: node --test 'course/site/**/*.test.mjs'
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";

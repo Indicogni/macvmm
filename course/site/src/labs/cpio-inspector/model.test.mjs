@@ -1,4 +1,4 @@
-// Tests for the cpio-inspector model. Run: node --test course/site/
+// Tests for the cpio-inspector model. Run: node --test 'course/site/**/*.test.mjs'
 //
 // 1. The primer's numbers: the test reads course/primers/cpio-initramfs.md and checks the lab
 //    against its xxd dumps, its fold output, its five-region table, its listing lines and its
