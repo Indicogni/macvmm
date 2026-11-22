@@ -1,5 +1,9 @@
 # Fresh-clone validation, v1 (PLAN M23)
 
+> **Superseded.** This is the record of 2026-11-19, taken from a working tree before the course
+> existed. The current record, against the public repository, is
+> [`fresh-clone-public.md`](fresh-clone-public.md).
+
 The v1 release gate: `scripts/fresh-clone-check.sh` builds and tests macvmm from a fresh copy
 of the code and an **empty** download cache, the way a newcomer would. The output below is the
 script's stdout and stderr, **verbatim and unedited** (each step's full log stayed in the run's
