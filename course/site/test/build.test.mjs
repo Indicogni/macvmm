@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { build, displayTitle, retrievalSources, parseGlossary, glossaryAnchor, parseRetrievalBank, CSP, headersFile, validateCourse, safeRepoPath, coversText, chapterLabel } from "../build.mjs";
 import { checkCsp, checkContrast, contrast, checkInternalNotation } from "../lib/checks.mjs";
-import { sanitizeSvg, svgMinWidth, MIN_TEXT_PX, NARROWEST } from "../lib/svg.mjs";
+import { sanitizeSvg, svgMinWidth, svgMaxWidth, MIN_TEXT_PX, MAX_TEXT_PX, NARROWEST } from "../lib/svg.mjs";
 import { DIAGRAMS, renderDiagram, githubSvg } from "../tools/diagrams.mjs";
 import { parseHeaders, headersFor, resolvePath } from "../serve.mjs";
 
@@ -186,6 +186,19 @@ test("each diagram's GitHub copy is up to date, themed for both schemes, and nev
     assert.throws(() => sanitizeSvg(gh, "t"), /<style>/, `${name}: the site can never inline the GitHub copy`);
   }
 });
+
+test("narrow diagrams are capped so their text stays near body size; the tour page shows all five", () => {
+  const svg = (vw, fs) => `<svg viewBox="0 0 ${vw} 100"><text font-size="${fs}">x</text></svg>`;
+  const w = svgMaxWidth(svg(336, 14));
+  assert.ok(w > 0 && w * 14 / 336 <= MAX_TEXT_PX && w % 40 === 0, String(w));
+  assert.equal(svgMaxWidth(svg(640, 13)), 0, "a wide diagram keeps the column's own cap");
+  const h = readFileSync(join(root, "how-it-works/index.html"), "utf8");
+  for (const name of ["overview", "exit-loop", "memory-map", "boot-flow", "virtio-request"]) {
+    assert.ok(h.includes(`<title id="fig-`) && h.includes(escTitle(DIAGRAMS[name].title)), `${name} on the tour page`);
+  }
+  assert.match(h, /<svg [^>]*class="maxw-400 dg"/, "the overview is capped");
+});
+const escTitle = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
 test("wide SVGs keep text at 12px or more in the narrowest column", () => {
   const svg = (vw, fs) => `<svg viewBox="0 0 ${vw} 100"><text font-size="${fs}">x</text></svg>`;

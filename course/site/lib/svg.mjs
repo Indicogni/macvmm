@@ -66,18 +66,39 @@ export const MIN_TEXT_PX = 12;
 
 /**
  * The min-width (px, a MINW_STEP multiple) an SVG needs so its smallest text renders at 12px or
- * more, or 0 when it already does in the narrowest column. Reads the viewBox width and the
- * smallest font-size attribute (default 16, the browser's).
+ * more, or 0 when it already does in the narrowest column.
  */
 export function svgMinWidth(svg) {
-  const vb = svg.match(/<svg\b[^>]*\sviewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i);
-  if (!vb) return 0;
-  const vw = Number(vb[1]);
-  const sizes = [...svg.matchAll(/\sfont-size\s*=\s*["']\s*([\d.]+)(?:px)?\s*["']/gi)].map((m) => Number(m[1])).filter((n) => n > 0);
-  const minFont = sizes.length ? Math.min(...sizes) : 16;
-  const need = (MIN_TEXT_PX * vw) / minFont; // rendered width at which the smallest text is 12px
+  const m = viewBoxAndFont(svg);
+  if (!m) return 0;
+  const need = (MIN_TEXT_PX * m.vw) / m.minFont; // rendered width at which the smallest text is 12px
   if (need <= NARROWEST) return 0;
   return Math.min(MINW_MAX, Math.ceil(need / MINW_STEP) * MINW_STEP);
+}
+
+/** Diagram text renders no larger than body text (17px), however wide the column. */
+export const MAX_TEXT_PX = 17;
+/** The widest a diagram renders anyway: `.diagram svg { max-width: 44rem }` in course.css. */
+export const DIAGRAM_MAX = 704;
+
+/**
+ * The max-width (px, a MINW_STEP multiple) at which an SVG's smallest text reaches 17px, or 0
+ * when the diagram column's own 44rem cap comes first. A diagram drawn narrow, to fit a phone,
+ * would otherwise be scaled up until its text is twice the size of the prose around it.
+ */
+export function svgMaxWidth(svg) {
+  const m = viewBoxAndFont(svg);
+  if (!m) return 0;
+  const cap = Math.floor((MAX_TEXT_PX * m.vw) / m.minFont / MINW_STEP) * MINW_STEP;
+  return cap >= DIAGRAM_MAX ? 0 : Math.max(cap, MINW_STEP * 8);
+}
+
+/** The viewBox width and the smallest font-size attribute (default 16, the browser's). */
+function viewBoxAndFont(svg) {
+  const vb = svg.match(/<svg\b[^>]*\sviewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i);
+  if (!vb) return null;
+  const sizes = [...svg.matchAll(/\sfont-size\s*=\s*["']\s*([\d.]+)(?:px)?\s*["']/gi)].map((m) => Number(m[1])).filter((n) => n > 0);
+  return { vw: Number(vb[1]), minFont: sizes.length ? Math.min(...sizes) : 16 };
 }
 
 function escXml(s) {
