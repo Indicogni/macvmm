@@ -1,0 +1,43 @@
+<svg width="672" height="608" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 672 608" class="dg" font-family="system-ui, -apple-system, sans-serif">
+<title>How a disk write travels</title>
+<desc>Sequence between the Linux virtio-blk driver in the guest, a vCPU thread in macvmm, the virtio-blk worker thread in macvmm, and the disk image, a file on the host. 1. The driver puts the request's descriptors in guest RAM and adds them to the available ring. 2. The driver writes the QueueNotify register, which is an MMIO exit to the vCPU thread. 3. The vCPU thread wakes the worker. 4. The vCPU thread returns to the guest at once. 5. The worker walks the descriptor chain, checking every address against RAM and stopping a chain that loops. 6. The worker calls pwrite on the disk image. 7. The worker writes the used ring in guest RAM. 8. The worker raises the device's interrupt through the in-kernel GIC. 9. The driver sees the used ring and completes the request.</desc>
+<style>
+.dg .dg-node{fill: #FFFDF8; stroke: #1E2227; stroke-width: 1.25;}
+.dg .dg-decision{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-end{fill: #F3EEE2;}
+.dg .dg-note{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-edge{stroke: #5B616B; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #5B616B; stroke-width: 1;}
+.dg .dg-arrow{fill: #5B616B;}
+.dg .dg-text{fill: #1E2227;}
+.dg .dg-label{fill: #5B616B;}
+.dg .dg-label-bg{fill: #FFFDF8;}
+.dg .dg-accent{fill: #F6E9DC; stroke: #A33F00; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #5B616B; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #F3EEE2; stroke: #E4DDCC;}
+.dg .dg-group-label{fill: #A33F00; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #FFFDF8}
+@media (prefers-color-scheme: dark) {
+.dg .dg-node{fill: #141820; stroke: #E7E2D7; stroke-width: 1.25;}
+.dg .dg-decision{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-end{fill: #0B0E13;}
+.dg .dg-note{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-edge{stroke: #9AA0A8; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #9AA0A8; stroke-width: 1;}
+.dg .dg-arrow{fill: #9AA0A8;}
+.dg .dg-text{fill: #E7E2D7;}
+.dg .dg-label{fill: #9AA0A8;}
+.dg .dg-label-bg{fill: #141820;}
+.dg .dg-accent{fill: #231A14; stroke: #F0A15E; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #9AA0A8; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #0B0E13; stroke: #262B33;}
+.dg .dg-group-label{fill: #F0A15E; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #141820}
+}
+</style>
+<defs><marker id="virtio-request-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+<rect class="dg-bg" x="0" y="0" width="672" height="608" rx="10" fill="#FFFDF8"/>
+<rect class="dg-node" x="24" y="14" width="144" height="54.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="96" y="37" font-size="14" text-anchor="middle" fill="currentColor">Linux driver</text><text class="dg-text" x="96" y="55.2" font-size="14" text-anchor="middle" fill="currentColor">(in the guest)</text><line class="dg-life" x1="96" y1="68.4" x2="96" y2="603.7" stroke="currentColor" stroke-dasharray="3 4"/><rect class="dg-node" x="184" y="14" width="144" height="54.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="256" y="37" font-size="14" text-anchor="middle" fill="currentColor">vCPU thread</text><text class="dg-text" x="256" y="55.2" font-size="14" text-anchor="middle" fill="currentColor">(macvmm)</text><line class="dg-life" x1="256" y1="68.4" x2="256" y2="603.7" stroke="currentColor" stroke-dasharray="3 4"/><rect class="dg-node" x="344" y="14" width="144" height="54.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="416" y="37" font-size="14" text-anchor="middle" fill="currentColor">virtio-blk worker</text><text class="dg-text" x="416" y="55.2" font-size="14" text-anchor="middle" fill="currentColor">(macvmm)</text><line class="dg-life" x1="416" y1="68.4" x2="416" y2="603.7" stroke="currentColor" stroke-dasharray="3 4"/><rect class="dg-node" x="504" y="14" width="144" height="54.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="576" y="37" font-size="14" text-anchor="middle" fill="currentColor">Disk image</text><text class="dg-text" x="576" y="55.2" font-size="14" text-anchor="middle" fill="currentColor">(host file)</text><line class="dg-life" x1="576" y1="68.4" x2="576" y2="603.7" stroke="currentColor" stroke-dasharray="3 4"/><path class="dg-edge" d="M96 86.4h22v33.8h-20" fill="none" stroke="currentColor" marker-end="url(#virtio-request-arrow)"/><text class="dg-text" x="126" y="99.4" font-size="13" text-anchor="start" fill="currentColor">puts descriptors</text><text class="dg-text" x="126" y="116.3" font-size="13" text-anchor="start" fill="currentColor">in guest RAM</text><text class="dg-text" x="176" y="155.2" font-size="13" text-anchor="middle" fill="currentColor">writes QueueNotify:</text><text class="dg-text" x="176" y="172.1" font-size="13" text-anchor="middle" fill="currentColor">an MMIO exit</text><line class="dg-edge" x1="96" y1="182" x2="254" y2="182" stroke="currentColor" marker-end="url(#virtio-request-arrow)"/><text class="dg-text" x="336" y="217" font-size="13" text-anchor="middle" fill="currentColor">wakes the worker</text><line class="dg-edge" x1="256" y1="226.9" x2="414" y2="226.9" stroke="currentColor" marker-end="url(#virtio-request-arrow)"/><text class="dg-text" x="176" y="261.9" font-size="13" text-anchor="middle" fill="currentColor">returns to the</text><text class="dg-text" x="176" y="278.8" font-size="13" text-anchor="middle" fill="currentColor">guest at once</text><line class="dg-edge dg-dashed" x1="256" y1="288.7" x2="98" y2="288.7" stroke="currentColor" stroke-dasharray="5 4" marker-end="url(#virtio-request-arrow)"/><path class="dg-edge" d="M416 310.7h22v50.7h-20" fill="none" stroke="currentColor" marker-end="url(#virtio-request-arrow)"/><text class="dg-text" x="446" y="323.7" font-size="13" text-anchor="start" fill="currentColor">walks the chain:</text><text class="dg-text" x="446" y="340.6" font-size="13" text-anchor="start" fill="currentColor">bounds-checked,</text><text class="dg-text" x="446" y="357.5" font-size="13" text-anchor="start" fill="currentColor">loop-proof</text><text class="dg-text" x="496" y="396.4" font-size="13" text-anchor="middle" fill="currentColor">pwrite</text><line class="dg-edge" x1="416" y1="406.3" x2="574" y2="406.3" stroke="currentColor" marker-end="url(#virtio-request-arrow)"/><path class="dg-edge" d="M416 428.3h22v33.8h-20" fill="none" stroke="currentColor" marker-end="url(#virtio-request-arrow)"/><text class="dg-text" x="446" y="441.3" font-size="13" text-anchor="start" fill="currentColor">writes the used</text><text class="dg-text" x="446" y="458.2" font-size="13" text-anchor="start" fill="currentColor">ring</text><rect class="dg-label-bg" x="135.5" y="482.1" width="241" height="35.8" rx="3" fill="none" stroke="none"/><text class="dg-text" x="256" y="497.1" font-size="13" text-anchor="middle" fill="currentColor">raises the interrupt through the</text><text class="dg-text" x="256" y="514" font-size="13" text-anchor="middle" fill="currentColor">in-kernel GIC</text><line class="dg-edge" x1="416" y1="523.9" x2="98" y2="523.9" stroke="currentColor" marker-end="url(#virtio-request-arrow)"/><path class="dg-edge" d="M96 545.9h22v33.8h-20" fill="none" stroke="currentColor" marker-end="url(#virtio-request-arrow)"/><text class="dg-text" x="126" y="558.9" font-size="13" text-anchor="start" fill="currentColor">completes the</text><text class="dg-text" x="126" y="575.8" font-size="13" text-anchor="start" fill="currentColor">request</text>
+</svg>

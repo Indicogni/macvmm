@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Pre-render the course's diagrams to sanitized SVG (DESIGN.md section 3.6). Node built-ins only.
 //
-//   node course/site/tools/diagrams.mjs           write docs/diagrams/*.svg and docs/diagrams/src/*.mmd
+//   node course/site/tools/diagrams.mjs           write docs/diagrams/*.svg, github/*.svg and src/*.mmd
 //   node course/site/tools/diagrams.mjs --check   fail if any written file differs from what it would write
 //
 // Why not Mermaid itself: the site never loads Mermaid (CSP 'self', zero dependencies), and a
@@ -13,13 +13,22 @@
 // scripts or handlers, nothing external; a <title> and a <desc> that is a complete text version
 // of the diagram. Colours come from the site's tokens through classes (`.dg-*` in course.css),
 // with currentColor presentation attributes as the fallback, so light and dark mode both work.
+//
+// Each diagram is also written to docs/diagrams/github/NAME.svg for Markdown read on GitHub
+// (the README), which shows an SVG only through <img>, where the site's CSS cannot reach. That
+// copy is the same markup plus one <style> holding the `.dg` rules of course.css with every
+// var(--token) replaced by its light value, again under prefers-color-scheme: dark with the dark
+// values, and an opaque background, so it stays legible when GitHub's theme and the reader's
+// system scheme disagree. The site never inlines those files: the sanitizer refuses <style>.
 
 import { writeFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { themeTokens } from "../lib/checks.mjs";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const OUT = join(REPO, "docs", "diagrams");
+const CSS = join(REPO, "course", "site", "src", "assets", "course.css");
 
 const FS = 14; // node text
 const FS_LABEL = 13; // edge labels
@@ -45,6 +54,7 @@ function wrap(text, maxw, fs) {
 }
 
 function textBlock(lines, cx, cy, fs, cls = "dg-text", anchor = "middle") {
+  if (!lines.length) return "";
   const h = lines.length * fs * LINE;
   const y0 = cy - h / 2 + fs * LINE / 2 + fs * 0.35;
   return lines.map((l, i) => `<text class="${cls}" x="${r1(cx)}" y="${r1(y0 + i * fs * LINE)}" font-size="${fs}" text-anchor="${anchor}" fill="currentColor">${escXml(l)}</text>`).join("");
@@ -103,7 +113,10 @@ function sequence(name, spec) {
     const ty = y + th / 2;
     const ly = y + th + 6;
     const dir = b.x > a.x ? 1 : -1;
-    msgs.push(textBlock(lines, (a.x + b.x) / 2, ty, FS_LABEL, "dg-text") +
+    // A message that spans more than one column crosses a lifeline: a background keeps it readable.
+    const bw = Math.max(...lines.map((l) => textWidth(l, FS_LABEL))) + 8;
+    const bg = span > colW ? `<rect class="dg-label-bg" x="${r1((a.x + b.x) / 2 - bw / 2)}" y="${r1(y - 2)}" width="${r1(bw)}" height="${r1(th + 2)}" rx="3" fill="none" stroke="none"/>` : "";
+    msgs.push(bg + textBlock(lines, (a.x + b.x) / 2, ty, FS_LABEL, "dg-text") +
       `<line class="dg-edge${m.dashed ? " dg-dashed" : ""}" x1="${r1(a.x)}" y1="${r1(ly)}" x2="${r1(b.x - dir * 2)}" y2="${r1(ly)}" stroke="currentColor"${m.dashed ? ' stroke-dasharray="5 4"' : ""} marker-end="url(#${name}-arrow)"/>`);
     y = ly + 22;
   }
@@ -119,14 +132,25 @@ function sequence(name, spec) {
 // ---------------------------------------------------------------------------------------------
 // Flowcharts: nodes at chosen centres, edges as polylines between node sides and waypoints.
 
+// Optional extras, for the overview diagrams: `fs`/`fsLabel` on the spec (larger text for a
+// diagram drawn narrow enough to fit a phone without scrolling); per node a fixed `h`, a `sub`
+// line in the smaller muted font, `cls` ("accent", "muted" or "note", a .dg-* class), `align`
+// ("start" for left-aligned text), `mono`, and `shape: "text"` for a label with no box; per edge
+// `dashed`; and `groups`, labelled rectangles drawn behind the nodes.
+const PAD = 12;
+
 function flow(name, spec) {
+  const fs = spec.fs || FS, fsl = spec.fsLabel || FS_LABEL;
   const nodes = {};
   for (const n of spec.nodes) {
-    const maxw = n.w ? n.w - 24 : 200;
-    const lines = wrap(n.text, maxw, FS);
-    const w = n.w || Math.max(90, Math.max(...lines.map((l) => textWidth(l, FS))) + 28);
-    const h = lines.length * FS * LINE + 20;
-    nodes[n.id] = { ...n, lines, w, h };
+    const pad = n.shape === "text" ? 0 : PAD;
+    const maxw = n.w ? n.w - pad * 2 : 200;
+    const lines = n.text ? wrap(n.text, maxw, fs) : [];
+    const sub = n.sub ? wrap(n.sub, maxw, fsl) : [];
+    const widest = Math.max(...lines.map((l) => textWidth(l, fs)), ...sub.map((l) => textWidth(l, fsl)));
+    const w = n.w || Math.max(90, widest + 28);
+    const textH = lines.length * fs * LINE + (sub.length ? (lines.length ? 4 : 0) + sub.length * fsl * LINE : 0);
+    nodes[n.id] = { ...n, lines, sub, w, textH, h: n.h || textH + 20 };
   }
   const side = (id, s) => {
     const n = nodes[id];
@@ -136,43 +160,236 @@ function flow(name, spec) {
     return { n: [n.x + o, n.y - n.h / 2], s: [n.x + o, n.y + n.h / 2], w: [n.x - n.w / 2, n.y + o], e: [n.x + n.w / 2, n.y + o] }[k];
   };
   const pt = (p) => (typeof p[0] === "string" ? side(p[0], p[1]) : p);
+  let groups = "";
+  for (const g of spec.groups || []) {
+    const lines = wrap(g.label, g.w - PAD * 2, fsl);
+    groups += `<rect class="dg-group" x="${r1(g.x)}" y="${r1(g.y)}" width="${r1(g.w)}" height="${r1(g.h)}" rx="10" fill="none" stroke="currentColor"/>` +
+      textBlock(lines, g.x + PAD, g.y + 8 + (lines.length * fsl * LINE) / 2, fsl, "dg-text dg-group-label", "start");
+  }
   let edges = "", labels = "";
   for (const e of spec.edges) {
     const pts = e.path.map(pt);
     const d = pts.map((p, i) => `${i ? "L" : "M"}${r1(p[0])} ${r1(p[1])}`).join("");
-    edges += `<path class="dg-edge" d="${d}" fill="none" stroke="currentColor" marker-end="url(#${name}-arrow)"/>`;
+    edges += `<path class="dg-edge${e.dashed ? " dg-dashed" : ""}" d="${d}" fill="none" stroke="currentColor"${e.dashed ? ' stroke-dasharray="5 4"' : ""} marker-end="url(#${name}-arrow)"/>`;
     if (e.label) {
       const seg = e.seg ?? 0;
       const [a, b] = [pts[seg], pts[seg + 1]];
       const t = e.t ?? 0.5;
       const cx = a[0] + (b[0] - a[0]) * t + (e.dx || 0), cy = a[1] + (b[1] - a[1]) * t + (e.dy || 0);
-      const lines = wrap(e.label, e.lw || 150, FS_LABEL);
-      const lw = Math.max(...lines.map((l) => textWidth(l, FS_LABEL))) + 10;
-      const lh = lines.length * FS_LABEL * LINE + 4;
+      const lines = wrap(e.label, e.lw || 150, fsl);
+      const lw = Math.max(...lines.map((l) => textWidth(l, fsl))) + 10;
+      const lh = lines.length * fsl * LINE + 4;
       const anchor = e.anchor || "middle";
       const rx = anchor === "start" ? cx - 4 : anchor === "end" ? cx - lw + 4 : cx - lw / 2;
       const tx = anchor === "start" ? cx + 1 : anchor === "end" ? cx - 1 : cx;
-      labels += `<rect class="dg-label-bg" x="${r1(rx)}" y="${r1(cy - lh / 2)}" width="${r1(lw)}" height="${r1(lh)}" rx="3" fill="none" stroke="none"/>` + textBlock(lines, tx, cy, FS_LABEL, "dg-text dg-label", anchor);
+      labels += `<rect class="dg-label-bg" x="${r1(rx)}" y="${r1(cy - lh / 2)}" width="${r1(lw)}" height="${r1(lh)}" rx="3" fill="none" stroke="none"/>` + textBlock(lines, tx, cy, fsl, "dg-text dg-label", anchor);
     }
   }
   let shapes = "";
   for (const n of Object.values(nodes)) {
     const x = n.x - n.w / 2, y = n.y - n.h / 2;
+    const cls = n.cls ? ` dg-${n.cls}` : "";
     if (n.shape === "decision") {
       const k = 12;
-      shapes += `<path class="dg-node dg-decision" d="M${r1(x)} ${r1(n.y)}L${r1(x + k)} ${r1(y)}H${r1(x + n.w - k)}L${r1(x + n.w)} ${r1(n.y)}L${r1(x + n.w - k)} ${r1(y + n.h)}H${r1(x + k)}Z" fill="none" stroke="currentColor"/>`;
-    } else {
-      shapes += `<rect class="dg-node${n.shape === "end" ? " dg-end" : ""}" x="${r1(x)}" y="${r1(y)}" width="${r1(n.w)}" height="${r1(n.h)}" rx="${n.shape === "end" ? 14 : 6}" fill="none" stroke="currentColor"/>`;
+      shapes += `<path class="dg-node dg-decision${cls}" d="M${r1(x)} ${r1(n.y)}L${r1(x + k)} ${r1(y)}H${r1(x + n.w - k)}L${r1(x + n.w)} ${r1(n.y)}L${r1(x + n.w - k)} ${r1(y + n.h)}H${r1(x + k)}Z" fill="none" stroke="currentColor"/>`;
+    } else if (n.shape !== "text") {
+      shapes += `<rect class="dg-node${n.shape === "end" ? " dg-end" : ""}${cls}" x="${r1(x)}" y="${r1(y)}" width="${r1(n.w)}" height="${r1(n.h)}" rx="${n.shape === "end" ? 14 : 6}" fill="none" stroke="currentColor"${n.cls === "muted" ? ' stroke-dasharray="5 4"' : ""}/>`;
     }
-    shapes += textBlock(n.lines, n.x, n.y, FS);
+    const anchor = n.align || "middle";
+    const pad = n.shape === "text" ? 0 : PAD;
+    const tx = anchor === "start" ? x + pad : anchor === "end" ? x + n.w - pad : n.x;
+    const top = n.y - n.textH / 2;
+    const mainH = n.lines.length * fs * LINE;
+    shapes += textBlock(n.lines, tx, top + mainH / 2, fs, `dg-text${n.mono ? " dg-mono" : ""}`, anchor);
+    shapes += textBlock(n.sub, tx, n.y + n.textH / 2 - (n.sub.length * fsl * LINE) / 2, fsl, "dg-text dg-label", anchor);
   }
-  return svgDoc(name, spec.width, spec.height, spec.title, spec.desc, edges + shapes + labels);
+  return svgDoc(name, spec.width, spec.height, spec.title, spec.desc, groups + edges + shapes + labels);
 }
 
 // ---------------------------------------------------------------------------------------------
 // The diagrams. `mmd` is the Mermaid source the primer used to carry; keep it in step.
 
 export const DIAGRAMS = {
+  // The visual tour (course/site/src/pages/how-it-works.md, the landing page and the README).
+  // Drawn 336 units wide with 14px as the smallest text, so each fits a phone without scrolling.
+  overview: {
+    kind: "flow",
+    title: "The whole picture",
+    desc: "Four layers, top to bottom. 1. The guest: Linux, U-Boot then FreeBSD, or a test guest. It believes it runs on a QEMU virt board. 2. The macvmm process, one macOS process that sandboxes itself. It holds the command line (crates/macvmm), the VMM library (crates/vmm: vCPU threads, devices, virtio, loaders and the device tree) and the FFI bindings (crates/hvf). Beside it, on the host, are the input files (kernel, initramfs, disk image), which macvmm reads, and the terminal, which carries the serial console both ways. 3. Hypervisor.framework and the macOS kernel, called through the FFI bindings: the stage-2 memory map, vCPUs, the in-kernel GIC interrupt controller and the virtual timer. 4. The Apple Silicon CPU, which runs the guest's instructions directly, at full speed.",
+    width: 336, height: 812, fs: 15, fsLabel: 14,
+    groups: [
+      { x: 8, y: 122, w: 320, h: 292, label: "macvmm: one macOS process, sandboxed" },
+      { x: 8, y: 562, w: 320, h: 144, label: "Hypervisor.framework + macOS kernel" },
+    ],
+    nodes: [
+      { id: "G", x: 168, y: 57, w: 320, text: "The guest", sub: "Linux, U-Boot then FreeBSD, or a test guest. It believes it runs on a QEMU virt board.", cls: "accent" },
+      { id: "C", x: 168, y: 189, w: 296, text: "Command line", sub: "crates/macvmm" },
+      { id: "V", x: 168, y: 279, w: 296, text: "VMM library", sub: "crates/vmm\nvCPU threads, devices, virtio,\nloaders and the device tree" },
+      { id: "F", x: 168, y: 369, w: 200, text: "FFI bindings", sub: "crates/hvf" },
+      { id: "HF", x: 72, y: 489, w: 128, h: 98, text: "Host files", sub: "kernel, initramfs, disk image", cls: "muted" },
+      { id: "T", x: 264, y: 489, w: 128, h: 98, text: "Terminal", sub: "the serial console", cls: "muted" },
+      { id: "S2", x: 91, y: 616, w: 142, h: 44, text: "Stage-2 memory" },
+      { id: "VC", x: 245, y: 616, w: 142, h: 44, text: "vCPUs" },
+      { id: "GIC", x: 91, y: 670, w: 142, h: 44, text: "In-kernel GIC" },
+      { id: "TM", x: 245, y: 670, w: 142, h: 44, text: "Virtual timer" },
+      { id: "CPU", x: 168, y: 762, w: 320, text: "Apple Silicon CPU", sub: "runs the guest's instructions directly, at full speed", cls: "accent" },
+    ],
+    edges: [
+      { path: [["HF", "n"], [72, 414]] },
+      { path: [["T", "n-16"], [248, 414]] },
+      { path: [[280, 414], ["T", "n+16"]] },
+      { path: [["F", "s"], [168, 562]] },
+    ],
+    mmd: `flowchart TB
+  G["The guest<br/>Linux, U-Boot then FreeBSD, or a test guest.<br/>It believes it runs on a QEMU virt board."]
+  subgraph P["macvmm: one macOS process, sandboxed"]
+    C["Command line<br/>crates/macvmm"]
+    V["VMM library<br/>crates/vmm<br/>vCPU threads, devices, virtio,<br/>loaders and the device tree"]
+    F["FFI bindings<br/>crates/hvf"]
+  end
+  HF["Host files<br/>kernel, initramfs, disk image"] --> P
+  T["Terminal<br/>the serial console"] <--> P
+  subgraph H["Hypervisor.framework + macOS kernel"]
+    S2["Stage-2 memory"]
+    VC["vCPUs"]
+    GIC["In-kernel GIC"]
+    TM["Virtual timer"]
+  end
+  CPU["Apple Silicon CPU<br/>runs the guest's instructions directly, at full speed"]
+  G ~~~ P
+  F --> H
+  H ~~~ CPU`,
+  },
+  "exit-loop": {
+    kind: "flow",
+    title: "The heart of a VMM: run, exit, emulate, resume",
+    desc: "A loop of five steps. 1. macvmm calls hv_vcpu_run and the guest runs at full speed. 2. Exit: the guest touched a device address or made a hypercall, so the CPU stops it and hv_vcpu_run returns. 3. macvmm decodes the syndrome register, ESR_EL2, which says why the guest stopped. 4. A device model, or the PSCI code for a hypercall, emulates the access. 5. macvmm advances the program counter to the next instruction (after a hypercall the CPU has already done this), then calls hv_vcpu_run again. Measured on 2026-11-22 on an Apple M5 Pro with scripts/run-linux.sh --cpus 4 --stats, booting Linux to a shell and powering it off: 35,271 exits in total, the same in each of 4 runs. 35,235 were device accesses (MMIO data aborts), 25 were hypercalls and 11 were other kinds. There were no timer or WFI exits, because the in-kernel GIC handles those inside Hypervisor.framework.",
+    width: 336, height: 506, fs: 15, fsLabel: 14,
+    nodes: [
+      { id: "R", x: 168, y: 48, w: 160, h: 80, text: "hv_vcpu_run", sub: "the guest runs at full speed", cls: "accent", mono: true },
+      { id: "E", x: 254, y: 160, w: 148, h: 80, text: "Exit", sub: "device access or hypercall" },
+      { id: "D", x: 254, y: 284, w: 148, h: 80, text: "Decode the ESR", sub: "why it stopped" },
+      { id: "M", x: 82, y: 284, w: 148, h: 80, text: "Emulate", sub: "a device model or PSCI answers" },
+      { id: "A", x: 82, y: 160, w: 148, h: 80, text: "Advance the PC", sub: "to the next instruction" },
+      { id: "N", x: 168, y: 424, w: 320, shape: "end", align: "start", text: "Measured: one Linux run, 4 vCPUs", sub: "35,271 exits in total.\n35,235 were device accesses (MMIO),\n25 were hypercalls, 11 other kinds.\nNo timer or WFI exits at all:\nthe in-kernel GIC handles those." },
+    ],
+    edges: [
+      { path: [["R", "e"], [290, 48], ["E", "n+36"]] },
+      { path: [["E", "s"], ["D", "n"]] },
+      { path: [["D", "w"], ["M", "e"]] },
+      { path: [["M", "n"], ["A", "s"]] },
+      { path: [["A", "n-36"], [46, 48], ["R", "w"]] },
+    ],
+    mmd: `flowchart TB
+  R["hv_vcpu_run<br/>the guest runs at full speed"] --> E["Exit<br/>device access or hypercall"]
+  E --> D["Decode the ESR<br/>why it stopped"]
+  D --> M["Emulate<br/>a device model or PSCI answers"]
+  M --> A["Advance the PC<br/>to the next instruction"]
+  A --> R
+  N["Measured: one Linux run, 4 vCPUs<br/>35,271 exits in total.<br/>35,235 were device accesses (MMIO),<br/>25 were hypercalls, 11 other kinds.<br/>No timer or WFI exits at all:<br/>the in-kernel GIC handles those."]`,
+  },
+  "memory-map": {
+    kind: "flow",
+    title: "The board the guest sees",
+    desc: "The guest-physical address map of macvmm's virt board, lowest address at the top, not to scale. 0x0000_0000: flash, for firmware, mapped only with --bios. 0x0800_0000: the GIC interrupt controller's distributor, then its redistributors from 0x080A_0000; Hypervisor.framework answers these accesses itself, with no exit. Then the trapped devices, which are deliberately left unmapped so that every access exits to macvmm: 0x0900_0000 the PL011 UART, the serial console; 0x0901_0000 the PL031 RTC, the clock; 0x0a00_0000 the virtio-mmio slots, 32 of them 0x200 bytes apart. Unused holes follow, also unmapped. 0x4000_0000: RAM, 512 MiB by default, mapped, so the guest reads and writes it with no exit.",
+    width: 336, height: 640, fs: 15, fsLabel: 14,
+    groups: [
+      { x: 110, y: 206, w: 224, h: 270, label: "Trapped: every access exits to macvmm" },
+    ],
+    nodes: [
+      { id: "a0", x: 53, y: 20, w: 100, shape: "text", align: "end", mono: true, text: "0x0000_0000" },
+      { id: "FL", x: 222, y: 48, w: 208, h: 80, text: "Flash", sub: "firmware code,\nmapped only with --bios" },
+      { id: "a1", x: 53, y: 110, w: 100, shape: "text", align: "end", mono: true, text: "0x0800_0000" },
+      { id: "GIC", x: 222, y: 147, w: 208, h: 98, text: "GIC", sub: "interrupt controller.\nHandled in HVF: no exit" },
+      { id: "a2", x: 53, y: 270, w: 100, shape: "text", align: "end", mono: true, text: "0x0900_0000" },
+      { id: "U", x: 222, y: 289, w: 208, h: 62, text: "PL011 UART", sub: "the serial console" },
+      { id: "a3", x: 53, y: 342, w: 100, shape: "text", align: "end", mono: true, text: "0x0901_0000" },
+      { id: "RTC", x: 222, y: 361, w: 208, h: 62, text: "PL031 RTC", sub: "the clock" },
+      { id: "a4", x: 53, y: 414, w: 100, shape: "text", align: "end", mono: true, text: "0x0a00_0000" },
+      { id: "VIO", x: 222, y: 433, w: 208, h: 62, text: "virtio-mmio", sub: "32 slots, 0x200 apart" },
+      { id: "gap", x: 222, y: 502, w: 208, shape: "text", text: "", sub: "unused holes, also unmapped" },
+      { id: "a5", x: 53, y: 542, w: 100, shape: "text", align: "end", mono: true, text: "0x4000_0000" },
+      { id: "RAM", x: 222, y: 579, w: 208, h: 98, text: "RAM", sub: "512 MiB by default.\nMapped, so accesses\nnever exit.", cls: "accent" },
+    ],
+    edges: [],
+    mmd: `flowchart TB
+  FL["0x0000_0000 Flash<br/>firmware code,<br/>mapped only with --bios"]
+  GIC["0x0800_0000 GIC<br/>interrupt controller.<br/>Handled in HVF: no exit"]
+  subgraph T["Trapped: every access exits to macvmm"]
+    U["0x0900_0000 PL011 UART<br/>the serial console"]
+    RTC["0x0901_0000 PL031 RTC<br/>the clock"]
+    VIO["0x0a00_0000 virtio-mmio<br/>32 slots, 0x200 apart"]
+  end
+  RAM["0x4000_0000 RAM<br/>512 MiB by default.<br/>Mapped, so accesses never exit."]
+  FL ~~~ GIC ~~~ T ~~~ RAM`,
+  },
+  "boot-flow": {
+    kind: "flow",
+    title: "From macvmm run to a shell prompt",
+    desc: "Eight steps, top to bottom. 1. macvmm opens the input files, reading each one once. 2. It enters its sandbox: no new files or network after this. 3. It builds the machine: the VM, the GIC, RAM, the devices and the device tree. 4. It loads the guest: the device tree, kernel and initramfs go into guest RAM. 5. vCPU 0 starts at the kernel's entry point with register x0 holding the device tree's address. 6. Linux boots, and PSCI CPU_ON wakes the other vCPUs. 7. A shell prompt, / #, appears on the serial console. 8. poweroff -f makes Linux call PSCI SYSTEM_OFF, and macvmm exits with code 0. A reboot instead calls PSCI SYSTEM_RESET, and macvmm goes back to step 3 and builds a fresh machine from the files it already read.",
+    width: 336, height: 812, fs: 15, fsLabel: 14,
+    nodes: [
+      { id: "O", x: 118, y: 39, w: 216, text: "Open the input files", sub: "read each one once" },
+      { id: "S", x: 118, y: 136, w: 216, text: "Enter the sandbox", sub: "no new files or network after this" },
+      { id: "B", x: 118, y: 240, w: 216, text: "Build the machine", sub: "VM, GIC, RAM, devices, device tree", cls: "accent" },
+      { id: "L", x: 118, y: 344, w: 216, text: "Load the guest", sub: "device tree, kernel, initramfs into RAM" },
+      { id: "V", x: 118, y: 448, w: 216, text: "Start vCPU 0", sub: "kernel entry point,\nx0 = device tree address" },
+      { id: "K", x: 118, y: 552, w: 216, text: "Linux boots", sub: "PSCI CPU_ON wakes the other vCPUs" },
+      { id: "SH", x: 118, y: 647, w: 216, shape: "end", text: "/ #", mono: true, sub: "a shell prompt" },
+      { id: "X", x: 118, y: 771, w: 216, shape: "end", text: "macvmm exits", sub: "exit code 0" },
+    ],
+    edges: [
+      { path: [["O", "s"], ["S", "n"]] },
+      { path: [["S", "s"], ["B", "n"]] },
+      { path: [["B", "s"], ["L", "n"]] },
+      { path: [["L", "s"], ["V", "n"]] },
+      { path: [["V", "s"], ["K", "n"]] },
+      { path: [["K", "s"], ["SH", "n"]] },
+      { path: [["SH", "s"], ["X", "n"]], label: "poweroff -f: PSCI SYSTEM_OFF", anchor: "start", dx: 10, lw: 140 },
+      { path: [["SH", "e"], [283, 647], [283, 240], ["B", "e"]], seg: 1, t: 0.5, label: "reboot:\nPSCI\nSYSTEM_RESET", lw: 100 },
+    ],
+    mmd: `flowchart TB
+  O["Open the input files<br/>read each one once"] --> S["Enter the sandbox<br/>no new files or network after this"]
+  S --> B["Build the machine<br/>VM, GIC, RAM, devices, device tree"]
+  B --> L["Load the guest<br/>device tree, kernel, initramfs into RAM"]
+  L --> V["Start vCPU 0<br/>kernel entry point,<br/>x0 = device tree address"]
+  V --> K["Linux boots<br/>PSCI CPU_ON wakes the other vCPUs"]
+  K --> SH(["/ #<br/>a shell prompt"])
+  SH -->|"poweroff -f: PSCI SYSTEM_OFF"| X(["macvmm exits<br/>exit code 0"])
+  SH -->|"reboot: PSCI SYSTEM_RESET"| B`,
+  },
+  "virtio-request": {
+    kind: "sequence",
+    title: "How a disk write travels",
+    desc: "Sequence between the Linux virtio-blk driver in the guest, a vCPU thread in macvmm, the virtio-blk worker thread in macvmm, and the disk image, a file on the host. 1. The driver puts the request's descriptors in guest RAM and adds them to the available ring. 2. The driver writes the QueueNotify register, which is an MMIO exit to the vCPU thread. 3. The vCPU thread wakes the worker. 4. The vCPU thread returns to the guest at once. 5. The worker walks the descriptor chain, checking every address against RAM and stopping a chain that loops. 6. The worker calls pwrite on the disk image. 7. The worker writes the used ring in guest RAM. 8. The worker raises the device's interrupt through the in-kernel GIC. 9. The driver sees the used ring and completes the request.",
+    colW: 160,
+    participants: [{ id: "D", label: "Linux driver\n(in the guest)" }, { id: "V", label: "vCPU thread\n(macvmm)" }, { id: "W", label: "virtio-blk worker\n(macvmm)" }, { id: "F", label: "Disk image\n(host file)" }],
+    steps: [
+      { from: "D", to: "D", text: "puts descriptors in guest RAM" },
+      { from: "D", to: "V", text: "writes QueueNotify: an MMIO exit" },
+      { from: "V", to: "W", text: "wakes the worker" },
+      { from: "V", to: "D", text: "returns to the guest at once", dashed: true },
+      { from: "W", to: "W", text: "walks the chain: bounds-checked, loop-proof" },
+      { from: "W", to: "F", text: "pwrite" },
+      { from: "W", to: "W", text: "writes the used ring" },
+      { from: "W", to: "D", text: "raises the interrupt through the in-kernel GIC" },
+      { from: "D", to: "D", text: "completes the request" },
+    ],
+    mmd: `sequenceDiagram
+    participant D as Linux driver (in the guest)
+    participant V as vCPU thread (macvmm)
+    participant W as virtio-blk worker (macvmm)
+    participant F as Disk image (host file)
+    D->>D: puts descriptors in guest RAM
+    D->>V: writes QueueNotify: an MMIO exit
+    V->>W: wakes the worker
+    V-->>D: returns to the guest at once
+    W->>W: walks the chain: bounds-checked, loop-proof
+    W->>F: pwrite
+    W->>W: writes the used ring
+    W->>D: raises the interrupt through the in-kernel GIC
+    D->>D: completes the request`,
+  },
   "boot-handoff": {
     kind: "sequence",
     title: "The arm64 boot hand-off",
@@ -495,12 +712,34 @@ export function renderDiagram(name) {
   return d.kind === "sequence" ? sequence(name, d) : flow(name, d);
 }
 
+/**
+ * The GitHub copy of a rendered diagram: its own size, an opaque background, and a <style> made
+ * from course.css (see the top of this file). `css` is course.css's text.
+ */
+export function githubSvg(svg, css) {
+  const { light, dark } = themeTokens(css);
+  const rules = [...css.matchAll(/^(\.dg\b[^{]*)\{([^}]*)\}/gm)].map((m) => [m[1].trim(), m[2].trim()]);
+  rules.push([".dg .dg-bg", "fill: var(--card)"]);
+  const sheet = (t) => rules.map(([sel, body]) => `${sel}{${body.replace(/var\(--([a-z0-9-]+)\)/g, (all, k) => {
+    if (!(k in t)) throw new Error(`course.css: .dg rule uses --${k}, which is not a token`);
+    return t[k];
+  })}}`).join("\n");
+  const [, w, h] = svg.match(/viewBox="0 0 (\d+) (\d+)"/);
+  return svg
+    .replace(/^<svg /, `<svg width="${w}" height="${h}" `)
+    .replace(/(<\/desc>\n)/, `$1<style>\n${sheet(light)}\n@media (prefers-color-scheme: dark) {\n${sheet(dark)}\n}\n</style>\n`)
+    .replace(/(<\/defs>\n)/, `$1<rect class="dg-bg" x="0" y="0" width="${w}" height="${h}" rx="10" fill="${light.card}"/>\n`);
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const check = process.argv.includes("--check");
   const stale = [];
   mkdirSync(join(OUT, "src"), { recursive: true });
+  mkdirSync(join(OUT, "github"), { recursive: true });
+  const css = readFileSync(CSS, "utf8");
   for (const name of Object.keys(DIAGRAMS)) {
-    const files = [[join(OUT, `${name}.svg`), renderDiagram(name)], [join(OUT, "src", `${name}.mmd`), DIAGRAMS[name].mmd + "\n"]];
+    const svg = renderDiagram(name);
+    const files = [[join(OUT, `${name}.svg`), svg], [join(OUT, "github", `${name}.svg`), githubSvg(svg, css)], [join(OUT, "src", `${name}.mmd`), DIAGRAMS[name].mmd + "\n"]];
     for (const [f, text] of files) {
       if (check) { if (!existsSync(f) || readFileSync(f, "utf8") !== text) stale.push(f); }
       else writeFileSync(f, text);

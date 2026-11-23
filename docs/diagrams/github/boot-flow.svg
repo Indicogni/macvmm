@@ -1,0 +1,43 @@
+<svg width="336" height="812" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 336 812" class="dg" font-family="system-ui, -apple-system, sans-serif">
+<title>From macvmm run to a shell prompt</title>
+<desc>Eight steps, top to bottom. 1. macvmm opens the input files, reading each one once. 2. It enters its sandbox: no new files or network after this. 3. It builds the machine: the VM, the GIC, RAM, the devices and the device tree. 4. It loads the guest: the device tree, kernel and initramfs go into guest RAM. 5. vCPU 0 starts at the kernel's entry point with register x0 holding the device tree's address. 6. Linux boots, and PSCI CPU_ON wakes the other vCPUs. 7. A shell prompt, / #, appears on the serial console. 8. poweroff -f makes Linux call PSCI SYSTEM_OFF, and macvmm exits with code 0. A reboot instead calls PSCI SYSTEM_RESET, and macvmm goes back to step 3 and builds a fresh machine from the files it already read.</desc>
+<style>
+.dg .dg-node{fill: #FFFDF8; stroke: #1E2227; stroke-width: 1.25;}
+.dg .dg-decision{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-end{fill: #F3EEE2;}
+.dg .dg-note{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-edge{stroke: #5B616B; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #5B616B; stroke-width: 1;}
+.dg .dg-arrow{fill: #5B616B;}
+.dg .dg-text{fill: #1E2227;}
+.dg .dg-label{fill: #5B616B;}
+.dg .dg-label-bg{fill: #FFFDF8;}
+.dg .dg-accent{fill: #F6E9DC; stroke: #A33F00; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #5B616B; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #F3EEE2; stroke: #E4DDCC;}
+.dg .dg-group-label{fill: #A33F00; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #FFFDF8}
+@media (prefers-color-scheme: dark) {
+.dg .dg-node{fill: #141820; stroke: #E7E2D7; stroke-width: 1.25;}
+.dg .dg-decision{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-end{fill: #0B0E13;}
+.dg .dg-note{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-edge{stroke: #9AA0A8; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #9AA0A8; stroke-width: 1;}
+.dg .dg-arrow{fill: #9AA0A8;}
+.dg .dg-text{fill: #E7E2D7;}
+.dg .dg-label{fill: #9AA0A8;}
+.dg .dg-label-bg{fill: #141820;}
+.dg .dg-accent{fill: #231A14; stroke: #F0A15E; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #9AA0A8; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #0B0E13; stroke: #262B33;}
+.dg .dg-group-label{fill: #F0A15E; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #141820}
+}
+</style>
+<defs><marker id="boot-flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+<rect class="dg-bg" x="0" y="0" width="336" height="812" rx="10" fill="#FFFDF8"/>
+<path class="dg-edge" d="M118 69.9L118 96.1" fill="none" stroke="currentColor" marker-end="url(#boot-flow-arrow)"/><path class="dg-edge" d="M118 176L118 200.1" fill="none" stroke="currentColor" marker-end="url(#boot-flow-arrow)"/><path class="dg-edge" d="M118 280L118 304.1" fill="none" stroke="currentColor" marker-end="url(#boot-flow-arrow)"/><path class="dg-edge" d="M118 384L118 408.1" fill="none" stroke="currentColor" marker-end="url(#boot-flow-arrow)"/><path class="dg-edge" d="M118 488L118 512.1" fill="none" stroke="currentColor" marker-end="url(#boot-flow-arrow)"/><path class="dg-edge" d="M118 592L118 616.2" fill="none" stroke="currentColor" marker-end="url(#boot-flow-arrow)"/><path class="dg-edge" d="M118 677.9L118 740.2" fill="none" stroke="currentColor" marker-end="url(#boot-flow-arrow)"/><path class="dg-edge" d="M226 647L283 647L283 240L226 240" fill="none" stroke="currentColor" marker-end="url(#boot-flow-arrow)"/><rect class="dg-node" x="10" y="8.1" width="216" height="61.7" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="118" y="33.2" font-size="15" text-anchor="middle" fill="currentColor">Open the input files</text><text class="dg-text dg-label" x="118" y="55.7" font-size="14" text-anchor="middle" fill="currentColor">read each one once</text><rect class="dg-node" x="10" y="96.1" width="216" height="79.9" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="118" y="121.1" font-size="15" text-anchor="middle" fill="currentColor">Enter the sandbox</text><text class="dg-text dg-label" x="118" y="143.6" font-size="14" text-anchor="middle" fill="currentColor">no new files or network</text><text class="dg-text dg-label" x="118" y="161.8" font-size="14" text-anchor="middle" fill="currentColor">after this</text><rect class="dg-node dg-accent" x="10" y="200.1" width="216" height="79.9" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="118" y="225.1" font-size="15" text-anchor="middle" fill="currentColor">Build the machine</text><text class="dg-text dg-label" x="118" y="247.6" font-size="14" text-anchor="middle" fill="currentColor">VM, GIC, RAM, devices,</text><text class="dg-text dg-label" x="118" y="265.8" font-size="14" text-anchor="middle" fill="currentColor">device tree</text><rect class="dg-node" x="10" y="304.1" width="216" height="79.9" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="118" y="329.1" font-size="15" text-anchor="middle" fill="currentColor">Load the guest</text><text class="dg-text dg-label" x="118" y="351.6" font-size="14" text-anchor="middle" fill="currentColor">device tree, kernel,</text><text class="dg-text dg-label" x="118" y="369.8" font-size="14" text-anchor="middle" fill="currentColor">initramfs into RAM</text><rect class="dg-node" x="10" y="408.1" width="216" height="79.9" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="118" y="433.1" font-size="15" text-anchor="middle" fill="currentColor">Start vCPU 0</text><text class="dg-text dg-label" x="118" y="455.6" font-size="14" text-anchor="middle" fill="currentColor">kernel entry point,</text><text class="dg-text dg-label" x="118" y="473.8" font-size="14" text-anchor="middle" fill="currentColor">x0 = device tree address</text><rect class="dg-node" x="10" y="512.1" width="216" height="79.9" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="118" y="537.1" font-size="15" text-anchor="middle" fill="currentColor">Linux boots</text><text class="dg-text dg-label" x="118" y="559.6" font-size="14" text-anchor="middle" fill="currentColor">PSCI CPU_ON wakes the</text><text class="dg-text dg-label" x="118" y="577.8" font-size="14" text-anchor="middle" fill="currentColor">other vCPUs</text><rect class="dg-node dg-end" x="10" y="616.2" width="216" height="61.7" rx="14" fill="none" stroke="currentColor"/><text class="dg-text dg-mono" x="118" y="641.2" font-size="15" text-anchor="middle" fill="currentColor">/ #</text><text class="dg-text dg-label" x="118" y="663.7" font-size="14" text-anchor="middle" fill="currentColor">a shell prompt</text><rect class="dg-node dg-end" x="10" y="740.2" width="216" height="61.7" rx="14" fill="none" stroke="currentColor"/><text class="dg-text" x="118" y="765.2" font-size="15" text-anchor="middle" fill="currentColor">macvmm exits</text><text class="dg-text dg-label" x="118" y="787.7" font-size="14" text-anchor="middle" fill="currentColor">exit code 0</text><rect class="dg-label-bg" x="124" y="688.8" width="143.3" height="40.4" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="129" y="704.8" font-size="14" text-anchor="start" fill="currentColor">poweroff -f: PSCI</text><text class="dg-text dg-label" x="129" y="723" font-size="14" text-anchor="start" fill="currentColor">SYSTEM_OFF</text><rect class="dg-label-bg" x="231" y="414.2" width="104.1" height="58.6" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="283" y="430.2" font-size="14" text-anchor="middle" fill="currentColor">reboot:</text><text class="dg-text dg-label" x="283" y="448.4" font-size="14" text-anchor="middle" fill="currentColor">PSCI</text><text class="dg-text dg-label" x="283" y="466.6" font-size="14" text-anchor="middle" fill="currentColor">SYSTEM_RESET</text>
+</svg>

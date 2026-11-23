@@ -1,0 +1,43 @@
+<svg width="470" height="520" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 520" class="dg" font-family="system-ui, -apple-system, sans-serif">
+<title>Where each signature check happens</title>
+<desc>A chain of five stages, top to bottom. 1. clang or cargo build writes a linker signature. 2. codesign -s - adds entitlements. 3. At launch, exec checks the signature and any restricted entitlements: copy A dies here. 4. At page-in, the kernel hashes each page as it loads: a tampered copy dies here. 5. The program calls hv_vm_create: copy B is refused here.</desc>
+<style>
+.dg .dg-node{fill: #FFFDF8; stroke: #1E2227; stroke-width: 1.25;}
+.dg .dg-decision{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-end{fill: #F3EEE2;}
+.dg .dg-note{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-edge{stroke: #5B616B; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #5B616B; stroke-width: 1;}
+.dg .dg-arrow{fill: #5B616B;}
+.dg .dg-text{fill: #1E2227;}
+.dg .dg-label{fill: #5B616B;}
+.dg .dg-label-bg{fill: #FFFDF8;}
+.dg .dg-accent{fill: #F6E9DC; stroke: #A33F00; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #5B616B; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #F3EEE2; stroke: #E4DDCC;}
+.dg .dg-group-label{fill: #A33F00; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #FFFDF8}
+@media (prefers-color-scheme: dark) {
+.dg .dg-node{fill: #141820; stroke: #E7E2D7; stroke-width: 1.25;}
+.dg .dg-decision{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-end{fill: #0B0E13;}
+.dg .dg-note{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-edge{stroke: #9AA0A8; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #9AA0A8; stroke-width: 1;}
+.dg .dg-arrow{fill: #9AA0A8;}
+.dg .dg-text{fill: #E7E2D7;}
+.dg .dg-label{fill: #9AA0A8;}
+.dg .dg-label-bg{fill: #141820;}
+.dg .dg-accent{fill: #231A14; stroke: #F0A15E; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #9AA0A8; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #0B0E13; stroke: #262B33;}
+.dg .dg-group-label{fill: #F0A15E; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #141820}
+}
+</style>
+<defs><marker id="codesign-checks-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+<rect class="dg-bg" x="0" y="0" width="470" height="520" rx="10" fill="#FFFDF8"/>
+<path class="dg-edge" d="M150 59.1L150 116.8" fill="none" stroke="currentColor" marker-end="url(#codesign-checks-arrow)"/><path class="dg-edge" d="M150 173.2L150 231.8" fill="none" stroke="currentColor" marker-end="url(#codesign-checks-arrow)"/><path class="dg-edge" d="M150 288.2L150 337.7" fill="none" stroke="currentColor" marker-end="url(#codesign-checks-arrow)"/><path class="dg-edge" d="M150 412.3L150 451.8" fill="none" stroke="currentColor" marker-end="url(#codesign-checks-arrow)"/><rect class="dg-node" x="40" y="20.9" width="220" height="38.2" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="150" y="44.9" font-size="14" text-anchor="middle" fill="currentColor">clang / cargo build</text><rect class="dg-node" x="40" y="116.8" width="220" height="56.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="150" y="140.8" font-size="14" text-anchor="middle" fill="currentColor">codesign -s -</text><text class="dg-text" x="150" y="159" font-size="14" text-anchor="middle" fill="currentColor">adds entitlements</text><rect class="dg-node" x="40" y="231.8" width="220" height="56.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="150" y="255.8" font-size="14" text-anchor="middle" fill="currentColor">launch</text><text class="dg-text" x="150" y="274" font-size="14" text-anchor="middle" fill="currentColor">(copy A dies here)</text><rect class="dg-node" x="40" y="337.7" width="220" height="74.6" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="150" y="361.7" font-size="14" text-anchor="middle" fill="currentColor">page-in</text><text class="dg-text" x="150" y="379.9" font-size="14" text-anchor="middle" fill="currentColor">(tampered copy dies</text><text class="dg-text" x="150" y="398.1" font-size="14" text-anchor="middle" fill="currentColor">here)</text><rect class="dg-node" x="40" y="451.8" width="220" height="56.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="150" y="475.8" font-size="14" text-anchor="middle" fill="currentColor">hv_vm_create</text><text class="dg-text" x="150" y="494" font-size="14" text-anchor="middle" fill="currentColor">(copy B refused here)</text><rect class="dg-label-bg" x="158" y="77.5" width="177.4" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="163" y="92.5" font-size="13" text-anchor="start" fill="currentColor">writes linker signature</text><rect class="dg-label-bg" x="158" y="183.6" width="177.4" height="37.8" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="163" y="198.6" font-size="13" text-anchor="start" fill="currentColor">exec checks signature,</text><text class="dg-text dg-label" x="163" y="215.5" font-size="13" text-anchor="start" fill="currentColor">restricted entitlements</text><rect class="dg-label-bg" x="158" y="294.1" width="177.4" height="37.8" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="163" y="309.1" font-size="13" text-anchor="start" fill="currentColor">kernel hashes each page</text><text class="dg-text dg-label" x="163" y="326" font-size="13" text-anchor="start" fill="currentColor">as it loads</text><rect class="dg-label-bg" x="158" y="421.6" width="104.6" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="163" y="436.6" font-size="13" text-anchor="start" fill="currentColor">program calls</text>
+</svg>

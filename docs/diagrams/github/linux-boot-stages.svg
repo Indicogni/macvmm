@@ -1,0 +1,43 @@
+<svg width="470" height="760" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 760" class="dg" font-family="system-ui, -apple-system, sans-serif">
+<title>The eight stages of a Linux boot</title>
+<desc>Eight stages in order, top to bottom. 1. head.S: MMU on, jump to C. 2. start_kernel: banner, first device-tree read, command line. Then init_IRQ leads to 3. the interrupt controller (GIC). Then time_init leads to 4. timer, clocksource, delay loop. It creates PID 1: 5. kernel_init: other CPUs, initcalls. 6. Drivers bind to device-tree nodes. 7. The initramfs is unpacked. Then exec of 8. /init in user space.</desc>
+<style>
+.dg .dg-node{fill: #FFFDF8; stroke: #1E2227; stroke-width: 1.25;}
+.dg .dg-decision{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-end{fill: #F3EEE2;}
+.dg .dg-note{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-edge{stroke: #5B616B; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #5B616B; stroke-width: 1;}
+.dg .dg-arrow{fill: #5B616B;}
+.dg .dg-text{fill: #1E2227;}
+.dg .dg-label{fill: #5B616B;}
+.dg .dg-label-bg{fill: #FFFDF8;}
+.dg .dg-accent{fill: #F6E9DC; stroke: #A33F00; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #5B616B; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #F3EEE2; stroke: #E4DDCC;}
+.dg .dg-group-label{fill: #A33F00; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #FFFDF8}
+@media (prefers-color-scheme: dark) {
+.dg .dg-node{fill: #141820; stroke: #E7E2D7; stroke-width: 1.25;}
+.dg .dg-decision{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-end{fill: #0B0E13;}
+.dg .dg-note{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-edge{stroke: #9AA0A8; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #9AA0A8; stroke-width: 1;}
+.dg .dg-arrow{fill: #9AA0A8;}
+.dg .dg-text{fill: #E7E2D7;}
+.dg .dg-label{fill: #9AA0A8;}
+.dg .dg-label-bg{fill: #141820;}
+.dg .dg-accent{fill: #231A14; stroke: #F0A15E; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #9AA0A8; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #0B0E13; stroke: #262B33;}
+.dg .dg-group-label{fill: #F0A15E; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #141820}
+}
+</style>
+<defs><marker id="linux-boot-stages-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+<rect class="dg-bg" x="0" y="0" width="470" height="760" rx="10" fill="#FFFDF8"/>
+<path class="dg-edge" d="M170 59.1L170 106.8" fill="none" stroke="currentColor" marker-end="url(#linux-boot-stages-arrow)"/><path class="dg-edge" d="M170 163.2L170 215.9" fill="none" stroke="currentColor" marker-end="url(#linux-boot-stages-arrow)"/><path class="dg-edge" d="M170 254.1L170 310.9" fill="none" stroke="currentColor" marker-end="url(#linux-boot-stages-arrow)"/><path class="dg-edge" d="M170 349.1L170 401.8" fill="none" stroke="currentColor" marker-end="url(#linux-boot-stages-arrow)"/><path class="dg-edge" d="M170 458.2L170 505.9" fill="none" stroke="currentColor" marker-end="url(#linux-boot-stages-arrow)"/><path class="dg-edge" d="M170 544.1L170 595.9" fill="none" stroke="currentColor" marker-end="url(#linux-boot-stages-arrow)"/><path class="dg-edge" d="M170 634.1L170 695.9" fill="none" stroke="currentColor" marker-end="url(#linux-boot-stages-arrow)"/><rect class="dg-node" x="20" y="20.9" width="300" height="38.2" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="170" y="44.9" font-size="14" text-anchor="middle" fill="currentColor">1. head.S: MMU on, jump to C</text><rect class="dg-node" x="20" y="106.8" width="300" height="56.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="170" y="130.8" font-size="14" text-anchor="middle" fill="currentColor">2. start_kernel: banner, first DT</text><text class="dg-text" x="170" y="149" font-size="14" text-anchor="middle" fill="currentColor">read, command line</text><rect class="dg-node" x="20" y="215.9" width="300" height="38.2" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="170" y="239.9" font-size="14" text-anchor="middle" fill="currentColor">3. interrupt controller (GIC)</text><rect class="dg-node" x="20" y="310.9" width="300" height="38.2" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="170" y="334.9" font-size="14" text-anchor="middle" fill="currentColor">4. timer, clocksource, delay loop</text><rect class="dg-node" x="20" y="401.8" width="300" height="56.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="170" y="425.8" font-size="14" text-anchor="middle" fill="currentColor">5. kernel_init: other CPUs,</text><text class="dg-text" x="170" y="444" font-size="14" text-anchor="middle" fill="currentColor">initcalls</text><rect class="dg-node" x="20" y="505.9" width="300" height="38.2" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="170" y="529.9" font-size="14" text-anchor="middle" fill="currentColor">6. drivers bind to DT nodes</text><rect class="dg-node" x="20" y="595.9" width="300" height="38.2" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="170" y="619.9" font-size="14" text-anchor="middle" fill="currentColor">7. initramfs unpacked</text><rect class="dg-node" x="20" y="695.9" width="300" height="38.2" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="170" y="719.9" font-size="14" text-anchor="middle" fill="currentColor">8. /init in user space</text><rect class="dg-label-bg" x="176" y="179.1" width="68.2" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="181" y="194.1" font-size="13" text-anchor="start" fill="currentColor">init_IRQ</text><rect class="dg-label-bg" x="176" y="272.1" width="75.5" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="181" y="287.1" font-size="13" text-anchor="start" fill="currentColor">time_init</text><rect class="dg-label-bg" x="176" y="365" width="104.6" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="181" y="380" font-size="13" text-anchor="start" fill="currentColor">creates PID 1</text><rect class="dg-label-bg" x="176" y="654.6" width="39.1" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="181" y="669.6" font-size="13" text-anchor="start" fill="currentColor">exec</text>
+</svg>

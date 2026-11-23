@@ -1,0 +1,43 @@
+<svg width="602" height="437" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 602 437" class="dg" font-family="system-ui, -apple-system, sans-serif">
+<title>UEFI firmware, an EFI application and the OS</title>
+<desc>Sequence between UEFI firmware, an EFI application (the Linux stub or loader.efi) and the OS kernel. 1. Firmware calls StartImage: x0 is the image handle, x1 the System Table. 2. The application uses boot services: allocate memory, read files, print, GetMemoryMap. 3. The application calls ExitBootServices with its handle and the MapKey. 4. The application jumps to the kernel entry. 5. From then on the OS uses only runtime services: GetTime, SetVariable, ResetSystem.</desc>
+<style>
+.dg .dg-node{fill: #FFFDF8; stroke: #1E2227; stroke-width: 1.25;}
+.dg .dg-decision{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-end{fill: #F3EEE2;}
+.dg .dg-note{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-edge{stroke: #5B616B; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #5B616B; stroke-width: 1;}
+.dg .dg-arrow{fill: #5B616B;}
+.dg .dg-text{fill: #1E2227;}
+.dg .dg-label{fill: #5B616B;}
+.dg .dg-label-bg{fill: #FFFDF8;}
+.dg .dg-accent{fill: #F6E9DC; stroke: #A33F00; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #5B616B; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #F3EEE2; stroke: #E4DDCC;}
+.dg .dg-group-label{fill: #A33F00; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #FFFDF8}
+@media (prefers-color-scheme: dark) {
+.dg .dg-node{fill: #141820; stroke: #E7E2D7; stroke-width: 1.25;}
+.dg .dg-decision{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-end{fill: #0B0E13;}
+.dg .dg-note{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-edge{stroke: #9AA0A8; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #9AA0A8; stroke-width: 1;}
+.dg .dg-arrow{fill: #9AA0A8;}
+.dg .dg-text{fill: #E7E2D7;}
+.dg .dg-label{fill: #9AA0A8;}
+.dg .dg-label-bg{fill: #141820;}
+.dg .dg-accent{fill: #231A14; stroke: #F0A15E; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #9AA0A8; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #0B0E13; stroke: #262B33;}
+.dg .dg-group-label{fill: #F0A15E; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #141820}
+}
+</style>
+<defs><marker id="uefi-handoff-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+<rect class="dg-bg" x="0" y="0" width="602" height="437" rx="10" fill="#FFFDF8"/>
+<rect class="dg-node" x="24" y="14" width="174" height="72.6" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="111" y="55.2" font-size="14" text-anchor="middle" fill="currentColor">UEFI firmware</text><line class="dg-life" x1="111" y1="86.6" x2="111" y2="432.5" stroke="currentColor" stroke-dasharray="3 4"/><rect class="dg-node" x="214" y="14" width="174" height="72.6" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="301" y="37" font-size="14" text-anchor="middle" fill="currentColor">EFI application</text><text class="dg-text" x="301" y="55.2" font-size="14" text-anchor="middle" fill="currentColor">(Linux stub,</text><text class="dg-text" x="301" y="73.4" font-size="14" text-anchor="middle" fill="currentColor">loader.efi)</text><line class="dg-life" x1="301" y1="86.6" x2="301" y2="432.5" stroke="currentColor" stroke-dasharray="3 4"/><rect class="dg-node" x="404" y="14" width="174" height="72.6" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="491" y="55.2" font-size="14" text-anchor="middle" fill="currentColor">OS kernel</text><line class="dg-life" x1="491" y1="86.6" x2="491" y2="432.5" stroke="currentColor" stroke-dasharray="3 4"/><text class="dg-text" x="206" y="117.6" font-size="13" text-anchor="middle" fill="currentColor">StartImage: x0 = image</text><text class="dg-text" x="206" y="134.5" font-size="13" text-anchor="middle" fill="currentColor">handle, x1 = System</text><text class="dg-text" x="206" y="151.4" font-size="13" text-anchor="middle" fill="currentColor">Table</text><line class="dg-edge" x1="111" y1="161.3" x2="299" y2="161.3" stroke="currentColor" marker-end="url(#uefi-handoff-arrow)"/><text class="dg-text" x="206" y="196.3" font-size="13" text-anchor="middle" fill="currentColor">boot services:</text><text class="dg-text" x="206" y="213.2" font-size="13" text-anchor="middle" fill="currentColor">allocate, read files,</text><text class="dg-text" x="206" y="230.1" font-size="13" text-anchor="middle" fill="currentColor">print, GetMemoryMap</text><line class="dg-edge" x1="301" y1="240" x2="113" y2="240" stroke="currentColor" marker-end="url(#uefi-handoff-arrow)"/><text class="dg-text" x="206" y="275" font-size="13" text-anchor="middle" fill="currentColor">ExitBootServices(handle,</text><text class="dg-text" x="206" y="291.9" font-size="13" text-anchor="middle" fill="currentColor">MapKey)</text><line class="dg-edge" x1="301" y1="301.8" x2="113" y2="301.8" stroke="currentColor" marker-end="url(#uefi-handoff-arrow)"/><text class="dg-text" x="396" y="336.8" font-size="13" text-anchor="middle" fill="currentColor">jump to kernel entry</text><line class="dg-edge" x1="301" y1="346.7" x2="489" y2="346.7" stroke="currentColor" marker-end="url(#uefi-handoff-arrow)"/><rect class="dg-label-bg" x="136.8" y="366.7" width="328.3" height="35.8" rx="3" fill="none" stroke="none"/><text class="dg-text" x="301" y="381.7" font-size="13" text-anchor="middle" fill="currentColor">runtime services only: GetTime, SetVariable,</text><text class="dg-text" x="301" y="398.6" font-size="13" text-anchor="middle" fill="currentColor">ResetSystem</text><line class="dg-edge" x1="491" y1="408.5" x2="113" y2="408.5" stroke="currentColor" marker-end="url(#uefi-handoff-arrow)"/>
+</svg>

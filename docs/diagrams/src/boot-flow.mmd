@@ -1,0 +1,9 @@
+flowchart TB
+  O["Open the input files<br/>read each one once"] --> S["Enter the sandbox<br/>no new files or network after this"]
+  S --> B["Build the machine<br/>VM, GIC, RAM, devices, device tree"]
+  B --> L["Load the guest<br/>device tree, kernel, initramfs into RAM"]
+  L --> V["Start vCPU 0<br/>kernel entry point,<br/>x0 = device tree address"]
+  V --> K["Linux boots<br/>PSCI CPU_ON wakes the other vCPUs"]
+  K --> SH(["/ #<br/>a shell prompt"])
+  SH -->|"poweroff -f: PSCI SYSTEM_OFF"| X(["macvmm exits<br/>exit code 0"])
+  SH -->|"reboot: PSCI SYSTEM_RESET"| B

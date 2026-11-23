@@ -166,11 +166,30 @@ export const CONTRAST_PAIRS = [
   ["accent", "rule", 3], ["muted", "card", 3],
 ];
 
+const DARK_ROOT = /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([^}]*)\}/;
+
+/**
+ * The site's theme as two maps of `--name` to value: `light` from every top-level :root block
+ * (colours, then fonts), `dark` the same with the prefers-color-scheme block laid over it.
+ * `hasDark` is false when that block is missing.
+ */
+export function themeTokens(css) {
+  const top = css.replace(/@media[^{]*\{\s*:root\s*\{[^}]*\}\s*\}/g, "");
+  const light = {};
+  for (const m of top.matchAll(/:root\s*\{([^}]*)\}/g)) {
+    for (const t of m[1].matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+?)\s*(?:;|$)/g)) light[t[1]] = t[2];
+  }
+  const darkBlock = (css.match(DARK_ROOT) || [])[1];
+  const dark = { ...light };
+  for (const t of (darkBlock || "").matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+?)\s*(?:;|$)/g)) dark[t[1]] = t[2];
+  return { light, dark, hasDark: Boolean(darkBlock) };
+}
+
 /** Check the light tokens (first :root block) and the dark ones (the prefers-color-scheme block). */
 export function checkContrast(css) {
   const problems = [];
   const light = tokensIn((css.match(/:root\s*\{([^}]*)\}/) || [])[1] || "");
-  const darkBlock = (css.match(/@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([^}]*)\}/) || [])[1];
+  const darkBlock = (css.match(DARK_ROOT) || [])[1];
   if (!darkBlock) problems.push("course.css: no dark-mode :root block");
   const dark = { ...light, ...tokensIn(darkBlock || "") };
   for (const [scheme, t] of [["light", light], ["dark", dark]]) {

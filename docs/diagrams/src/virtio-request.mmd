@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant D as Linux driver (in the guest)
+    participant V as vCPU thread (macvmm)
+    participant W as virtio-blk worker (macvmm)
+    participant F as Disk image (host file)
+    D->>D: puts descriptors in guest RAM
+    D->>V: writes QueueNotify: an MMIO exit
+    V->>W: wakes the worker
+    V-->>D: returns to the guest at once
+    W->>W: walks the chain: bounds-checked, loop-proof
+    W->>F: pwrite
+    W->>W: writes the used ring
+    W->>D: raises the interrupt through the in-kernel GIC
+    D->>D: completes the request

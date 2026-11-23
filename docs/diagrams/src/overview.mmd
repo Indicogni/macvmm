@@ -1,0 +1,19 @@
+flowchart TB
+  G["The guest<br/>Linux, U-Boot then FreeBSD, or a test guest.<br/>It believes it runs on a QEMU virt board."]
+  subgraph P["macvmm: one macOS process, sandboxed"]
+    C["Command line<br/>crates/macvmm"]
+    V["VMM library<br/>crates/vmm<br/>vCPU threads, devices, virtio,<br/>loaders and the device tree"]
+    F["FFI bindings<br/>crates/hvf"]
+  end
+  HF["Host files<br/>kernel, initramfs, disk image"] --> P
+  T["Terminal<br/>the serial console"] <--> P
+  subgraph H["Hypervisor.framework + macOS kernel"]
+    S2["Stage-2 memory"]
+    VC["vCPUs"]
+    GIC["In-kernel GIC"]
+    TM["Virtual timer"]
+  end
+  CPU["Apple Silicon CPU<br/>runs the guest's instructions directly, at full speed"]
+  G ~~~ P
+  F --> H
+  H ~~~ CPU

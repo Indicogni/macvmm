@@ -1,0 +1,43 @@
+<svg width="520" height="640" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 640" class="dg" font-family="system-ui, -apple-system, sans-serif">
+<title>The path of a keystroke through a terminal</title>
+<desc>Your keyboard sends keystrokes to Terminal.app, which writes bytes into the primary end of a pty that it holds. The bytes pass through the line discipline in the macOS kernel, which delivers them to the replica end, /dev/ttys001, held by the shell. The shell, sleep or macvmm read from it. Their output bytes go back through the line discipline, which passes them to Terminal.app to draw on the screen.</desc>
+<style>
+.dg .dg-node{fill: #FFFDF8; stroke: #1E2227; stroke-width: 1.25;}
+.dg .dg-decision{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-end{fill: #F3EEE2;}
+.dg .dg-note{fill: #F6E9DC; stroke: #A33F00;}
+.dg .dg-edge{stroke: #5B616B; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #5B616B; stroke-width: 1;}
+.dg .dg-arrow{fill: #5B616B;}
+.dg .dg-text{fill: #1E2227;}
+.dg .dg-label{fill: #5B616B;}
+.dg .dg-label-bg{fill: #FFFDF8;}
+.dg .dg-accent{fill: #F6E9DC; stroke: #A33F00; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #5B616B; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #F3EEE2; stroke: #E4DDCC;}
+.dg .dg-group-label{fill: #A33F00; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #FFFDF8}
+@media (prefers-color-scheme: dark) {
+.dg .dg-node{fill: #141820; stroke: #E7E2D7; stroke-width: 1.25;}
+.dg .dg-decision{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-end{fill: #0B0E13;}
+.dg .dg-note{fill: #231A14; stroke: #F0A15E;}
+.dg .dg-edge{stroke: #9AA0A8; stroke-width: 1.5; fill: none;}
+.dg .dg-life{stroke: #9AA0A8; stroke-width: 1;}
+.dg .dg-arrow{fill: #9AA0A8;}
+.dg .dg-text{fill: #E7E2D7;}
+.dg .dg-label{fill: #9AA0A8;}
+.dg .dg-label-bg{fill: #141820;}
+.dg .dg-accent{fill: #231A14; stroke: #F0A15E; stroke-width: 1.75;}
+.dg .dg-muted{fill: none; stroke: #9AA0A8; stroke-dasharray: 5 4;}
+.dg .dg-group{fill: #0B0E13; stroke: #262B33;}
+.dg .dg-group-label{fill: #F0A15E; font-weight: 600;}
+.dg .dg-mono{font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.dg .dg-bg{fill: #141820}
+}
+</style>
+<defs><marker id="tty-path-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-arrow" d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+<rect class="dg-bg" x="0" y="0" width="520" height="640" rx="10" fill="#FFFDF8"/>
+<path class="dg-edge" d="M180 55.1L180 116.9" fill="none" stroke="currentColor" marker-end="url(#tty-path-arrow)"/><path class="dg-edge" d="M180 155.1L180 217.8" fill="none" stroke="currentColor" marker-end="url(#tty-path-arrow)"/><path class="dg-edge" d="M180 274.2L180 337.8" fill="none" stroke="currentColor" marker-end="url(#tty-path-arrow)"/><path class="dg-edge" d="M180 394.2L180 457.8" fill="none" stroke="currentColor" marker-end="url(#tty-path-arrow)"/><path class="dg-edge" d="M180 514.2L180 580.9" fill="none" stroke="currentColor" marker-end="url(#tty-path-arrow)"/><path class="dg-edge" d="M300 600L400 600L400 376L300 376" fill="none" stroke="currentColor" marker-end="url(#tty-path-arrow)"/><path class="dg-edge" d="M300 356L470 356L470 136L290 136" fill="none" stroke="currentColor" marker-end="url(#tty-path-arrow)"/><rect class="dg-node" x="70" y="16.9" width="220" height="38.2" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="180" y="40.9" font-size="14" text-anchor="middle" fill="currentColor">Your keyboard</text><rect class="dg-node" x="70" y="116.9" width="220" height="38.2" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="180" y="140.9" font-size="14" text-anchor="middle" fill="currentColor">Terminal.app</text><rect class="dg-node" x="60" y="217.8" width="240" height="56.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="180" y="241.8" font-size="14" text-anchor="middle" fill="currentColor">pty primary end</text><text class="dg-text" x="180" y="260" font-size="14" text-anchor="middle" fill="currentColor">held by Terminal.app</text><rect class="dg-node" x="60" y="337.8" width="240" height="56.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="180" y="361.8" font-size="14" text-anchor="middle" fill="currentColor">line discipline</text><text class="dg-text" x="180" y="380" font-size="14" text-anchor="middle" fill="currentColor">in the macOS kernel</text><rect class="dg-node" x="50" y="457.8" width="260" height="56.4" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="180" y="481.8" font-size="14" text-anchor="middle" fill="currentColor">pty replica end, /dev/ttys001</text><text class="dg-text" x="180" y="500" font-size="14" text-anchor="middle" fill="currentColor">held by the shell</text><rect class="dg-node" x="60" y="580.9" width="240" height="38.2" rx="6" fill="none" stroke="currentColor"/><text class="dg-text" x="180" y="604.9" font-size="14" text-anchor="middle" fill="currentColor">shell, sleep, macvmm</text><rect class="dg-label-bg" x="186" y="75.6" width="82.8" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="191" y="90.6" font-size="13" text-anchor="start" fill="currentColor">keystrokes</text><rect class="dg-label-bg" x="186" y="176" width="97.4" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="191" y="191" font-size="13" text-anchor="start" fill="currentColor">writes bytes</text><rect class="dg-label-bg" x="186" y="295.6" width="111.9" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="191" y="310.6" font-size="13" text-anchor="start" fill="currentColor">passes through</text><rect class="dg-label-bg" x="186" y="415.6" width="68.2" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="191" y="430.6" font-size="13" text-anchor="start" fill="currentColor">delivers</text><rect class="dg-label-bg" x="186" y="537.1" width="61" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="191" y="552.1" font-size="13" text-anchor="start" fill="currentColor">read by</text><rect class="dg-label-bg" x="404" y="477.6" width="97.4" height="20.9" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="409" y="492.6" font-size="13" text-anchor="start" fill="currentColor">output bytes</text><rect class="dg-label-bg" x="397.8" y="227.1" width="68.2" height="37.8" rx="3" fill="none" stroke="none"/><text class="dg-text dg-label" x="461" y="242.1" font-size="13" text-anchor="end" fill="currentColor">draws on</text><text class="dg-text dg-label" x="461" y="259" font-size="13" text-anchor="end" fill="currentColor">screen</text>
+</svg>

@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { build, displayTitle, retrievalSources, parseGlossary, glossaryAnchor, parseRetrievalBank, CSP, headersFile, validateCourse, safeRepoPath, coversText, chapterLabel } from "../build.mjs";
 import { checkCsp, checkContrast, contrast, checkInternalNotation } from "../lib/checks.mjs";
 import { sanitizeSvg, svgMinWidth, MIN_TEXT_PX, NARROWEST } from "../lib/svg.mjs";
-import { DIAGRAMS, renderDiagram } from "../tools/diagrams.mjs";
+import { DIAGRAMS, renderDiagram, githubSvg } from "../tools/diagrams.mjs";
 import { parseHeaders, headersFor, resolvePath } from "../serve.mjs";
 
 let base, out, res, root;
@@ -163,6 +163,27 @@ test("the pre-rendered diagrams are up to date with tools/diagrams.mjs and pass 
     assert.equal(readFileSync(new URL(`${name}.svg`, dir), "utf8"), svg, `${name}.svg is stale: run node course/site/tools/diagrams.mjs`);
     assert.doesNotThrow(() => sanitizeSvg(svg, "t"), name);
     assert.ok(/<desc>[^<]{80,}<\/desc>/.test(svg), `${name}: <desc> is a full text version`);
+  }
+});
+
+test("each diagram's GitHub copy is up to date, themed for both schemes, and never inlinable", () => {
+  const dir = new URL("../../../docs/diagrams/", import.meta.url);
+  const css = readFileSync(new URL("../src/assets/course.css", import.meta.url), "utf8");
+  for (const name of Object.keys(DIAGRAMS)) {
+    const site = readFileSync(new URL(`${name}.svg`, dir), "utf8");
+    const gh = readFileSync(new URL(`github/${name}.svg`, dir), "utf8");
+    assert.equal(gh, githubSvg(renderDiagram(name), css), `github/${name}.svg is stale: run node course/site/tools/diagrams.mjs`);
+    assert.doesNotThrow(() => sanitizeSvg(site, "t"), `${name}.svg`);
+    const style = gh.match(/<style>([\s\S]*)<\/style>/);
+    assert.ok(style, `${name}: one <style> block`);
+    assert.ok(!/var\(--/.test(style[1]), `${name}: every token resolved to a colour`);
+    const [light, dark] = style[1].split("@media (prefers-color-scheme: dark)");
+    assert.ok(dark, `${name}: a dark-scheme block`);
+    assert.match(light, /\.dg \.dg-text\{fill: #1E2227;\}/);
+    assert.match(dark, /\.dg \.dg-text\{fill: #E7E2D7;\}/);
+    assert.match(gh, /<\/defs>\n<rect class="dg-bg" x="0" y="0" width="\d+" height="\d+" rx="10" fill="#[0-9A-F]{6}"\/>/, `${name}: an opaque background drawn first`);
+    assert.match(gh, /^<svg width="\d+" height="\d+" /, `${name}: an intrinsic size for <img>`);
+    assert.throws(() => sanitizeSvg(gh, "t"), /<style>/, `${name}: the site can never inline the GitHub copy`);
   }
 });
 

@@ -1,0 +1,7 @@
+flowchart TB
+  R["hv_vcpu_run<br/>the guest runs at full speed"] --> E["Exit<br/>device access or hypercall"]
+  E --> D["Decode the ESR<br/>why it stopped"]
+  D --> M["Emulate<br/>a device model or PSCI answers"]
+  M --> A["Advance the PC<br/>to the next instruction"]
+  A --> R
+  N["Measured: one Linux run, 4 vCPUs<br/>35,271 exits in total.<br/>35,235 were device accesses (MMIO),<br/>25 were hypercalls, 11 other kinds.<br/>No timer or WFI exits at all:<br/>the in-kernel GIC handles those."]
