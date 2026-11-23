@@ -1,0 +1,182 @@
+#!/usr/bin/env bash
+# Drive macvmm (or any repo command) in an isolated tmux PTY and keep the evidence.
+#
+#   vmm-drive start NAME -- CMD [ARGS...]   start CMD in the repo root in a new PTY session
+#   vmm-drive wait NAME TEXT [SECS]         wait until TEXT (fixed string) is in the transcript
+#   vmm-drive send NAME LINE                type LINE and press Enter
+#   vmm-drive keys NAME KEY...              send raw tmux keys, e.g. C-a x  (no Enter added)
+#   vmm-drive wait-exit NAME [SECS]         wait for CMD to end; prints and records its exit code
+#   vmm-drive capture NAME                  save the visible screen + scrollback to screen.txt
+#   vmm-drive doctor NAME                   read-only: is this session ours, alive, and what runs
+#   vmm-drive stop NAME                     kill only this session (and the VM it started)
+#   vmm-drive list                          sessions on the verification tmux server
+#
+# Every session lives on a private tmux server (socket name "macvmm-verify"), never the user's.
+# Evidence goes to $VERIFY_OUT (default <repo>/.cache/verify/NAME, gitignored) and survives stop:
+#   cmd.txt  the exact command   transcript.log  every byte the PTY printed
+#   exit-code  CMD's exit status  screen.txt  the last capture   events.log  what the driver did
+set -euo pipefail
+IFS=$'\n\t'
+umask 077
+
+die() { printf 'vmm-drive: %s\n' "$*" >&2; exit 1; }
+
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../../.." && pwd -P)"
+[[ -f "$REPO_ROOT/crates/macvmm/Cargo.toml" ]] || die "cannot find the macvmm repo from $0"
+command -v tmux >/dev/null || die "tmux not found (brew install tmux)"
+
+T=(tmux -L macvmm-verify)
+
+check_name() {
+  [[ "${1:-}" =~ ^[A-Za-z0-9_-]{1,40}$ ]] || die "bad session NAME '${1:-}' (letters, digits, - _)"
+}
+out_dir() { printf '%s' "${VERIFY_OUT:-$REPO_ROOT/.cache/verify/$1}"; }
+# Every process below PID (children first-level and deeper), one per line.
+descendants() {
+  local c
+  for c in $(pgrep -P "$1" 2>/dev/null || true); do
+    printf '%s\n' "$c"; descendants "$c"
+  done
+}
+sess() { printf 'mv-%s' "$1"; }
+alive() { "${T[@]}" has-session -t "=$(sess "$1")" 2>/dev/null; }
+event() { printf '%s %s\n' "$(date '+%H:%M:%S')" "$2" >>"$(out_dir "$1")/events.log"; }
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  start)
+    name="${1:-}"; check_name "$name"; shift
+    [[ "${1:-}" == "--" ]] || die "usage: vmm-drive start NAME -- CMD [ARGS...]"
+    shift
+    (( $# > 0 )) || die "no command given"
+    alive "$name" && die "session $name already running: stop it or pick another NAME"
+    out="$(out_dir "$name")"
+    mkdir -p -- "$out"
+    rm -f -- "$out/transcript.log" "$out/exit-code" "$out/screen.txt" "$out/events.log"
+    {
+      printf 'cd %q\n' "$REPO_ROOT"
+      printf '%q ' "$@"; printf '\n'
+    } >"$out/cmd.txt"
+    # The wrapper runs CMD, records its exit status, then lingers so the screen stays readable.
+    wrapper="$out/.run.sh"
+    # shellcheck disable=SC2016  # the $rc expansions belong to the generated script
+    {
+      printf '#!/usr/bin/env bash\ncd %q || exit 99\n' "$REPO_ROOT"
+      printf '%q ' "$@"; printf '\n'
+      printf 'rc=$?\nprintf "%%s\\n" "$rc" > %q\n' "$out/exit-code"
+      printf 'printf "\\n[vmm-drive] command exited %%s\\n" "$rc"\nexec sleep 86400\n'
+    } >"$wrapper"
+    chmod 700 "$wrapper"
+    "${T[@]}" new-session -d -s "$(sess "$name")" -x 200 -y 50 "$wrapper"
+    "${T[@]}" set-option -t "$(sess "$name")" history-limit 100000 >/dev/null
+    "${T[@]}" pipe-pane -t "$(sess "$name")" -o "cat >> $(printf '%q' "$out/transcript.log")"
+    event "$name" "start: $(tr '\n' ' ' <"$out/cmd.txt")"
+    printf 'started %s; evidence in %s\n' "$name" "$out" ;;
+
+  wait)
+    name="${1:-}"; check_name "$name"; text="${2:-}"; secs="${3:-60}"
+    [[ -n "$text" ]] || die "usage: vmm-drive wait NAME TEXT [SECS]"
+    log="$(out_dir "$name")/transcript.log"
+    deadline=$(( SECONDS + secs ))
+    while (( SECONDS < deadline )); do
+      if [[ -f "$log" ]] && LC_ALL=C grep -aqF -- "$text" "$log"; then
+        event "$name" "saw: $text"; printf 'saw: %s\n' "$text"; exit 0
+      fi
+      if [[ -f "$(out_dir "$name")/exit-code" ]]; then
+        LC_ALL=C grep -aqF -- "$text" "$log" 2>/dev/null && { printf 'saw: %s\n' "$text"; exit 0; }
+        event "$name" "FAIL wait (command exited): $text"
+        die "command exited ($(cat "$(out_dir "$name")/exit-code")) before '$text' appeared"
+      fi
+      sleep 0.3
+    done
+    event "$name" "FAIL wait (${secs}s timeout): $text"
+    die "timed out after ${secs}s waiting for '$text' (see $log)" ;;
+
+  send)
+    name="${1:-}"; check_name "$name"; line="${2-}"
+    alive "$name" || die "no session $name"
+    "${T[@]}" send-keys -t "$(sess "$name")" -l -- "$line"
+    "${T[@]}" send-keys -t "$(sess "$name")" Enter
+    event "$name" "send: $line" ;;
+
+  keys)
+    name="${1:-}"; check_name "$name"; shift
+    alive "$name" || die "no session $name"
+    "${T[@]}" send-keys -t "$(sess "$name")" -- "$@"
+    event "$name" "keys: $*" ;;
+
+  wait-exit)
+    name="${1:-}"; check_name "$name"; secs="${2:-60}"
+    f="$(out_dir "$name")/exit-code"
+    deadline=$(( SECONDS + secs ))
+    while (( SECONDS < deadline )); do
+      if [[ -f "$f" ]]; then
+        rc="$(cat "$f")"; event "$name" "exit: $rc"; printf 'exit code %s\n' "$rc"; exit 0
+      fi
+      sleep 0.3
+    done
+    die "command still running after ${secs}s" ;;
+
+  capture)
+    name="${1:-}"; check_name "$name"
+    alive "$name" || die "no session $name"
+    "${T[@]}" capture-pane -p -J -S - -t "$(sess "$name")" >"$(out_dir "$name")/screen.txt"
+    event "$name" "capture: screen.txt"
+    printf '%s\n' "$(out_dir "$name")/screen.txt" ;;
+
+  doctor)
+    name="${1:-}"; check_name "$name"; out="$(out_dir "$name")"
+    printf 'session      : %s on tmux socket macvmm-verify\n' "$(sess "$name")"
+    if ! alive "$name"; then printf 'alive        : no\n'; exit 1; fi
+    pid="$("${T[@]}" display-message -p -t "$(sess "$name")" '#{pane_pid}')"
+    printf 'alive        : yes (pane pid %s)\n' "$pid"
+    printf 'command      : %s\n' "$(tail -n 1 "$out/cmd.txt")"
+    if [[ -f "$out/exit-code" ]]; then
+      printf 'state        : exited %s\n' "$(cat "$out/exit-code")"
+    else
+      printf 'state        : running\n'
+    fi
+    vm=""
+    for p in $(descendants "$pid"); do
+      ps -o command= -p "$p" 2>/dev/null | grep -q '/target/[a-z]*/macvmm ' && vm="$vm $p"
+    done
+    printf 'macvmm pids  : %s\n' "${vm:-none under this session}"
+    bin="$REPO_ROOT/target/debug/macvmm"
+    if [[ -x "$bin" ]]; then
+      printf 'binary       : %s (built %s)\n' "$bin" "$(stat -f '%Sm' "$bin")"
+      if codesign -d --entitlements - "$bin" 2>/dev/null | grep -q com.apple.security.hypervisor; then
+        printf 'signed       : yes, hypervisor entitlement present\n'
+      else
+        printf 'signed       : NO hypervisor entitlement (run scripts/sign.sh %s)\n' "$bin"
+      fi
+    fi
+    printf 'git HEAD     : %s\n' "$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
+    printf 'transcript   : %s (%s bytes)\n' "$out/transcript.log" \
+      "$(wc -c <"$out/transcript.log" 2>/dev/null | tr -d ' ' || echo 0)" ;;
+
+  stop)
+    name="${1:-}"; check_name "$name"
+    if alive "$name"; then
+      pid="$("${T[@]}" display-message -p -t "$(sess "$name")" '#{pane_pid}')"
+      # Remember our own descendants so we can check they went with the session.
+      kids="$(descendants "$pid")"
+      "${T[@]}" kill-session -t "=$(sess "$name")"
+      sleep 1
+      for k in $kids; do
+        if kill -0 "$k" 2>/dev/null; then kill "$k" 2>/dev/null || true; fi
+      done
+      event "$name" "stop"
+      printf 'stopped %s; evidence kept in %s\n' "$name" "$(out_dir "$name")"
+    else
+      printf 'no session %s (nothing to stop); evidence in %s\n' "$name" "$(out_dir "$name")"
+    fi
+    rm -f -- "$(out_dir "$name")/.run.sh"
+    # Shut the private server down once it has no sessions left.
+    "${T[@]}" list-sessions >/dev/null 2>&1 || true ;;
+
+  list)
+    "${T[@]}" list-sessions 2>/dev/null || printf 'no verification sessions\n' ;;
+
+  ""|-h|--help) sed -n '2,19p' "$0" ;;
+  *) die "unknown command '$cmd' (vmm-drive --help)" ;;
+esac
