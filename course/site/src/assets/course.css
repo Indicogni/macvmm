@@ -271,6 +271,11 @@ tbody tr:last-child td { border-bottom: 0; }
 .diagram { margin: 0 0 1.5rem; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--card); padding: .75rem; }
 .diagram svg { display: block; width: 100%; height: auto; max-width: 44rem; margin: 0 auto; color: var(--ink); }
 .diagram figcaption { margin-top: .5rem; font-size: .9rem; color: var(--muted); }
+/* the landing's "What you'll build": two diagrams side by side once each column can hold one */
+.tour { display: grid; gap: 1rem; align-items: start; }
+.tour .diagram { margin: 0; }
+.tour__cta { margin-top: 1rem; }
+@media (min-width: 48rem) { .tour { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .dg .dg-node { fill: var(--card); stroke: var(--ink); stroke-width: 1.25; }
 .dg .dg-decision { fill: var(--accent-tint); stroke: var(--accent); }
 .dg .dg-end { fill: var(--code-bg); }

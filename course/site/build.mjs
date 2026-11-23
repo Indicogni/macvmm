@@ -864,6 +864,10 @@ export function build(opts = {}) {
       `<div class="cta"><a class="btn btn--primary" href="${first.href}">Start: ${esc(first.id)} ${esc(first.display)}</a><a class="btn" href="${url("labs/")}">Try a lab (no Mac needed)</a></div>` +
       `<p class="continue" data-continue="${continueData}" hidden><a href="${first.href}">Continue</a></p>` +
       `<div class="meta-row">${badges("mac")} <span>${parts.length} parts · ${written.length} chapters written</span> ${badges("browser")} <span>${builtLabs} labs built · ${primers.length} primers</span></div></section>` +
+      `<section class="section" aria-labelledby="build"><h2 id="build">What you'll build</h2><div class="tour">` +
+      diagramHook({ src: "docs/diagrams/overview.svg", alt: "macvmm is one macOS process between the guest and Hypervisor.framework, and the guest's code runs directly on the CPU." }, 1) +
+      diagramHook({ src: "docs/diagrams/exit-loop.svg", alt: "When the guest touches a device, the CPU stops it, and your code decodes why, emulates the device and runs the guest again." }, 2) +
+      `</div><p class="tour__cta"><a class="btn" href="${url("how-it-works/")}">Take the visual tour</a></p></section>` +
       `<section class="section" aria-labelledby="need"><h2 id="need">What you need</h2><ul class="grid3">` +
       `<li><div class="card"><h3>${ICONS.chip} Needs a Mac</h3><p>A Mac with Apple Silicon (Apple M1 or later) on macOS 15 or later, with Xcode command-line tools and Rust, for the chapters that run your VMM. Tested only on macOS 27.2 on an M5 Pro; older ones are expected to work. The code is on <a href="${esc(C.repo)}">GitHub</a>, and chapter 00 shows how to get it.</p></div></li>` +
       `<li><div class="card"><h3>${ICONS.window} Runs in a browser</h3><p>Reading, the primers and the labs need only a browser. Labs run entirely on your machine; nothing is uploaded.</p></div></li>` +

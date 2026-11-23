@@ -197,6 +197,12 @@ test("narrow diagrams are capped so their text stays near body size; the tour pa
     assert.ok(h.includes(`<title id="fig-`) && h.includes(escTitle(DIAGRAMS[name].title)), `${name} on the tour page`);
   }
   assert.match(h, /<svg [^>]*class="maxw-400 dg"/, "the overview is capped");
+  const land = readFileSync(join(root, "index.html"), "utf8");
+  const build = land.slice(land.indexOf('<h2 id="build">'), land.indexOf('<h2 id="need">'));
+  assert.ok(land.indexOf('<h2 id="build">') > land.indexOf('class="hero"'), "What you'll build follows the hero");
+  assert.equal((build.match(/<figure class="diagram">/g) || []).length, 2);
+  for (const name of ["overview", "exit-loop"]) assert.ok(build.includes(escTitle(DIAGRAMS[name].title)), `${name} on the landing`);
+  assert.match(build, /<a class="btn" href="\/build-your-own\/vmm\/how-it-works\/">Take the visual tour<\/a>/);
 });
 const escTitle = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
